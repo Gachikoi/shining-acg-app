@@ -1,0 +1,75 @@
+# Deno
+.deno/
+
+# Node modules (for tools that still need it)
+node_modules/
+
+# Build outputs
+dist/
+build/
+bin/
+*.app
+*.ipa
+*.apk
+*.aab
+
+# Web (Frontend)
+packages/web/.svelte-kit/
+packages/web/build/
+packages/web/.env
+packages/web/.env.local
+
+# Server (Backend)
+packages/server/bin/
+packages/server/tmp/
+
+# Android
+packages/android/.gradle/
+packages/android/.idea/
+packages/android/local.properties
+packages/android/build/
+packages/android/app/build/
+packages/android/*.iml
+packages/android/.DS_Store
+packages/android/captures/
+packages/android/.externalNativeBuild/
+packages/android/.cxx/
+
+# iOS
+packages/ios/*.xcodeproj/xcuserdata/
+packages/ios/*.xcworkspace/xcuserdata/
+packages/ios/Pods/
+packages/ios/build/
+packages/ios/DerivedData/
+packages/ios/*.ipa
+packages/ios/.DS_Store
+
+# HarmonyOS
+packages/harmonyos/build/
+packages/harmonyos/.idea/
+packages/harmonyos/local.properties
+packages/harmonyos/.hvigor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+*.lcov

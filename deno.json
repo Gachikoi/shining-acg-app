@@ -1,0 +1,8 @@
+{
+  "name": "shining-acg-app",
+  "exports": {},
+  "tasks": {
+    "web:dev": "cd packages/web && deno task dev",
+    "web:build": "cd packages/web && deno task build"
+  }
+}
