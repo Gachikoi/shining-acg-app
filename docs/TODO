@@ -1,0 +1,3 @@
+1. 接入代码格式化，并且在 deno task prepare 时安装格式化所需的全部命令，并在pre-commit 中检测到没安装时提示运行 deno task prepare 进行安装。
+2. 配置 openapi 自动生成接口
+3. 手动完成 lint-staged/引入lint-staged库。注意手动实现的时候，要充分考虑staged有无文件的情况，以及拒绝commit后恢复原状态的情况。

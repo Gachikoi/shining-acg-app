@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run --allow-read --allow-env
-
 /**
  * Commitlint - 验证 commit message 格式
  *
@@ -54,21 +52,26 @@ function validateCommitMessage(message: string): {
       valid: false,
       error: `Commit message format is invalid.
 
-Expected format: <type>[optional scope]: <description>
+Expected format:
+  <type>[optional scope]: <description>
+
+  [optional body]
+
+  [optional footer(s)]
 
 Example:
   feat: add user authentication
   fix(api): resolve cors issue
   docs: update README
 
-Valid types: ${COMMIT_TYPES.join(", ")}`,
+Valid types: ${COMMIT_TYPES.join(', ')}`,
     };
   }
 
   return { valid: true };
 }
 
-async function main() {
+function main() {
   // 从参数或 stdin 读取 commit message
   const commitMsgFile = Deno.args[0];
 
@@ -76,12 +79,12 @@ async function main() {
 
   if (commitMsgFile) {
     // 从文件读取
-    commitMessage = await Deno.readTextFile(commitMsgFile);
+    commitMessage = Deno.readTextFileSync(commitMsgFile);
   } else {
     // 从 stdin 读取
     const decoder = new TextDecoder();
     const buf = new Uint8Array(1024);
-    const n = await Deno.stdin.read(buf);
+    const n = Deno.stdin.readSync(buf);
     commitMessage = decoder.decode(buf.subarray(0, n || 0));
   }
 
@@ -99,8 +102,10 @@ async function main() {
   console.log("✅ Commit message is valid");
 }
 
+// 即使不通过 git hooks 触发，也能直接运行此文件的功能
+// 这也方便测试 validateCommitMessage 函数
 if (import.meta.main) {
-  await main();
+  main();
 }
 
 export { validateCommitMessage };

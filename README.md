@@ -24,7 +24,6 @@ shining-acg-app/
 ├── .github/workflows/    # GitHub Actions CI/CD
 ├── docs/                 # 项目文档
 ├── deno.json             # Deno 配置和任务
-├── .editorconfig         # 编辑器配置
 └── .gitignore            # Git 忽略文件
 ```
 
@@ -171,7 +170,7 @@ Closes #123
 - 邮箱：1131997238@qq.com
 - 微信：mineskura
 
-2. 一只冻鱼
+2. 一只冻鱼，负责后端。
 
 // TODO
 

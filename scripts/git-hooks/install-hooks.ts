@@ -25,6 +25,7 @@ for (const hook of hooks) {
 
 deno run --allow-read --allow-run --allow-env ${hook.script} "$@"
 `;
+  // "$@" 代表传递给当前 Shell 脚本的所有参数
 
   try {
     await Deno.writeTextFile(hookPath, hookContent);

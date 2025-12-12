@@ -1,48 +1,38 @@
-# iOS
+# sv
 
-Shining ACG App Web 端，使用 Svelte 构建。
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-## 开发环境
+## Creating a project
 
-- Xcode 15.0+
-- iOS 17.0+
-- macOS Sonoma 14.0+
+If you're seeing this, you've probably already done this step. Congrats!
 
-## 开发
+```sh
+# create a new project in the current directory
+npx sv create
 
-1. 使用 Xcode 打开 `packages/ios/ShiningACGApp.xcodeproj`
-2. 选择目标设备或模拟器
-3. 点击运行按钮 (⌘R)
-
-## 项目结构
-
-```
-ShiningACGApp/
-├── ShiningACGApp.swift      # App 入口
-├── ContentView.swift         # 主视图
-└── Assets.xcassets/         # 资源文件
+# create a new project in my-app
+npx sv create my-app
 ```
 
-## 构建
+## Developing
 
-```bash
-# 命令行构建（需要在 Xcode 项目创建后）
-xcodebuild -scheme ShiningACGApp -destination 'platform=iOS Simulator,name=iPhone 15' build
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```sh
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
 ```
 
-## 技术栈
+## Building
 
-- Swift
-- SwiftUI - 声明式 UI 框架
-- Xcode - 开发工具
+To create a production version of your app:
 
-## 注意事项
+```sh
+npm run build
+```
 
-由于 iOS 项目需要在 Xcode 中创建，建议：
+You can preview the production build with `npm run preview`.
 
-1. 在 Xcode 中创建新的 iOS App 项目
-2. 项目名称：ShiningACGApp
-3. 组织标识符：com.shining
-4. 界面：SwiftUI
-5. 语言：Swift
-6. 将项目保存到 `packages/ios` 目录
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

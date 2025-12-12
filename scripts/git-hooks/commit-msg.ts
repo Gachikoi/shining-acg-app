@@ -5,7 +5,7 @@
  * 验证 commit message 格式
  */
 
-import { validateCommitMessage } from "../git-hooks/commitlint.ts";
+import { validateCommitMessage } from "./commitlint.ts";
 
 const commitMsgFile = Deno.args[0];
 
@@ -14,7 +14,7 @@ if (!commitMsgFile) {
   Deno.exit(1);
 }
 
-const commitMessage = await Deno.readTextFile(commitMsgFile);
+const commitMessage = Deno.readTextFileSync(commitMsgFile);
 
 const result = validateCommitMessage(commitMessage);
 
