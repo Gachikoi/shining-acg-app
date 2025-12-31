@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
-
 /**
  * 安装 Git Hooks
  * 将脚本复制到 .git/hooks 目录

@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run --allow-read --allow-env
-
 /**
  * Commit-msg hook
  * 验证 commit message 格式
