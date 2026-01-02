@@ -9,12 +9,12 @@ import SwiftUI
 import WebKit
 
 struct ContentView: View {
-    var body: some View {
-        WebView(url: URL(string: "https://www.baidu.com"))
-            .webViewBackForwardNavigationGestures(.disabled)
-    }
+  var body: some View {
+    WebView(url: URL(string: "https://www.baidu.com"))
+      .webViewBackForwardNavigationGestures(.disabled)
+  }
 }
 
 #Preview {
-    ContentView()
+  ContentView()
 }
