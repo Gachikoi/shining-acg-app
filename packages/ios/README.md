@@ -38,11 +38,4 @@ xcodebuild -scheme ShiningACGApp -destination 'platform=iOS Simulator,name=iPhon
 
 ## 注意事项
 
-由于 iOS 项目需要在 Xcode 中创建，建议：
-
-1. 在 Xcode 中创建新的 iOS App 项目
-2. 项目名称：ShiningACGApp
-3. 组织标识符：com.shining
-4. 界面：SwiftUI
-5. 语言：Swift
-6. 将项目保存到 `packages/ios` 目录
+xcode 内置 git 套件无法在 githooks 中找到 deno 路径，请使用命令行提交代码。
