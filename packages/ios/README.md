@@ -38,4 +38,17 @@ xcodebuild -scheme ShiningACGApp -destination 'platform=iOS Simulator,name=iPhon
 
 ## 注意事项
 
-xcode 内置 git 套件无法在 githooks 中找到 deno 路径，请使用命令行提交代码。
+Xcode 在执行 Git 操作（如 commit 触发的 pre-commit hook）时，通常不会加载用户的 shell 配置文件（如 .zshrc），因此无法找到仅在用户 PATH 中定义的 deno。
+
+Xcode 和大多数 GUI 应用默认会查找 bin 路径。你可以将 deno 链接到该目录下。
+
+请在终端中运行以下命令：
+
+```sh
+sudo ln -s [使用 which deno 命令找到的 deno 路径] /usr/local/bin/deno
+
+例如：
+sudo ln -s /Users/gachikoi/.deno/bin/deno /usr/local/bin/deno
+```
+
+运行后，Xcode 应该就能直接识别到 deno 命令了。
