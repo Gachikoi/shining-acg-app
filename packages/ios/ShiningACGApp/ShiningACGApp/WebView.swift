@@ -31,7 +31,7 @@ struct WebView:UIViewRepresentable {
     let wkwebView = WKWebView(frame: .zero, configuration: configuration)
     
     // 允许前进后退手势
-    wkwebView.allowsBackForwardNavigationGestures = true
+    wkwebView.allowsBackForwardNavigationGestures = false
     
     // 禁用页面缩放
     wkwebView.scrollView.minimumZoomScale = 1.0

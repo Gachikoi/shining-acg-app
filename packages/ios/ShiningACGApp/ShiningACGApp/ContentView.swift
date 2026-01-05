@@ -13,10 +13,10 @@ struct ContentView: View {
   let url=URL(string: "http://video.gach1koi.site")
   
   var body: some View {
-    let _ = print(url ?? "")
     if let url {
       WebView(url: url)
-    }else {
+        .ignoresSafeArea(.all,edges: .bottom)
+    } else {
       Text("内容加载失败")
     }
   }
