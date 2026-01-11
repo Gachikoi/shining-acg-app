@@ -25,6 +25,10 @@
 		".": {
 			"types": "./src/lib/index.ts",
 			"svelte": "./src/lib/index.ts"
+		},
+		"./components/ui/*": {
+			"types": "./src/lib/components/ui/*/index.ts",
+			"svelte": "./src/lib/components/ui/*/index.ts"
 		}
 	}
 }

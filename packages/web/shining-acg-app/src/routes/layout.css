@@ -4,6 +4,9 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+/* 为了让 shining-acg-site 的 tailwindcsswin 编译时生成 share 中需要的原子类样式*/
+@source '../../../share/src/lib/*.{html,js,svelte,ts}'; 
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
