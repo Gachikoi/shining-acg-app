@@ -125,3 +125,29 @@ deno run -A npm:sv create my-app
 可交互元素需要在hover、右键、click、长按......时给一个缓入缓出的交互动画。白底元素一般是将背景色设为zinc/100；图片、视频等背景内容丰富的一般是覆盖一层#000，不透明度20%的遮罩。
 
 可点击事物（如按钮）的最小可触控区域为44x44px，可以考虑给元素额外的padding/伪元素来实现热区扩充，具体酌情实现。
+
+# CI/CD
+
+## 域名
+
+测试环境域名：test-app.shiningacg.club、test-www.shiningacg.club
+
+生产环境域名：app.shiningacg.club、www.shiningacg.club、shiningacg.club
+
+域名管理链接：
+
+域名接口人：
+
+## 部署运维
+
+测试环境：https://dash.cloudflare.com/dca725a549c82a7e9364aeced533962e/pages/view/test-shining-acg-app
+
+生产环境：https://dash.cloudflare.com/dca725a549c82a7e9364aeced533962e/pages/view/shining-acg-app
+
+运维接口人：
+
+1. ガチ恋
+
+- QQ：1131997238
+- 邮箱：1131997238@qq.com
+- 微信：mineskura
