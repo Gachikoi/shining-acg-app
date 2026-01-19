@@ -25,7 +25,7 @@
 		>
 			<Button
 				variant="ghost"
-				class="hidden h-10 w-24 rounded-full text-base font-normal text-zinc-500 lg:block dark:text-zinc-400"
+				class="hidden h-10 w-24 rounded-full text-base font-normal text-zinc-500 hover:text-zinc-500 lg:block dark:text-zinc-500"
 				>晒你官网</Button
 			></a
 		>

@@ -42,14 +42,18 @@
 		<div class="relative px-2">
 			<div
 				class={cn(
-					'text-base font-medium text-zinc-500 dark:text-zinc-400',
+					'text-base font-medium text-zinc-500',
 					isSelected && 'font-semibold text-zinc-900 dark:text-zinc-100'
 				)}
 			>
 				{text}
 			</div>
-			{#if badgeText}
-				<Badge class="absolute -top-1.5 left-8.25 px-1 py-0 text-[0.625rem]/3.25">{badgeText}</Badge>
+			{#if badgeText === ' '}
+				<Badge class="absolute -top-0.75 left-8.25 p-1.5" variant="dot"></Badge>
+			{:else if badgeText}
+				<Badge class="absolute -top-1.5 left-8.25 min-w-3.75 px-1 py-0 text-[0.625rem]/3.25"
+					>{badgeText}</Badge
+				>
 			{/if}
 		</div>
 	{:else}
@@ -69,8 +73,10 @@
 				{/if}
 				<span class="text-base font-semibold">{text}</span>
 			</div>
-			{#if badgeText}
-				<Badge>{badgeText}</Badge>
+			{#if badgeText === ' '}
+				<Badge variant="dot"></Badge>
+			{:else if badgeText}
+				<Badge class='min-w-5'>{badgeText}</Badge>
 			{/if}
 		</Button>
 	{/if}

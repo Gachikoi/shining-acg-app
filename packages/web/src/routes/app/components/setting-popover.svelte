@@ -14,7 +14,7 @@
 <Popover.Root>
 	<PopoverTrigger>
 		<TabButton class="hidden lg:block" text="更多" icon={Menu} />
-		<Button variant="ghost" class="size-10 rounded-full lg:hidden">
+		<Button variant="ghost" size='icon-lg' class="lg:hidden">
 			<Menu />
 		</Button>
 	</PopoverTrigger>
