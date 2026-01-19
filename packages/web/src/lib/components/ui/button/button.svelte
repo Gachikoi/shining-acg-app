@@ -9,11 +9,13 @@
 			variant: {
 				default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs',
 				secondary:
-					'border-red-500 text-red-500 border hover:border-red-500/80 hover:text-red-500/80',
+					'border-red-500 text-red-500 border hover:border-red-500/70 hover:text-red-500/70',
 				tertiary:
-					'border border-zinc-300 text-zinc-700 hover:border-zinc-300/80 hover:text-zinc-700/80 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-300/80 dark:hover:border-zinc-700/80',
+					'border border-zinc-300 text-zinc-700 hover:border-zinc-300/70 hover:text-zinc-700/70 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-300/70 dark:hover:border-zinc-700/70',
 				ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
-				link: 'text-blue-800 dark:text-blue-600 underline-offset-4 hover:underline'
+				link: 'text-blue-800 dark:text-blue-600 underline-offset-4 hover:underline',
+				block:
+					'rounded-[6px] text-zinc-500 bg-zinc-100 dark:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 font-normal'
 			},
 			size: {
 				default: 'px-4 py-2',
