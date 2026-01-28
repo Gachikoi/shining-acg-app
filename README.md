@@ -109,6 +109,7 @@ request。
 [optional footer(s)]
 ```
 
+> 注：项目目前仅校验首行（type/scope/description），body/footer 不参与校验。
 > 注：建议在开发具体的平台功能时，声明作用域（scope），以便于快速识别改动涉及的模块（如 android, ios, web, server 等）。
 
 ### 类型（Type）

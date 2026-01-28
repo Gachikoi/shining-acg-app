@@ -5,11 +5,11 @@
  * Automatically runs formatting and linting on staged files
  */
 
-import { LintStaged } from './lint-staged.ts';
+import { LintStaged } from "./lint-staged.ts";
 
 const lintStaged = new LintStaged();
 
-lintStaged.run((stagedFiles) => {
+lintStaged.run((_stagedFiles) => {
   // console.log('🔍 Running pre-commit checks on staged files...\n');
   // const swiftFiles = stagedFiles.filter((f) => f.endsWith('.swift'));
   // const goFiles = stagedFiles.filter((f) => f.endsWith('.go'));

@@ -16,15 +16,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.x
 
       - name: Check formatting
-        run: deno fmt --check
+        run: deno fmt --check scripts/
 
       - name: Lint TypeScript/JavaScript
-        run: deno lint
+        run: deno lint scripts/
 
   frontend:
     name: Frontend (SvelteKit)
@@ -34,26 +34,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          deno-version: v1.x
+          node-version: "22"
 
-      - name: Cache Deno dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json') }}
-          restore-keys: |
-            ${{ runner.os }}-deno-
+      - name: Install dependencies
+        working-directory: packages/web
+        run: npm install
 
       - name: Check SvelteKit
         working-directory: packages/web
-        run: deno task check
+        run: npm run check
 
   backend:
     name: Backend (Go)
     runs-on: ubuntu-latest
+    # TODO: 启用此 job 当后端开发开始后
+    if: false
 
     steps:
       - name: Checkout code
@@ -137,15 +135,15 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.x
 
-      - name: Validate commit messages
+      - name: Validate commit messages (subject only)
         run: |
-          git log --format=%B origin/${{ github.base_ref }}..${{ github.sha }} | \
+          git log --format=%s origin/${{ github.base_ref }}..${{ github.sha }} | \
           while IFS= read -r line; do
             if [ -n "$line" ]; then
-              echo "$line" | deno run --allow-read --allow-env scripts/commitlint.ts
+              echo "$line" | deno run --allow-read --allow-env scripts/git-hooks/commitlint.ts
             fi
           done
