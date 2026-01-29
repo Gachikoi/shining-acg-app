@@ -4,10 +4,10 @@
 	import PopoverTrigger from '$lib/components/ui/popover/popover-trigger.svelte';
 	import * as Select from '$lib/components/ui/select';
 	import { ChevronRight, ExternalLink, Menu } from 'lucide-svelte';
-	import { resetMode, setMode } from 'mode-watcher';
+	import { setMode, userPrefersMode } from 'mode-watcher';
 	import TabButton from './tab-button.svelte';
 
-	let darkMode = $state('跟随系统');
+	let darkMode = $state(userPrefersMode.current === 'light' ? '浅色' : userPrefersMode.current === 'dark' ? '深色' : '跟随系统');
 	const darkModeOptions = ['跟随系统', '浅色', '深色'];
 </script>
 
@@ -64,7 +64,7 @@
 								onclick={() => {
 									switch (item) {
 										case '跟随系统':
-											resetMode();
+											setMode('system')
 											break;
 										case '浅色':
 											setMode('light');
