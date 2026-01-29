@@ -1,6 +1,6 @@
 <script lang="ts">
-	import darkLogo from '$lib/assets/dark-logo.svg';
-	import logo from '$lib/assets/logo.svg';
+	import darkLogo from '$lib/assets/dark-logo.png';
+	import logo from '$lib/assets/logo.png';
 	import { mode } from 'mode-watcher';
 	import './layout.css';
 

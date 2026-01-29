@@ -16,7 +16,7 @@
         {
           "blend-mode-specializations" : [
             {
-              "value" : "normal"
+              "value" : "lighten"
             },
             {
               "appearance" : "dark",
@@ -62,7 +62,7 @@
       "specular" : true,
       "translucency" : {
         "enabled" : true,
-        "value" : 0.5
+        "value" : 0.3
       }
     }
   ],

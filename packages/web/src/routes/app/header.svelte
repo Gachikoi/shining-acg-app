@@ -1,6 +1,6 @@
 <script>
 	import { resolve } from '$app/paths';
-	import rectangleLogo from '$lib/assets/rectangle-logo.svg';
+	import rectangleLogo from '$lib/assets/rectangle-logo.png';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import SettingPopover from './setting-popover.svelte';
@@ -22,7 +22,7 @@
 	{#if isRemoveLogo}
 		<section class="flex shrink-0 grow items-center justify-start lg:ml-4">
 			<a class="shrink-0" href={resolve('/')}>
-				<img src={rectangleLogo} alt="Shining!" />
+				<img src={rectangleLogo} alt="Shining!" width="110" height="33"/>
 			</a>
 		</section>
 	{/if}
