@@ -11,7 +11,7 @@ const config = {
 		adapter: adapter({
 			routes: {
 				include: ['/*'],
-				exclude: ['<build>','<files>']
+				exclude: []
 			}
 		})
 	}
