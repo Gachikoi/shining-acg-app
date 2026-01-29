@@ -51,7 +51,11 @@ struct WebView:UIViewRepresentable {
     wkwebView.scrollView.showsHorizontalScrollIndicator = false
     wkwebView.scrollView.showsVerticalScrollIndicator = false
     
-    let request = URLRequest(url: url)
+    var request = URLRequest(url: url)
+    #if DEBUG
+    // 调试模式下忽略本地缓存，每次重新请求
+    request.cachePolicy = .reloadIgnoringLocalCacheData
+    #endif
     wkwebView.load(request)
     
     return wkwebView
