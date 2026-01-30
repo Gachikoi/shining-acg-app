@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
             ShiningACGAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     WebViewScreen(
-                        url = "https://app.shiningacg.club",
+                        url = BuildConfig.WEB_VIEW_URL,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

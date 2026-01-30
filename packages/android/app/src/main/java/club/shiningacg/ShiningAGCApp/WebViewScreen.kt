@@ -129,7 +129,7 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
                                 
                                 // 拦截 www.shiningacg.club 并使用 Chrome Custom Tabs 打开
                                 // 类似 iOS 的 SFSafariViewController 效果
-                                if (host == "www.shiningacg.club" || host == "shiningacg.club") {
+                                if (host == BuildConfig.INTERCEPT_HOST) {
                                     openInCustomTab(ctx, uri.toString(), primaryColor)
                                     return true // 取消 WebView 导航，改为在 Custom Tab 中显示
                                 }
