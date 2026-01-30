@@ -12,15 +12,22 @@ android {
 
     defaultConfig {
         applicationId = "club.shiningacg.ShiningAGCApp"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        buildConfigField("String", "WEB_VIEW_URL", "\"https://app.shiningacg.club\"")
+        buildConfigField("String", "INTERCEPT_HOST", "\"www.shiningacg.club\"")
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "WEB_VIEW_URL", "\"https://test.app.shiningacg.club\"")
+            buildConfigField("String", "INTERCEPT_HOST", "\"test.www.shiningacg.club\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
