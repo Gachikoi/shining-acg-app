@@ -12,12 +12,12 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.material3.MaterialTheme
 import androidx.core.net.toUri
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -153,37 +153,6 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
                     loadUrl(url)
                 }
             },
-            update = { webView ->
-                // 启用深色模式支持
-                // 注意：由于 update 会在每次重组时调用，这里的设置必须是幂等的或轻量级的
-                
-                if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-                    // Android 13+ (API 33+)
-                    // 显式禁用算法变暗 (Algorithmic Darkening)，确保仅使用网页自己定义的深色模式样式
-                    // WebView 会自动根据 App 主题传递 prefers-color-scheme: dark
-                    WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.settings, false)
-                } else {
-                    // Android 10-12
-                    if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                        // 必须开启 FORCE_DARK 才能让 WebView 传递 prefers-color-scheme: dark
-                        @Suppress("DEPRECATION")
-                        WebSettingsCompat.setForceDark(
-                            webView.settings,
-                            if (isDarkTheme) WebSettingsCompat.FORCE_DARK_ON else WebSettingsCompat.FORCE_DARK_OFF
-                        )
-                    }
-
-                    if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK_STRATEGY)) {
-                        // 设置策略：优先使用网页自己的深色模式样式，只有在网页不支持时才使用算法
-                        // 注意：如果网页没有正确声明 color-scheme meta 标签，可能会被算法变暗，这是旧版本的限制
-                        @Suppress("DEPRECATION")
-                        WebSettingsCompat.setForceDarkStrategy(
-                            webView.settings,
-                            WebSettingsCompat.DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING
-                        )
-                    }
-                }
-            }
         )
     }
 }
