@@ -1,11 +1,14 @@
-<script>
+<script lang="ts">
 	import { resolve } from '$app/paths';
 	import rectangleLogo from '$lib/assets/rectangle-logo.png';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { useSiteMetadata } from './use-site.svelte'
 	import SettingPopover from './setting-popover.svelte';
 
 	let isRemoveLogo = $state(false);
+
+	const { officialSiteUrl } = useSiteMetadata();
 
 	$effect(() => {
 		const mql = window.matchMedia('(min-width: 40rem)');
@@ -22,7 +25,7 @@
 	{#if isRemoveLogo}
 		<section class="flex shrink-0 grow items-center justify-start lg:ml-4">
 			<a class="shrink-0" href={resolve('/')}>
-				<img src={rectangleLogo} alt="Shining!" width="110" height="33"/>
+				<img src={rectangleLogo} alt="Shining!" width="110" height="33" />
 			</a>
 		</section>
 	{/if}
@@ -32,7 +35,7 @@
 	<section class="flex shrink-0 grow items-center justify-end">
 		<a
 			title="晒你官网"
-			href="https://www.shiningacg.club"
+			href={officialSiteUrl}
 			data-sveltekit-preload-code="eager"
 			data-sveltekit-replacestate
 			data-sveltekit-preload-data="tap"

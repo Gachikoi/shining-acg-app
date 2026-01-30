@@ -7,14 +7,24 @@
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import TabButton from './tab-button.svelte';
 
-	let darkMode = $state(userPrefersMode.current === 'light' ? '浅色' : userPrefersMode.current === 'dark' ? '深色' : '跟随系统');
+	import { useSiteMetadata } from './use-site.svelte'
+
+	let darkMode = $state(
+		userPrefersMode.current === 'light'
+			? '浅色'
+			: userPrefersMode.current === 'dark'
+				? '深色'
+				: '跟随系统'
+	);
 	const darkModeOptions = ['跟随系统', '浅色', '深色'];
+
+	const { officialSiteUrl } = useSiteMetadata();
 </script>
 
 <Popover.Root>
 	<PopoverTrigger>
 		<TabButton class="hidden lg:block" text="更多" icon={Menu} />
-		<Button variant="ghost" size='icon-lg' class="lg:hidden">
+		<Button variant="ghost" size="icon-lg" class="lg:hidden">
 			<Menu />
 		</Button>
 	</PopoverTrigger>
@@ -22,7 +32,7 @@
 		<a
 			class="lg:hidden"
 			title="晒你官网"
-			href="https://www.shiningacg.club"
+			href={officialSiteUrl}
 			data-sveltekit-preload-code="eager"
 			data-sveltekit-replacestate
 			data-sveltekit-preload-data="tap"
@@ -64,7 +74,7 @@
 								onclick={() => {
 									switch (item) {
 										case '跟随系统':
-											setMode('system')
+											setMode('system');
 											break;
 										case '浅色':
 											setMode('light');
