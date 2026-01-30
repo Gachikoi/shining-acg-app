@@ -80,6 +80,8 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
+    # TODO: 启用此 job 当后端开发开始后
+    if: false
 
     steps:
       - name: Checkout code
