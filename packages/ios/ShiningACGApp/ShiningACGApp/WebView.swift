@@ -75,7 +75,12 @@ struct WebView:UIViewRepresentable {
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
       if let url = navigationAction.request.url {
         // 拦截 www.shiningacg.club 的访问
-        if url.host == "www.shiningacg.club" {
+        #if DEBUG
+        let targetHost = "test.www.shiningacg.club"
+        #else
+        let targetHost = "www.shiningacg.club"
+        #endif
+        if url.host == targetHost {
           parent.onOpenUrlInSheet?(url)
           decisionHandler(.cancel)
           return

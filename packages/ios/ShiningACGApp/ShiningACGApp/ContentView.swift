@@ -16,7 +16,11 @@ struct IdentifiableURL: Identifiable {
 }
 
 struct ContentView: View {
+#if DEBUG
+  let url=URL(string: "https://test.app.shiningacg.club")
+#else
   let url=URL(string: "https://app.shiningacg.club")
+#endif
   @State private var sheetUrl: IdentifiableURL?
   
   var body: some View {
