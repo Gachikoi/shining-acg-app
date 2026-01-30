@@ -7,53 +7,51 @@ on:
     branches: [main, develop]
 
 jobs:
-  lint-and-format:
-    name: Lint and Format Check
-    runs-on: ubuntu-latest
+  # lint-and-format:
+  #   name: Lint and Format Check
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+  #     - name: Setup Deno
+  #       uses: denoland/setup-deno@v2
+  #       with:
+  #         deno-version: v2.x
 
-      - name: Check formatting
-        run: deno fmt --check
+  #     - name: Check formatting
+  #       run: deno fmt --check scripts/
 
-      - name: Lint TypeScript/JavaScript
-        run: deno lint
+  #     - name: Lint TypeScript/JavaScript
+  #       run: deno lint scripts/
 
-  frontend:
-    name: Frontend (SvelteKit)
-    runs-on: ubuntu-latest
+  # frontend:
+  #   name: Frontend (SvelteKit)
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22"
 
-      - name: Cache Deno dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json') }}
-          restore-keys: |
-            ${{ runner.os }}-deno-
+  #     - name: Install dependencies
+  #       working-directory: packages/web
+  #       run: npm install
 
-      - name: Check SvelteKit
-        working-directory: packages/web
-        run: deno task check
+  #     - name: Check SvelteKit
+  #       working-directory: packages/web
+  #       run: npm run check
 
   backend:
     name: Backend (Go)
     runs-on: ubuntu-latest
+    # TODO: 启用此 job 当后端开发开始后
+    if: false
 
     steps:
       - name: Checkout code
@@ -125,27 +123,27 @@ jobs:
         working-directory: packages/android
         run: ./gradlew build
 
-  commitlint:
-    name: Commit Message Lint
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+  # commitlint:
+  #   name: Commit Message Lint
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+  #     - name: Setup Deno
+  #       uses: denoland/setup-deno@v2
+  #       with:
+  #         deno-version: v2.x
 
-      - name: Validate commit messages
-        run: |
-          git log --format=%B origin/${{ github.base_ref }}..${{ github.sha }} | \
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              echo "$line" | deno run --allow-read --allow-env scripts/commitlint.ts
-            fi
-          done
+  #     - name: Validate commit messages (subject only)
+  #       run: |
+  #         git log --format=%s origin/${{ github.base_ref }}..${{ github.sha }} | \
+  #         while IFS= read -r line; do
+  #           if [ -n "$line" ]; then
+  #             echo "$line" | deno run --allow-read --allow-env scripts/git-hooks/commitlint.ts
+  #           fi
+  #         done

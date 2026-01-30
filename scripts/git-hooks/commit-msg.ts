@@ -13,8 +13,10 @@ if (!commitMsgFile) {
 }
 
 const commitMessage = Deno.readTextFileSync(commitMsgFile);
+// 只校验首行，允许 body/footer 作为补充说明
+const firstLine = commitMessage.split(/\r?\n/, 1)[0] ?? "";
 
-const result = validateCommitMessage(commitMessage);
+const result = validateCommitMessage(firstLine);
 
 if (!result.valid) {
   console.error("❌ Commit message validation failed:\n");

@@ -30,7 +30,10 @@ deno run --allow-read --allow-run --allow-env ${hook.script} "$@"
     await Deno.chmod(hookPath, 0o755);
     console.log(`✅ Installed ${hook.name} hook`);
   } catch (error) {
-    console.error(`❌ Failed to install ${hook.name} hook:`, error instanceof Error ? error.message : String(error));
+    console.error(
+      `❌ Failed to install ${hook.name} hook:`,
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }
 

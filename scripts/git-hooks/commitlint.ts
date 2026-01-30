@@ -64,7 +64,7 @@ Example:
   fix(api): resolve cors issue
   docs: update README
 
-Valid types: ${COMMIT_TYPES.join(', ')}`,
+Valid types: ${COMMIT_TYPES.join(", ")}`,
     };
   }
 
@@ -88,14 +88,15 @@ function main() {
     commitMessage = decoder.decode(buf.subarray(0, n || 0));
   }
 
-  // 验证
-  const result = validateCommitMessage(commitMessage);
+  // 只校验首行，允许 body/footer 作为补充说明
+  const firstLine = commitMessage.split(/\r?\n/, 1)[0] ?? "";
+  const result = validateCommitMessage(firstLine);
 
   if (!result.valid) {
     console.error("❌ Commit message validation failed:\n");
     console.error(result.error);
     console.error("\nYour commit message:");
-    console.error(`  ${commitMessage.trim()}`);
+    console.error(`  ${firstLine.trim()}`);
     Deno.exit(1);
   }
 
