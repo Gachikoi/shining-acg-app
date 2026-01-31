@@ -1,8 +1,10 @@
-import { PUBLIC_IS_TEST } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export function useSiteMetadata() {
 	const officialSiteUrl =
-		PUBLIC_IS_TEST === 'true' ? 'https://test.www.shiningacg.club' : 'https://www.shiningacg.club';
+		env.PUBLIC_IS_TEST === 'true'
+			? 'https://test.www.shiningacg.club'
+			: 'https://www.shiningacg.club';
 
 	return {
 		officialSiteUrl
