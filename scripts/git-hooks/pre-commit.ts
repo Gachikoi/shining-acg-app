@@ -5,99 +5,166 @@
  * Automatically runs formatting and linting on staged files
  */
 
-import { LintStaged } from "./lint-staged.ts";
+import { LintStaged, runCommand } from "./lint-staged.ts";
 
 const lintStaged = new LintStaged();
 
-lintStaged.run((_stagedFiles) => {
-  // console.log('🔍 Running pre-commit checks on staged files...\n');
-  // const swiftFiles = stagedFiles.filter((f) => f.endsWith('.swift'));
-  // const goFiles = stagedFiles.filter((f) => f.endsWith('.go'));
-  // const webFiles = stagedFiles.filter((f) =>
-  //   /\.(ts|tsx|js|jsx|json|md|svelte|css|html)$/.test(f)
+lintStaged.run((stagedFiles) => {
+  console.log("正在运行预提交检查...\n");
+
+  let hasErrors = false;
+
+  // 1. Go 项目 (packages/server)
+  const goFiles = stagedFiles.filter(
+    (f) => f.startsWith("packages/server/") && f.endsWith(".go"),
+  );
+  if (goFiles.length > 0) {
+    console.log("----------------------------------------");
+    console.log(`正在格式化 ${goFiles.length} 个 Go 文件...`);
+    try {
+      const { code, stderr } = runCommand("gofmt", [...goFiles]);
+      if (code !== 0) {
+        console.error(stderr, "❌ Go 格式化失败\n");
+        hasErrors = true;
+      } else {
+        console.log("✅ Go 格式化通过\n");
+      }
+    } catch {
+      console.error("❌ 未找到 go 命令，Go 格式化失败\n");
+      hasErrors = true;
+    }
+  }
+
+  // 2. iOS 项目 (packages/ios)
+  const swiftFiles = stagedFiles.filter(
+    (f) => f.startsWith("packages/ios/") && f.endsWith(".swift"),
+  );
+  if (swiftFiles.length > 0) {
+    console.log("----------------------------------------");
+    console.log(`正在检查 ${swiftFiles.length} 个 Swift 文件...`);
+    try {
+      const { code, stderr } = runCommand("swift", [
+        "format",
+        "lint",
+        "--strict",
+        ...swiftFiles,
+      ]);
+      if (code !== 0) {
+        console.error(
+          stderr,
+          "\n❌ Swift 格式化检查失败：请在格式化后再提交代码（swift format -i --recursive ./）\n",
+        );
+        hasErrors = true;
+      } else {
+        console.log("✅ Swift 格式化通过\n");
+      }
+    } catch {
+      console.error("❌ 未找到 swift format 命令，Swift 格式化检查失败\n");
+      hasErrors = true;
+    }
+  }
+
+  // // 3. Android 项目 (packages/android)
+  // const kotlinFiles = stagedFiles.filter(
+  //   (f) =>
+  //     f.startsWith("packages/android/") &&
+  //     (f.endsWith(".kt") || f.endsWith(".kts")),
   // );
-  // let hasErrors = false;
-  // // 1. Swift
-  // if (swiftFiles.length > 0) {
-  //   console.log(`📝 Processing ${swiftFiles.length} Swift files...`);
+  // if (kotlinFiles.length > 0) {
+  //   console.log("----------------------------------------");
+  //   console.log(`正在检查 ${kotlinFiles.length} 个 Kotlin 文件...`);
   //   try {
-  //     // Check if swiftformat exists
-  //     try {
-  //       runCommand('swiftformat', ['--version']);
-  //       const { code } = runCommand('swiftformat', [
-  //         '--swiftversion',
-  //         '5',
-  //         ...swiftFiles,
-  //       ]);
-  //       if (code !== 0) {
-  //         console.error('❌ Swift formatting failed');
-  //         hasErrors = true;
-  //       }
-  //     } catch {
-  //       console.warn('⚠️  swiftformat not found. Skipping...');
-  //     }
-  //     if (!hasErrors) {
-  //       try {
-  //         runCommand('swiftlint', ['version']);
-  //         const { code } = runCommand('swiftlint', [
-  //           'lint',
-  //           '--strict',
-  //           ...swiftFiles,
-  //         ]);
-  //         if (code !== 0) {
-  //           console.error('❌ Swift linting failed');
-  //           hasErrors = true;
-  //         }
-  //       } catch {
-  //         console.warn('⚠️  swiftlint not found. Skipping...');
-  //       }
-  //     }
-  //   } catch (e) {
-  //     console.error('❌ Swift checks failed:', e);
-  //     hasErrors = true;
-  //   }
-  // }
-  // // 2. Go
-  // if (goFiles.length > 0) {
-  //   console.log(`📝 Processing ${goFiles.length} Go files...`);
-  //   try {
-  //     const { code } = runCommand('gofmt', ['-w', ...goFiles]);
+  //     // 使用 ktlint 格式化
+  //     const { code, stdout, stderr } = runCommand("ktlint", [...kotlinFiles]);
+
+  //     console.log(stdout);
+
   //     if (code !== 0) {
-  //       console.error('❌ Go formatting failed');
+  //       console.error(
+  //         stderr,
+  //         "❌ Kotlin 格式化检查失败：请在格式化后再提交代码（ktlint --format）\n",
+  //       );
   //       hasErrors = true;
+  //     } else {
+  //       console.log("✅ Kotlin 格式化通过\n");
   //     }
   //   } catch {
-  //     console.warn('⚠️  gofmt not found. Skipping...');
-  //   }
-  // }
-  // // 3. Web
-  // if (webFiles.length > 0) {
-  //   console.log(`📝 Processing ${webFiles.length} Web/Deno files...`);
-  //   // Format
-  //   const { code: fmtCode, stderr: fmtStderr } = runCommand('deno', [
-  //     'fmt',
-  //     ...webFiles,
-  //   ]);
-  //   if (fmtCode !== 0) {
-  //     console.error('❌ Deno formatting failed');
-  //     console.error(fmtStderr);
+  //     console.error("❌ 未找到 ktlint 命令，Kotlin 格式化检查失败\n");
   //     hasErrors = true;
   //   }
-  //   // Lint
-  //   if (!hasErrors) {
-  //     const { code: lintCode, stderr: lintStderr } = runCommand('deno', [
-  //       'lint',
-  //       ...webFiles,
-  //     ]);
-  //     if (lintCode !== 0) {
-  //       console.error('❌ Deno linting failed');
-  //       console.error(lintStderr);
-  //       hasErrors = true;
-  //     }
-  //   }
   // }
-  // if (hasErrors) {
-  //   throw new Error('Pre-commit checks failed');
-  // }
-  // console.log('\n✨ All pre-commit checks passed!');
+
+  // 4. Web 项目
+  const webFiles = stagedFiles.filter((f) => f.startsWith("packages/web/"));
+  if (webFiles.length > 0) {
+    console.log("----------------------------------------");
+    console.log(`正在检查 ${webFiles.length} 个 Web 文件...`);
+    try {
+      const { code, stderr } = runCommand("deno", [
+        "task",
+        "--cwd=packages/web",
+        "lint",
+      ]);
+      if (code !== 0) {
+        console.error(
+          stderr,
+          "\n❌ Web 文件检查失败：请在代码格式化并修复 eslint 后再提交代码\n",
+        );
+        hasErrors = true;
+      } else {
+        console.log("✅ Web 文件检查通过\n");
+      }
+    } catch {
+      console.error("❌ 未找到 deno，Web 文件检查失败\n");
+      hasErrors = true;
+    }
+  }
+
+  // 5. 根目录管理文件
+  const scriptsFiles = stagedFiles.filter(
+    (f) => f.startsWith("scripts/"),
+  );
+  if (scriptsFiles.length > 0) {
+    console.log("----------------------------------------");
+    console.log(`正在检查 ${scriptsFiles.length} 个根目录或脚本文件...`);
+    try {
+      const { code: fmtCode, stderr: fmtStderr } = runCommand("deno", [
+        "fmt",
+        ...scriptsFiles,
+      ]);
+      const { code: lintCode, stderr: lintStderr } = runCommand("deno", [
+        "lint",
+        "--fix",
+        ...scriptsFiles,
+      ]);
+
+      if (fmtCode !== 0) {
+        console.log("format：");
+        console.error(fmtStderr, "\n");
+      }
+
+      if (lintCode !== 0) {
+        console.log("lint：");
+        console.error(lintStderr, "\n");
+      }
+
+      if (fmtCode !== 0 || lintCode !== 0) {
+        console.error(
+          "❌ 根目录或脚本文件格式化检查 & 代码分析失败：请在 deno task fmt 和 deno task lint 后再提交代码\n",
+        );
+        hasErrors = true;
+      } else {
+        console.log("✅ 根目录或脚本文件格式化检查 & 代码分析通过\n");
+      }
+    } catch {
+      console.error("❌ 未找到 deno，根目录或脚本文件检查失败\n");
+      hasErrors = true;
+    }
+  }
+
+  if (hasErrors) {
+    throw new Error("预提交代码检查未通过");
+  }
+
+  console.log("\n✨ 所有预提交检查已通过！");
 });

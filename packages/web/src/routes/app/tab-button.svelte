@@ -30,7 +30,7 @@
 {#if href}
 	<a
 		title={href}
-		href={resolve(href as Parameters<typeof resolve>[0])}
+		href={resolve(href as ResolvePath)}
 		data-sveltekit-preload-code="eager"
 		data-sveltekit-replacestate
 		data-sveltekit-preload-data="tap">{@render button(type)}</a

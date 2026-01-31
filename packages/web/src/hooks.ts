@@ -10,7 +10,7 @@ export const reroute: Reroute = ({ url }) => {
 		newPath = `/app${pathname}`;
 	} else if (hostname.includes('shiningacg.club')) {
 		newPath = `/site${pathname}`;
-  }
+	}
 
 	return newPath;
 };

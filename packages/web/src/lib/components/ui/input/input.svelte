@@ -40,7 +40,7 @@
 		bind:this={ref}
 		data-slot={dataSlot}
 		class={cn(
-			'flex h-9 w-full min-w-0 caret-red-500 rounded-full border-0 bg-zinc-100 px-3 py-1 text-base shadow-xs ring-offset-background transition-[color,box-shadow] outline-none  placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900',
+			'flex h-9 w-full min-w-0 rounded-full border-0 bg-zinc-100 px-3 py-1 text-base caret-red-500 shadow-xs ring-offset-background transition-[color,box-shadow] outline-none  placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900',
 			'focus:ring-0 focus:outline-none',
 			'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 ',
 			className

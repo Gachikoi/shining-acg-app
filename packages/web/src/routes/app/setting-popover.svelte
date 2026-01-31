@@ -6,7 +6,6 @@
 	import { ChevronRight, ExternalLink, Menu } from 'lucide-svelte';
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import TabButton from './tab-button.svelte';
-
 	import { useSiteMetadata } from './use-site.svelte';
 
 	let darkMode = $state(

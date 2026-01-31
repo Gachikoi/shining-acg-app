@@ -2,6 +2,9 @@
   "name": "shining-acg-app",
   "exports": {},
   "tasks": {
-    "prepare": "deno run -A scripts/git-hooks/install-hooks.ts"
+    "prepare": "deno run -A scripts/git-hooks/install-hooks.ts",
+    "fmt": "deno fmt scripts/",
+    "lint": "deno lint scripts/",
+    "lint:fix":"deno lint --fix scripts/"
   }
 }

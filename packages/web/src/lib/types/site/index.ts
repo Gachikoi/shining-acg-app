@@ -1,6 +1,6 @@
 export interface Link {
-  label: string;
-  value: string;
+	label: string;
+	value: string;
 }
 
 export interface Department {

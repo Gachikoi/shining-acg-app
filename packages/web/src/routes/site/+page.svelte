@@ -1,6 +1,5 @@
 <script lang="ts">
-
-  let data='site'
+	let data = 'site';
 </script>
 
 <div>{data}</div>
