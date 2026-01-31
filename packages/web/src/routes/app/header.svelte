@@ -3,8 +3,8 @@
 	import rectangleLogo from '$lib/assets/rectangle-logo.png';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import { useSiteMetadata } from './use-site.svelte'
 	import SettingPopover from './setting-popover.svelte';
+	import { useSiteMetadata } from './use-site.svelte';
 
 	let isRemoveLogo = $state(false);
 
@@ -33,13 +33,16 @@
 	<Input placeholder="搜索 Shining！" class="text-base sm:max-w-100 lg:max-w-120" />
 
 	<section class="flex shrink-0 grow items-center justify-end">
+		<!-- eslint-disable -->
 		<a
 			title="晒你官网"
 			href={officialSiteUrl}
+			target="_blank"
+			data-sveltekit-reload
 			data-sveltekit-preload-code="eager"
-			data-sveltekit-replacestate
 			data-sveltekit-preload-data="tap"
 		>
+			<!-- eslint-enable -->
 			<Button
 				variant="ghost"
 				class="hidden h-10 w-24 rounded-full text-base font-normal text-zinc-500 hover:text-zinc-500 lg:block dark:text-zinc-500"

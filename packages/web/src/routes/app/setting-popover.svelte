@@ -7,7 +7,7 @@
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import TabButton from './tab-button.svelte';
 
-	import { useSiteMetadata } from './use-site.svelte'
+	import { useSiteMetadata } from './use-site.svelte';
 
 	let darkMode = $state(
 		userPrefersMode.current === 'light'
@@ -29,14 +29,18 @@
 		</Button>
 	</PopoverTrigger>
 	<Popover.Content class="w-54 p-0">
+		<!-- eslint-disable -->
 		<a
 			class="lg:hidden"
 			title="晒你官网"
 			href={officialSiteUrl}
+			target="_blank"
+			data-sveltekit-reload
 			data-sveltekit-preload-code="eager"
-			data-sveltekit-replacestate
 			data-sveltekit-preload-data="tap"
-			><Button
+		>
+			<!-- eslint-enable -->
+			<Button
 				variant="ghost"
 				class="flex h-10 w-full justify-between rounded-none px-4! text-sm font-normal"
 				><span>晒你官网</span><ExternalLink /></Button
