@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow cleartext traffic for local development -->
-    <base-config cleartextTrafficPermitted="false">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
+  <!-- Allow cleartext traffic for local development -->
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
 
-    <!-- 仅在调试模式（debuggable="true"）下生效的配置 -->
-    <debug-overrides>
-        <trust-anchors>
-            <!-- 调试时允许信任用户证书（抓包用的） -->
-            <certificates src="user" />
-        </trust-anchors>
-    </debug-overrides>
+  <!-- 仅在调试模式（debuggable="true"）下生效的配置 -->
+  <debug-overrides>
+    <trust-anchors>
+      <!-- 调试时允许信任用户证书（抓包用的） -->
+      <certificates src="user" />
+    </trust-anchors>
+  </debug-overrides>
 </network-security-config>

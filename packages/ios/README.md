@@ -38,7 +38,8 @@ xcodebuild -scheme ShiningACGApp -destination 'platform=iOS Simulator,name=iPhon
 
 ## 注意事项
 
-Xcode 在执行 Git 操作（如 commit 触发的 pre-commit hook）时，通常不会加载用户的 shell 配置文件（如 .zshrc），因此无法找到仅在用户 PATH 中定义的 deno。
+Xcode 在执行 Git 操作（如 commit 触发的 pre-commit hook）时，通常不会加载用户的
+shell 配置文件（如 .zshrc），因此无法找到仅在用户 PATH 中定义的 deno。
 
 Xcode 和大多数 GUI 应用默认会查找 bin 路径。你可以将 deno 链接到该目录下。
 

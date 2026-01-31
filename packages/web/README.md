@@ -62,9 +62,13 @@ shiningacg.club http://127.0.0.1:5173/
 
 配置作用解释：
 
-该sveltekit项目以一个 spa 应用的形式集成了 app 和 site 两个网站。为了符合用户直觉，我们在 src/hooks.ts 文件中将 app.shiningacg.club 域名 reroute 到 /app 路由下，将 www.shiningacg.club、shiningacg.club 域名 reroute 到 /site 路由下，以实现在一个 spa 应用中模拟两个独立应用到效果。
+该sveltekit项目以一个 spa 应用的形式集成了 app 和 site
+两个网站。为了符合用户直觉，我们在 src/hooks.ts 文件中将 app.shiningacg.club
+域名 reroute 到 /app 路由下，将 www.shiningacg.club、shiningacg.club 域名
+reroute 到 /site 路由下，以实现在一个 spa 应用中模拟两个独立应用到效果。
 
-如果不配置 whistle 代理，直接用本地 ip（如127.0.0.1、localhost）访问项目，会在开发过程中出现路由导航问题。
+如果不配置 whistle 代理，直接用本地
+ip（如127.0.0.1、localhost）访问项目，会在开发过程中出现路由导航问题。
 
 ## dev
 
@@ -102,7 +106,8 @@ deno run -A npm:sv create my-app
 
 # 统一样式规范
 
-由于设计稿只给出了 lg 以上尺寸的设计稿，因此lg以下的响应式设计需要参照[小红书](www.xiaohongshu.com)的设计思路。
+由于设计稿只给出了 lg
+以上尺寸的设计稿，因此lg以下的响应式设计需要参照[小红书](www.xiaohongshu.com)的设计思路。
 
 背景和边框颜色：zinc/100
 
@@ -116,13 +121,16 @@ deno run -A npm:sv create my-app
 
 数字、字母，应该与汉字隔一个空格
 
-样式都用tailwindcss不用普通css，理论上仅依靠tailwindcss 是可以实现全部样式需求的。除非实在有特殊需要。并且手写 css必须采用rem适配（为了适配系统级的字体缩放）。
+样式都用tailwindcss不用普通css，理论上仅依靠tailwindcss
+是可以实现全部样式需求的。除非实在有特殊需要。并且手写
+css必须采用rem适配（为了适配系统级的字体缩放）。
 
 需要适配黑暗模式
 
 字体使用font-sans（tailwindcss中的原子类），设计稿中以 figma 内置字体替代
 
-能用 shadcn （www.shadcn-svelte.com）的组件就用 shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库。
+能用 shadcn （www.shadcn-svelte.com）的组件就用
+shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库。
 
 可交互元素需要在hover、右键、click、长按......时给一个缓入缓出的交互动画。白底元素一般是将背景色设为zinc/100；图片、视频等背景内容丰富的一般是覆盖一层#000，不透明度20%的遮罩。
 

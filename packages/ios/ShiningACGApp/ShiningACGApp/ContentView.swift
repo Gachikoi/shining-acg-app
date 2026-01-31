@@ -5,24 +5,24 @@
 //  Created by 落殇 on 2026/1/1.
 //
 
-import SwiftUI
-import WebKit
 import Foundation
 import SafariServices
+import SwiftUI
+import WebKit
 
 struct IdentifiableURL: Identifiable {
-    let id = UUID()
-    let url: URL
+  let id = UUID()
+  let url: URL
 }
 
 struct ContentView: View {
-#if DEBUG
-  let url=URL(string: "https://test.app.shiningacg.club")
-#else
-  let url=URL(string: "https://app.shiningacg.club")
-#endif
+  #if DEBUG
+    let url = URL(string: "https://test.app.shiningacg.club")
+  #else
+    let url = URL(string: "https://app.shiningacg.club")
+  #endif
   @State private var sheetUrl: IdentifiableURL?
-  
+
   var body: some View {
     if let url {
       WebView(url: url) { interceptedUrl in

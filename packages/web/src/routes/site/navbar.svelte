@@ -18,12 +18,14 @@
 	<!-- Center Links -->
 	<div class="hidden items-center gap-10 md:flex">
 		{#each NAV_ITEMS as item (item.href)}
+			<!-- eslint-disable -->
 			<a
 				href={item.href}
 				class="relative py-2 text-sm font-medium tracking-wide transition-colors {item.active
 					? 'text-brand-500'
 					: 'text-gray-500 hover:text-gray-900'}"
 			>
+				<!-- eslint-enable -->
 				{item.label}
 				{#if item.active}
 					<span

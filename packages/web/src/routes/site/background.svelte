@@ -2,8 +2,7 @@
 	<!-- 网格线 -->
 	<div
 		class="absolute inset-0 opacity-[0.03]"
-		style:background-image="linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)"
-		style:background-size="40px 40px"
+		style="background-image: linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px); background-size: 40px 40px"
 	></div>
 
 	<!-- 装饰线 -->
