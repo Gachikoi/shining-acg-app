@@ -4,6 +4,6 @@ import "fmt"
 
 var a = "1"
 
-func Test(){
-	fmt.Print(a);
+func Test() {
+	fmt.Print(a)
 }

@@ -17,6 +17,23 @@ export function runCommand(
   };
 }
 
+export async function runCommandAsync(
+  cmd: string,
+  args: string[],
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  const command = new Deno.Command(cmd, {
+    args: args,
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const { code, stdout, stderr } = await command.output();
+  return {
+    code,
+    stdout: decoder.decode(stdout).trim(),
+    stderr: decoder.decode(stderr).trim(),
+  };
+}
+
 export class LintStaged {
   private stashed = false;
 
@@ -76,7 +93,7 @@ export class LintStaged {
     }
   }
 
-  run(task: (files: string[]) => void) {
+  async run(task: (files: string[]) => Promise<void> | void) {
     const stagedFiles = this.getStagedFiles();
     if (stagedFiles.length === 0) {
       console.log("✨ No staged files to check.");
@@ -91,7 +108,7 @@ export class LintStaged {
 
     // 后续开始对 repo 中的文件进行实际操作，比较危险，要用 try 确保代码抛出错误后的系统健壮性
     try {
-      task(stagedFiles);
+      await task(stagedFiles);
 
       // 将修改后的 stagedFiles 重新放到索引中
       if (stagedFiles.length > 0) {
