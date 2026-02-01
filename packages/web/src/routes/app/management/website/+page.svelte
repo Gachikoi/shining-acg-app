@@ -191,8 +191,6 @@
 			aboutWebsite: {
 				sponsors,
 				staff
-				sponsors,
-				staff
 			}
 		};
 	}
@@ -726,10 +724,6 @@
 		// 校验部长宣言
 		const ministerErrors = validateMinisterDeclarations();
 		allErrors.push(...ministerErrors);
-
-		// 校验关于网站
-		const aboutWebsiteErrors = validateAboutWebsite();
-		allErrors.push(...aboutWebsiteErrors);
 
 		// 校验关于网站
 		const aboutWebsiteErrors = validateAboutWebsite();

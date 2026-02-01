@@ -37,16 +37,11 @@
 				<Label class="mb-0 w-20 shrink-0 pt-2 text-sm font-medium text-zinc-900">
 					图片<span class="text-red-500">*</span>
 				</Label>
-<<<<<<< HEAD
 				<div class="w-[7rem]">
-=======
-				<div class="w-[112px]">
->>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 					<ImageUpload imageUrl={item.image} aspectRatio="1:1" onUpload={handleImageUpload} />
 				</div>
 			</div>
 
-<<<<<<< HEAD
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
 				<Label
 					class="mb-0 text-sm font-medium text-zinc-900 sm:w-20 sm:shrink-0 sm:text-right sm:[line-height:1.25rem]"
@@ -54,18 +49,10 @@
 					时间<span class="text-red-500">*</span>
 				</Label>
 				<div class="w-full sm:w-[18.75rem]">
-=======
-			<div class="flex items-center gap-6">
-				<Label class="mb-0 w-20 shrink-0 text-sm font-medium text-zinc-900">
-					时间<span class="text-red-500">*</span>
-				</Label>
-				<div class="w-[300px]">
->>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 					<DatePicker bind:value={item.date} />
 				</div>
 			</div>
 
-<<<<<<< HEAD
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
 				<Label
 					class="mb-0 text-sm font-medium text-zinc-900 sm:w-20 sm:shrink-0 sm:text-right sm:[line-height:1.25rem]"
@@ -73,13 +60,6 @@
 					描述<span class="text-red-500">*</span>
 				</Label>
 				<div class="relative w-full sm:flex-1">
-=======
-			<div class="flex items-center gap-6">
-				<Label class="mb-0 w-20 shrink-0 text-sm font-medium text-zinc-900">
-					描述<span class="text-red-500">*</span>
-				</Label>
-				<div class="relative flex-1">
->>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 					<Input
 						placeholder="填写描述"
 						value={item.description}

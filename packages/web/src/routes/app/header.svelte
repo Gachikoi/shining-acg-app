@@ -1,5 +1,4 @@
 <script lang="ts">
-<script lang="ts">
 	import { resolve } from '$app/paths';
 	import rectangleLogo from '$lib/assets/rectangle-logo.png';
 	import { Button } from '$lib/components/ui/button';
@@ -24,7 +23,6 @@
 	{#if isRemoveLogo}
 		<section class="flex shrink-0 grow items-center justify-start lg:ml-4">
 			<a class="shrink-0" href={resolve('/')}>
-				<img src={rectangleLogo} alt="Shining!" width="110" height="33" />
 				<img src={rectangleLogo} alt="Shining!" width="110" height="33" />
 			</a>
 		</section>
