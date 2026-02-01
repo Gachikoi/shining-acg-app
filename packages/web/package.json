@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-cloudflare": "^7.2.4",
+		"axios": "^1.13.4",
 		"lucide-svelte": "^0.562.0",
 		"mode-watcher": "^1.1.0"
 	},
