@@ -2720,6 +2720,7 @@
         "npm:@tailwindcss/typography@~0.5.19",
         "npm:@tailwindcss/vite@^4.1.17",
         "npm:@types/node@24",
+        "npm:axios@^1.13.4",
         "npm:bits-ui@^2.15.4",
         "npm:clsx@^2.1.1",
         "npm:eslint-config-prettier@^10.1.8",
