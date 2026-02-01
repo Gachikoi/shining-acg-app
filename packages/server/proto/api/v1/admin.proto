@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package api.v1;
+
+import "api/v1/common.proto";
+import "api/v1/user.proto";
+import "api/v1/content.proto";
+import "api/v1/site.proto";
+
+// 管理服务
+service AdminService {
+  // 举报受理列表
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
+
+  // 处理举报
+  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse);
+
+  // 权限管理
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+
+  // 编辑官网内容
+  rpc UpsertSiteContent(UpsertSiteContentRequest) returns (UpsertSiteContentResponse);
+
+  // 分区管理
+  rpc ManagePartition(ManagePartitionRequest) returns (ManagePartitionResponse);
+
+  // 获取系统统计
+  rpc GetSystemStats(GetSystemStatsRequest) returns (GetSystemStatsResponse);
+}
+
+// 举报状态
+enum ReportStatus {
+  REPORT_STATUS_PENDING = 0;
+  REPORT_STATUS_RESOLVED = 1;
+}
+
+// 举报处理动作
+enum ReportAction {
+  REPORT_ACTION_IGNORE = 0;
+  REPORT_ACTION_BAN = 1;
+  REPORT_ACTION_DELETE = 2;
+}
+
+// 举报类型
+enum ReportType {
+  REPORT_TYPE_POST = 0;
+  REPORT_TYPE_COMMENT = 1;
+  REPORT_TYPE_USER = 2;
+}
+
+// 官网内容类型
+enum SiteContentType {
+  SITE_CONTENT_TYPE_HISTORY = 0;
+  SITE_CONTENT_TYPE_ACTIVITY = 1;
+  SITE_CONTENT_TYPE_DEPARTMENT = 2;
+  SITE_CONTENT_TYPE_MINISTER = 3;
+  SITE_CONTENT_TYPE_STAFF = 4;
+}
+
+// 举报信息
+message Report {
+  string report_id = 1;        // 举报ID
+  string reporter_id = 2;     // 举报者ID
+  string target_id = 3;       // 被举报对象ID
+  ReportType type = 4;        // 举报类型
+  string reason = 5;          // 举报原因
+  string description = 6;     // 举报描述
+  ReportStatus status = 7;    // 处理状态
+  ReportAction action = 8;    // 处理动作
+  int64 created_at = 9;       // 举报时间
+  int64 resolved_at = 10;     // 处理时间
+  string resolver_id = 11;    // 处理人ID
+}
+
+// 分区信息
+message Partition {
+  int32 id = 1;               // 分区ID
+  string name = 2;            // 分区名称
+  string description = 3;     // 分区描述
+  string icon = 4;            // 分区图标
+  int32 sort_order = 5;       // 排序顺序
+  bool is_active = 6;         // 是否启用
+}
+
+// 系统统计
+message SystemStats {
+  int32 total_users = 1;      // 总用户数
+  int32 active_users = 2;     // 活跃用户数
+  int32 total_posts = 3;      // 总帖子数
+  int32 total_comments = 4;   // 总评论数
+  int32 pending_reports = 5;  // 待处理举报数
+  int64 bandwidth_used = 6;   // 带宽使用量
+  int64 storage_used = 7;     // 存储使用量
+}
+
+// 列出举报请求
+message ListReportsRequest {
+  ReportStatus status = 1;
+  Pagination pagination = 2;
+}
+
+// 列出举报响应
+message ListReportsResponse {
+  repeated Report reports = 1;
+  string next_page_token = 2;
+}
+
+// 处理举报请求
+message ResolveReportRequest {
+  string report_id = 1;
+  ReportAction action = 2;
+  string note = 3;
+}
+
+// 处理举报响应
+message ResolveReportResponse {}
+
+// 更新用户角色请求
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  Role role = 2;
+}
+
+// 更新用户角色响应
+message UpdateUserRoleResponse {}
+
+// 编辑官网内容请求
+message UpsertSiteContentRequest {
+  oneof content {
+    HistoryEvent history = 1;
+    Activity activity = 2;
+    DepartmentInfo department = 3;
+    MinisterInfo minister = 4;
+    StaffGroup staff = 5;
+  }
+}
+
+// 编辑官网内容响应
+message UpsertSiteContentResponse {}
+
+// 分区管理请求
+message ManagePartitionRequest {
+  repeated Partition partitions = 1;
+}
+
+// 分区管理响应
+message ManagePartitionResponse {}
+
+// 获取系统统计请求
+message GetSystemStatsRequest {}
+
+// 获取系统统计响应
+message GetSystemStatsResponse {
+  SystemStats stats = 1;
+}

@@ -33,13 +33,23 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// AuthServicePingProcedure is the fully-qualified name of the AuthService's Ping RPC.
-	AuthServicePingProcedure = "/api.v1.AuthService/Ping"
+	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
+	AuthServiceLoginProcedure = "/api.v1.AuthService/Login"
+	// AuthServiceLogoutProcedure is the fully-qualified name of the AuthService's Logout RPC.
+	AuthServiceLogoutProcedure = "/api.v1.AuthService/Logout"
+	// AuthServiceRefreshTokenProcedure is the fully-qualified name of the AuthService's RefreshToken
+	// RPC.
+	AuthServiceRefreshTokenProcedure = "/api.v1.AuthService/RefreshToken"
 )
 
 // AuthServiceClient is a client for the api.v1.AuthService service.
 type AuthServiceClient interface {
-	Ping(context.Context, *connect.Request[v1.PingRequest]) (*connect.Response[v1.PingResponse], error)
+	// QQ 登录/注册
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	// 退出登录
+	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
+	// 刷新 Token
+	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the api.v1.AuthService service. By default, it uses
@@ -52,9 +62,19 @@ type AuthServiceClient interface {
 func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &authServiceClient{
-		ping: connect.NewClient[v1.PingRequest, v1.PingResponse](
+		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
 			httpClient,
-			baseURL+AuthServicePingProcedure,
+			baseURL+AuthServiceLoginProcedure,
+			opts...,
+		),
+		logout: connect.NewClient[v1.LogoutRequest, v1.LogoutResponse](
+			httpClient,
+			baseURL+AuthServiceLogoutProcedure,
+			opts...,
+		),
+		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.RefreshTokenResponse](
+			httpClient,
+			baseURL+AuthServiceRefreshTokenProcedure,
 			opts...,
 		),
 	}
@@ -62,17 +82,34 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	ping *connect.Client[v1.PingRequest, v1.PingResponse]
+	login        *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	logout       *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
+	refreshToken *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
 }
 
-// Ping calls api.v1.AuthService.Ping.
-func (c *authServiceClient) Ping(ctx context.Context, req *connect.Request[v1.PingRequest]) (*connect.Response[v1.PingResponse], error) {
-	return c.ping.CallUnary(ctx, req)
+// Login calls api.v1.AuthService.Login.
+func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
+	return c.login.CallUnary(ctx, req)
+}
+
+// Logout calls api.v1.AuthService.Logout.
+func (c *authServiceClient) Logout(ctx context.Context, req *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
+	return c.logout.CallUnary(ctx, req)
+}
+
+// RefreshToken calls api.v1.AuthService.RefreshToken.
+func (c *authServiceClient) RefreshToken(ctx context.Context, req *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {
+	return c.refreshToken.CallUnary(ctx, req)
 }
 
 // AuthServiceHandler is an implementation of the api.v1.AuthService service.
 type AuthServiceHandler interface {
-	Ping(context.Context, *connect.Request[v1.PingRequest]) (*connect.Response[v1.PingResponse], error)
+	// QQ 登录/注册
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	// 退出登录
+	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
+	// 刷新 Token
+	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -81,15 +118,29 @@ type AuthServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	authServicePingHandler := connect.NewUnaryHandler(
-		AuthServicePingProcedure,
-		svc.Ping,
+	authServiceLoginHandler := connect.NewUnaryHandler(
+		AuthServiceLoginProcedure,
+		svc.Login,
+		opts...,
+	)
+	authServiceLogoutHandler := connect.NewUnaryHandler(
+		AuthServiceLogoutProcedure,
+		svc.Logout,
+		opts...,
+	)
+	authServiceRefreshTokenHandler := connect.NewUnaryHandler(
+		AuthServiceRefreshTokenProcedure,
+		svc.RefreshToken,
 		opts...,
 	)
 	return "/api.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case AuthServicePingProcedure:
-			authServicePingHandler.ServeHTTP(w, r)
+		case AuthServiceLoginProcedure:
+			authServiceLoginHandler.ServeHTTP(w, r)
+		case AuthServiceLogoutProcedure:
+			authServiceLogoutHandler.ServeHTTP(w, r)
+		case AuthServiceRefreshTokenProcedure:
+			authServiceRefreshTokenHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -99,6 +150,14 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthServiceHandler struct{}
 
-func (UnimplementedAuthServiceHandler) Ping(context.Context, *connect.Request[v1.PingRequest]) (*connect.Response[v1.PingResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.AuthService.Ping is not implemented"))
+func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.AuthService.Login is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.AuthService.Logout is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.AuthService.RefreshToken is not implemented"))
 }
