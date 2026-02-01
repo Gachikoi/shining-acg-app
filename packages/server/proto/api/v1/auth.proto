@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package api.v1;
+
+message PingRequest {
+  string number = 1;
+}
+
+message PingResponse {
+  string result = 1;
+}
+
+service AuthService {
+  rpc Ping(PingRequest) returns (PingResponse);
+}
