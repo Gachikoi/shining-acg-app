@@ -1,0 +1,16 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: app.shiningacg.club/gen/proto
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.31.0 # pb
+    out: ../gen/proto
+    opt: paths=source_relative
+  - remote: buf.build/connectrpc/go:v1.11.0 # go后端
+    out: ../gen/proto
+    opt: paths=source_relative
+#  - remote: buf.build/connectrpc/es:v1.1.2 # 前端
+#    out: ./gen/web/proto
+#    opt: target=ts

@@ -16,7 +16,10 @@ lintStaged.run(true, async (stagedFiles) => {
     // 1. Go 项目 (packages/server)
     (async () => {
       const goFiles = stagedFiles.filter(
-        (f) => f.startsWith("packages/server/") && f.endsWith(".go"),
+        (f) =>
+          f.startsWith("packages/server/") &&
+          f.endsWith(".go") &&
+          !f.includes("/gen/"),
       );
       if (goFiles.length === 0) return null;
 
@@ -33,6 +36,8 @@ lintStaged.run(true, async (stagedFiles) => {
             logs: `${stderr}❌ Go 格式化失败\n`,
           };
         } else {
+          // 重新 add 被 gofmt 修改过的文件，确保提交的是格式化后的版本
+          await runCommandAsync("git", ["add", ...goFiles]);
           return {
             header,
             success: true,
