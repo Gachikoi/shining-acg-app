@@ -11,7 +11,7 @@
 
 <label
 	bind:this={ref}
-	class={cn('text-base font-semibold text-zinc-900 dark:text-zinc-100', className)}
+	class={cn('mb-2 block text-base font-semibold text-zinc-900 dark:text-zinc-100', className)}
 	{...restProps}
 >
 	{@render children?.()}
