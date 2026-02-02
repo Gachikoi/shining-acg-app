@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package api.v1.community;
+
+// 官网服务
+service SiteService {
+  // 部门介绍
+  rpc ListDepartments(ListDepartmentsRequest) returns (ListDepartmentsResponse);
+
+  // 活动信息
+  rpc ListActivities(ListActivitiesRequest) returns (ListActivitiesResponse);
+
+  // 发展历程
+  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse);
+
+  // 部长宣言
+  rpc ListMinisters(ListMinistersRequest) returns (ListMinistersResponse);
+
+  // Staff/赞助
+  rpc ListStaff(ListStaffRequest) returns (ListStaffResponse);
+}
+
+// 部门信息
+message DepartmentInfo {
+  string id = 1;              // 部门ID
+  string name = 2;            // 部门名称（中文）
+  string name_en = 3;         // 部门名称（英文）
+  string logo = 4;            // 部门Logo
+  string cover_image = 5;     // 封面图片
+  string video_url = 6;       // 宣传视频
+  string description = 7;     // 部门简介
+  map<string, string> links = 8;  // 相关链接
+}
+
+// 活动信息
+message Activity {
+  string id = 1;              // 活动ID
+  string name = 2;            // 活动名称（中文）
+  string name_en = 3;         // 活动名称（英文）
+  string cover_image = 4;     // 封面图片
+  string video_url = 5;       // 宣传视频
+  string description = 6;     // 活动简介
+  string start_time = 7;      // 开始时间
+  string end_time = 8;        // 结束时间
+  map<string, string> links = 9;  // 相关链接
+}
+
+// 历史事件
+message HistoryEvent {
+  string id = 1;              // 事件ID
+  string year = 2;            // 年份
+  string date = 3;            // 日期
+  string title = 4;           // 事件标题
+  string description = 5;     // 事件描述
+  string image = 6;           // 事件图片
+}
+
+// 部长信息
+message MinisterInfo {
+  string id = 1;              // 部长ID
+  string user_id = 2;         // 用户ID
+  string nickname = 3;        // 昵称
+  string avatar = 4;          // 头像
+  string department = 5;      // 所属部门
+  string position = 6;        // 职位
+  string intro = 7;           // 个人简介
+  map<string, string> links = 8;  // 外部链接
+  int32 year = 9;             // 任职年份
+}
+
+// Staff 分组
+message StaffGroup {
+  string id = 1;              // 分组ID
+  string name = 2;            // 分组名称
+  repeated StaffMember members = 3;  // 成员列表
+}
+
+// Staff 成员
+message StaffMember {
+  string id = 1;              // 成员ID
+  string user_id = 2;         // 用户ID
+  string nickname = 3;        // 昵称
+  string avatar = 4;          // 头像
+  string role = 5;            // 职责
+  string department = 6;      // 所属部门
+  string intro = 7;           // 个人简介
+  map<string, string> links = 8;  // 外部链接
+}
+
+// 赞助信息
+message SponsorInfo {
+  string id = 1;              // 赞助ID
+  string name = 2;            // 赞助名称
+  string avatar = 3;          // 头像
+  string department = 4;      // 所属部门
+  string intro = 5;           // 简介
+  map<string, string> links = 6;  // 外部链接
+  string sponsor_amount = 7;  // 赞助金额
+}
+
+// 列出部门请求
+message ListDepartmentsRequest {}
+
+// 列出部门响应
+message ListDepartmentsResponse {
+  repeated DepartmentInfo list = 1;
+}
+
+// 列出活动请求
+message ListActivitiesRequest {}
+
+// 列出活动响应
+message ListActivitiesResponse {
+  repeated Activity list = 1;
+}
+
+// 列出历史请求
+message ListHistoryRequest {}
+
+// 列出历史响应
+message ListHistoryResponse {
+  repeated HistoryEvent list = 1;
+}
+
+// 列出部长请求
+message ListMinistersRequest {
+  int32 year = 1;
+}
+
+// 列出部长响应
+message ListMinistersResponse {
+  repeated MinisterInfo list = 1;
+}
+
+// 列出 Staff 请求
+message ListStaffRequest {}
+
+// 列出 Staff 响应
+message ListStaffResponse {
+  repeated StaffGroup list = 1;
+}

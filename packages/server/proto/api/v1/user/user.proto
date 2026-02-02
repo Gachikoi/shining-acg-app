@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package api.v1.user;
+
+import "api/v1/common/common.proto";
+import "google/protobuf/field_mask.proto";
+
+// 用户服务
+service UserService {
+  // 获取当前登录用户自己的详细信息（包含私密设置）
+  rpc GetMe(GetMeRequest) returns (GetMeResponse);
+
+  // 获取他人信息（可根据隐私设置处理后返回）
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // 局部更新资料（FieldMask）
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+
+  // 社交互动
+  rpc Follow(FollowRequest) returns (FollowResponse);
+  rpc Unfollow(UnfollowRequest) returns (UnfollowResponse);
+
+  // 关系列表
+  rpc ListFollowers(ListFollowersRequest) returns (ListFollowersResponse);
+  rpc ListFollowing(ListFollowingRequest) returns (ListFollowingResponse);
+
+  // 搜索用户
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+}
+
+// --- 核心模型 ---
+
+// 外部链接结构
+message ExternalLink {
+  string label = 1; // 链接显示文字
+  string url = 2;   // 实际跳转地址
+}
+
+
+// 详细资料（用于个人主页）
+message UserProfile {
+  common.UserSummary base = 1;
+  string intro = 2;                    // 个人介绍
+  repeated common.Department departments = 3; // 加入的所有部门
+
+  // 统计数据
+  int64 follower_count = 4;
+  int64 following_count = 5;
+  int64 post_count = 6;                // 帖子数
+  int64 like_and_collection_count = 7; // 获赞与收藏总数
+
+  repeated ExternalLink links = 8;     // 社交链接
+  string qq_number = 9;                // 未来可以扩展可见性选项
+
+  // 社交状态
+  bool is_following = 10;              // 是否关注了对方
+  bool is_followed_by = 11;            // 是否被对方关注
+  string my_remark = 12;               // 我给对方的备注
+}
+
+// 隐私与系统设置
+message PrivacySettings {
+  PrivacyLevel message_permission = 1;    // 私信权限
+  PrivacyLevel collection_visibility = 2; // 收藏可见性
+  PrivacyLevel like_visibility = 3;       // 点赞可见性
+}
+
+message UserSettings {
+  bool enable_push_notifications = 1;     // 全局推送开关
+}
+
+// 隐私可见性级别
+enum PrivacyLevel {
+  PRIVACY_LEVEL_PUBLIC = 0;          // 全员公开
+  PRIVACY_LEVEL_FOLLOWERS = 1;       // 粉丝可见
+  PRIVACY_LEVEL_MUTUAL_FOLLOW = 2;   // 互关可见
+  PRIVACY_LEVEL_PRIVATE = 3;         // 仅自己可见
+}
+
+// --- 请求与响应 ---
+
+message GetMeRequest {
+  string user_id = 1;
+}
+message GetMeResponse {
+  UserProfile profile = 1;
+  PrivacySettings privacy_settings = 2;
+  UserSettings user_settings = 3;
+}
+
+message GetUserRequest {
+  string target_user_id = 1;
+}
+message GetUserResponse {
+  UserProfile profile = 1;
+  PrivacySettings privacy_settings = 2;
+}
+
+message UpdateProfileRequest {
+  UserProfile profile = 1;
+  // 指明哪些字段需要更新（如仅更新头像）
+  google.protobuf.FieldMask update_mask = 2;
+}
+message UpdateProfileResponse {
+  UserProfile updated_profile = 1;
+}
+
+// 关注列表（游标分页）
+message ListFollowersRequest {
+  string user_id = 1;
+  common.Pagination pagination = 2;
+}
+message ListFollowersResponse {
+  repeated common.UserSummary users = 1;
+  string next_page_token = 2;
+}
+
+// 粉丝列表（游标分页）
+message ListFollowingRequest {
+  string user_id = 1;
+  common.Pagination pagination = 2;
+}
+message ListFollowingResponse {
+  repeated common.UserSummary users = 1;
+  string next_page_token = 2;
+}
+
+message SearchUsersRequest {
+  string keyword = 1;
+  common.Pagination pagination = 2;
+}
+message SearchUsersResponse {
+  repeated common.UserSummary results = 1;
+  string next_page_token = 2;
+}
+
+// 社交操作通用响应
+message FollowRequest { string target_user_id = 1; }
+message FollowResponse { bool success = 1; }
+message UnfollowRequest { string target_user_id = 1; }
+message UnfollowResponse { bool success = 1; }
