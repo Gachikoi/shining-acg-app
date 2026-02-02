@@ -111,6 +111,7 @@ export interface AboutWebsite {
  */
 export interface WebsiteContent {
 	homepageVideo?: string; // 首页视频URL（16:9比例）
+	homepageVideoLink?: string; // 首页视频链接（可选）
 	aboutUs: AboutUs; // 了解我们
 	departments: DepartmentInfo[]; // 部门信息列表
 	activities: ActivityInfo[]; // 活动信息列表
