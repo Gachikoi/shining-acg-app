@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package api.v1.community;
+
+import "api/v1/common/common.proto";
+import "api/v1/community/content.proto";
+
+// 互动服务
+service InteractionService {
+  // 点赞/取消赞
+  rpc SetLike(SetLikeRequest) returns (SetLikeResponse);
+
+  // 收藏/取消收藏
+  rpc SetCollect(SetCollectRequest) returns (SetCollectResponse);
+}
+
+// 评论服务
+service CommentService {
+  // 发送评论
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+
+  // 评论列表
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+
+  // 删除评论
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+}
+
+// 互动目标类型
+enum TargetType {
+  TARGET_TYPE_POST = 0;
+  TARGET_TYPE_COMMENT = 1;
+}
+
+// 评论排序方式
+enum CommentSort {
+  COMMENT_SORT_HOT = 0;
+  COMMENT_SORT_NEW = 1;
+}
+
+// 评论
+message Comment {
+  string comment_id = 1;
+  common.UserSummary author = 2;
+  string content = 3;
+  string post_id = 4;
+  string root_id = 5;  // 一级评论ID
+  string reply_to_user_id = 6;
+  int32 like_count = 7;
+  bool is_liked = 8;
+  int64 created_at = 9;
+  repeated Comment replies = 10;  // 二级回复
+}
+
+// 设置点赞请求
+message SetLikeRequest {
+  string target_id = 1;
+  TargetType type = 2;
+  bool is_active = 3;  // true=点赞, false=取消
+}
+
+// 设置点赞响应
+message SetLikeResponse {
+  bool succeed = 1;
+}
+
+// 设置收藏请求
+message SetCollectRequest {
+  string post_id = 1;
+  bool is_active = 2;  // true=收藏, false=取消
+}
+
+// 设置收藏响应
+message SetCollectResponse{
+  bool succeed = 1;
+}
+
+// 创建评论请求
+message CreateCommentRequest {
+  string post_id = 1;
+  string content = 2;
+  string root_id = 3;
+  string reply_to_user_id = 4;
+}
+
+// 创建评论响应
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+// 列出评论请求
+message ListCommentsRequest {
+  string post_id = 1;
+  string root_id = 2;
+  CommentSort sort = 3;
+  common.Pagination pagination = 4;
+}
+
+// 列出评论响应
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+  string next_page_token = 2;
+}
+
+// 删除评论请求
+message DeleteCommentRequest {
+  string comment_id = 1;
+}
+
+// 删除评论响应
+message DeleteCommentResponse {
+  bool succeed = 1;
+}

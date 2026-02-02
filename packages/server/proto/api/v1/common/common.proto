@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package api.v1.common;
+
+// 分页请求
+message Pagination {
+  int32 page_size = 1;    // 每页数量
+  string page_token = 2;  // 游标（用于无限滚动，最后一条数据的id）
+  int32 page = 3;         // 页码（用于传统分页，页面偏移量）
+}
+
+// 部门枚举
+enum Department {
+  DEPARTMENT_UNSPECIFIED = 0;     // 未定义，保留
+  DEPARTMENT_LIGHT_MUSIC = 1;     // 轻音部
+  DEPARTMENT_WOTA = 2;            // WOTA
+  DEPARTMENT_TOUHOU = 3;          // 东方组
+  DEPARTMENT_LITERATURE = 4;      // 轻文部
+  DEPARTMENT_MODEL_PLASTIC = 5;   // 模玩部
+  DEPARTMENT_PUBLICITY = 6;       // 宣传部
+  DEPARTMENT_ACTIVITY = 7;        // 活动部
+  DEPARTMENT_COSPLAY = 8;         // COS 部
+  DEPARTMENT_OTAKU_DANCE = 9;     // 宅舞部
+  DEPARTMENT_ANIME = 10;          // 动漫研
+  DEPARTMENT_VIDEO = 11;          // 视频组
+  DEPARTMENT_MUSIC_GAME = 12;     // 音游组
+  DEPARTMENT_V_TUBE = 13;         // V 曲组
+  DEPARTMENT_MINECRAFT = 14;      // MC 组
+}
+
+// 用户角色枚举
+enum Role {
+  ROLE_VISITOR = 0;     // 游客
+  ROLE_USER = 1;        // 用户
+  ROLE_ADMIN = 2;       // 内容管理员
+  ROLE_SUPER_ADMIN = 3; // 超级管理员
+}
+
+// 多媒体资源
+message Media {
+  string type = 1;        // "image" | "video"
+  string url = 2;         // 资源地址
+  string thumbnail = 3;   // 缩略图（视频用）
+  int32 width = 4;        // 宽
+  int32 height = 5;       // 高
+}
+
+
+// 基础信息摘要（用于瀑布流、列表页）
+message UserSummary {
+  string user_id = 1;
+  string nickname = 2; // 昵称，若有备注优先显示备注
+  string avatar = 3;
+  common.Department primary_department = 4; // 主所属部门徽章
+  bool is_verified = 5;              // 身份认证状态
+  string verified_title = 6;         // 认证头衔（如：23届部长）
+}
