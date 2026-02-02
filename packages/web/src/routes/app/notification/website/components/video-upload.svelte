@@ -1,6 +1,6 @@
 <script lang="ts">
+	/* eslint-disable @typescript-eslint/no-unused-vars */
 	import { Plus, X, Play } from 'lucide-svelte';
-	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 
 	let {
@@ -37,13 +37,6 @@
 			fileInput.value = '';
 		}
 	}
-
-	function handleLinkInput(value: string) {
-		videoLink = value;
-		if (onLinkChange) {
-			onLinkChange(value);
-		}
-	}
 </script>
 
 <div>
@@ -62,13 +55,8 @@
 	{/if}
 
 	<div class="space-y-4">
-		<p class="text-sm text-zinc-600 dark:text-zinc-400">
-			可以用外部视频链接替代上传视频,但优先使用上传视频
-		</p>
-
 		<!-- 上传视频 -->
 		<div>
-			<p class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">上传视频</p>
 			{#if videoUrl}
 				<div class="relative">
 					<div
@@ -103,16 +91,6 @@
 					</div>
 				</label>
 			{/if}
-		</div>
-
-		<!-- 视频链接 -->
-		<div>
-			<p class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">视频链接</p>
-			<Input
-				placeholder="填写链接"
-				value={videoLink}
-				oninput={(e) => handleLinkInput(e.currentTarget.value)}
-			/>
 		</div>
 	</div>
 </div>
