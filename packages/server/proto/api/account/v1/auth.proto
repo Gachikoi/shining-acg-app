@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package api.account.v1;
+
+import "api/common/v1/common.proto";
+
+service AuthService {
+  // 统一登录接口 (支持 QQ, 微信, 手机号等)
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // 退出登录
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // 刷新 Token (换取新的 AccessToken)
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+}
+
+// ---------------------------------------------------------
+// 数据模型
+// ---------------------------------------------------------
+
+enum LoginType {
+  LOGIN_TYPE_UNSPECIFIED = 0;
+  LOGIN_TYPE_QQ = 1;      // QQ 快捷登录
+}
+
+message DeviceInfo {
+  string device_type = 1;
+  string device_name = 2;     // 设备名 (e.g. "iPhone 14 Pro")
+  string os_version = 3;      // 系统版本 (e.g. "iOS 16.0")
+  string client_version = 4;  // App/前端版本号
+//  string push_token = 5;      // 推送 Token (FCM/APNS/MiPush)，登录时上报方便推送
+}
+
+// ---------------------------------------------------------
+// 请求与响应
+// ---------------------------------------------------------
+
+message LoginRequest {
+  LoginType type = 1;
+
+  // 凭证载荷：
+  // QQ/微信/Apple: 传 OAuth Code 或 AccessToken
+  string credential = 2;
+
+  DeviceInfo device = 3;
+
+  // 辅助验证参数 (如手机号登录时需要传 phone_number)
+  // string extra_param = 4;
+}
+
+message LoginResponse {
+  string access_token = 1;   // 短期令牌 (如 2小时)
+  string refresh_token = 2;  // 长期令牌 (如 30天)
+
+  int64 access_expire_at = 3;  // 过期绝对时间戳
+  int64 refresh_expire_at = 4; // 过期绝对时间戳
+
+  api.common.v1.UserSummary user = 5; // 用户基本信息
+  bool is_new_user = 6;        // 关键：是否是注册后首次登录 (前端据此跳转完善资料页)
+}
+
+message LogoutRequest {
+  // 是否踢掉所有设备 (修改密码后通常为 true)
+  bool logout_all_devices = 1;
+}
+
+message LogoutResponse {}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;    // 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
+  int64 access_expire_at = 3;
+  int64 refresh_expire_at = 4; // 过期绝对时间戳
+}

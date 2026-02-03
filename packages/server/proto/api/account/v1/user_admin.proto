@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package api.account.v1;
+
+import "api/common/v1/common.proto";
+// import "api/user/v1/user.proto"; // 如果需要引用 UserProfile
+
+// 用户后台管理服务
+service UserAdminService {
+  // 修改用户角色 (提拔管理员)
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+
+  // 封禁/解封用户 (更细粒度的控制，比如封禁3天)
+  rpc BanUser(BanUserRequest) returns (BanUserResponse);
+
+  // 后台搜索用户 (比前台搜索权限更大，能搜到封禁用户等)
+  rpc AdminSearchUsers(AdminSearchUsersRequest) returns (AdminSearchUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  api.common.v1.Role role = 2;
+}
+message UpdateUserRoleResponse {}
+
+message BanUserRequest {
+  string user_id = 1;
+  int64 ban_duration_seconds = 2; // 0 = 永久
+  string reason = 3;
+}
+message BanUserResponse {}
+
+message AdminSearchUsersRequest {
+  string keyword = 1;
+  api.common.v1.Pagination pagination = 2;
+}
+message AdminSearchUsersResponse {
+  // 这里可以复用 UserSummary 或定义更详细的 AdminUserView
+  repeated api.common.v1.UserSummary users = 1;
+}

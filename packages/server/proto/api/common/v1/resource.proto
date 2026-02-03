@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package api.common.v1;
+
+service ResourceService {
+  // 获取上传凭证 (支持批量)
+  // 包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)
+  rpc GetUploadTokens(GetUploadTokensRequest) returns (GetUploadTokensResponse);
+}
+
+// ---------------------------------------------------------
+// 数据模型
+// ---------------------------------------------------------
+
+enum ResourceScene {
+  SCENE_UNSPECIFIED = 0;
+  SCENE_USER_AVATAR = 1;   // 用户头像 (限制如 <2MB, 正方形)
+  SCENE_POST_IMAGE = 2;    // 帖子图片 (限制如 <10MB)
+  SCENE_POST_VIDEO = 3;    // 帖子视频 (限制如 <500MB)
+  SCENE_COMMENT_IMAGE = 4; // 评论图片
+  SCENE_CHAT_FILE = 5;     // 私聊文件 (可能需要私有读权限)
+}
+
+message UploadTask {
+  string filename = 1;   // 原始文件名 (e.g. "photo.jpg")
+  int64 size_bytes = 2;  // 文件大小 (字节)
+  string mime_type = 3;  // MIME类型 (e.g. "image/jpeg", "video/mp4")
+  string file_hash = 4;  // (可选) MD5/SHA256，用于秒传检测
+}
+
+message UploadToken {
+  string task_id = 1;    // 对应请求中的文件名或索引
+  string upload_url = 2; // 上传地址 (PUT Signed URL)
+  string public_url = 3; // 最终访问地址 (存入 DB 的地址)
+
+  // HTTP Header 要求 (通常 PUT 上传需要指定 Content-Type)
+  map<string, string> required_headers = 4;
+
+  // 秒传标志
+  bool skip_upload = 5;  // 如果为 true，说明 hash 已存在，无需上传，直接使用 public_url
+}
+
+// ---------------------------------------------------------
+// 请求与响应
+// ---------------------------------------------------------
+
+message GetUploadTokensRequest {
+  ResourceScene scene = 1;     // 场景 (决定存储桶 Bucket 和 路径前缀)
+  repeated UploadTask tasks = 2; // 批量请求
+}
+
+message GetUploadTokensResponse {
+  repeated UploadToken tokens = 1;
+}

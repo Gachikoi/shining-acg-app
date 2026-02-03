@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+package api.account.v1;
+
+import "api/common/v1/common.proto";
+import "google/protobuf/field_mask.proto";
+
+// 用户服务
+service UserService {
+  // --- 个人信息 ---
+
+  // 获取当前登录用户的完整信息（包含敏感设置）
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取他人公开信息 (经过隐私计算)
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 批量获取用户信息 (用于列表页头像渲染等)
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 更新个人资料 (支持部分更新)
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+
+  // 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+
+  // --- 社交关系 ---
+
+  // 关注/取消关注
+  rpc SetFollow(SetFollowRequest) returns (SetFollowResponse);
+
+  // 关系列表 (粉丝/关注)
+  rpc ListRelationships(ListRelationshipsRequest) returns (ListRelationshipsResponse);
+
+  // 获取共同关注
+  rpc ListMutualFollowers(ListMutualFollowersRequest) returns (ListMutualFollowersResponse);
+
+  // --- 搜索 ---
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+}
+
+// ---------------------------------------------------------
+// 核心数据模型
+// ---------------------------------------------------------
+
+// 用户公开资料 (他人可见)
+message UserProfile {
+  // 基础信息 (ID, Name, Avatar)
+  api.common.v1.UserSummary base = 1;
+
+  string intro = 2;                    // 简介
+  string background_image = 3;         // 个人主页背景图
+  repeated api.common.v1.Department departments = 4;
+  repeated api.common.v1.Link links = 5;
+
+  // 统计数据 (建议单独通过 FieldMask 控制是否返回)
+  UserStats stats = 6;
+
+  // 关系状态 (当前查看者 vs 这个用户)
+  UserRelationStatus relation_status = 7;
+
+  // 扩展字段
+  string ip_location = 8; // IP属地 (如: 北京)
+  api.common.v1.Role role = 9; // 用户角色
+}
+
+// 统计数据
+message UserStats {
+  int64 follower_count = 1;
+  int64 following_count = 2;
+  int64 post_count = 3;
+  int64 like_count_received = 4;       // 获得的赞
+  int64 view_count_received = 5;       // 获得浏览
+}
+
+// 关系状态 (计算后的结果)
+message UserRelationStatus {
+  bool is_following = 1;       // 我是否关注了他
+  bool is_followed_by = 2;     // 他是否关注了我 (互关判断)
+  bool is_blocking = 3;        // 我是否拉黑了他
+  string remark = 4;           // 我给他的备注
+
+  // 隐私权限结果 (Critical: 不要返回 PrivacySettings，返回 Capability)
+  bool can_send_message = 10;  // 是否能发私信
+  bool can_view_list = 11;     // 是否能看他的关注列表
+}
+
+// 隐私设置 (仅自己可见)
+message PrivacySettings {
+  PrivacyLevel message_permission = 1;    // 谁可以私信我
+  PrivacyLevel list_visibility = 2;       // 谁可以看我的关注/粉丝列表
+  bool show_online_status = 3;            // 是否展示在线状态
+}
+
+// 通用设置 (仅自己可见)
+message UserSettings {
+  bool enable_push = 1;
+  bool enable_email_notification = 2;
+  string language = 3;
+  string theme = 4; // dark, light
+}
+
+enum PrivacyLevel {
+  PRIVACY_LEVEL_PUBLIC = 0;
+  PRIVACY_LEVEL_FOLLOWERS = 1;
+  PRIVACY_LEVEL_MUTUAL = 2;
+  PRIVACY_LEVEL_PRIVATE = 3;
+}
+
+// ---------------------------------------------------------
+// 请求与响应
+// ---------------------------------------------------------
+
+message GetMeRequest {
+  // 不需要 user_id，从 Token 解析
+}
+
+message GetMeResponse {
+  UserProfile profile = 1;
+  PrivacySettings privacy_settings = 2;
+  UserSettings user_settings = 3;
+}
+
+message GetUserRequest {
+  string target_user_id = 1;
+}
+
+message GetUserResponse {
+  UserProfile profile = 1;
+  // 注意：这里没有 PrivacySettings
+}
+
+message BatchGetUsersRequest {
+  repeated string user_ids = 1;
+}
+
+message BatchGetUsersResponse {
+  repeated UserProfile profiles = 1;
+}
+
+message UpdateProfileRequest {
+  UserProfile profile = 1;
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateProfileResponse {
+  UserProfile profile = 1;
+}
+
+// 统一设置更新
+message UpdateSettingsRequest {
+  // 可选：将 Privacy 和 UserSettings 分开传，或者合并
+  PrivacySettings privacy_settings = 1;
+  UserSettings user_settings = 2;
+
+  // 必须：指定更新哪些字段 (例如 paths: ["privacy_settings.message_permission"])
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateSettingsResponse {
+  bool succeed = 1;
+}
+
+// 统一关注操作
+message SetFollowRequest {
+  string target_user_id = 1;
+  bool is_active = 2; // true=关注, false=取关
+}
+
+message SetFollowResponse {
+  bool is_active = 1;
+  bool is_mutual = 2; // 返回是否变成了互关，前端可显示"互相关注"图标
+}
+
+// 统一关系列表
+message ListRelationshipsRequest {
+  string user_id = 1; // 查看谁的关系
+  enum RelationType {
+    RELATION_TYPE_FOLLOWING = 0; // 关注的人
+    RELATION_TYPE_FOLLOWERS = 1; // 粉丝
+  }
+  RelationType type = 2;
+  api.common.v1.Pagination pagination = 3;
+}
+
+message ListRelationshipsResponse {
+  // 这里不直接返回 UserSummary，建议返回 UserProfile 或者包含 RelationStatus 的对象
+  // 这样在列表中就能知道"我是否也关注了这个粉丝"
+  repeated UserProfile users = 1;
+  string next_page_token = 2;
+}
+
+message ListMutualFollowersRequest {
+  string user_id = 1; // 和谁的共同关注
+  api.common.v1.Pagination pagination = 2;
+}
+
+message ListMutualFollowersResponse {
+  repeated UserProfile users = 1;
+  string next_page_token = 2;
+}
+
+message SearchUsersRequest {
+  string keyword = 1;
+  api.common.v1.Pagination pagination = 2;
+}
+
+message SearchUsersResponse {
+  repeated UserProfile results = 1;
+  string next_page_token = 2;
+}
