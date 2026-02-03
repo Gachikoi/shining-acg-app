@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package api.cms.v1;
+
+import "api/cms/v1/site.proto"; // 引用同包下的 definitions
+
+// 官网后台管理服务
+service SiteAdminService {
+  // 部门管理
+  rpc UpsertDepartment(UpsertDepartmentRequest) returns (UpsertDepartmentResponse);
+  rpc DeleteDepartment(DeleteDepartmentRequest) returns (DeleteDepartmentResponse);
+
+  // 活动管理
+  rpc UpsertActivity(UpsertActivityRequest) returns (UpsertActivityResponse);
+  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse);
+
+  // 历史事件管理
+  rpc UpsertHistoryEvent(UpsertHistoryEventRequest) returns (UpsertHistoryEventResponse);
+  rpc DeleteHistoryEvent(DeleteHistoryEventRequest) returns (DeleteHistoryEventResponse);
+
+  // 部长管理
+  rpc UpsertMinister(UpsertMinisterRequest) returns (UpsertMinisterResponse);
+  rpc DeleteMinister(DeleteMinisterRequest) returns (DeleteMinisterResponse);
+
+  // Staff 管理
+  rpc UpsertStaffGroup(UpsertStaffGroupRequest) returns (UpsertStaffGroupResponse);
+  rpc DeleteStaffGroup(DeleteStaffGroupRequest) returns (DeleteStaffGroupResponse);
+
+  // 赞助者管理
+  rpc UpsertSponsor(UpsertSponsorRequest) returns (UpsertSponsorResponse);
+  rpc DeleteSponsor(DeleteSponsorRequest) returns (DeleteSponsorResponse);
+}
+
+// 部门管理
+message UpsertDepartmentRequest {
+  api.cms.v1.Department department = 1; // 包含ID，ID存在则更新，不存在则创建
+}
+message UpsertDepartmentResponse {
+  string department_id = 1;
+}
+
+message DeleteDepartmentRequest { string id = 1; }
+message DeleteDepartmentResponse {}
+
+// 活动管理
+message UpsertActivityRequest { Activity activity = 1; }
+message UpsertActivityResponse { string activity_id = 1; }
+
+message DeleteActivityRequest { string id = 1; }
+message DeleteActivityResponse {}
+
+// 历史事件管理
+message UpsertHistoryEventRequest { HistoryEvent history_event = 1; }
+message UpsertHistoryEventResponse { string event_id = 1; }
+
+message DeleteHistoryEventRequest { string id = 1; }
+message DeleteHistoryEventResponse {}
+
+// 部长管理
+message UpsertMinisterRequest { Minister minister = 1; }
+message UpsertMinisterResponse { string minister_id = 1; }
+
+message DeleteMinisterRequest { string id = 1; }
+message DeleteMinisterResponse {}
+
+// Staff 管理
+message UpsertStaffGroupRequest { StaffGroup staff_group = 1; }
+message UpsertStaffGroupResponse { string group_id = 1; }
+
+message DeleteStaffGroupRequest { string id = 1; }
+message DeleteStaffGroupResponse {}
+
+// 赞助者管理
+message UpsertSponsorRequest { Sponsor sponsor = 1; }
+message UpsertSponsorResponse { string sponsor_id = 1; }
+
+message DeleteSponsorRequest { string id = 1; }
+message DeleteSponsorResponse {}

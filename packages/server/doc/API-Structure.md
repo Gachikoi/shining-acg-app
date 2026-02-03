@@ -1,948 +1,785 @@
-# Shining ACG API 架构文档
+# Shining ACG API 文档
 
-## 项目概述
+## 概述
 
-本项目的后端架构划分为 **3 个物理微服务**，包含 **7 个逻辑模块**，提供完整的 ACG 社区服务功能。
+Shining ACG 后端 API 使用 Protocol Buffers v3 定义，通过 Buf v2 工具链管理，使用 Connect-Go 框架实现同时支持以下三种调用方式：
 
-## 架构总览
+1. **gRPC**：高性能的二进制协议，适用于后端服务间通信
+2. **gRPC-Web**：浏览器兼容的 gRPC 版本，适用于前端直接调用
+3. **HTTP/JSON**：标准的 HTTP + JSON 协议，适用于任何 HTTP 客户端
 
-| 微服务名称 | **User** (用户核心) | **Community** (社区内容) | **Messenger** (即时通讯) |
-| :--- | :--- | :--- | :--- |
-| **包含逻辑模块** | **Auth** (认证)<br>**User** (用户资料/关系)<br>**Admin** (权限/封禁) | **Content** (帖子/瀑布流)<br>**Interaction** (转评赞)<br>**Site** (官网门户数据)<br>**Resource** (上传) | **Message** (私信/聊天)<br>**Notification** (消息推送) |
-| **特点** | **基石**。流量平稳，数据一致性要求最高。 | **流量大户**。读多写少，逻辑最复杂（推荐算法/聚合）。 | **异构**。长连接、实时性高，独立部署防止拖垮主业务。 |
-| **难度** | ⭐ (最容易，先做) | ⭐⭐ (核心业务) | ⭐⭐⭐ (涉及并发/流) |
+## 通用规则
+
+### 基础 URL
+
+- **开发环境**：`http://localhost:8080`
+- **生产环境**：`https://api.shining-acg.com`
+
+### API 版本
+
+所有 API 都使用版本化路径，当前版本为 `v1`。
+
+### HTTP 请求格式
+
+**Connect-Go 标准路由格式**：
+```
+POST /<package>.<service>/<method>
+```
+
+**路由示例**：
+- 认证服务登录：`POST /api.account.v1.AuthService/Login`
+- 用户服务获取当前用户：`POST /api.account.v1.UserService/GetMe`
+- 内容服务创建帖子：`POST /api.community.v1.ContentService/CreatePost`
+
+### 认证
+
+#### Access Token
+
+大部分 API 需要在请求头中包含访问令牌：
+
+```http
+Authorization: Bearer <access_token>
+```
+
+**gRPC 元数据：**
+```
+authorization: Bearer <access_token>
+```
+
+#### Refresh Token
+
+当 Access Token 过期时，使用 Refresh Token 换取新的 Access Token。
+
+### 通用请求格式
+
+大多数 API 使用 `POST` 方法，并在请求体中包含 JSON 格式的参数。对于标记为 `NO_SIDE_EFFECTS` 的无副作用查询类方法，同时支持 `GET` 方法以提高性能和启用 CDN 缓存。
+
+使用 GET 方法时，请求参数应编码为查询字符串，且 **不能不包含 Query**，如果不包含 Query 则会识别为 `POST` 方法导致 415 错误。
+
+有关 `GET` 方法的调用：
+- 自动处理：前端应使用生成的 @connectrpc/connect SDK。只需在初始化 Transport 时配置 useHttpGet: true，客户端将根据 proto 契约自动判断请求方法，并完成参数的 Base64 编码与 URL 拼接。
+- 请求头规范：无论使用 POST 还是 GET，鉴权信息（如 Authorization）必须始终通过 HTTP Header 传递，严禁将敏感凭证放入查询字符串中。
+- 缓存控制：对于 GET 请求，后端会根据业务需要返回 Cache-Control 头部。前端如需强制刷新，可利用 SDK 提供的拦截器在请求中加入随机版本参数。
+
+### Connect-Go 标准错误码
+
+| 状态码 | 说明 | HTTP 状态码 |
+|--------|------|-------------|
+| 0 | 成功 | 200 |
+| 3 | 无效参数 | 400 |
+| 16 | 未认证 | 401 |
+| 7 | 无权限 | 403 |
+| 5 | 资源不存在 | 404 |
+| 6 | 资源已存在 | 409 |
+| 13 | 内部服务器错误 | 500 |
 
 ---
 
-## 1. 公共模块 (Common)
+## API 目录
 
-### 文件位置
-`proto/api/v1/common/common.proto`
+### 1. 公共模块 (api.common.v1)
 
-### 定义内容
+#### 1.1 ResourceService - 资源上传服务
 
-#### 1.1 枚举类型
+**gRPC 服务名**：`api.common.v1.ResourceService`
 
-##### Department (部门枚举)
-- `DEPARTMENT_UNSPECIFIED` (0) - 未定义
-- `DEPARTMENT_LIGHT_MUSIC` (1) - 轻音部
-- `DEPARTMENT_WOTA` (2) - WOTA
-- `DEPARTMENT_TOUHOU` (3) - 东方组
-- `DEPARTMENT_LITERATURE` (4) - 轻文部
-- `DEPARTMENT_MODEL_PLASTIC` (5) - 模玩部
-- `DEPARTMENT_PUBLICITY` (6) - 宣传部
-- `DEPARTMENT_ACTIVITY` (7) - 活动部
-- `DEPARTMENT_COSPLAY` (8) - COS 部
-- `DEPARTMENT_OTAKU_DANCE` (9) - 宅舞部
-- `DEPARTMENT_ANIME` (10) - 动漫研
-- `DEPARTMENT_VIDEO` (11) - 视频组
-- `DEPARTMENT_MUSIC_GAME` (12) - 音游组
-- `DEPARTMENT_V_TUBE` (13) - V 曲组
-- `DEPARTMENT_MINECRAFT` (14) - MC 组
+**HTTP 基础路径**：`/api.common.v1.ResourceService`
 
-##### Role (用户角色枚举)
-- `ROLE_VISITOR` (0) - 游客
-- `ROLE_USER` (1) - 用户
-- `ROLE_ADMIN` (2) - 内容管理员
-- `ROLE_SUPER_ADMIN` (3) - 超级管理员
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| GetUploadTokens | `GetUploadTokens` | `POST /api.common.v1.ResourceService/GetUploadTokens` | 获取文件上传凭证（支持批量），包含文件类型检查、大小限制检查、生成预签名 URL | 需要 |
 
-#### 1.2 消息类型
+#### 消息类型
 
-##### Pagination (分页请求)
+**ResourceScene 枚举**：
+- `SCENE_UNSPECIFIED` (0)：未指定
+- `SCENE_USER_AVATAR` (1)：用户头像（限制 <2MB，正方形）
+- `SCENE_POST_IMAGE` (2)：帖子图片（限制 <10MB）
+- `SCENE_POST_VIDEO` (3)：帖子视频（限制 <500MB）
+- `SCENE_COMMENT_IMAGE` (4)：评论图片
+- `SCENE_CHAT_FILE` (5)：私聊文件（可能需要私有读权限）
+
+**UploadTask**：
+```proto
+message UploadTask {
+  string filename = 1;       // 原始文件名 (e.g. "photo.jpg")
+  int64 size_bytes = 2;      // 文件大小 (字节)
+  string mime_type = 3;      // MIME类型 (e.g. "image/jpeg", "video/mp4")
+  string file_hash = 4;      // (可选) MD5/SHA256，用于秒传检测
+}
+```
+
+**UploadToken**：
+```proto
+message UploadToken {
+  string task_id = 1;        // 对应请求中的文件名或索引
+  string upload_url = 2;     // 上传地址 (PUT Signed URL)
+  string public_url = 3;     // 最终访问地址 (存入 DB 的地址)
+  map<string, string> required_headers = 4;  // HTTP Header 要求
+  bool skip_upload = 5;      // 秒传标志
+}
+```
+
+#### 示例调用
+
+**HTTP 请求**：
+```bash
+curl -X POST http://localhost:8080/api.common.v1.ResourceService/GetUploadTokens \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scene": 2,
+    "tasks": [
+      {
+        "filename": "test.jpg",
+        "size_bytes": 102400,
+        "mime_type": "image/jpeg",
+        "file_hash": "abc123"
+      }
+    ]
+  }'
+```
+
+**响应示例**：
+```json
+{
+  "tokens": [
+    {
+      "task_id": "test.jpg",
+      "upload_url": "https://upload.example.com/abc123?token=def456",
+      "public_url": "https://cdn.example.com/abc123.jpg",
+      "required_headers": {
+        "Content-Type": "image/jpeg"
+      },
+      "skip_upload": false
+    }
+  ]
+}
+```
+
+**返回码说明**：
+- 200：成功获取上传凭证
+- 401：未认证
+- 403：无权限
+- 400：参数无效（如文件大小超限、类型不支持）
+
+---
+
+### 2. 用户账户模块 (api.account.v1)
+
+#### 2.1 AuthService - 认证服务
+
+**gRPC 服务名**：`api.account.v1.AuthService`
+
+**HTTP 基础路径**：`/api.account.v1.AuthService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| Login | `Login` | `POST /api.account.v1.AuthService/Login` | 统一登录接口（支持 QQ、微信、手机号等） | 不需要 |
+| Logout | `Logout` | `POST /api.account.v1.AuthService/Logout` | 退出登录 | 需要 |
+| RefreshToken | `RefreshToken` | `POST /api.account.v1.AuthService/RefreshToken` | 刷新 Token | 需要 |
+
+#### 消息类型
+
+**LoginType 枚举**：
+- `LOGIN_TYPE_UNSPECIFIED` (0)：未指定
+- `LOGIN_TYPE_QQ` (1)：QQ 快捷登录
+
+**DeviceInfo**：
+```proto
+message DeviceInfo {
+  string device_type = 1;        // 设备类型 (e.g. "mobile", "desktop")
+  string device_name = 2;        // 设备名 (e.g. "iPhone 14 Pro")
+  string os_version = 3;         // 系统版本 (e.g. "iOS 16.0")
+  string client_version = 4;     // App/前端版本号
+}
+```
+
+#### Login - 登录
+
+**请求参数**：
+```json
+{
+  "type": 1,                          // 登录类型：1=QQ登录
+  "credential": "your-qq-token",     // QQ OAuth Access Token
+  "device": {                        // 设备信息
+    "device_type": "mobile",
+    "device_name": "iPhone 14",
+    "os_version": "iOS 16.0",
+    "client_version": "1.0.0"
+  }
+}
+```
+
+**响应示例**：
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_expire_at": 1733232000,    // Access Token 过期时间戳
+  "refresh_expire_at": 1735824000,   // Refresh Token 过期时间戳
+  "user": {
+    "user_id": "12345",
+    "nickname": "用户昵称",
+    "avatar": "https://example.com/avatar.jpg",
+    "primary_department": 1,
+    "is_verified": false
+  },
+  "is_new_user": false               // 是否是首次登录
+}
+```
+
+**返回码说明**：
+- 200：登录成功
+- 400：参数无效（如 type 无效、credential 为空）
+- 401：凭证无效（如 Access Token 过期、无效）
+- 500：服务器内部错误
+
+#### Logout - 退出登录
+
+**请求参数**：
+```json
+{
+  "logout_all_devices": true         // 是否踢掉所有设备
+}
+```
+
+**响应示例**：
+```json
+{}
+```
+
+**返回码说明**：
+- 200：退出成功
+- 401：未认证
+
+#### RefreshToken - 刷新 Token
+
+**请求参数**：
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**响应示例**：
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_expire_at": 1733232000,
+  "refresh_expire_at": 1735824000
+}
+```
+
+**返回码说明**：
+- 200：刷新成功
+- 401：Refresh Token 无效或过期
+- 400：参数无效
+
+---
+
+#### 2.2 UserService - 用户服务
+
+**gRPC 服务名**：`api.account.v1.UserService`
+
+**HTTP 基础路径**：`/api.account.v1.UserService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| GetMe | `GetMe` | `GET /api.account.v1.UserService/GetMe` | 获取当前登录用户的完整信息（包含敏感设置） | 需要 |
+| GetUser | `GetUser` | `GET /api.account.v1.UserService/GetUser` | 获取他人公开信息（经过隐私计算） | 需要 |
+| BatchGetUsers | `BatchGetUsers` | `GET /api.account.v1.UserService/BatchGetUsers` | 批量获取用户信息（用于列表页头像渲染等） | 需要 |
+| UpdateProfile | `UpdateProfile` | `POST /api.account.v1.UserService/UpdateProfile` | 更新个人资料（支持部分更新） | 需要 |
+| UpdateSettings | `UpdateSettings` | `POST /api.account.v1.UserService/UpdateSettings` | 更新设置（合并了通用设置和隐私设置） | 需要 |
+| SetFollow | `SetFollow` | `POST /api.account.v1.UserService/SetFollow` | 关注/取消关注 | 需要 |
+| ListRelationships | `ListRelationships` | `POST /api.account.v1.UserService/ListRelationships` | 获取关系列表（粉丝/关注） | 需要 |
+| ListMutualFollowers | `ListMutualFollowers` | `POST /api.account.v1.UserService/ListMutualFollowers` | 获取共同关注 | 需要 |
+| SearchUsers | `SearchUsers` | `POST /api.account.v1.UserService/SearchUsers` | 搜索用户 | 需要 |
+
+#### GetMe - 获取当前用户信息
+
+**请求参数**：
+```json
+{}
+```
+
+**响应示例**：
+```json
+{
+  "profile": {
+    "base": {
+      "user_id": "12345",
+      "nickname": "用户昵称",
+      "avatar": "https://example.com/avatar.jpg",
+      "primary_department": 1,
+      "is_verified": false
+    },
+    "intro": "这是我的个人简介",
+    "background_image": "https://example.com/background.jpg",
+    "departments": [1],
+    "links": [],
+    "stats": {
+      "follower_count": 10,
+      "following_count": 5,
+      "post_count": 20,
+      "like_count_received": 100,
+      "view_count_received": 1000
+    },
+    "relation_status": {},
+    "ip_location": "北京",
+    "role": 1
+  },
+  "privacy_settings": {
+    "message_permission": 0,
+    "list_visibility": 0,
+    "show_online_status": true
+  },
+  "user_settings": {
+    "enable_push": true,
+    "enable_email_notification": false,
+    "language": "zh-CN",
+    "theme": "dark"
+  }
+}
+```
+
+**返回码说明**：
+- 200：成功
+- 401：未认证
+
+#### UpdateProfile - 更新个人资料
+
+**请求参数**：
+```json
+{
+  "profile": {
+    "nickname": "新昵称",
+    "intro": "新简介"
+  },
+  "update_mask": {
+    "paths": ["nickname", "intro"]
+  }
+}
+```
+
+**返回码说明**：
+- 200：更新成功
+- 401：未认证
+- 400：参数无效（如 nickname 为空）
+- 403：权限不足
+
+---
+
+#### 2.3 UserAdminService - 用户管理服务
+
+**gRPC 服务名**：`api.account.v1.UserAdminService`
+
+**HTTP 基础路径**：`/api.account.v1.UserAdminService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| UpdateUserRole | `UpdateUserRole` | `POST /api.account.v1.UserAdminService/UpdateUserRole` | 修改用户角色（提拔管理员/封号） | 需要 |
+| BanUser | `BanUser` | `POST /api.account.v1.UserAdminService/BanUser` | 封禁/解封用户（支持细粒度控制） | 需要 |
+| AdminSearchUsers | `AdminSearchUsers` | `GET /api.account.v1.UserAdminService/AdminSearchUsers` | 后台搜索用户（权限更大） | 需要 |
+
+---
+
+### 3. 社区模块 (api.community.v1)
+
+#### 3.1 ContentService - 内容服务
+
+**gRPC 服务名**：`api.community.v1.ContentService`
+
+**HTTP 基础路径**：`/api.community.v1.ContentService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| CreatePost | `CreatePost` | `POST /api.community.v1.ContentService/CreatePost` | 发布帖子 | 需要 |
+| DeletePost | `DeletePost` | `POST /api.community.v1.ContentService/DeletePost` | 删除帖子 | 需要 |
+| GetPost | `GetPost` | `GET /api.community.v1.ContentService/GetPost` | 获取帖子详情 | 需要 |
+| ListPosts | `ListPosts` | `GET /api.community.v1.ContentService/ListPosts` | 统一帖子列表接口（支持多种场景） | 需要 |
+
+#### CreatePost - 创建帖子
+
+**请求参数**：
+```json
+{
+  "title": "帖子标题",
+  "content": "帖子内容",
+  "media": [
+    {
+      "type": "image",
+      "url": "https://example.com/image.jpg",
+      "width": 800,
+      "height": 600
+    }
+  ],
+  "partition_id": 1
+}
+```
+
+**响应示例**：
+```json
+{
+  "post": {
+    "post_id": "post123",
+    "author": {
+      "user_id": "12345",
+      "nickname": "用户昵称",
+      "avatar": "https://example.com/avatar.jpg",
+      "primary_department": 1,
+      "is_verified": false
+    },
+    "title": "帖子标题",
+    "content": "帖子内容",
+    "media": [
+      {
+        "type": "image",
+        "url": "https://example.com/image.jpg",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "department_id": 1,
+    "department_name": "轻音部",
+    "like_count": 0,
+    "comment_count": 0,
+    "collect_count": 0,
+    "view_count": 0,
+    "is_liked": false,
+    "is_collected": false,
+    "created_at": 1733232000,
+    "updated_at": 1733232000,
+    "status": 1
+  }
+}
+```
+
+**返回码说明**：
+- 200：创建成功
+- 401：未认证
+- 400：参数无效（如 title 为空）
+- 403：权限不足
+
+#### ListPosts - 获取帖子列表
+
+**请求参数**：
+```json
+{
+  "scene": 2,                        // 场景：2=综合瀑布流
+  "filter": {
+    "keyword": "后端开发",
+    "department_ids": [1],
+    "author_id": "12345"
+  },
+  "sort": 2,                        // 排序：2=按热度
+  "pagination": {
+    "page_size": 10,
+    "page": 1
+  }
+}
+```
+
+**响应示例**：
+```json
+{
+  "posts": [
+    {
+      "post_id": "post123",
+      "title": "帖子标题",
+      "summary": "帖子内容摘要...",
+      "cover": {
+        "type": "image",
+        "url": "https://example.com/image.jpg",
+        "width": 800,
+        "height": 600
+      },
+      "author": {
+        "user_id": "12345",
+        "nickname": "用户昵称",
+        "avatar": "https://example.com/avatar.jpg",
+        "primary_department": 1,
+        "is_verified": false
+      },
+      "like_count": 100,
+      "view_count": 1000,
+      "comment_count": 10,
+      "is_liked": false,
+      "has_video": false,
+      "publish_time": 1733232000,
+      "partition_name": "轻音部"
+    }
+  ],
+  "next_page_token": "abc123"
+}
+```
+
+---
+
+#### 3.2 InteractionService - 互动服务
+
+**gRPC 服务名**：`api.community.v1.InteractionService`
+
+**HTTP 基础路径**：`/api.community.v1.InteractionService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| SetLike | `SetLike` | `POST /api.community.v1.InteractionService/SetLike` | 点赞/取消赞（支持帖子、评论） | 需要 |
+| SetCollect | `SetCollect` | `POST /api.community.v1.InteractionService/SetCollect` | 收藏/取消收藏（通常仅针对帖子） | 需要 |
+
+#### SetLike - 点赞/取消点赞
+
+**请求参数**：
+```json
+{
+  "target_id": "post123",           // 目标ID（帖子或评论）
+  "type": 1,                        // 类型：1=帖子，2=评论
+  "is_active": true                // true=点赞，false=取消
+}
+```
+
+**响应示例**：
+```json
+{
+  "is_active": true,               // 最终状态
+  "like_count": 101               // 操作后的最新点赞数
+}
+```
+
+**返回码说明**：
+- 200：操作成功
+- 401：未认证
+- 404：目标不存在
+- 400：参数无效
+
+---
+
+#### 3.3 CommentService - 评论服务
+
+**gRPC 服务名**：`api.community.v1.CommentService`
+
+**HTTP 基础路径**：`/api.community.v1.CommentService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| CreateComment | `CreateComment` | `POST /api.community.v1.CommentService/CreateComment` | 发送评论（支持一级评论和子评论） | 需要 |
+| ListComments | `ListComments` | `GET /api.community.v1.CommentService/ListComments` | 获取评论列表 | 需要 |
+| DeleteComment | `DeleteComment` | `POST /api.community.v1.CommentService/DeleteComment` | 删除评论 | 需要 |
+
+---
+
+#### 3.4 GovernanceService - 治理服务
+
+**gRPC 服务名**：`api.community.v1.GovernanceService`
+
+**HTTP 基础路径**：`/api.community.v1.GovernanceService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| ListReports | `ListReports` | `GET /api.community.v1.GovernanceService/ListReports` | 获取举报列表 | 需要（管理员） |
+| ResolveReport | `ResolveReport` | `POST /api.community.v1.GovernanceService/ResolveReport` | 裁决举报（封禁、删除、忽略） | 需要（管理员） |
+
+---
+
+### 4. 官网模块 (api.cms.v1)
+
+#### 4.1 PortalService - 官网展示服务
+
+**gRPC 服务名**：`api.cms.v1.PortalService`
+
+**HTTP 基础路径**：`/api.cms.v1.PortalService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| GetSiteConfig | `GetSiteConfig` | `GET /api.cms.v1.PortalService/GetSiteConfig` | 获取网站配置信息 | 不需要 |
+| ListDepartments | `ListDepartments` | `GET /api.cms.v1.PortalService/ListDepartments` | 获取部门列表 | 不需要 |
+| ListActivities | `ListActivities` | `GET /api.cms.v1.PortalService/ListActivities` | 获取活动列表 | 不需要 |
+| ListHistory | `ListHistory` | `GET /api.cms.v1.PortalService/ListHistory` | 获取发展历程（大事记） | 不需要 |
+| ListMinisters | `ListMinisters` | `GET /api.cms.v1.PortalService/ListMinisters` | 获取部长/历代领导列表 | 不需要 |
+| ListStaff | `ListStaff` | `GET /api.cms.v1.PortalService/ListStaff` | 获取 Staff 名单 | 不需要 |
+| ListSponsors | `ListSponsors` | `GET /api.cms.v1.PortalService/ListSponsors` | 获取赞助商/鸣谢名单 | 不需要 |
+| ListHomeTrending | `ListHomeTrending` | `GET /api.cms.v1.PortalService/ListHomeTrending` | 获取首页热门动态 | 不需要 |
+
+---
+
+#### 4.2 SiteAdminService - 官网管理服务
+
+**gRPC 服务名**：`api.cms.v1.SiteAdminService`
+
+**HTTP 基础路径**：`/api.cms.v1.SiteAdminService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| UpsertDepartment | `UpsertDepartment` | `POST /api.cms.v1.SiteAdminService/UpsertDepartment` | 新增/更新部门信息 | 需要（管理员） |
+| DeleteDepartment | `DeleteDepartment` | `POST /api.cms.v1.SiteAdminService/DeleteDepartment` | 删除部门 | 需要（管理员） |
+| UpsertActivity | `UpsertActivity` | `POST /api.cms.v1.SiteAdminService/UpsertActivity` | 新增/更新活动信息 | 需要（管理员） |
+| DeleteActivity | `DeleteActivity` | `POST /api.cms.v1.SiteAdminService/DeleteActivity` | 删除活动 | 需要（管理员） |
+| UpsertHistoryEvent | `UpsertHistoryEvent` | `POST /api.cms.v1.SiteAdminService/UpsertHistoryEvent` | 新增/更新历史事件信息 | 需要（管理员） |
+| DeleteHistoryEvent | `DeleteHistoryEvent` | `POST /api.cms.v1.SiteAdminService/DeleteHistoryEvent` | 删除历史事件 | 需要（管理员） |
+| UpsertMinister | `UpsertMinister` | `POST /api.cms.v1.SiteAdminService/UpsertMinister` | 新增/更新部长信息 | 需要（管理员） |
+| DeleteMinister | `DeleteMinister` | `POST /api.cms.v1.SiteAdminService/DeleteMinister` | 删除部长信息 | 需要（管理员） |
+| UpsertStaffGroup | `UpsertStaffGroup` | `POST /api.cms.v1.SiteAdminService/UpsertStaffGroup` | 新增/更新 Staff 分组信息 | 需要（管理员） |
+| DeleteStaffGroup | `DeleteStaffGroup` | `POST /api.cms.v1.SiteAdminService/DeleteStaffGroup` | 删除 Staff 分组 | 需要（管理员） |
+| UpsertSponsor | `UpsertSponsor` | `POST /api.cms.v1.SiteAdminService/UpsertSponsor` | 新增/更新赞助者信息 | 需要（管理员） |
+| DeleteSponsor | `DeleteSponsor` | `POST /api.cms.v1.SiteAdminService/DeleteSponsor` | 删除赞助者 | 需要（管理员） |
+
+---
+
+### 5. 消息通知模块 (api.messenger.v1)
+
+#### 5.1 MessageService - 通知服务
+
+**gRPC 服务名**：`api.messenger.v1.MessageService`
+
+**HTTP 基础路径**：`/api.messenger.v1.MessageService`
+
+| 方法 | gRPC 方法 | HTTP 路由 | 功能 | 认证 |
+|------|-----------|----------|------|------|
+| ListNotifications | `ListNotifications` | `GET /api.messenger.v1.MessageService/ListNotifications` | 获取通知列表（支持按分类筛选） | 需要 |
+| GetUnreadCount | `GetUnreadCount` | `GET /api.messenger.v1.MessageService/GetUnreadCount` | 获取未读计数（用于显示红点） | 需要 |
+| MarkRead | `MarkRead` | `POST /api.messenger.v1.MessageService/MarkRead` | 标记已读（支持全部/分类/单条） | 需要 |
+
+#### GetUnreadCount - 获取未读计数
+
+**请求参数**：
+```json
+{}
+```
+
+**响应示例**：
+```json
+{
+  "total": 7,
+  "category_interaction": 5,
+  "category_comment": 2,
+  "category_follow": 0,
+  "category_system": 0
+}
+```
+
+**返回码说明**：
+- 200：成功
+- 401：未认证
+
+---
+
+## 公共数据类型
+
+### 分页 (Pagination)
+
 ```proto
 message Pagination {
-  int32 page_size = 1;        // 每页数量
-  string page_token = 2;      // 游标（用于无限滚动，最后一条数据的id）
-  int32 page = 3;             // 页码（用于传统分页，页面偏移量）
+  int32 page_size = 1;    // 每页数量
+  string page_token = 2;  // 游标（用于无限滚动）
+  int32 page = 3;         // 页码（用于传统分页）
 }
 ```
 
-##### Media (多媒体资源)
+### 部门 (Department 枚举)
+
 ```proto
-message Media {
-  string type = 1;            // "image" | "video"
-  string url = 2;             // 资源地址
-  string thumbnail = 3;       // 缩略图（视频用）
-  int32 width = 4;            // 宽
-  int32 height = 5;           // 高
+enum Department {
+  DEPARTMENT_UNSPECIFIED = 0;
+  DEPARTMENT_LIGHT_MUSIC = 1;     // 轻音部
+  DEPARTMENT_WOTA = 2;            // WOTA
+  DEPARTMENT_TOUHOU = 3;          // 东方组
+  DEPARTMENT_LITERATURE = 4;      // 轻文部
+  DEPARTMENT_MODEL_PLASTIC = 5;   // 模玩部
+  DEPARTMENT_PUBLICITY = 6;       // 宣传部
+  DEPARTMENT_ACTIVITY = 7;        // 活动部
+  DEPARTMENT_COSPLAY = 8;         // COS 部
+  DEPARTMENT_OTAKU_DANCE = 9;     // 宅舞部
+  DEPARTMENT_ANIME = 10;          // 动漫研
+  DEPARTMENT_VIDEO = 11;          // 视频组
+  DEPARTMENT_MUSIC_GAME = 12;     // 音游组
+  DEPARTMENT_V_TUBE = 13;         // V 曲组
+  DEPARTMENT_MINECRAFT = 14;      // MC 组
 }
 ```
 
-##### UserSummary (基础信息摘要)
+### 用户角色 (Role 枚举)
+
+```proto
+enum Role {
+  ROLE_VISITOR = 0;       // 游客
+  ROLE_USER = 1;          // 用户
+  ROLE_ADMIN = 2;         // 内容管理员
+  ROLE_SUPER_ADMIN = 3;   // 超级管理员
+}
+```
+
+### 用户摘要 (UserSummary)
+
 ```proto
 message UserSummary {
   string user_id = 1;
-  string nickname = 2;               // 昵称，若有备注优先显示备注
+  string nickname = 2;
   string avatar = 3;
-  Department primary_department = 4; // 主所属部门徽章
-  bool is_verified = 5;              // 身份认证状态
-  string verified_title = 6;         // 认证头衔（如：23届部长）
+  api.common.v1.Department primary_department = 4;
+  bool is_verified = 5;
+  string verified_title = 6;
+}
+```
+
+### 媒体资源 (Media)
+
+```proto
+message Media {
+  string type = 1;        // "image" | "video"
+  string url = 2;         // 资源地址
+  string thumbnail = 3;   // 缩略图（视频用）
+  int32 width = 4;        // 宽
+  int32 height = 5;       // 高
 }
 ```
 
 ---
 
-## 2. User (用户核心微服务)
+## 使用建议
 
-### 2.1 Auth Service (认证服务)
+### 1. 分页策略
 
-#### 文件位置
-`proto/api/v1/user/auth.proto`
+- **无限滚动列表**：使用 `page_size` + `page_token`（游标分页）
+- **传统分页**：使用 `page_size` + `page`（页码分页）
 
-#### RPC 方法
+### 2. 字段掩码 (FieldMask)
 
-##### Login (QQ 登录/注册)
-```proto
-rpc Login(LoginRequest) returns (LoginResponse);
-```
-- 请求：`LoginRequest`
-  - `qq_access_token` (string) - QQ 访问令牌
-  - `device_info` (string) - 设备信息
-- 响应：`LoginResponse`
-  - `session_token` (string) - 会话令牌
-  - `me` (UserSummary) - 用户信息
+在更新操作中（如 `UpdateProfile`），使用字段掩码指定需要更新的字段：
 
-##### Logout (退出登录)
-```proto
-rpc Logout(LogoutRequest) returns (LogoutResponse);
-```
-- 请求：`LogoutRequest`
-- 响应：`LogoutResponse`
-
-##### RefreshToken (刷新 Token)
-```proto
-rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
-```
-- 请求：`RefreshTokenRequest`
-  - `refresh_token` (string) - 刷新令牌
-- 响应：`RefreshTokenResponse`
-  - `session_token` (string) - 新的会话令牌
-
----
-
-### 2.2 User Service (用户服务)
-
-#### 文件位置
-`proto/api/v1/user/user.proto`
-
-#### 核心模型
-
-##### ExternalLink (外部链接结构)
-```proto
-message ExternalLink {
-  string label = 1; // 链接显示文字
-  string url = 2;   // 实际跳转地址
-}
-```
-
-##### UserProfile (详细资料)
-```proto
-message UserProfile {
-  UserSummary base = 1;
-  string intro = 2;                    // 个人介绍
-  repeated Department departments = 3; // 加入的所有部门
-
-  int64 follower_count = 4;
-  int64 following_count = 5;
-  int64 post_count = 6;                // 帖子数
-  int64 like_and_collection_count = 7; // 获赞与收藏总数
-
-  repeated ExternalLink links = 8;     // 社交链接
-  string qq_number = 9;                // 未来可以扩展可见性选项
-
-  bool is_following = 10;              // 是否关注了对方
-  bool is_followed_by = 11;            // 是否被对方关注
-  string my_remark = 12;               // 我给对方的备注
-}
-```
-
-##### PrivacySettings (隐私与系统设置)
-```proto
-message PrivacySettings {
-  PrivacyLevel message_permission = 1;    // 私信权限
-  PrivacyLevel collection_visibility = 2; // 收藏可见性
-  PrivacyLevel like_visibility = 3;       // 点赞可见性
-}
-```
-
-##### UserSettings (用户设置)
-```proto
-message UserSettings {
-  bool enable_push_notifications = 1;     // 全局推送开关
-}
-```
-
-##### PrivacyLevel (隐私可见性级别)
-```proto
-enum PrivacyLevel {
-  PRIVACY_LEVEL_PUBLIC = 0;          // 全员公开
-  PRIVACY_LEVEL_FOLLOWERS = 1;       // 粉丝可见
-  PRIVACY_LEVEL_MUTUAL_FOLLOW = 2;   // 互关可见
-  PRIVACY_LEVEL_PRIVATE = 3;         // 仅自己可见
-}
-```
-
-#### RPC 方法
-
-##### GetMe (获取当前登录用户自己的详细信息)
-```proto
-rpc GetMe(GetMeRequest) returns (GetMeResponse);
-```
-- 请求：`GetMeRequest`
-  - `user_id` (string)
-- 响应：`GetMeResponse`
-  - `profile` (UserProfile)
-  - `privacy_settings` (PrivacySettings)
-  - `user_settings` (UserSettings)
-
-##### GetUser (获取他人信息)
-```proto
-rpc GetUser(GetUserRequest) returns (GetUserResponse);
-```
-- 请求：`GetUserRequest`
-  - `target_user_id` (string)
-- 响应：`GetUserResponse`
-  - `profile` (UserProfile)
-  - `privacy_settings` (PrivacySettings)
-
-##### UpdateProfile (局部更新资料)
-```proto
-rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
-```
-- 请求：`UpdateProfileRequest`
-  - `profile` (UserProfile)
-  - `update_mask` (FieldMask) - 指明哪些字段需要更新
-- 响应：`UpdateProfileResponse`
-  - `updated_profile` (UserProfile)
-
-##### Follow (关注用户)
-```proto
-rpc Follow(FollowRequest) returns (FollowResponse);
-```
-- 请求：`FollowRequest`
-  - `target_user_id` (string)
-- 响应：`FollowResponse`
-  - `success` (bool)
-
-##### Unfollow (取消关注)
-```proto
-rpc Unfollow(UnfollowRequest) returns (UnfollowResponse);
-```
-- 请求：`UnfollowRequest`
-  - `target_user_id` (string)
-- 响应：`UnfollowResponse`
-  - `success` (bool)
-
-##### ListFollowers (关注列表)
-```proto
-rpc ListFollowers(ListFollowersRequest) returns (ListFollowersResponse);
-```
-- 请求：`ListFollowersRequest`
-  - `user_id` (string)
-  - `pagination` (Pagination)
-- 响应：`ListFollowersResponse`
-  - `users` (repeated UserSummary)
-  - `next_page_token` (string)
-
-##### ListFollowing (粉丝列表)
-```proto
-rpc ListFollowing(ListFollowingRequest) returns (ListFollowingResponse);
-```
-- 请求：`ListFollowingRequest`
-  - `user_id` (string)
-  - `pagination` (Pagination)
-- 响应：`ListFollowingResponse`
-  - `users` (repeated UserSummary)
-  - `next_page_token` (string)
-
-##### SearchUsers (搜索用户)
-```proto
-rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
-```
-- 请求：`SearchUsersRequest`
-  - `keyword` (string)
-  - `pagination` (Pagination)
-- 响应：`SearchUsersResponse`
-  - `results` (repeated UserSummary)
-  - `next_page_token` (string)
-
----
-
-### 2.3 Admin Service (管理服务)
-
-#### 文件位置
-`proto/api/v1/user/admin.proto`
-
-#### 核心模型
-
-##### ReportStatus (举报状态)
-```proto
-enum ReportStatus {
-  REPORT_STATUS_PENDING = 0;
-  REPORT_STATUS_RESOLVED = 1;
-}
-```
-
-##### ReportAction (举报处理动作)
-```proto
-enum ReportAction {
-  REPORT_ACTION_IGNORE = 0;
-  REPORT_ACTION_BAN = 1;
-  REPORT_ACTION_DELETE = 2;
-}
-```
-
-##### ReportType (举报类型)
-```proto
-enum ReportType {
-  REPORT_TYPE_POST = 0;
-  REPORT_TYPE_COMMENT = 1;
-  REPORT_TYPE_USER = 2;
-}
-```
-
-##### SiteContentType (官网内容类型)
-```proto
-enum SiteContentType {
-  SITE_CONTENT_TYPE_HISTORY = 0;
-  SITE_CONTENT_TYPE_ACTIVITY = 1;
-  SITE_CONTENT_TYPE_DEPARTMENT = 2;
-  SITE_CONTENT_TYPE_MINISTER = 3;
-  SITE_CONTENT_TYPE_STAFF = 4;
-}
-```
-
-##### Report (举报信息)
-```proto
-message Report {
-  string report_id = 1;        // 举报ID
-  string reporter_id = 2;     // 举报者ID
-  string target_id = 3;       // 被举报对象ID
-  ReportType type = 4;        // 举报类型
-  string reason = 5;          // 举报原因
-  string description = 6;     // 举报描述
-  ReportStatus status = 7;    // 处理状态
-  ReportAction action = 8;    // 处理动作
-  int64 created_at = 9;       // 举报时间
-  int64 resolved_at = 10;     // 处理时间
-  string resolver_id = 11;    // 处理人ID
-}
-```
-
-##### Partition (分区信息)
-```proto
-message Partition {
-  int32 id = 1;               // 分区ID
-  string name = 2;            // 分区名称
-  string description = 3;     // 分区描述
-  string icon = 4;            // 分区图标
-  int32 sort_order = 5;       // 排序顺序
-  bool is_active = 6;         // 是否启用
-}
-```
-
-##### SystemStats (系统统计)
-```proto
-message SystemStats {
-  int32 total_users = 1;      // 总用户数
-  int32 active_users = 2;     // 活跃用户数
-  int32 total_posts = 3;      // 总帖子数
-  int32 total_comments = 4;   // 总评论数
-  int32 pending_reports = 5;  // 待处理举报数
-  int64 bandwidth_used = 6;   // 带宽使用量
-  int64 storage_used = 7;     // 存储使用量
-}
-```
-
-#### RPC 方法
-
-##### ListReports (举报受理列表)
-```proto
-rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
-```
-- 请求：`ListReportsRequest`
-  - `status` (ReportStatus)
-  - `pagination` (Pagination)
-- 响应：`ListReportsResponse`
-  - `reports` (repeated Report)
-  - `next_page_token` (string)
-
-##### ResolveReport (处理举报)
-```proto
-rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse);
-```
-- 请求：`ResolveReportRequest`
-  - `report_id` (string)
-  - `action` (ReportAction)
-  - `note` (string)
-- 响应：`ResolveReportResponse`
-
-##### UpdateUserRole (权限管理)
-```proto
-rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
-```
-- 请求：`UpdateUserRoleRequest`
-  - `user_id` (string)
-  - `role` (Role)
-- 响应：`UpdateUserRoleResponse`
-
-##### UpsertSiteContent (编辑官网内容)
-```proto
-rpc UpsertSiteContent(UpsertSiteContentRequest) returns (UpsertSiteContentResponse);
-```
-- 请求：`UpsertSiteContentRequest`
-  - `content` (oneof)
-    - `history` (HistoryEvent)
-    - `activity` (Activity)
-    - `department` (DepartmentInfo)
-    - `minister` (MinisterInfo)
-    - `staff` (StaffGroup)
-- 响应：`UpsertSiteContentResponse`
-
-##### ManagePartition (分区管理)
-```proto
-rpc ManagePartition(ManagePartitionRequest) returns (ManagePartitionResponse);
-```
-- 请求：`ManagePartitionRequest`
-  - `partitions` (repeated Partition)
-- 响应：`ManagePartitionResponse`
-
-##### GetSystemStats (获取系统统计)
-```proto
-rpc GetSystemStats(GetSystemStatsRequest) returns (GetSystemStatsResponse);
-```
-- 请求：`GetSystemStatsRequest`
-- 响应：`GetSystemStatsResponse`
-  - `stats` (SystemStats)
-
----
-
-## 3. Community (社区内容微服务)
-
-### 3.1 Content Service (内容服务)
-
-#### 文件位置
-`proto/api/v1/community/content.proto`
-
-#### 核心模型
-
-##### Post (帖子)
-```proto
-message Post {
-  string post_id = 1;         // 帖子ID
-  UserSummary author = 2;     // 作者信息
-  string title = 3;          // 标题
-  string content = 4;        // 内容
-  repeated Media media = 5;  // 媒体资源
-  int32 partition_id = 6;    // 分区ID
-  string partition_name = 7; // 分区名称
-  int32 like_count = 8;      // 点赞数
-  int32 comment_count = 9;   // 评论数
-  int32 collect_count = 10;  // 收藏数
-  int32 view_count = 11;     // 浏览数
-  bool is_liked = 12;        // 当前用户是否已点赞
-  bool is_collected = 13;    // 当前用户是否已收藏
-  int64 created_at = 14;     // 创建时间戳
-  int64 updated_at = 15;     // 更新时间戳
-}
-```
-
-##### UserPostType (用户相关帖子类型)
-```proto
-enum UserPostType {
-  USER_POST_TYPE_PUBLISHED = 0;   // 发布的
-  USER_POST_TYPE_LIKED = 1;       // 喜欢的
-  USER_POST_TYPE_COLLECTED = 2;   // 收藏的
-}
-```
-
-##### PostCategory (帖子推荐分区)
-```proto
-enum PostCategory {
-  POST_CATEGORY_RECOMMEND = 0;
-  POST_CATEGORY_HOT = 1;
-  POST_CATEGORY_NEW = 2;
-  POST_CATEGORY_FOLLOWING = 3;
-  POST_CATEGORY_DEPARTMENT = 4;
-}
-```
-
-#### RPC 方法
-
-##### CreatePost (发布帖子)
-```proto
-rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
-```
-- 请求：`CreatePostRequest`
-  - `title` (string)
-  - `content` (string)
-  - `media` (repeated Media)
-  - `partition_id` (int32)
-- 响应：`CreatePostResponse`
-  - `post` (Post)
-
-##### DeletePost (删除帖子)
-```proto
-rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
-```
-- 请求：`DeletePostRequest`
-  - `post_id` (string)
-- 响应：`DeletePostResponse`
-  - `succeed` (bool)
-
-##### GetPost (帖子详情)
-```proto
-rpc GetPost(GetPostRequest) returns (GetPostResponse);
-```
-- 请求：`GetPostRequest`
-  - `post_id` (string)
-- 响应：`GetPostResponse`
-  - `post` (Post)
-
-##### ListPosts (首页瀑布流)
-```proto
-rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
-```
-- 请求：`ListPostsRequest`
-  - `category` (PostCategory)
-  - `pagination` (Pagination)
-- 响应：`ListPostsResponse`
-  - `posts` (repeated Post)
-  - `next_page_token` (string)
-
-##### ListUserPosts (个人页作品集)
-```proto
-rpc ListUserPosts(ListUserPostsRequest) returns (ListUserPostsResponse);
-```
-- 请求：`ListUserPostsRequest`
-  - `user_id` (string)
-  - `type` (UserPostType)
-  - `pagination` (Pagination)
-- 响应：`ListUserPostsResponse`
-  - `posts` (repeated Post)
-  - `next_page_token` (string)
-
-##### SearchPosts (搜索帖子)
-```proto
-rpc SearchPosts(SearchPostsRequest) returns (SearchPostsResponse);
-```
-- 请求：`SearchPostsRequest`
-  - `keyword` (string)
-  - `pagination` (Pagination)
-- 响应：`SearchPostsResponse`
-  - `posts` (repeated Post)
-  - `next_page_token` (string)
-
----
-
-### 3.2 Interaction & Comment Services (互动服务)
-
-#### 文件位置
-`proto/api/v1/community/interaction.proto`
-
-#### 核心模型
-
-##### TargetType (互动目标类型)
-```proto
-enum TargetType {
-  TARGET_TYPE_POST = 0;
-  TARGET_TYPE_COMMENT = 1;
-}
-```
-
-##### CommentSort (评论排序方式)
-```proto
-enum CommentSort {
-  COMMENT_SORT_HOT = 0;
-  COMMENT_SORT_NEW = 1;
-}
-```
-
-##### Comment (评论)
-```proto
-message Comment {
-  string comment_id = 1;
-  UserSummary author = 2;
-  string content = 3;
-  string post_id = 4;
-  string root_id = 5;  // 一级评论ID
-  string reply_to_user_id = 6;
-  int32 like_count = 7;
-  bool is_liked = 8;
-  int64 created_at = 9;
-  repeated Comment replies = 10;  // 二级回复
-}
-```
-
-#### RPC 方法 - InteractionService
-
-##### SetLike (点赞/取消赞)
-```proto
-rpc SetLike(SetLikeRequest) returns (SetLikeResponse);
-```
-- 请求：`SetLikeRequest`
-  - `target_id` (string)
-  - `type` (TargetType)
-  - `is_active` (bool) - true=点赞, false=取消
-- 响应：`SetLikeResponse`
-  - `succeed` (bool)
-
-##### SetCollect (收藏/取消收藏)
-```proto
-rpc SetCollect(SetCollectRequest) returns (SetCollectResponse);
-```
-- 请求：`SetCollectRequest`
-  - `post_id` (string)
-  - `is_active` (bool) - true=收藏, false=取消
-- 响应：`SetCollectResponse`
-  - `succeed` (bool)
-
-#### RPC 方法 - CommentService
-
-##### CreateComment (发送评论)
-```proto
-rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
-```
-- 请求：`CreateCommentRequest`
-  - `post_id` (string)
-  - `content` (string)
-  - `root_id` (string)
-  - `reply_to_user_id` (string)
-- 响应：`CreateCommentResponse`
-  - `comment` (Comment)
-
-##### ListComments (评论列表)
-```proto
-rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
-```
-- 请求：`ListCommentsRequest`
-  - `post_id` (string)
-  - `root_id` (string)
-  - `sort` (CommentSort)
-  - `pagination` (Pagination)
-- 响应：`ListCommentsResponse`
-  - `comments` (repeated Comment)
-  - `next_page_token` (string)
-
-##### DeleteComment (删除评论)
-```proto
-rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
-```
-- 请求：`DeleteCommentRequest`
-  - `comment_id` (string)
-- 响应：`DeleteCommentResponse`
-  - `succeed` (bool)
-
----
-
-### 3.3 Site Service (官网服务)
-
-#### 文件位置
-`proto/api/v1/community/site.proto`
-
-#### 核心模型
-
-##### DepartmentInfo (部门信息)
-```proto
-message DepartmentInfo {
-  string id = 1;              // 部门ID
-  string name = 2;            // 部门名称（中文）
-  string name_en = 3;         // 部门名称（英文）
-  string logo = 4;            // 部门Logo
-  string cover_image = 5;     // 封面图片
-  string video_url = 6;       // 宣传视频
-  string description = 7;     // 部门简介
-  map<string, string> links = 8;  // 相关链接
-}
-```
-
-##### Activity (活动信息)
-```proto
-message Activity {
-  string id = 1;              // 活动ID
-  string name = 2;            // 活动名称（中文）
-  string name_en = 3;         // 活动名称（英文）
-  string cover_image = 4;     // 封面图片
-  string video_url = 5;       // 宣传视频
-  string description = 6;     // 活动简介
-  string start_time = 7;      // 开始时间
-  string end_time = 8;        // 结束时间
-  map<string, string> links = 9;  // 相关链接
-}
-```
-
-##### HistoryEvent (历史事件)
-```proto
-message HistoryEvent {
-  string id = 1;              // 事件ID
-  string year = 2;            // 年份
-  string date = 3;            // 日期
-  string title = 4;           // 事件标题
-  string description = 5;     // 事件描述
-  string image = 6;           // 事件图片
-}
-```
-
-##### MinisterInfo (部长信息)
-```proto
-message MinisterInfo {
-  string id = 1;              // 部长ID
-  string user_id = 2;         // 用户ID
-  string nickname = 3;        // 昵称
-  string avatar = 4;          // 头像
-  string department = 5;      // 所属部门
-  string position = 6;        // 职位
-  string intro = 7;           // 个人简介
-  map<string, string> links = 8;  // 外部链接
-  int32 year = 9;             // 任职年份
-}
-```
-
-##### StaffGroup (Staff 分组)
-```proto
-message StaffGroup {
-  string id = 1;              // 分组ID
-  string name = 2;            // 分组名称
-  repeated StaffMember members = 3;  // 成员列表
-}
-```
-
-##### StaffMember (Staff 成员)
-```proto
-message StaffMember {
-  string id = 1;              // 成员ID
-  string user_id = 2;         // 用户ID
-  string nickname = 3;        // 昵称
-  string avatar = 4;          // 头像
-  string role = 5;            // 职责
-  string department = 6;      // 所属部门
-  string intro = 7;           // 个人简介
-  map<string, string> links = 8;  // 外部链接
-}
-```
-
-##### SponsorInfo (赞助信息)
-```proto
-message SponsorInfo {
-  string id = 1;              // 赞助ID
-  string name = 2;            // 赞助名称
-  string avatar = 3;          // 头像
-  string department = 4;      // 所属部门
-  string intro = 5;           // 简介
-  map<string, string> links = 6;  // 外部链接
-  string sponsor_amount = 7;  // 赞助金额
-}
-```
-
-#### RPC 方法
-
-##### ListDepartments (部门介绍)
-```proto
-rpc ListDepartments(ListDepartmentsRequest) returns (ListDepartmentsResponse);
-```
-- 请求：`ListDepartmentsRequest`
-- 响应：`ListDepartmentsResponse`
-  - `list` (repeated DepartmentInfo)
-
-##### ListActivities (活动信息)
-```proto
-rpc ListActivities(ListActivitiesRequest) returns (ListActivitiesResponse);
-```
-- 请求：`ListActivitiesRequest`
-- 响应：`ListActivitiesResponse`
-  - `list` (repeated Activity)
-
-##### ListHistory (发展历程)
-```proto
-rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse);
-```
-- 请求：`ListHistoryRequest`
-- 响应：`ListHistoryResponse`
-  - `list` (repeated HistoryEvent)
-
-##### ListMinisters (部长宣言)
-```proto
-rpc ListMinisters(ListMinistersRequest) returns (ListMinistersResponse);
-```
-- 请求：`ListMinistersRequest`
-  - `year` (int32)
-- 响应：`ListMinistersResponse`
-  - `list` (repeated MinisterInfo)
-
-##### ListStaff (Staff/赞助)
-```proto
-rpc ListStaff(ListStaffRequest) returns (ListStaffResponse);
-```
-- 请求：`ListStaffRequest`
-- 响应：`ListStaffResponse`
-  - `list` (repeated StaffGroup)
-
----
-
-### 3.4 Resource Service (资源服务)
-
-#### 文件位置
-`proto/api/v1/community/resource.proto`
-
-#### RPC 方法
-
-##### GetUploadToken (获取上传凭证)
-```proto
-rpc GetUploadToken(GetUploadTokenRequest) returns (GetUploadTokenResponse);
-```
-- 请求：`GetUploadTokenRequest`
-  - `filename` (string) - 文件名
-  - `size` (int64) - 文件大小
-  - `usage` (string) - 用途：Avatar/Post
-- 响应：`GetUploadTokenResponse`
-  - `upload_url` (string) - 上传地址
-  - `public_url` (string) - 公开访问地址
-
----
-
-## 4. Messenger (即时通讯微服务)
-
-### 4.1 Message Service (消息与通知服务)
-
-#### 文件位置
-`proto/api/v1/messenger/message.proto`
-
-#### 核心模型
-
-##### MessageType (消息类型)
-```proto
-enum MessageType {
-  MESSAGE_TYPE_UNSPECIFIED = 0;
-  MESSAGE_TYPE_TEXT = 1;
-  MESSAGE_TYPE_IMAGE = 2;
-  MESSAGE_TYPE_VIDEO = 3;
-  MESSAGE_TYPE_AUDIO = 4;
-}
-```
-
-##### Message (私信)
-```proto
-message Message {
-  string message_id = 1;
-  string sender_id = 2;
-  string receiver_id = 3;
-  MessageType type = 4;
-  string content = 5;
-  int64 sent_at = 6; // 毫秒时间戳
-  bool is_read = 7;
-
-  enum Status {
-    SENDING = 0;
-    SUCCESS = 1;
-    FAILED = 2;
+```json
+{
+  "profile": {
+    "nickname": "新昵称"
+  },
+  "update_mask": {
+    "paths": ["nickname"]
   }
-  Status status = 8;
 }
 ```
 
-##### Conversation (会话)
-```proto
-message Conversation {
-  string conversation_id = 1;
-  UserSummary peer = 2;         // 对方用户信息（头像、昵称、部门徽章）
-  Message last_message = 3;    // 最后一条消息摘要
-  int32 unread_count = 4;      // 未读数
-  int64 updated_at = 5;        // 用于排序
-  bool is_pinned = 6;          // 是否置顶
-}
-```
+### 3. 并发控制
 
-##### NotificationAction (互动通知分类)
-```proto
-enum NotificationAction {
-  ACTION_UNSPECIFIED = 0;
-  ACTION_LIKE = 1;           // 赞
-  ACTION_COLLECTION = 2;     // 收藏
-  ACTION_COMMENT = 3;        // 评论
-  ACTION_MENTION = 4;        // @ 提到
-  ACTION_FOLLOW = 5;         // 新增关注
-  ACTION_SYSTEM = 6;         // 晒你通知（系统管理通知）
-  ACTION_REPORT_FEEDBACK = 7; // 举报受理反馈（管理通知）
-}
-```
+- 对资源操作（点赞、收藏等）使用幂等设计
+- 关键操作（如创建内容）使用事务保证一致性
 
-##### Notification (通知)
-```proto
-message Notification {
-  string notification_id = 1;
-  NotificationAction action = 2; // 通知具体动作
-  string title = 3;              // 标题
-  string content = 4;            // 预览文本（如评论的具体内容）
+### 4. 性能优化
 
-  string target_id = 5;          // 关联的帖子ID或评论ID
-  string target_type = 6;        // 目标类型（post/comment）
+- 对于频繁访问的数据（如网站配置），实现缓存机制
+- 对于列表查询，使用索引优化查询性能
+- 对于大图片/视频，使用 CDN 加速访问
 
-  repeated UserSummary actors = 7;
-  int32 total_actors_count = 8;   // 总参与人数
+---
 
-  bool is_read = 9;
-  int64 created_at = 10;          // 创建时间，遵循原则A显示规则
-}
-```
+## 版本更新日志
 
-#### RPC 方法
+### v1.0.0 (2026-02-03)
 
-##### ListConversations (获取会话列表)
-```proto
-rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
-```
-- 请求：`ListConversationsRequest`
-  - `pagination` (Pagination) - 游标分页
-- 响应：`ListConversationsResponse`
-  - `conversations` (repeated Conversation)
-  - `next_page_token` (string)
+- 初始化版本
+- 包含用户认证、用户管理、社区内容、官网展示、消息通知等核心功能
+- 使用 Connect-Go 框架支持 gRPC 和 HTTP/JSON
+- 使用 Buf v2 管理 API 定义
 
-##### ListMessages (获取聊天记录)
-```proto
-rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
-```
-- 请求：`ListMessagesRequest`
-  - `peer_id` (string)
-  - `pagination` (Pagination)
-  - `search_keyword` (string) - 对话内关键词搜索
-- 响应：`ListMessagesResponse`
-  - `messages` (repeated Message)
-  - `next_page_token` (string)
+---
 
-##### SendMessage (发送私信)
-```proto
-rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
-```
-- 请求：`SendMessageRequest`
-  - `receiver_id` (string)
-  - `content` (string)
-  - `type` (MessageType)
-- 响应：`SendMessageResponse`
-  - `message` (Message)
-
-##### ListNotifications (获取通知列表)
-```proto
-rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
-```
-- 请求：`ListNotificationsRequest`
-  - `filter_actions` (NotificationAction) - 按互动类型过滤
-  - `pagination` (Pagination)
-- 响应：`ListNotificationsResponse`
-  - `notifications` (repeated Notification)
-  - `next_page_token` (string)
-  - `total_unread_count` (int32) - 方便 Tab 导航栏显示角标
-
-##### MarkRead (批量标记已读)
-```proto
-rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
-```
-- 请求：`MarkReadRequest`
-  - `scope` (Scope)
-    - `SCOPE_ALL` (0) - 清除所有红点
-    - `SCOPE_CONVERSATION` (1) - 标记一个会话已读
-    - `SCOPE_NOTIFICATION_TYPE` (2) - 标记一个类型已读
-  - `target` (oneof)
-    - `conversation_id` (string)
-    - `notification_type` (NotificationAction)
-- 响应：`MarkReadResponse`
-  - `success` (bool)
+*最后更新：2026-02-03*
