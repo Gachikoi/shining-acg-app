@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package api.community.v1;
+
+// 假设 api.common.v1 在这里引用，实际使用请确保路径正确
+import "api/common/v1/common.proto";
+
+service ContentService {
+  // 发布帖子
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+
+  // 删除帖子
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
+
+  // 帖子详情
+  rpc GetPost(GetPostRequest) returns (GetPostResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 统一帖子列表接口
+  // 涵盖：首页推荐、最新、热门、关注、部门分区、个人页作品、关键词搜索、高级筛选
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// ---------------------------------------------------------
+// 核心数据结构
+// ---------------------------------------------------------
+
+message Post {
+  string post_id = 1;
+  api.common.v1.UserSummary author = 2;
+  string title = 3;
+  string content = 4;        // 详情页返回全文
+  repeated api.common.v1.Media media = 5;
+
+  // 分区信息
+  api.common.v1.Department department_id = 6;
+  string department_name = 7;
+
+  // 交互数据
+  int32 like_count = 8;
+  int32 comment_count = 9;
+  int32 collect_count = 10;
+  int32 view_count = 11;
+
+  // 当前用户状态
+  bool is_liked = 12;
+  bool is_collected = 13;
+  bool is_following_author = 16; // 新增：是否已关注作者
+
+  // 时间与状态
+  int64 created_at = 14;
+  int64 updated_at = 15;
+  PostStatus status = 17;    // 新增：帖子状态
+}
+
+// 帖子预览（卡片视图数据）
+message PostPreview {
+  // 基础信息
+  string post_id = 1;
+  string title = 2;
+
+  // 摘要：后端截取内容的前N个字符（如前60字），去除Markdown/HTML格式，用于纯文本展示
+  string summary = 3;
+
+  // 封面：专门用于列表展示的媒体对象。
+  // 后端逻辑：如果有图，取第一张的缩略图地址；如果是视频，取视频封面。
+  api.common.v1.Media cover = 4;
+
+  // 作者信息 (包含头像 avatar, 用户名 name, id 等)
+  api.common.v1.UserSummary author = 5;
+
+  // 核心统计数据
+  int32 like_count = 6;
+  int32 view_count = 7;     // 列表页通常也显示浏览量
+  int32 comment_count = 8;  // 显眼的评论数能引导点击
+
+  // 状态标记 (前端用于渲染 UI 状态)
+  bool is_liked = 9;        // 当前用户是否点赞
+  bool has_video = 10;      // UI上是否显示一个“播放”的小图标
+
+  // 辅助信息
+  int64 publish_time = 11;  // 发布时间戳，前端显示 "3小时前"
+  string partition_name = 12; // 显示在卡片角落的标签，如 "后端开发"
+}
+
+enum PostStatus {
+  POST_STATUS_UNSPECIFIED = 0;
+  POST_STATUS_PUBLISHED = 1; // 已发布
+  POST_STATUS_AUDITING = 2;  // 审核中
+  POST_STATUS_DELETED = 3;   // 已删除
+}
+
+// ---------------------------------------------------------
+// 统一筛选请求设计 (The Unified Request)
+// ---------------------------------------------------------
+
+message ListPostsRequest {
+  // 1. 场景 (必填)：决定数据源和基础逻辑
+  enum Scene {
+    SCENE_UNSPECIFIED = 0;
+    SCENE_RECOMMEND = 1;     // 推荐 (算法流)
+    SCENE_TIMELINE = 2;      // 综合瀑布流 (用于最新、热门)
+    SCENE_FOLLOWING = 3;     // 关注的人
+    SCENE_PARTITION = 4;     // 部门/分区视图 (前端"固定部门"Tab用这个)
+    SCENE_USER_PROFILE = 5;  // 个人主页 (查看某人发布的/喜欢的)
+  }
+  Scene scene = 1;
+
+  // 2. 筛选条件 (可选)：支持多维度组合
+  PostFilter filter = 2;
+
+  // 3. 排序规则 (可选)：除了推荐流外，其他流通常需要指定
+  enum SortBy {
+    SORT_BY_UNSPECIFIED = 0;
+    SORT_BY_CREATED_AT = 1;  // 按发布时间 (最新)
+    SORT_BY_HOT_SCORE = 2;   // 按热度 (热门)
+    SORT_BY_RELEVANCE = 3;   // 按相关度 (搜索时用)
+  }
+  SortBy sort = 3;
+
+  // 4. 分页
+  api.common.v1.Pagination pagination = 4;
+}
+
+// 具体的筛选器
+message PostFilter {
+  // 关键词搜索
+  string keyword = 1;
+
+  // 部门分区筛选 (支持多选，后台只有部门分区，这里传ID)
+  repeated api.common.v1.Department department_ids = 2;
+
+  // 时间范围筛选
+  TimeRange time_range = 3;
+
+  // 作者ID筛选 (用于个人主页场景，或者只看某人)
+  string author_id = 4;
+
+  // 用户帖子类型 (仅当 Scene = USER_PROFILE 时有效)
+  // 用于区分：他发布的、他点赞的、他收藏的
+  UserPostType user_post_type = 5;
+}
+
+message TimeRange {
+  int64 start_timestamp = 1; // 开始时间
+  int64 end_timestamp = 2;   // 结束时间
+}
+
+enum UserPostType {
+  USER_POST_TYPE_PUBLISHED = 0;
+  USER_POST_TYPE_LIKED = 1;
+  USER_POST_TYPE_COLLECTED = 2;
+}
+
+message ListPostsResponse {
+  repeated PostPreview posts = 1;
+  string next_page_token = 2; // 游标分页 Token
+}
+
+// ---------------------------------------------------------
+// 其他基础请求
+// ---------------------------------------------------------
+
+message CreatePostRequest {
+  string title = 1;
+  string content = 2;
+  repeated api.common.v1.Media media = 3;
+  int32 partition_id = 4;
+  // 可以增加 tags 等
+}
+
+message CreatePostResponse {
+  Post post = 1;
+}
+
+message DeletePostRequest {
+  string post_id = 1;
+}
+
+message DeletePostResponse {}
+
+message GetPostRequest {
+  string post_id = 1;
+}
+
+message GetPostResponse {
+  Post post = 1;
+}
