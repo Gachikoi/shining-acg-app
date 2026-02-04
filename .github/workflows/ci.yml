@@ -50,8 +50,7 @@ jobs:
   backend:
     name: Backend (Go)
     runs-on: ubuntu-latest
-    # TODO: 启用此 job 当后端开发开始后
-    if: false
+    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
@@ -60,8 +59,25 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.25.3"
           cache-dependency-path: packages/server/go.sum
+
+      - name: Setup Buf CLI
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.50.0
+
+      - name: Check Protocol Buffers code generation
+        working-directory: packages/server/proto
+        run: |
+          buf --version
+          buf generate
+          git status
+          if git status | grep -q "gen/proto"; then
+            echo "Error: Generated proto code is not up to date"
+            git diff
+            exit 1
+          fi
 
       - name: Download dependencies
         working-directory: packages/server
@@ -80,13 +96,20 @@ jobs:
         working-directory: packages/server
         run: go vet ./...
 
-      - name: Build
+        # 查找所有包含 main.go 的目录并构建
+      - name: Build all microservices
         working-directory: packages/server
-        run: go build -v ./...
+        run: |
+          mkdir -p dist
+          for dir in $(find . -name "main.go" -exec dirname {} +); do
+            service_name=$(basename $(dirname $dir)) # 比如获取 'messenger'
+            echo "Building $service_name..."
+            go build -o ./dist/$service_name $dir
+          done
 
-      - name: Test
-        working-directory: packages/server
-        run: go test -v ./...
+#      - name: Test
+#        working-directory: packages/server
+#        run: go test -v ./...
 
   android:
     name: Android (Kotlin)

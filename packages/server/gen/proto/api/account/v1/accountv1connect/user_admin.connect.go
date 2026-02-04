@@ -42,6 +42,12 @@ const (
 	// UserAdminServiceAdminSearchUsersProcedure is the fully-qualified name of the UserAdminService's
 	// AdminSearchUsers RPC.
 	UserAdminServiceAdminSearchUsersProcedure = "/api.account.v1.UserAdminService/AdminSearchUsers"
+	// UserAdminServiceListVerificationApplicationsProcedure is the fully-qualified name of the
+	// UserAdminService's ListVerificationApplications RPC.
+	UserAdminServiceListVerificationApplicationsProcedure = "/api.account.v1.UserAdminService/ListVerificationApplications"
+	// UserAdminServiceApproveVerificationProcedure is the fully-qualified name of the
+	// UserAdminService's ApproveVerification RPC.
+	UserAdminServiceApproveVerificationProcedure = "/api.account.v1.UserAdminService/ApproveVerification"
 )
 
 // UserAdminServiceClient is a client for the api.account.v1.UserAdminService service.
@@ -52,6 +58,10 @@ type UserAdminServiceClient interface {
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
 	// 后台搜索用户 (比前台搜索权限更大，能搜到封禁用户等)
 	AdminSearchUsers(context.Context, *connect.Request[v1.AdminSearchUsersRequest]) (*connect.Response[v1.AdminSearchUsersResponse], error)
+	// 获取待审核的认证申请列表
+	ListVerificationApplications(context.Context, *connect.Request[v1.ListVerificationApplicationsRequest]) (*connect.Response[v1.ListVerificationApplicationsResponse], error)
+	// 审核认证申请 (通过/驳回)
+	ApproveVerification(context.Context, *connect.Request[v1.ApproveVerificationRequest]) (*connect.Response[v1.ApproveVerificationResponse], error)
 }
 
 // NewUserAdminServiceClient constructs a client for the api.account.v1.UserAdminService service. By
@@ -80,14 +90,27 @@ func NewUserAdminServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		listVerificationApplications: connect.NewClient[v1.ListVerificationApplicationsRequest, v1.ListVerificationApplicationsResponse](
+			httpClient,
+			baseURL+UserAdminServiceListVerificationApplicationsProcedure,
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		approveVerification: connect.NewClient[v1.ApproveVerificationRequest, v1.ApproveVerificationResponse](
+			httpClient,
+			baseURL+UserAdminServiceApproveVerificationProcedure,
+			opts...,
+		),
 	}
 }
 
 // userAdminServiceClient implements UserAdminServiceClient.
 type userAdminServiceClient struct {
-	updateUserRole   *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
-	banUser          *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
-	adminSearchUsers *connect.Client[v1.AdminSearchUsersRequest, v1.AdminSearchUsersResponse]
+	updateUserRole               *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
+	banUser                      *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	adminSearchUsers             *connect.Client[v1.AdminSearchUsersRequest, v1.AdminSearchUsersResponse]
+	listVerificationApplications *connect.Client[v1.ListVerificationApplicationsRequest, v1.ListVerificationApplicationsResponse]
+	approveVerification          *connect.Client[v1.ApproveVerificationRequest, v1.ApproveVerificationResponse]
 }
 
 // UpdateUserRole calls api.account.v1.UserAdminService.UpdateUserRole.
@@ -105,6 +128,16 @@ func (c *userAdminServiceClient) AdminSearchUsers(ctx context.Context, req *conn
 	return c.adminSearchUsers.CallUnary(ctx, req)
 }
 
+// ListVerificationApplications calls api.account.v1.UserAdminService.ListVerificationApplications.
+func (c *userAdminServiceClient) ListVerificationApplications(ctx context.Context, req *connect.Request[v1.ListVerificationApplicationsRequest]) (*connect.Response[v1.ListVerificationApplicationsResponse], error) {
+	return c.listVerificationApplications.CallUnary(ctx, req)
+}
+
+// ApproveVerification calls api.account.v1.UserAdminService.ApproveVerification.
+func (c *userAdminServiceClient) ApproveVerification(ctx context.Context, req *connect.Request[v1.ApproveVerificationRequest]) (*connect.Response[v1.ApproveVerificationResponse], error) {
+	return c.approveVerification.CallUnary(ctx, req)
+}
+
 // UserAdminServiceHandler is an implementation of the api.account.v1.UserAdminService service.
 type UserAdminServiceHandler interface {
 	// 修改用户角色 (提拔管理员)
@@ -113,6 +146,10 @@ type UserAdminServiceHandler interface {
 	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
 	// 后台搜索用户 (比前台搜索权限更大，能搜到封禁用户等)
 	AdminSearchUsers(context.Context, *connect.Request[v1.AdminSearchUsersRequest]) (*connect.Response[v1.AdminSearchUsersResponse], error)
+	// 获取待审核的认证申请列表
+	ListVerificationApplications(context.Context, *connect.Request[v1.ListVerificationApplicationsRequest]) (*connect.Response[v1.ListVerificationApplicationsResponse], error)
+	// 审核认证申请 (通过/驳回)
+	ApproveVerification(context.Context, *connect.Request[v1.ApproveVerificationRequest]) (*connect.Response[v1.ApproveVerificationResponse], error)
 }
 
 // NewUserAdminServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -137,6 +174,17 @@ func NewUserAdminServiceHandler(svc UserAdminServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	userAdminServiceListVerificationApplicationsHandler := connect.NewUnaryHandler(
+		UserAdminServiceListVerificationApplicationsProcedure,
+		svc.ListVerificationApplications,
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	userAdminServiceApproveVerificationHandler := connect.NewUnaryHandler(
+		UserAdminServiceApproveVerificationProcedure,
+		svc.ApproveVerification,
+		opts...,
+	)
 	return "/api.account.v1.UserAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserAdminServiceUpdateUserRoleProcedure:
@@ -145,6 +193,10 @@ func NewUserAdminServiceHandler(svc UserAdminServiceHandler, opts ...connect.Han
 			userAdminServiceBanUserHandler.ServeHTTP(w, r)
 		case UserAdminServiceAdminSearchUsersProcedure:
 			userAdminServiceAdminSearchUsersHandler.ServeHTTP(w, r)
+		case UserAdminServiceListVerificationApplicationsProcedure:
+			userAdminServiceListVerificationApplicationsHandler.ServeHTTP(w, r)
+		case UserAdminServiceApproveVerificationProcedure:
+			userAdminServiceApproveVerificationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -164,4 +216,12 @@ func (UnimplementedUserAdminServiceHandler) BanUser(context.Context, *connect.Re
 
 func (UnimplementedUserAdminServiceHandler) AdminSearchUsers(context.Context, *connect.Request[v1.AdminSearchUsersRequest]) (*connect.Response[v1.AdminSearchUsersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserAdminService.AdminSearchUsers is not implemented"))
+}
+
+func (UnimplementedUserAdminServiceHandler) ListVerificationApplications(context.Context, *connect.Request[v1.ListVerificationApplicationsRequest]) (*connect.Response[v1.ListVerificationApplicationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserAdminService.ListVerificationApplications is not implemented"))
+}
+
+func (UnimplementedUserAdminServiceHandler) ApproveVerification(context.Context, *connect.Request[v1.ApproveVerificationRequest]) (*connect.Response[v1.ApproveVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserAdminService.ApproveVerification is not implemented"))
 }
