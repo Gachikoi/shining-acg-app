@@ -21,7 +21,6 @@ service UserService {
 
   // 批量获取用户信息 (用于列表页头像渲染等)
   rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 更新个人资料 (支持部分更新)
@@ -41,6 +40,11 @@ service UserService {
   // 获取共同关注
   rpc ListMutualFollowers(ListMutualFollowersRequest) returns (ListMutualFollowersResponse);
 
+  // --- 认证 ---
+
+  // 申请身份认证
+  rpc ApplyVerification(ApplyVerificationRequest) returns (ApplyVerificationResponse);
+
   // --- 搜索 ---
   rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
 }
@@ -51,23 +55,22 @@ service UserService {
 
 // 用户公开资料 (他人可见)
 message UserProfile {
-  // 基础信息 (ID, Name, Avatar)
+  // 基础信息 (ID, Name, 头像, 部门徽章, 认证头衔)
   api.common.v1.UserSummary base = 1;
 
   string intro = 2;                    // 简介
   string background_image = 3;         // 个人主页背景图
-  repeated api.common.v1.Department departments = 4;
-  repeated api.common.v1.Link links = 5;
+  repeated api.common.v1.Link links = 4;  // 外部链接
 
   // 统计数据 (建议单独通过 FieldMask 控制是否返回)
-  UserStats stats = 6;
+  UserStats stats = 5;
 
   // 关系状态 (当前查看者 vs 这个用户)
-  UserRelationStatus relation_status = 7;
+  UserRelationStatus relation_status = 6;
 
   // 扩展字段
+  api.common.v1.Role role = 7; // 用户角色
   string ip_location = 8; // IP属地 (如: 北京)
-  api.common.v1.Role role = 9; // 用户角色
 }
 
 // 统计数据
@@ -204,6 +207,15 @@ message ListMutualFollowersRequest {
 message ListMutualFollowersResponse {
   repeated UserProfile users = 1;
   string next_page_token = 2;
+}
+
+message ApplyVerificationRequest {
+  string verified_title = 1; // 申请的认证头衔 (如: 23届部长, 社团负责人)
+}
+
+message ApplyVerificationResponse {
+  bool succeed = 1;
+  string message = 2; // 提示信息 (如: 申请已提交, 请等待审核)
 }
 
 message SearchUsersRequest {

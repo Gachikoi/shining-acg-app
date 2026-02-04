@@ -28,6 +28,15 @@ enum Department {
   DEPARTMENT_MINECRAFT = 14;      // MC 组
 }
 
+// 部门基础元数据 (Lightweight)
+// 用于：用户徽章渲染、帖子分区标签、侧边栏导航
+// 前端应该在 App 启动时拉取一次“全量 DepartmentBase 列表”并缓存
+message DepartmentBase {
+  Department id = 1;      // 枚举 ID
+  string name = 2;        // 全称 (如 "轻音部")
+//  string icon_url = 3;    // 徽章图标 (SVG/PNG) - 用于个人主页徽章、帖子分区图标
+}
+
 // 用户角色枚举
 enum Role {
   ROLE_VISITOR = 0;     // 游客
@@ -56,7 +65,7 @@ message UserSummary {
   string user_id = 1;
   string nickname = 2; // 昵称，若有备注优先显示备注
   string avatar = 3;
-  api.common.v1.Department primary_department = 4; // 主所属部门徽章
+  repeated api.common.v1.DepartmentBase departments = 4; // 所有所属部门徽章
   bool is_verified = 5;              // 身份认证状态
   string verified_title = 6;         // 认证头衔（如：23届部长）
 }

@@ -59,16 +59,14 @@ service PortalService {
 // ==========================================
 
 // 部门信息
-message Department {
-  string id = 1;
-  string name = 2;
-  string name_en = 3;
-  string logo = 4;
-  string cover_image = 5;
-  string intro_video_url = 6; // 需求提到的部门视频
-  string description = 7;
-  repeated api.common.v1.Link links = 8;    // 使用 repeated 保证顺序
-  int32 sort_order = 9;       // 排序权重，越大越靠前
+message DepartmentInfo {
+  api.common.v1.DepartmentBase department_base = 1;
+  string logo = 2;
+  string cover_image = 3;
+  string intro_video_url = 4; // 需求提到的部门视频
+  string description = 5;
+  repeated api.common.v1.Link links = 6;    // 使用 repeated 保证顺序
+  int32 sort_order = 7;       // 排序权重，越大越靠前
 }
 
 // 活动
@@ -171,7 +169,7 @@ message GetSiteConfigResponse {
 
 message ListDepartmentsRequest {}
 message ListDepartmentsResponse {
-  repeated Department list = 1;
+  repeated DepartmentInfo list = 1;
 }
 
 message ListActivitiesRequest {}
