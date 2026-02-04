@@ -17,6 +17,14 @@ service UserAdminService {
   rpc AdminSearchUsers(AdminSearchUsersRequest) returns (AdminSearchUsersResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // 获取待审核的认证申请列表
+  rpc ListVerificationApplications(ListVerificationApplicationsRequest) returns (ListVerificationApplicationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 审核认证申请 (通过/驳回)
+  rpc ApproveVerification(ApproveVerificationRequest) returns (ApproveVerificationResponse);
 }
 
 message UpdateUserRoleRequest {
@@ -39,4 +47,49 @@ message AdminSearchUsersRequest {
 message AdminSearchUsersResponse {
   // 这里可以复用 UserSummary 或定义更详细的 AdminUserView
   repeated api.common.v1.UserSummary users = 1;
+}
+
+// 认证申请状态枚举
+enum VerificationStatus {
+  VERIFICATION_STATUS_PENDING = 0;    // 待审核
+  VERIFICATION_STATUS_APPROVED = 1;   // 已通过
+  VERIFICATION_STATUS_REJECTED = 2;   // 已驳回
+}
+
+// 认证申请信息
+message VerificationApplication {
+  string application_id = 1;         // 申请ID
+  string user_id = 2;                // 申请人ID
+  api.common.v1.UserSummary user = 3; // 申请人信息
+  string verified_title = 4;         // 申请的认证头衔
+  VerificationStatus status = 5;     // 审核状态
+  string reject_reason = 6;          // 驳回原因 (仅当 status 为 REJECTED 时有效)
+  int64 created_at = 7;              // 申请时间戳
+  int64 processed_at = 8;            // 处理时间戳
+  string processed_by = 9;           // 处理人ID
+}
+
+// 获取认证申请列表请求
+message ListVerificationApplicationsRequest {
+  VerificationStatus status = 1;     // 筛选状态 (可选，默认 PENDING)
+  api.common.v1.Pagination pagination = 2;
+}
+
+// 获取认证申请列表响应
+message ListVerificationApplicationsResponse {
+  repeated VerificationApplication applications = 1;
+  string next_page_token = 2;
+}
+
+// 审核认证申请请求
+message ApproveVerificationRequest {
+  string application_id = 1;         // 申请ID
+  bool approve = 2;                  // true=通过, false=驳回
+  string reject_reason = 3;          // 驳回原因 (仅当 approve 为 false 时需要)
+}
+
+// 审核认证申请响应
+message ApproveVerificationResponse {
+  bool succeed = 1;
+  string message = 2;
 }
