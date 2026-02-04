@@ -8,7 +8,7 @@
 	import './layout.css';
 
 	let { children } = $props();
-	let isUpdateDialogShow = $state(true);
+	let isUpdateDialogShow = $state(false);
 
 	async function checkUpdate() {
 		try {
