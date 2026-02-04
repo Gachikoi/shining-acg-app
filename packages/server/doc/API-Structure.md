@@ -108,6 +108,7 @@ enum Department {
   DEPARTMENT_MUSIC_GAME = 12;     // 音游组
   DEPARTMENT_V_TUBE = 13;         // V 曲组
   DEPARTMENT_MINECRAFT = 14;      // MC 组
+  DEPARTMENT_SECRETARIAT = 15;    // 秘书处
 }
 ```
 
@@ -450,7 +451,6 @@ message UserProfile {
   UserStats stats = 5;                // 统计数据
   UserRelationStatus relation_status = 6; // 关系状态
   api.common.v1.Role role = 7;        // 用户角色
-  string ip_location = 8;             // IP属地 (如: 北京)
 }
 ```
 
@@ -474,6 +474,8 @@ message UserRelationStatus {
   string remark = 4;           // 我给他的备注
   bool can_send_message = 10;  // 是否能发私信
   bool can_view_list = 11;     // 是否能看他的关注列表
+  bool can_view_liked_posts = 12; // 是否能看他的点赞帖子
+  bool can_view_collected_posts = 13; // 是否能看他的收藏帖子
 }
 ```
 
@@ -482,7 +484,8 @@ message UserRelationStatus {
 message PrivacySettings {
   PrivacyLevel message_permission = 1;    // 谁可以私信我
   PrivacyLevel list_visibility = 2;       // 谁可以看我的关注/粉丝列表
-  bool show_online_status = 3;            // 是否展示在线状态
+  PrivacyLevel liked_posts_visibility = 3; // 谁可以看我的点赞帖子
+  PrivacyLevel collected_posts_visibility = 4; // 谁可以看我的收藏帖子
 }
 ```
 
@@ -491,8 +494,6 @@ message PrivacySettings {
 message UserSettings {
   bool enable_push = 1;
   bool enable_email_notification = 2;
-  string language = 3;
-  string theme = 4; // dark, light
 }
 ```
 
@@ -553,19 +554,17 @@ enum PrivacyLevel {
       "view_count_received": 1000
     },
     "relation_status": {},
-    "ip_location": "北京",
     "role": 1
   },
   "privacy_settings": {
     "message_permission": 0,
     "list_visibility": 0,
-    "show_online_status": true
+    "liked_posts_visibility": 0,
+    "collected_posts_visibility": 0,
   },
   "user_settings": {
     "enable_push": true,
     "enable_email_notification": false,
-    "language": "zh-CN",
-    "theme": "dark"
   }
 }
 ```
@@ -627,7 +626,6 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetMe \
       "is_followed_by": false,
       "can_send_message": true
     },
-    "ip_location": "北京",
     "role": 1
   }
 }
@@ -780,13 +778,14 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateProfile \
 ```json
 {
   "privacy_settings": {
-    "message_permission": 1
+    "message_permission": 1,
+    "liked_posts_visibility": 2,
+    "collected_posts_visibility": 3
   },
   "user_settings": {
-    "theme": "dark"
   },
   "update_mask": {
-    "paths": ["privacy_settings.message_permission", "user_settings.theme"]
+    "paths": ["privacy_settings.message_permission", "privacy_settings.liked_posts_visibility", "privacy_settings.collected_posts_visibility"]
   }
 }
 ```
@@ -808,10 +807,9 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateSettings \
       "message_permission": 1
     },
     "user_settings": {
-      "theme": "dark"
     },
     "update_mask": {
-      "paths": ["privacy_settings.message_permission", "user_settings.theme"]
+      "paths": ["privacy_settings.message_permission"]
     }
   }'
 ```
@@ -1010,6 +1008,74 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ApplyVerification 
 - 200：申请成功
 - 401：未认证
 - 400：参数无效（如 verified_title 为空）
+
+##### GetPrivacySettings - 获取隐私设置
+
+**HTTP 方法和路由**：`GET /api.account.v1.UserService/GetPrivacySettings`
+
+**功能**：获取当前用户的隐私设置
+
+**是否需要认证**：需要
+
+**请求体字段**：
+```json
+{}
+```
+
+**响应体字段**：
+```json
+{
+  "privacy_settings": {
+    "message_permission": 0,
+    "list_visibility": 0,
+    "liked_posts_visibility": 0,
+    "collected_posts_visibility": 0,
+  }
+}
+```
+
+**调用示例**：
+```bash
+curl -X GET http://localhost:8080/api.account.v1.UserService/GetPrivacySettings \
+  -H "Authorization: Bearer <token>"
+```
+
+**返回码说明**：
+- 200：成功
+- 401：未认证
+
+##### GetUserSettings - 获取用户设置
+
+**HTTP 方法和路由**：`GET /api.account.v1.UserService/GetUserSettings`
+
+**功能**：获取当前用户的通用设置
+
+**是否需要认证**：需要
+
+**请求体字段**：
+```json
+{}
+```
+
+**响应体字段**：
+```json
+{
+  "user_settings": {
+    "enable_push": true,
+    "enable_email_notification": false
+  }
+}
+```
+
+**调用示例**：
+```bash
+curl -X GET http://localhost:8080/api.account.v1.UserService/GetUserSettings \
+  -H "Authorization: Bearer <token>"
+```
+
+**返回码说明**：
+- 200：成功
+- 401：未认证
 
 ##### SearchUsers - 搜索用户
 

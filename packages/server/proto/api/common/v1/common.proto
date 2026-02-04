@@ -26,6 +26,7 @@ enum Department {
   DEPARTMENT_MUSIC_GAME = 12;     // 音游组
   DEPARTMENT_V_TUBE = 13;         // V 曲组
   DEPARTMENT_MINECRAFT = 14;      // MC 组
+  DEPARTMENT_SECRETARIAT = 15;    // 秘书处
 }
 
 // 部门基础元数据 (Lightweight)

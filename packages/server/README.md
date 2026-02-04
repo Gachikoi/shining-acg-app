@@ -38,11 +38,33 @@ Shining ACG 后端是一个基于 Go 语言开发的微服务架构系统，为 
 
 ### 环境要求
 
-- Go 1.21 或更高版本
-- Buf CLI
-- PostgreSQL 15 或更高版本
+- **开发环境**：Go 1.25.3 或更高版本、Buf CLI、PostgreSQL 15+
+- **部署环境**：Docker 20+、Docker Compose 2+
 
-### 安装步骤
+### 快速启动（Docker Compose）
+
+```bash
+# 1. 克隆代码
+git clone <repo-url>
+cd packages/server
+
+# 2. 使用 Docker Compose 启动所有服务
+docker-compose up -d
+
+# 3. 检查服务状态
+docker-compose ps
+
+# 4. 查看服务日志
+docker-compose logs -f <service-name>
+
+# 5. 停止服务
+docker-compose down
+
+# 6. 停止服务并清理数据卷
+docker-compose down -v
+```
+
+### 开发模式（本地启动）
 
 ```bash
 # 1. 克隆代码
@@ -55,11 +77,11 @@ go mod tidy
 # 3. 生成代码
 buf generate
 
-# 4. 配置数据库
+# 4. 配置数据库（需要本地安装 PostgreSQL 和 Redis）
 # 请参考 DEVELOPMENT.md 中的详细说明
 
-# 5. 启动服务
-cd service/user/cmd
+# 5. 启动服务（以 Account 服务为例）
+cd service/account/cmd
 go run main.go
 ```
 

@@ -20,9 +20,11 @@ export function runCommand(
 export async function runCommandAsync(
   cmd: string,
   args: string[],
+  cwd?: string, // 添加可选的 cwd 参数
 ): Promise<{ stdout: string; stderr: string; code: number }> {
   const command = new Deno.Command(cmd, {
     args: args,
+    cwd: cwd, // 命令工作目录
     stdout: "piped",
     stderr: "piped",
   });

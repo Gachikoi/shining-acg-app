@@ -13,7 +13,76 @@ lintStaged.run(true, async (stagedFiles) => {
   console.log("正在运行预提交检查...\n");
 
   const results = await Promise.all([
-    // 1. Go 项目 (packages/server)
+    // 1.1. Protocol Buffers 文件检查 (packages/server)
+    (async () => {
+      const protoFiles = stagedFiles.filter(
+        (f) => f.startsWith("packages/server/") && f.endsWith(".proto"),
+      );
+      const bufConfigFiles = stagedFiles.filter(
+        (f) =>
+          f.startsWith("packages/server/") &&
+          (f.endsWith("buf.yaml") || f.endsWith("buf.gen.yaml")),
+      );
+
+      if (protoFiles.length === 0 && bufConfigFiles.length === 0) return null;
+
+      const header = `正在检查 ${
+        protoFiles.length + bufConfigFiles.length
+      } 个 Protocol Buffers 文件...`;
+      try {
+        // 检查 buf 是否可用
+        const { code: bufCheckCode } = await runCommandAsync(
+          "buf",
+          ["--version"],
+        );
+        if (bufCheckCode !== 0) {
+          return {
+            header,
+            success: false,
+            logs: "❌ 未找到 buf 命令，Protocol Buffers 检查失败\n",
+          };
+        }
+        // 检查代码生成
+        const { code: bufGenCode, stderr: bufGenErr } = await runCommandAsync(
+          "buf",
+          ["generate"],
+          "packages/server/proto",
+        );
+        if (bufGenCode !== 0) {
+          return {
+            header,
+            success: false,
+            logs: `${bufGenErr}❌ Protocol Buffers 代码生成失败\n`,
+          };
+        }
+        // 检查是否有生成的代码需要提交
+        const { code: gitStatusCode, stdout: gitStatusOut } =
+          await runCommandAsync("git", ["status", "packages/server/gen/"]);
+        if (
+          gitStatusCode === 0 &&
+          (gitStatusOut.includes(" M ") || gitStatusOut.includes("?? "))
+        ) {
+          return {
+            header,
+            success: false,
+            logs:
+              "❌ 发现生成的代码有变更且未放入暂存区：请执行 git add packages/server/gen/\n",
+          };
+        }
+        return {
+          header,
+          success: true,
+          logs: "✅ Protocol Buffers 代码生成检查通过\n",
+        };
+      } catch (err) {
+        return {
+          header,
+          success: false,
+          logs: `❌ Protocol Buffers 检查失败: ${err}\n`,
+        };
+      }
+    })(),
+    // 1.2. Go 格式化检查 (packages/server)
     (async () => {
       const goFiles = stagedFiles.filter(
         (f) =>
@@ -49,6 +118,34 @@ lintStaged.run(true, async (stagedFiles) => {
           header,
           success: false,
           logs: "❌ 未找到 go 命令，Go 格式化失败\n",
+        };
+      }
+    })(),
+    // 1.3. Go 静态错误检查 (packages/server)
+    (async () => {
+      const header = `正在运行 Go 静态错误检查...`;
+      try {
+        const { code, stderr } = await runCommandAsync("go", [
+          "vet",
+          "./...",
+        ], "packages/server");
+        if (code !== 0) {
+          return {
+            header,
+            success: false,
+            logs: `${stderr}❌ Go 静态错误检查失败\n`,
+          };
+        }
+        return {
+          header,
+          success: true,
+          logs: "✅ Go 静态错误检查通过\n",
+        };
+      } catch {
+        return {
+          header,
+          success: false,
+          logs: "❌ 未找到 go 命令，Go 静态错误检查失败\n",
         };
       }
     })(),

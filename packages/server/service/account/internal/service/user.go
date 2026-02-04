@@ -13,6 +13,21 @@ import (
 // UserServiceServer 是 UserService 的伪实现
 type UserServiceServer struct{}
 
+func (s *UserServiceServer) GetPrivacySettings(ctx context.Context, c *connect.Request[accountv1.GetPrivacySettingsRequest]) (*connect.Response[accountv1.GetPrivacySettingsResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *UserServiceServer) GetUserSettings(ctx context.Context, c *connect.Request[accountv1.GetUserSettingsRequest]) (*connect.Response[accountv1.GetUserSettingsResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *UserServiceServer) ApplyVerification(ctx context.Context, c *connect.Request[accountv1.ApplyVerificationRequest]) (*connect.Response[accountv1.ApplyVerificationResponse], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // 确保 UserServiceServer 实现了 UserServiceHandler 接口
 var _ accountv1connect.UserServiceHandler = (*UserServiceServer)(nil)
 
@@ -21,16 +36,20 @@ func (s *UserServiceServer) GetMe(ctx context.Context, req *connect.Request[acco
 	return connect.NewResponse(&accountv1.GetMeResponse{
 		Profile: &accountv1.UserProfile{
 			Base: &commonv1.UserSummary{
-				UserId:            "114514",
-				Nickname:          "ciallo",
-				Avatar:            "https://example.com/avatar.png",
-				PrimaryDepartment: commonv1.Department_DEPARTMENT_LIGHT_MUSIC,
-				IsVerified:        true,
-				VerifiedTitle:     "测试认证",
+				UserId:   "114514",
+				Nickname: "ciallo",
+				Avatar:   "https://example.com/avatar.png",
+				Departments: []*commonv1.DepartmentBase{
+					{
+						Id:   commonv1.Department_DEPARTMENT_LIGHT_MUSIC,
+						Name: "轻音部",
+					},
+				},
+				IsVerified:    true,
+				VerifiedTitle: "测试认证",
 			},
 			Intro:           "这是我的个人简介",
 			BackgroundImage: "https://example.com/background.jpg",
-			Departments:     []commonv1.Department{commonv1.Department_DEPARTMENT_LIGHT_MUSIC},
 			Links:           []*commonv1.Link{},
 			Stats: &accountv1.UserStats{
 				FollowerCount:     100,
@@ -40,19 +59,15 @@ func (s *UserServiceServer) GetMe(ctx context.Context, req *connect.Request[acco
 				ViewCountReceived: 10000,
 			},
 			RelationStatus: &accountv1.UserRelationStatus{},
-			IpLocation:     "北京",
 			Role:           commonv1.Role_ROLE_USER,
 		},
 		PrivacySettings: &accountv1.PrivacySettings{
 			MessagePermission: accountv1.PrivacyLevel_PRIVACY_LEVEL_PUBLIC,
 			ListVisibility:    accountv1.PrivacyLevel_PRIVACY_LEVEL_PUBLIC,
-			ShowOnlineStatus:  true,
 		},
 		UserSettings: &accountv1.UserSettings{
 			EnablePush:              true,
 			EnableEmailNotification: false,
-			Language:                "zh-CN",
-			Theme:                   "dark",
 		},
 	}), nil
 }
@@ -62,15 +77,13 @@ func (s *UserServiceServer) GetUser(ctx context.Context, req *connect.Request[ac
 	return connect.NewResponse(&accountv1.GetUserResponse{
 		Profile: &accountv1.UserProfile{
 			Base: &commonv1.UserSummary{
-				UserId:            req.Msg.TargetUserId,
-				Nickname:          "测试用户",
-				Avatar:            "https://example.com/avatar.png",
-				PrimaryDepartment: commonv1.Department_DEPARTMENT_LIGHT_MUSIC,
-				IsVerified:        false,
+				UserId:     req.Msg.TargetUserId,
+				Nickname:   "测试用户",
+				Avatar:     "https://example.com/avatar.png",
+				IsVerified: false,
 			},
 			Intro:           "这是测试用户的个人简介",
 			BackgroundImage: "https://example.com/background.jpg",
-			Departments:     []commonv1.Department{commonv1.Department_DEPARTMENT_LIGHT_MUSIC},
 			Links:           []*commonv1.Link{},
 			Stats: &accountv1.UserStats{
 				FollowerCount:     10,
@@ -80,7 +93,6 @@ func (s *UserServiceServer) GetUser(ctx context.Context, req *connect.Request[ac
 				ViewCountReceived: 1000,
 			},
 			RelationStatus: &accountv1.UserRelationStatus{},
-			IpLocation:     "上海",
 			Role:           commonv1.Role_ROLE_USER,
 		},
 	}), nil
@@ -92,11 +104,10 @@ func (s *UserServiceServer) BatchGetUsers(ctx context.Context, req *connect.Requ
 	for _, userId := range req.Msg.UserIds {
 		profiles = append(profiles, &accountv1.UserProfile{
 			Base: &commonv1.UserSummary{
-				UserId:            userId,
-				Nickname:          "用户" + userId,
-				Avatar:            "https://example.com/avatar.png",
-				PrimaryDepartment: commonv1.Department_DEPARTMENT_LIGHT_MUSIC,
-				IsVerified:        false,
+				UserId:     userId,
+				Nickname:   "用户" + userId,
+				Avatar:     "https://example.com/avatar.png",
+				IsVerified: false,
 			},
 		})
 	}

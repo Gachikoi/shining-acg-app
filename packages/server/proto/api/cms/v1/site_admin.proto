@@ -33,7 +33,7 @@ service SiteAdminService {
 
 // 部门管理
 message UpsertDepartmentRequest {
-  api.cms.v1.Department department = 1; // 包含ID，ID存在则更新，不存在则创建
+  api.cms.v1.DepartmentInfo department = 1; // 包含ID，ID存在则更新，不存在则创建
 }
 message UpsertDepartmentResponse {
   string department_id = 1;
