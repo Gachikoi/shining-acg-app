@@ -4,7 +4,7 @@
 	import { Menu } from 'lucide-svelte';
 </script>
 
-<div>首页，测试</div>
+<div>首页，测试chrome</div>
 <Button variant="default">删除评论<Menu /></Button>
 <Button variant="secondary">私信</Button>
 <Button variant="tertiary">删除评论</Button>
