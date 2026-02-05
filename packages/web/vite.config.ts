@@ -4,6 +4,16 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	server: {
+		proxy: {
+			'/api': {
+				target: 'https://test.api.shiningacg.club:61080',
+				changeOrigin: true,
+				ws: true,
+				rewrite: (path) => path.replace(/^\/api/, '')
+			}
+		}
+	},
 	css: {
 		transformer: 'lightningcss',
 		lightningcss: {
