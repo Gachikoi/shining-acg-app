@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import darkLogo from '$lib/assets/dark-logo.png';
 	import logo from '$lib/assets/logo.png';
 	import { Button } from '$lib/components/ui/button';
@@ -10,38 +11,43 @@
 	let { children } = $props();
 	let isUpdateDialogShow = $state(false);
 
-	async function checkUpdate() {
+	async function detectSW() {
 		try {
-			// 1. 获取本地当前缓存的响应（利用强缓存，瞬间返回）
-			const localRes = await fetch(window.location.href, {
-				cache: 'force-cache'
+			const registration = await navigator.serviceWorker.register('/service-worker.js', {
+				type: dev ? 'module' : 'classic'
 			});
-			const localEtag = localRes.headers.get('etag');
 
-			// 2. 获取服务器最新的 ETag
-			const serverRes = await fetch(window.location.href, {
-				method: 'HEAD',
-				cache: 'no-cache'
+			registration.addEventListener('updatefound', () => {
+				const newWorker = registration.installing;
+				if (!newWorker) return;
+
+				newWorker.addEventListener('statechange', () => {
+					if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+						isUpdateDialogShow = true;
+					}
+				});
 			});
-			const serverEtag = serverRes.headers.get('etag');
-
-			if (localEtag && serverEtag && localEtag !== serverEtag) {
-				isUpdateDialogShow = true;
-			}
-		} catch (e) {
-			console.error('检查版本更新失败', e);
+		} catch (error) {
+			console.error('Service Worker registration failed:', error);
 		}
+
+		let refreshing = false;
+		navigator.serviceWorker.addEventListener('controllerchange', () => {
+			if (refreshing) return;
+			refreshing = true;
+			window.location.reload();
+		});
 	}
 
 	async function handleUpdate() {
-		// 直接刷新页面，浏览器会因为没有对应的 ETag 缓存而回源拉取最新版
-		window.location.reload();
+		const registration = await navigator.serviceWorker.ready;
+		if (registration.waiting) {
+			registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+		}
 	}
 
 	onMount(() => {
-		// if (window.location.hostname !== 'localhost') {
-		checkUpdate();
-		// }
+		detectSW();
 	});
 </script>
 
