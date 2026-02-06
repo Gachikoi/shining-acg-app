@@ -35,36 +35,25 @@ const (
 const (
 	// UserServiceGetMeProcedure is the fully-qualified name of the UserService's GetMe RPC.
 	UserServiceGetMeProcedure = "/api.account.v1.UserService/GetMe"
-	// UserServiceGetUserProcedure is the fully-qualified name of the UserService's GetUser RPC.
-	UserServiceGetUserProcedure = "/api.account.v1.UserService/GetUser"
-	// UserServiceBatchGetUsersProcedure is the fully-qualified name of the UserService's BatchGetUsers
-	// RPC.
-	UserServiceBatchGetUsersProcedure = "/api.account.v1.UserService/BatchGetUsers"
+	// UserServiceGetUsersProcedure is the fully-qualified name of the UserService's GetUsers RPC.
+	UserServiceGetUsersProcedure = "/api.account.v1.UserService/GetUsers"
 	// UserServiceUpdateProfileProcedure is the fully-qualified name of the UserService's UpdateProfile
 	// RPC.
 	UserServiceUpdateProfileProcedure = "/api.account.v1.UserService/UpdateProfile"
 	// UserServiceUpdateSettingsProcedure is the fully-qualified name of the UserService's
 	// UpdateSettings RPC.
 	UserServiceUpdateSettingsProcedure = "/api.account.v1.UserService/UpdateSettings"
-	// UserServiceGetPrivacySettingsProcedure is the fully-qualified name of the UserService's
-	// GetPrivacySettings RPC.
-	UserServiceGetPrivacySettingsProcedure = "/api.account.v1.UserService/GetPrivacySettings"
-	// UserServiceGetUserSettingsProcedure is the fully-qualified name of the UserService's
-	// GetUserSettings RPC.
-	UserServiceGetUserSettingsProcedure = "/api.account.v1.UserService/GetUserSettings"
 	// UserServiceSetFollowProcedure is the fully-qualified name of the UserService's SetFollow RPC.
 	UserServiceSetFollowProcedure = "/api.account.v1.UserService/SetFollow"
 	// UserServiceListRelationshipsProcedure is the fully-qualified name of the UserService's
 	// ListRelationships RPC.
 	UserServiceListRelationshipsProcedure = "/api.account.v1.UserService/ListRelationships"
-	// UserServiceListMutualFollowersProcedure is the fully-qualified name of the UserService's
-	// ListMutualFollowers RPC.
-	UserServiceListMutualFollowersProcedure = "/api.account.v1.UserService/ListMutualFollowers"
 	// UserServiceApplyVerificationProcedure is the fully-qualified name of the UserService's
 	// ApplyVerification RPC.
 	UserServiceApplyVerificationProcedure = "/api.account.v1.UserService/ApplyVerification"
-	// UserServiceSearchUsersProcedure is the fully-qualified name of the UserService's SearchUsers RPC.
-	UserServiceSearchUsersProcedure = "/api.account.v1.UserService/SearchUsers"
+	// UserServiceModifyDepartmentsProcedure is the fully-qualified name of the UserService's
+	// ModifyDepartments RPC.
+	UserServiceModifyDepartmentsProcedure = "/api.account.v1.UserService/ModifyDepartments"
 )
 
 // UserServiceClient is a client for the api.account.v1.UserService service.
@@ -72,27 +61,19 @@ type UserServiceClient interface {
 	// 获取当前登录用户的完整信息（包含敏感设置）
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// 获取他人公开信息 (经过隐私计算)
-	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error)
-	// 批量获取用户信息 (用于列表页头像渲染等)
-	BatchGetUsers(context.Context, *connect.Request[v1.BatchGetUsersRequest]) (*connect.Response[v1.BatchGetUsersResponse], error)
+	GetUsers(context.Context, *connect.Request[v1.GetUsersRequest]) (*connect.Response[v1.GetUsersResponse], error)
 	// 更新个人资料 (支持部分更新)
 	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 	// 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
-	// 获取隐私设置
-	GetPrivacySettings(context.Context, *connect.Request[v1.GetPrivacySettingsRequest]) (*connect.Response[v1.GetPrivacySettingsResponse], error)
-	// 获取用户设置
-	GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error)
 	// 关注/取消关注
 	SetFollow(context.Context, *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error)
-	// 关系列表 (粉丝/关注)
+	// 关系列表 (粉丝/关注/Ta 也关注了)
 	ListRelationships(context.Context, *connect.Request[v1.ListRelationshipsRequest]) (*connect.Response[v1.ListRelationshipsResponse], error)
-	// 获取共同关注
-	ListMutualFollowers(context.Context, *connect.Request[v1.ListMutualFollowersRequest]) (*connect.Response[v1.ListMutualFollowersResponse], error)
 	// 申请身份认证
 	ApplyVerification(context.Context, *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error)
-	// --- 搜索 ---
-	SearchUsers(context.Context, *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error)
+	// 修改所属部门
+	ModifyDepartments(context.Context, *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the api.account.v1.UserService service. By default,
@@ -111,16 +92,11 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		getUser: connect.NewClient[v1.GetUserRequest, v1.GetUserResponse](
+		getUsers: connect.NewClient[v1.GetUsersRequest, v1.GetUsersResponse](
 			httpClient,
-			baseURL+UserServiceGetUserProcedure,
+			baseURL+UserServiceGetUsersProcedure,
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
-		),
-		batchGetUsers: connect.NewClient[v1.BatchGetUsersRequest, v1.BatchGetUsersResponse](
-			httpClient,
-			baseURL+UserServiceBatchGetUsersProcedure,
-			opts...,
 		),
 		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
 			httpClient,
@@ -132,18 +108,6 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			baseURL+UserServiceUpdateSettingsProcedure,
 			opts...,
 		),
-		getPrivacySettings: connect.NewClient[v1.GetPrivacySettingsRequest, v1.GetPrivacySettingsResponse](
-			httpClient,
-			baseURL+UserServiceGetPrivacySettingsProcedure,
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		getUserSettings: connect.NewClient[v1.GetUserSettingsRequest, v1.GetUserSettingsResponse](
-			httpClient,
-			baseURL+UserServiceGetUserSettingsProcedure,
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
 		setFollow: connect.NewClient[v1.SetFollowRequest, v1.SetFollowResponse](
 			httpClient,
 			baseURL+UserServiceSetFollowProcedure,
@@ -154,19 +118,14 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			baseURL+UserServiceListRelationshipsProcedure,
 			opts...,
 		),
-		listMutualFollowers: connect.NewClient[v1.ListMutualFollowersRequest, v1.ListMutualFollowersResponse](
-			httpClient,
-			baseURL+UserServiceListMutualFollowersProcedure,
-			opts...,
-		),
 		applyVerification: connect.NewClient[v1.ApplyVerificationRequest, v1.ApplyVerificationResponse](
 			httpClient,
 			baseURL+UserServiceApplyVerificationProcedure,
 			opts...,
 		),
-		searchUsers: connect.NewClient[v1.SearchUsersRequest, v1.SearchUsersResponse](
+		modifyDepartments: connect.NewClient[v1.ModifyDepartmentsRequest, v1.ModifyDepartmentsResponse](
 			httpClient,
-			baseURL+UserServiceSearchUsersProcedure,
+			baseURL+UserServiceModifyDepartmentsProcedure,
 			opts...,
 		),
 	}
@@ -174,18 +133,14 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
-	getMe               *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	getUser             *connect.Client[v1.GetUserRequest, v1.GetUserResponse]
-	batchGetUsers       *connect.Client[v1.BatchGetUsersRequest, v1.BatchGetUsersResponse]
-	updateProfile       *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
-	updateSettings      *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
-	getPrivacySettings  *connect.Client[v1.GetPrivacySettingsRequest, v1.GetPrivacySettingsResponse]
-	getUserSettings     *connect.Client[v1.GetUserSettingsRequest, v1.GetUserSettingsResponse]
-	setFollow           *connect.Client[v1.SetFollowRequest, v1.SetFollowResponse]
-	listRelationships   *connect.Client[v1.ListRelationshipsRequest, v1.ListRelationshipsResponse]
-	listMutualFollowers *connect.Client[v1.ListMutualFollowersRequest, v1.ListMutualFollowersResponse]
-	applyVerification   *connect.Client[v1.ApplyVerificationRequest, v1.ApplyVerificationResponse]
-	searchUsers         *connect.Client[v1.SearchUsersRequest, v1.SearchUsersResponse]
+	getMe             *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	getUsers          *connect.Client[v1.GetUsersRequest, v1.GetUsersResponse]
+	updateProfile     *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	updateSettings    *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
+	setFollow         *connect.Client[v1.SetFollowRequest, v1.SetFollowResponse]
+	listRelationships *connect.Client[v1.ListRelationshipsRequest, v1.ListRelationshipsResponse]
+	applyVerification *connect.Client[v1.ApplyVerificationRequest, v1.ApplyVerificationResponse]
+	modifyDepartments *connect.Client[v1.ModifyDepartmentsRequest, v1.ModifyDepartmentsResponse]
 }
 
 // GetMe calls api.account.v1.UserService.GetMe.
@@ -193,14 +148,9 @@ func (c *userServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.G
 	return c.getMe.CallUnary(ctx, req)
 }
 
-// GetUser calls api.account.v1.UserService.GetUser.
-func (c *userServiceClient) GetUser(ctx context.Context, req *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error) {
-	return c.getUser.CallUnary(ctx, req)
-}
-
-// BatchGetUsers calls api.account.v1.UserService.BatchGetUsers.
-func (c *userServiceClient) BatchGetUsers(ctx context.Context, req *connect.Request[v1.BatchGetUsersRequest]) (*connect.Response[v1.BatchGetUsersResponse], error) {
-	return c.batchGetUsers.CallUnary(ctx, req)
+// GetUsers calls api.account.v1.UserService.GetUsers.
+func (c *userServiceClient) GetUsers(ctx context.Context, req *connect.Request[v1.GetUsersRequest]) (*connect.Response[v1.GetUsersResponse], error) {
+	return c.getUsers.CallUnary(ctx, req)
 }
 
 // UpdateProfile calls api.account.v1.UserService.UpdateProfile.
@@ -213,16 +163,6 @@ func (c *userServiceClient) UpdateSettings(ctx context.Context, req *connect.Req
 	return c.updateSettings.CallUnary(ctx, req)
 }
 
-// GetPrivacySettings calls api.account.v1.UserService.GetPrivacySettings.
-func (c *userServiceClient) GetPrivacySettings(ctx context.Context, req *connect.Request[v1.GetPrivacySettingsRequest]) (*connect.Response[v1.GetPrivacySettingsResponse], error) {
-	return c.getPrivacySettings.CallUnary(ctx, req)
-}
-
-// GetUserSettings calls api.account.v1.UserService.GetUserSettings.
-func (c *userServiceClient) GetUserSettings(ctx context.Context, req *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error) {
-	return c.getUserSettings.CallUnary(ctx, req)
-}
-
 // SetFollow calls api.account.v1.UserService.SetFollow.
 func (c *userServiceClient) SetFollow(ctx context.Context, req *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error) {
 	return c.setFollow.CallUnary(ctx, req)
@@ -233,19 +173,14 @@ func (c *userServiceClient) ListRelationships(ctx context.Context, req *connect.
 	return c.listRelationships.CallUnary(ctx, req)
 }
 
-// ListMutualFollowers calls api.account.v1.UserService.ListMutualFollowers.
-func (c *userServiceClient) ListMutualFollowers(ctx context.Context, req *connect.Request[v1.ListMutualFollowersRequest]) (*connect.Response[v1.ListMutualFollowersResponse], error) {
-	return c.listMutualFollowers.CallUnary(ctx, req)
-}
-
 // ApplyVerification calls api.account.v1.UserService.ApplyVerification.
 func (c *userServiceClient) ApplyVerification(ctx context.Context, req *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error) {
 	return c.applyVerification.CallUnary(ctx, req)
 }
 
-// SearchUsers calls api.account.v1.UserService.SearchUsers.
-func (c *userServiceClient) SearchUsers(ctx context.Context, req *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error) {
-	return c.searchUsers.CallUnary(ctx, req)
+// ModifyDepartments calls api.account.v1.UserService.ModifyDepartments.
+func (c *userServiceClient) ModifyDepartments(ctx context.Context, req *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error) {
+	return c.modifyDepartments.CallUnary(ctx, req)
 }
 
 // UserServiceHandler is an implementation of the api.account.v1.UserService service.
@@ -253,27 +188,19 @@ type UserServiceHandler interface {
 	// 获取当前登录用户的完整信息（包含敏感设置）
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// 获取他人公开信息 (经过隐私计算)
-	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error)
-	// 批量获取用户信息 (用于列表页头像渲染等)
-	BatchGetUsers(context.Context, *connect.Request[v1.BatchGetUsersRequest]) (*connect.Response[v1.BatchGetUsersResponse], error)
+	GetUsers(context.Context, *connect.Request[v1.GetUsersRequest]) (*connect.Response[v1.GetUsersResponse], error)
 	// 更新个人资料 (支持部分更新)
 	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 	// 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
-	// 获取隐私设置
-	GetPrivacySettings(context.Context, *connect.Request[v1.GetPrivacySettingsRequest]) (*connect.Response[v1.GetPrivacySettingsResponse], error)
-	// 获取用户设置
-	GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error)
 	// 关注/取消关注
 	SetFollow(context.Context, *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error)
-	// 关系列表 (粉丝/关注)
+	// 关系列表 (粉丝/关注/Ta 也关注了)
 	ListRelationships(context.Context, *connect.Request[v1.ListRelationshipsRequest]) (*connect.Response[v1.ListRelationshipsResponse], error)
-	// 获取共同关注
-	ListMutualFollowers(context.Context, *connect.Request[v1.ListMutualFollowersRequest]) (*connect.Response[v1.ListMutualFollowersResponse], error)
 	// 申请身份认证
 	ApplyVerification(context.Context, *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error)
-	// --- 搜索 ---
-	SearchUsers(context.Context, *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error)
+	// 修改所属部门
+	ModifyDepartments(context.Context, *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -288,16 +215,11 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	userServiceGetUserHandler := connect.NewUnaryHandler(
-		UserServiceGetUserProcedure,
-		svc.GetUser,
+	userServiceGetUsersHandler := connect.NewUnaryHandler(
+		UserServiceGetUsersProcedure,
+		svc.GetUsers,
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
-	)
-	userServiceBatchGetUsersHandler := connect.NewUnaryHandler(
-		UserServiceBatchGetUsersProcedure,
-		svc.BatchGetUsers,
-		opts...,
 	)
 	userServiceUpdateProfileHandler := connect.NewUnaryHandler(
 		UserServiceUpdateProfileProcedure,
@@ -309,18 +231,6 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		svc.UpdateSettings,
 		opts...,
 	)
-	userServiceGetPrivacySettingsHandler := connect.NewUnaryHandler(
-		UserServiceGetPrivacySettingsProcedure,
-		svc.GetPrivacySettings,
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	userServiceGetUserSettingsHandler := connect.NewUnaryHandler(
-		UserServiceGetUserSettingsProcedure,
-		svc.GetUserSettings,
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
 	userServiceSetFollowHandler := connect.NewUnaryHandler(
 		UserServiceSetFollowProcedure,
 		svc.SetFollow,
@@ -331,47 +241,34 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		svc.ListRelationships,
 		opts...,
 	)
-	userServiceListMutualFollowersHandler := connect.NewUnaryHandler(
-		UserServiceListMutualFollowersProcedure,
-		svc.ListMutualFollowers,
-		opts...,
-	)
 	userServiceApplyVerificationHandler := connect.NewUnaryHandler(
 		UserServiceApplyVerificationProcedure,
 		svc.ApplyVerification,
 		opts...,
 	)
-	userServiceSearchUsersHandler := connect.NewUnaryHandler(
-		UserServiceSearchUsersProcedure,
-		svc.SearchUsers,
+	userServiceModifyDepartmentsHandler := connect.NewUnaryHandler(
+		UserServiceModifyDepartmentsProcedure,
+		svc.ModifyDepartments,
 		opts...,
 	)
 	return "/api.account.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserServiceGetMeProcedure:
 			userServiceGetMeHandler.ServeHTTP(w, r)
-		case UserServiceGetUserProcedure:
-			userServiceGetUserHandler.ServeHTTP(w, r)
-		case UserServiceBatchGetUsersProcedure:
-			userServiceBatchGetUsersHandler.ServeHTTP(w, r)
+		case UserServiceGetUsersProcedure:
+			userServiceGetUsersHandler.ServeHTTP(w, r)
 		case UserServiceUpdateProfileProcedure:
 			userServiceUpdateProfileHandler.ServeHTTP(w, r)
 		case UserServiceUpdateSettingsProcedure:
 			userServiceUpdateSettingsHandler.ServeHTTP(w, r)
-		case UserServiceGetPrivacySettingsProcedure:
-			userServiceGetPrivacySettingsHandler.ServeHTTP(w, r)
-		case UserServiceGetUserSettingsProcedure:
-			userServiceGetUserSettingsHandler.ServeHTTP(w, r)
 		case UserServiceSetFollowProcedure:
 			userServiceSetFollowHandler.ServeHTTP(w, r)
 		case UserServiceListRelationshipsProcedure:
 			userServiceListRelationshipsHandler.ServeHTTP(w, r)
-		case UserServiceListMutualFollowersProcedure:
-			userServiceListMutualFollowersHandler.ServeHTTP(w, r)
 		case UserServiceApplyVerificationProcedure:
 			userServiceApplyVerificationHandler.ServeHTTP(w, r)
-		case UserServiceSearchUsersProcedure:
-			userServiceSearchUsersHandler.ServeHTTP(w, r)
+		case UserServiceModifyDepartmentsProcedure:
+			userServiceModifyDepartmentsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -385,12 +282,8 @@ func (UnimplementedUserServiceHandler) GetMe(context.Context, *connect.Request[v
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.GetMe is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.GetUser is not implemented"))
-}
-
-func (UnimplementedUserServiceHandler) BatchGetUsers(context.Context, *connect.Request[v1.BatchGetUsersRequest]) (*connect.Response[v1.BatchGetUsersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.BatchGetUsers is not implemented"))
+func (UnimplementedUserServiceHandler) GetUsers(context.Context, *connect.Request[v1.GetUsersRequest]) (*connect.Response[v1.GetUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.GetUsers is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
@@ -401,14 +294,6 @@ func (UnimplementedUserServiceHandler) UpdateSettings(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.UpdateSettings is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) GetPrivacySettings(context.Context, *connect.Request[v1.GetPrivacySettingsRequest]) (*connect.Response[v1.GetPrivacySettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.GetPrivacySettings is not implemented"))
-}
-
-func (UnimplementedUserServiceHandler) GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.GetUserSettings is not implemented"))
-}
-
 func (UnimplementedUserServiceHandler) SetFollow(context.Context, *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.SetFollow is not implemented"))
 }
@@ -417,14 +302,10 @@ func (UnimplementedUserServiceHandler) ListRelationships(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.ListRelationships is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) ListMutualFollowers(context.Context, *connect.Request[v1.ListMutualFollowersRequest]) (*connect.Response[v1.ListMutualFollowersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.ListMutualFollowers is not implemented"))
-}
-
 func (UnimplementedUserServiceHandler) ApplyVerification(context.Context, *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.ApplyVerification is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) SearchUsers(context.Context, *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.SearchUsers is not implemented"))
+func (UnimplementedUserServiceHandler) ModifyDepartments(context.Context, *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.UserService.ModifyDepartments is not implemented"))
 }

@@ -9,33 +9,12 @@ message Pagination {
   int32 page = 3;         // 页码（用于传统分页，页面偏移量）
 }
 
-// 部门枚举
-enum Department {
-  DEPARTMENT_UNSPECIFIED = 0;     // 未定义，保留
-  DEPARTMENT_LIGHT_MUSIC = 1;     // 轻音部
-  DEPARTMENT_WOTA = 2;            // WOTA
-  DEPARTMENT_TOUHOU = 3;          // 东方组
-  DEPARTMENT_LITERATURE = 4;      // 轻文部
-  DEPARTMENT_MODEL_PLASTIC = 5;   // 模玩部
-  DEPARTMENT_PUBLICITY = 6;       // 宣传部
-  DEPARTMENT_ACTIVITY = 7;        // 活动部
-  DEPARTMENT_COSPLAY = 8;         // COS 部
-  DEPARTMENT_OTAKU_DANCE = 9;     // 宅舞部
-  DEPARTMENT_ANIME = 10;          // 动漫研
-  DEPARTMENT_VIDEO = 11;          // 视频组
-  DEPARTMENT_MUSIC_GAME = 12;     // 音游组
-  DEPARTMENT_V_TUBE = 13;         // V 曲组
-  DEPARTMENT_MINECRAFT = 14;      // MC 组
-  DEPARTMENT_SECRETARIAT = 15;    // 秘书处
-}
-
 // 部门基础元数据 (Lightweight)
 // 用于：用户徽章渲染、帖子分区标签、侧边栏导航
 // 前端应该在 App 启动时拉取一次“全量 DepartmentBase 列表”并缓存
 message DepartmentBase {
-  Department id = 1;      // 枚举 ID
+  string id = 1;      // ID
   string name = 2;        // 全称 (如 "轻音部")
-//  string icon_url = 3;    // 徽章图标 (SVG/PNG) - 用于个人主页徽章、帖子分区图标
 }
 
 // 用户角色枚举

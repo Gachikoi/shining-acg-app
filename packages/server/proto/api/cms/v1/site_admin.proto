@@ -3,32 +3,87 @@ syntax = "proto3";
 package api.cms.v1;
 
 import "api/cms/v1/site.proto"; // 引用同包下的 definitions
+import "google/api/annotations.proto";
 
 // 官网后台管理服务
 service SiteAdminService {
   // 部门管理
-  rpc UpsertDepartment(UpsertDepartmentRequest) returns (UpsertDepartmentResponse);
-  rpc DeleteDepartment(DeleteDepartmentRequest) returns (DeleteDepartmentResponse);
+  rpc UpsertDepartment(UpsertDepartmentRequest) returns (UpsertDepartmentResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/departments"
+      body: "*"
+    };
+  }
+  rpc DeleteDepartment(DeleteDepartmentRequest) returns (DeleteDepartmentResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/departments/{id}"
+    };
+  }
 
   // 活动管理
-  rpc UpsertActivity(UpsertActivityRequest) returns (UpsertActivityResponse);
-  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse);
+  rpc UpsertActivity(UpsertActivityRequest) returns (UpsertActivityResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/activities"
+      body: "*"
+    };
+  }
+  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/activities/{id}"
+    };
+  }
 
   // 历史事件管理
-  rpc UpsertHistoryEvent(UpsertHistoryEventRequest) returns (UpsertHistoryEventResponse);
-  rpc DeleteHistoryEvent(DeleteHistoryEventRequest) returns (DeleteHistoryEventResponse);
+  rpc UpsertHistoryEvent(UpsertHistoryEventRequest) returns (UpsertHistoryEventResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/history-events"
+      body: "*"
+    };
+  }
+  rpc DeleteHistoryEvent(DeleteHistoryEventRequest) returns (DeleteHistoryEventResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/history-events/{id}"
+    };
+  }
 
   // 部长管理
-  rpc UpsertMinister(UpsertMinisterRequest) returns (UpsertMinisterResponse);
-  rpc DeleteMinister(DeleteMinisterRequest) returns (DeleteMinisterResponse);
+  rpc UpsertMinister(UpsertMinisterRequest) returns (UpsertMinisterResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/ministers"
+      body: "*"
+    };
+  }
+  rpc DeleteMinister(DeleteMinisterRequest) returns (DeleteMinisterResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/ministers/{id}"
+    };
+  }
 
   // Staff 管理
-  rpc UpsertStaffGroup(UpsertStaffGroupRequest) returns (UpsertStaffGroupResponse);
-  rpc DeleteStaffGroup(DeleteStaffGroupRequest) returns (DeleteStaffGroupResponse);
+  rpc UpsertStaffGroup(UpsertStaffGroupRequest) returns (UpsertStaffGroupResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/staff-groups"
+      body: "*"
+    };
+  }
+  rpc DeleteStaffGroup(DeleteStaffGroupRequest) returns (DeleteStaffGroupResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/staff-groups/{id}"
+    };
+  }
 
   // 赞助者管理
-  rpc UpsertSponsor(UpsertSponsorRequest) returns (UpsertSponsorResponse);
-  rpc DeleteSponsor(DeleteSponsorRequest) returns (DeleteSponsorResponse);
+  rpc UpsertSponsor(UpsertSponsorRequest) returns (UpsertSponsorResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/sponsors"
+      body: "*"
+    };
+  }
+  rpc DeleteSponsor(DeleteSponsorRequest) returns (DeleteSponsorResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/sponsors/{id}"
+    };
+  }
 }
 
 // 部门管理
