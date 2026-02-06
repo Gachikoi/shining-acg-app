@@ -1,12 +1,12 @@
 import axios, { type AxiosInstance } from 'axios';
-import { PUBLIC_IS_TEST } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 import { setupInterceptors } from './interceptors';
 
 /**
  * 获取 API 基础 URL
  */
 function getApiBaseUrl(): string {
-	const isTest = PUBLIC_IS_TEST === 'true';
+	const isTest = env.PUBLIC_IS_TEST === 'true';
 	return isTest ? 'https://test.api.shiningacg.club' : 'https://api.shiningacg.club';
 }
 
