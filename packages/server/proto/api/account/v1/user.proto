@@ -4,6 +4,7 @@ package api.account.v1;
 
 import "api/common/v1/common.proto";
 import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
 
 // 用户服务
 service UserService {
@@ -11,52 +12,69 @@ service UserService {
 
   // 获取当前登录用户的完整信息（包含敏感设置）
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {
+    option (google.api.http) = {
+      get: "/v1/me"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 获取他人公开信息 (经过隐私计算)
-  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse) {
+    option (google.api.http) = {
+      get: "/v1/users"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 批量获取用户信息 (用于列表页头像渲染等)
-  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse) {
   }
 
   // 更新个人资料 (支持部分更新)
-  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/me/profile"
+      body: "profile"
+    };
+  }
 
   // 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)
-  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
-
-  // 获取隐私设置
-  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns (GetPrivacySettingsResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
+    option (google.api.http) = {
+      patch: "/v1/me/settings"
+      body: "settings"
+    };
   }
-
-  // 获取用户设置
-  rpc GetUserSettings(GetUserSettingsRequest) returns (GetUserSettingsResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
+  
   // --- 社交关系 ---
 
   // 关注/取消关注
-  rpc SetFollow(SetFollowRequest) returns (SetFollowResponse);
+  rpc SetFollow(SetFollowRequest) returns (SetFollowResponse) {
+    option (google.api.http) = {
+      put: "/v1/me/following/{target_user_id}"
+      body: "*"
+    };
+  }
 
-  // 关系列表 (粉丝/关注)
-  rpc ListRelationships(ListRelationshipsRequest) returns (ListRelationshipsResponse);
-
-  // 获取共同关注
-  rpc ListMutualFollowers(ListMutualFollowersRequest) returns (ListMutualFollowersResponse);
-
+  // 关系列表 (粉丝/关注/Ta 也关注了)
+  rpc ListRelationships(ListRelationshipsRequest) returns (ListRelationshipsResponse) {
+    option (google.api.http) = {
+      get: "/v1/users/{user_id}/relationships"
+    };
+  }
   // --- 认证 ---
 
   // 申请身份认证
-  rpc ApplyVerification(ApplyVerificationRequest) returns (ApplyVerificationResponse);
+  rpc ApplyVerification(ApplyVerificationRequest) returns (ApplyVerificationResponse) {
+    option (google.api.http) = {
+      put: "/v1/me/verification"
+      body: "*"
+    };
+  }
 
-  // --- 搜索 ---
-  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+  // 修改所属部门
+  rpc ModifyDepartments(ModifyDepartmentsRequest) returns (ModifyDepartmentsResponse) {
+    option (google.api.http) = {
+      put: "/v1/me/departments"
+      body: "*"
+    };
+  }
 }
 
 // ---------------------------------------------------------
@@ -67,27 +85,24 @@ service UserService {
 message UserProfile {
   // 基础信息 (ID, Name, 头像, 部门徽章, 认证头衔)
   api.common.v1.UserSummary base = 1;
-
-  string intro = 2;                    // 简介
-  string background_image = 3;         // 个人主页背景图
-  repeated api.common.v1.Link links = 4;  // 外部链接
+  repeated api.common.v1.Link links = 2;  // 外部链接
 
   // 统计数据 (建议单独通过 FieldMask 控制是否返回)
-  UserStats stats = 5;
+  UserStats stats = 3;
 
   // 关系状态 (当前查看者 vs 这个用户)
-  UserRelationStatus relation_status = 6;
+  UserRelationStatus relation_status = 4;
 
   // 扩展字段
-  api.common.v1.Role role = 7; // 用户角色
+  api.common.v1.Role role = 5; // 用户角色
 }
 
 // 统计数据
 message UserStats {
   int64 follower_count = 1;
   int64 following_count = 2;
-  int64 post_count = 3;
-  int64 like_count_received = 4;       // 获得的赞
+  int64 like_count_received = 3;       // 获得的赞
+  int64 collect_count_received = 4;       // 获得的收藏
   int64 view_count_received = 5;       // 获得浏览
 }
 
@@ -95,35 +110,63 @@ message UserStats {
 message UserRelationStatus {
   bool is_following = 1;       // 我是否关注了他
   bool is_followed_by = 2;     // 他是否关注了我 (互关判断)
-  bool is_blocking = 3;        // 我是否拉黑了他
-  string remark = 4;           // 我给他的备注
+  // bool is_blocking = 3;        // 我是否拉黑了他
+  string origin_name = 4;           // 用户原名
 
   // 隐私权限结果 (Critical: 不要返回 PrivacySettings，返回 Capability)
   bool can_send_message = 10;  // 是否能发私信
-  bool can_view_list = 11;     // 是否能看他的关注列表
-  bool can_view_liked_posts = 12; // 是否能看他的点赞帖子
-  bool can_view_collected_posts = 13; // 是否能看他的收藏帖子
+  // bool can_view_list = 11;     // 是否能看他的关注列表
+  bool can_view_liked_posts = 11; // 是否能看他的点赞帖子
+  bool can_view_collected_posts = 12; // 是否能看他的收藏帖子
+}
+
+// 用户通用设置 (仅自己可见)
+message UserSettings {
+  NotificationSettings notification = 1;
+  PrivacySettings privacy = 2;
+  AppearanceSettings appearance = 3;
 }
 
 // 隐私设置 (仅自己可见)
 message PrivacySettings {
-  PrivacyLevel message_permission = 1;    // 谁可以私信我
-  PrivacyLevel list_visibility = 2;       // 谁可以看我的关注/粉丝列表
-  PrivacyLevel liked_posts_visibility = 3; // 谁可以看我的点赞帖子
-  PrivacyLevel collected_posts_visibility = 4; // 谁可以看我的收藏帖子
+  ChatPrivacyLevel message_permission = 1;    // 谁可以私信我
+  // PrivacyLevel list_visibility = 2;       // 谁可以看我的关注/粉丝列表
+  BasePrivacyLevel liked_posts_visibility = 3; // 谁可以看我的点赞帖子
+  BasePrivacyLevel collected_posts_visibility = 4; // 谁可以看我的收藏帖子
 }
 
-// 通用设置 (仅自己可见)
-message UserSettings {
-  bool enable_push = 1;
-  bool enable_email_notification = 2;
+// 通知设置 (仅自己可见)
+message NotificationSettings {
+  bool push_enabled = 1;               // 全局推送开关
+  bool push_chat = 2;                  // 私信推送
+  bool push_comment_at = 3;            // 评论与 @ 推送
+  bool push_like_collect = 4;          // 点赞与收藏推送
+  bool push_new_follower = 5;          // 新粉丝推送
+  bool push_post_update = 6;           // 关注动态推送
+  bool push_system = 7;                // 系统/举报反馈推送
 }
 
-enum PrivacyLevel {
-  PRIVACY_LEVEL_PUBLIC = 0;
-  PRIVACY_LEVEL_FOLLOWERS = 1;
-  PRIVACY_LEVEL_MUTUAL = 2;
-  PRIVACY_LEVEL_PRIVATE = 3;
+// 外观设置
+message AppearanceSettings {
+  Theme theme = 1;
+
+  enum Theme {
+    THEME_SYSTEM = 0;   // 跟随系统
+    THEME_LIGHT = 1;  // 日间模式
+    THEME_DARK = 2;   // 夜间模式
+  }
+}
+
+enum BasePrivacyLevel {
+  BASE_PRIVACY_LEVEL_PUBLIC = 0;
+  BASE_PRIVACY_LEVEL_PRIVATE = 1;
+}
+
+enum ChatPrivacyLevel {
+  CHAT_PRIVACY_LEVEL_PUBLIC = 0;
+  CHAT_PRIVACY_LEVEL_FOLLOWERS = 1;
+  CHAT_PRIVACY_LEVEL_MUTUAL = 2;
+  CHAT_PRIVACY_LEVEL_PRIVATE = 3;
 }
 
 // ---------------------------------------------------------
@@ -136,25 +179,15 @@ message GetMeRequest {
 
 message GetMeResponse {
   UserProfile profile = 1;
-  PrivacySettings privacy_settings = 2;
-  UserSettings user_settings = 3;
+  UserSettings settings = 2;
 }
 
-message GetUserRequest {
-  string target_user_id = 1;
-}
-
-message GetUserResponse {
-  UserProfile profile = 1;
-  // 注意：这里没有 PrivacySettings
-}
-
-message BatchGetUsersRequest {
+message GetUsersRequest {
   repeated string user_ids = 1;
 }
 
-message BatchGetUsersResponse {
-  repeated UserProfile profiles = 1;
+message GetUsersResponse {
+  repeated UserProfile users = 1;
 }
 
 message UpdateProfileRequest {
@@ -163,21 +196,18 @@ message UpdateProfileRequest {
 }
 
 message UpdateProfileResponse {
-  UserProfile profile = 1;
 }
 
 // 统一设置更新
 message UpdateSettingsRequest {
   // 可选：将 Privacy 和 UserSettings 分开传，或者合并
-  PrivacySettings privacy_settings = 1;
-  UserSettings user_settings = 2;
+  UserSettings settings = 1;
 
   // 必须：指定更新哪些字段 (例如 paths: ["privacy_settings.message_permission"])
   google.protobuf.FieldMask update_mask = 3;
 }
 
 message UpdateSettingsResponse {
-  bool succeed = 1;
 }
 
 // 统一关注操作
@@ -197,9 +227,11 @@ message ListRelationshipsRequest {
   enum RelationType {
     RELATION_TYPE_FOLLOWING = 0; // 关注的人
     RELATION_TYPE_FOLLOWERS = 1; // 粉丝
+    RELATION_TYPE_MUTUAL_FOLLOWERS = 2; // 互相关注
   }
   RelationType type = 2;
   api.common.v1.Pagination pagination = 3;
+  string keyword = 4; // 可选：按昵称/备注/QQ号搜索过滤
 }
 
 message ListRelationshipsResponse {
@@ -209,49 +241,16 @@ message ListRelationshipsResponse {
   string next_page_token = 2;
 }
 
-message ListMutualFollowersRequest {
-  string user_id = 1; // 和谁的共同关注
-  api.common.v1.Pagination pagination = 2;
-}
-
-message ListMutualFollowersResponse {
-  repeated UserProfile users = 1;
-  string next_page_token = 2;
-}
-
 message ApplyVerificationRequest {
   string verified_title = 1; // 申请的认证头衔 (如: 23届部长, 社团负责人)
 }
 
 message ApplyVerificationResponse {
-  bool succeed = 1;
-  string message = 2; // 提示信息 (如: 申请已提交, 请等待审核)
 }
 
-message SearchUsersRequest {
-  string keyword = 1;
-  api.common.v1.Pagination pagination = 2;
+message ModifyDepartmentsRequest {
+  repeated string ids = 1; // 选择的部门 ID 列表
 }
 
-message SearchUsersResponse {
-  repeated UserProfile results = 1;
-  string next_page_token = 2;
-}
-
-// 获取隐私设置请求
-message GetPrivacySettingsRequest {
-}
-
-// 获取隐私设置响应
-message GetPrivacySettingsResponse {
-  PrivacySettings privacy_settings = 1;
-}
-
-// 获取用户设置请求
-message GetUserSettingsRequest {
-}
-
-// 获取用户设置响应
-message GetUserSettingsResponse {
-  UserSettings user_settings = 1;
+message ModifyDepartmentsResponse {
 }

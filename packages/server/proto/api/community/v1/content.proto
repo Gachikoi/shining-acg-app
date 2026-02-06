@@ -4,22 +4,38 @@ package api.community.v1;
 
 // 假设 api.common.v1 在这里引用，实际使用请确保路径正确
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 service ContentService {
   // 发布帖子
-  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse) {
+    option (google.api.http) = {
+      post: "/v1/posts"
+      body: "*"
+    };
+  }
 
   // 删除帖子
-  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse) {
+    option (google.api.http) = {
+      delete: "/v1/posts/{post_id}"
+    };
+  }
 
   // 帖子详情
   rpc GetPost(GetPostRequest) returns (GetPostResponse) {
+    option (google.api.http) = {
+      get: "/v1/posts/{post_id}"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 统一帖子列表接口
   // 涵盖：首页推荐、最新、热门、关注、部门分区、个人页作品、关键词搜索、高级筛选
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse) {
+    option (google.api.http) = {
+      get: "/v1/posts"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -36,7 +52,7 @@ message Post {
   repeated api.common.v1.Media media = 5;
 
   // 分区信息
-  api.common.v1.Department department_id = 6;
+  string department_id = 6;
   string department_name = 7;
 
   // 交互数据
@@ -131,7 +147,7 @@ message PostFilter {
   string keyword = 1;
 
   // 部门分区筛选 (支持多选，后台只有部门分区，这里传ID)
-  repeated api.common.v1.Department department_ids = 2;
+  repeated string department_ids = 2;
 
   // 时间范围筛选
   TimeRange time_range = 3;

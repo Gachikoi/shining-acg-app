@@ -3,31 +3,54 @@ syntax = "proto3";
 package api.community.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 // 互动服务：处理点赞、收藏、关注
 service InteractionService {
   // 点赞/取消赞 (支持帖子、评论)
   // 响应中包含最新点赞数，方便前端直接更新 UI
-  rpc SetLike(SetLikeRequest) returns (SetLikeResponse);
+  rpc SetLike(SetLikeRequest) returns (SetLikeResponse) {
+    option (google.api.http) = {
+      put: "/v1/likes/{target_id}"
+      body: "*"
+    };
+  }
 
   // 收藏/取消收藏 (通常仅针对帖子)
-  rpc SetCollect(SetCollectRequest) returns (SetCollectResponse);
+  rpc SetCollect(SetCollectRequest) returns (SetCollectResponse) {
+    option (google.api.http) = {
+      put: "/v1/collections/{post_id}"
+      body: "*"
+    };
+  }
 }
 
 // 评论服务：处理评论的增删查
 service CommentService {
   // 发送评论 (支持一级评论和子评论)
-  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse) {
+    option (google.api.http) = {
+      post: "/v1/posts/{post_id}/comments"
+      body: "*"
+    };
+  }
 
   // 获取评论列表
   // 场景1：获取帖子的主评论列表 (Post下的 Level-1 评论)
   // 场景2：获取某条评论的子评论列表 (Comment下的 Level-2 评论)
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse) {
+    option (google.api.http) = {
+      get: "/v1/posts/{post_id}/comments"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 删除评论
-  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse) {
+    option (google.api.http) = {
+      delete: "/v1/comments/{comment_id}"
+    };
+  }
 }
 
 // ---------------------------------------------------------

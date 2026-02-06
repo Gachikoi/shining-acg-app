@@ -13,7 +13,9 @@ import (
 )
 
 // AuthServiceServer 是 AuthService 的伪实现
-type AuthServiceServer struct{}
+type AuthServiceServer struct {
+	accountv1connect.UnimplementedAuthServiceHandler
+}
 
 // 确保 AuthServiceServer 实现了 AuthServiceHandler 接口
 var _ accountv1connect.AuthServiceHandler = (*AuthServiceServer)(nil)
@@ -32,7 +34,6 @@ func (s *AuthServiceServer) Login(ctx context.Context, req *connect.Request[acco
 			IsVerified:    true,
 			VerifiedTitle: "测试认证",
 		},
-		IsNewUser: false,
 	}), nil
 }
 

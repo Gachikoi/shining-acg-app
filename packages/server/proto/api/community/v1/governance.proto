@@ -3,16 +3,25 @@ syntax = "proto3";
 package api.community.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 // 社区治理服务 (审核后台)
 service GovernanceService {
   // 举报列表
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/reports"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 裁决举报 (封禁、删除、忽略)
-  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse);
+  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/reports/{report_id}"
+      body: "*"
+    };
+  }
 
   // 获取分区管理 (原 AdminService 里的)
 //  rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse);

@@ -3,28 +3,50 @@ syntax = "proto3";
 package api.account.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 // import "api/user/v1/user.proto"; // 如果需要引用 UserProfile
 
 // 用户后台管理服务
 service UserAdminService {
   // 修改用户角色 (提拔管理员)
-  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/users/{user_id}/role"
+      body: "*"
+    };
+  }
 
   // 封禁/解封用户 (更细粒度的控制，比如封禁3天)
-  rpc BanUser(BanUserRequest) returns (BanUserResponse);
+  rpc BanUser(BanUserRequest) returns (BanUserResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/users/{user_id}/ban"
+      body: "*"
+    };
+  }
 
   // 后台搜索用户 (比前台搜索权限更大，能搜到封禁用户等)
   rpc AdminSearchUsers(AdminSearchUsersRequest) returns (AdminSearchUsersResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/users"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 获取待审核的认证申请列表
   rpc ListVerificationApplications(ListVerificationApplicationsRequest) returns (ListVerificationApplicationsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/verifications"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 审核认证申请 (通过/驳回)
-  rpc ApproveVerification(ApproveVerificationRequest) returns (ApproveVerificationResponse);
+  rpc ApproveVerification(ApproveVerificationRequest) returns (ApproveVerificationResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/verifications/{application_id}"
+      body: "*"
+    };
+  }
 }
 
 message UpdateUserRoleRequest {

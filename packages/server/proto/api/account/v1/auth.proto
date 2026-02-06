@@ -3,33 +3,59 @@ syntax = "proto3";
 package api.account.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 service AuthService {
   // 统一登录接口 (支持 QQ, 微信, 手机号等)
-  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth/login"
+      body: "*"
+    };
+  }
 
   // 退出登录
-  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = {
+      delete: "/v1/auth/session"
+    };
+  }
 
   // 刷新 Token (换取新的 AccessToken)
-  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth/refresh"
+      body: "*"
+    };
+  }
+
+  // 更新推送 Token (FCM/APNS 等)
+  rpc UpdatePushToken(UpdatePushTokenRequest) returns (UpdatePushTokenResponse) {
+    option (google.api.http) = {
+      patch: "/v1/auth/push-token"
+      body: "*"
+    };
+  }
 }
 
 // ---------------------------------------------------------
 // 数据模型
 // ---------------------------------------------------------
 
-enum LoginType {
-  LOGIN_TYPE_UNSPECIFIED = 0;
-  LOGIN_TYPE_QQ = 1;      // QQ 快捷登录
+enum DevicePlatform {
+  DEVICE_PLATFORM_UNSPECIFIED = 0;
+  DEVICE_PLATFORM_IOS = 1;
+  DEVICE_PLATFORM_ANDROID = 2;
+  DEVICE_PLATFORM_WEB = 3;
 }
 
 message DeviceInfo {
-  string device_type = 1;
+  string device_id = 1;       // 唯一设备 ID (如 UUID 或 厂商自生成 ID)
   string device_name = 2;     // 设备名 (e.g. "iPhone 14 Pro")
-  string os_version = 3;      // 系统版本 (e.g. "iOS 16.0")
-  string client_version = 4;  // App/前端版本号
-//  string push_token = 5;      // 推送 Token (FCM/APNS/MiPush)，登录时上报方便推送
+  DevicePlatform platform = 3; // 平台类型
+  string os_version = 4;      // 系统版本 (e.g. "iOS 16.0")
+  string client_version = 5;  // App/前端版本号
+  string push_token = 6;      // 推送 Token (FCM/APNS/MiPush)
 }
 
 // ---------------------------------------------------------
@@ -37,32 +63,23 @@ message DeviceInfo {
 // ---------------------------------------------------------
 
 message LoginRequest {
-  LoginType type = 1;
-
-  // 凭证载荷：
-  // QQ/微信/Apple: 传 OAuth Code 或 AccessToken
-  string credential = 2;
-
-  DeviceInfo device = 3;
-
-  // 辅助验证参数 (如手机号登录时需要传 phone_number)
-  // string extra_param = 4;
+  // 凭证载荷：QQ 传 AccessToken
+  string credential = 1;
+  DeviceInfo device = 2;
 }
 
 message LoginResponse {
   string access_token = 1;   // 短期令牌 (如 2小时)
   string refresh_token = 2;  // 长期令牌 (如 30天)
-
   int64 access_expire_at = 3;  // 过期绝对时间戳
   int64 refresh_expire_at = 4; // 过期绝对时间戳
 
   api.common.v1.UserSummary user = 5; // 用户基本信息
-  bool is_new_user = 6;        // 关键：是否是注册后首次登录 (前端据此跳转完善资料页)
 }
 
 message LogoutRequest {
   // 是否踢掉所有设备 (修改密码后通常为 true)
-  bool logout_all_devices = 1;
+  // bool logout_all_devices = 1;
 }
 
 message LogoutResponse {}
@@ -77,3 +94,9 @@ message RefreshTokenResponse {
   int64 access_expire_at = 3;
   int64 refresh_expire_at = 4; // 过期绝对时间戳
 }
+message UpdatePushTokenRequest {
+  string push_token = 1;
+  string device_id = 2; // 标识是哪个设备变更了 token
+}
+
+message UpdatePushTokenResponse {}
