@@ -1387,7 +1387,7 @@
 				</Label>
 			</div>
 			<div
-				class="divide-y divide-zinc-200 rounded-lg border-b border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900"
+				class="divide-y divide-zinc-200 border-b border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900"
 			>
 				{#each developmentHistory as _item, index (index)}
 					<div class="p-4">
@@ -1422,7 +1422,7 @@
 					value={contactShining}
 					maxlength={300}
 					oninput={(e) => (contactShining = e.currentTarget.value)}
-					class="min-h-[120px] pr-16"
+					class="min-h-[120px] pb-16"
 				/>
 				<div class="absolute right-3 bottom-3">
 					<CharCounter current={contactShining.length} max={300} />
