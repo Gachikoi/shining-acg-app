@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { Minus } from 'lucide-svelte';
+	import { Minus, PlusCircle } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { DatePicker } from '$lib/components/ui/date-picker';
+	import { Button } from '$lib/components/ui/button';
 	import CharCounter from './char-counter.svelte';
 	import type { DepartmentInfo, MinisterDeclaration, MinisterInfo } from '$lib/types/website';
 
@@ -96,7 +97,7 @@
 							<div class="w-[170px]">
 								<select
 									id={`minister-dept-${index}`}
-									class="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+									class="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none"
 									bind:value={declaration.ministers[index].department}
 								>
 									<option value="" disabled selected hidden>选择统领部门</option>
@@ -123,7 +124,7 @@
 									maxlength={200}
 									oninput={(e) =>
 										(declaration.ministers[index].description = e.currentTarget.value)}
-									class="min-h-[140px] pr-16"
+									class="min-h-[140px] pb-16"
 								/>
 								<div class="pointer-events-none absolute right-4 bottom-3">
 									<CharCounter current={minister.description?.length ?? 0} max={200} />
@@ -142,14 +143,14 @@
 				</div>
 			{/each}
 
-			<button
-				type="button"
-				class="inline-flex items-center rounded-full border border-dashed border-zinc-300 px-4 py-1.5 text-sm text-zinc-600 hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
+			<Button
+				variant="block"
 				onclick={addMinister}
+				class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
-				<span class="mr-1 text-lg leading-none">+</span>
+				<PlusCircle class="size-4" />
 				新增
-			</button>
+			</Button>
 		</div>
 	</div>
 </div>
