@@ -1,8 +1,10 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-unused-vars */
+	import { PlusCircle } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { Button } from '$lib/components/ui/button';
 	import ImageUpload from './image-upload.svelte';
 	import VideoUpload from './video-upload.svelte';
 	import LinkItem from './link-item.svelte';
@@ -176,7 +178,7 @@
 				value={department.description}
 				maxlength={200}
 				oninput={(e) => (department.description = e.currentTarget.value)}
-				class="min-h-[120px] pr-16"
+				class="min-h-[120px] pb-16"
 			/>
 			<div class="absolute right-3 bottom-3">
 				<CharCounter current={department.description.length} max={200} />
@@ -212,14 +214,14 @@
 		{/if}
 
 		<div class="flex">
-			<button
-				type="button"
-				class="inline-flex h-8 w-[76px] shrink-0 items-center justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal whitespace-nowrap text-zinc-900 transition-all outline-none hover:bg-zinc-200 hover:text-zinc-900 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-zinc-900 dark:hover:text-zinc-100 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+			<Button
+				variant="block"
 				onclick={addDeptLink}
+				class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
-				<span class="text-lg leading-none">＋</span>
-				<span>新增</span>
-			</button>
+				<PlusCircle class="size-4" />
+				新增
+			</Button>
 		</div>
 	</div>
 </div>

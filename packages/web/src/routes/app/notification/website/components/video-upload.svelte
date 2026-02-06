@@ -77,7 +77,7 @@
 				</div>
 			{:else}
 				<label
-					class="flex h-[90px] w-[160px] cursor-pointer items-center justify-center rounded-lg border border-zinc-300 bg-zinc-50 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800"
+					class="flex h-[90px] w-[160px] cursor-pointer items-center justify-center rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 				>
 					<input
 						type="file"
