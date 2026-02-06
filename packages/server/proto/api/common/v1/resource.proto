@@ -2,10 +2,17 @@ syntax = "proto3";
 
 package api.common.v1;
 
+import "google/api/annotations.proto";
+
 service ResourceService {
   // 获取上传凭证 (支持批量)
   // 包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)
-  rpc GetUploadTokens(GetUploadTokensRequest) returns (GetUploadTokensResponse);
+  rpc GetUploadTokens(GetUploadTokensRequest) returns (GetUploadTokensResponse) {
+    option (google.api.http) = {
+      post: "/v1/resources/upload-tokens"
+      body: "*"
+    };
+  }
 }
 
 // ---------------------------------------------------------

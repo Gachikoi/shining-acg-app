@@ -40,6 +40,9 @@ const (
 	// AuthServiceRefreshTokenProcedure is the fully-qualified name of the AuthService's RefreshToken
 	// RPC.
 	AuthServiceRefreshTokenProcedure = "/api.account.v1.AuthService/RefreshToken"
+	// AuthServiceUpdatePushTokenProcedure is the fully-qualified name of the AuthService's
+	// UpdatePushToken RPC.
+	AuthServiceUpdatePushTokenProcedure = "/api.account.v1.AuthService/UpdatePushToken"
 )
 
 // AuthServiceClient is a client for the api.account.v1.AuthService service.
@@ -50,6 +53,8 @@ type AuthServiceClient interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	// 刷新 Token (换取新的 AccessToken)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
+	// 更新推送 Token (FCM/APNS 等)
+	UpdatePushToken(context.Context, *connect.Request[v1.UpdatePushTokenRequest]) (*connect.Response[v1.UpdatePushTokenResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the api.account.v1.AuthService service. By default,
@@ -77,14 +82,20 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			baseURL+AuthServiceRefreshTokenProcedure,
 			opts...,
 		),
+		updatePushToken: connect.NewClient[v1.UpdatePushTokenRequest, v1.UpdatePushTokenResponse](
+			httpClient,
+			baseURL+AuthServiceUpdatePushTokenProcedure,
+			opts...,
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	login        *connect.Client[v1.LoginRequest, v1.LoginResponse]
-	logout       *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
-	refreshToken *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
+	login           *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	logout          *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
+	refreshToken    *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
+	updatePushToken *connect.Client[v1.UpdatePushTokenRequest, v1.UpdatePushTokenResponse]
 }
 
 // Login calls api.account.v1.AuthService.Login.
@@ -102,6 +113,11 @@ func (c *authServiceClient) RefreshToken(ctx context.Context, req *connect.Reque
 	return c.refreshToken.CallUnary(ctx, req)
 }
 
+// UpdatePushToken calls api.account.v1.AuthService.UpdatePushToken.
+func (c *authServiceClient) UpdatePushToken(ctx context.Context, req *connect.Request[v1.UpdatePushTokenRequest]) (*connect.Response[v1.UpdatePushTokenResponse], error) {
+	return c.updatePushToken.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the api.account.v1.AuthService service.
 type AuthServiceHandler interface {
 	// 统一登录接口 (支持 QQ, 微信, 手机号等)
@@ -110,6 +126,8 @@ type AuthServiceHandler interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	// 刷新 Token (换取新的 AccessToken)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
+	// 更新推送 Token (FCM/APNS 等)
+	UpdatePushToken(context.Context, *connect.Request[v1.UpdatePushTokenRequest]) (*connect.Response[v1.UpdatePushTokenResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -133,6 +151,11 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		svc.RefreshToken,
 		opts...,
 	)
+	authServiceUpdatePushTokenHandler := connect.NewUnaryHandler(
+		AuthServiceUpdatePushTokenProcedure,
+		svc.UpdatePushToken,
+		opts...,
+	)
 	return "/api.account.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceLoginProcedure:
@@ -141,6 +164,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceLogoutHandler.ServeHTTP(w, r)
 		case AuthServiceRefreshTokenProcedure:
 			authServiceRefreshTokenHandler.ServeHTTP(w, r)
+		case AuthServiceUpdatePushTokenProcedure:
+			authServiceUpdatePushTokenHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -160,4 +185,8 @@ func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[
 
 func (UnimplementedAuthServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.AuthService.RefreshToken is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UpdatePushToken(context.Context, *connect.Request[v1.UpdatePushTokenRequest]) (*connect.Response[v1.UpdatePushTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.account.v1.AuthService.UpdatePushToken is not implemented"))
 }

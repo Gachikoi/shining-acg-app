@@ -4,24 +4,25 @@ Shining ACG 后端是一个基于 Go 语言开发的微服务架构系统，为 
 
 ## 项目特点
 
-- **多协议支持**：同时支持 gRPC、gRPC-Web 和 HTTP/JSON 接口
+- **多协议支持**：同时支持 gRPC、gRPC-Web、Connect 和 RESTful API 接口
+- **RESTful API 转码**：使用 [Vanguard](https://github.com/connectrpc/vanguard-go) 库自动将 REST 请求转码为 RPC 调用，支持标准的 `google.api.http` 注解
 - **微服务架构**：将系统划分为 Account、Community、Messenger 和 CMS 四个物理微服务
 - **高效开发**：使用 Protocol Buffers 和 Buf v2 管理 API 定义，自动生成代码
 - **高性能**：使用 PostgreSQL 作为主数据库，Redis 作为缓存
+- **现代化工具链**：支持 Docker 容器化部署，Kubernetes 编排
 - **现代化工具链**：支持 Docker 容器化部署，Kubernetes 编排
 
 ## 架构概览
 
 ### 微服务划分
 
-| 微服务           | 功能     | 包含模块                                                                           |
-|---------------|--------|--------------------------------------------------------------------------------|
-| **Account**   | 用户核心功能 | Auth Service（认证）、User Service（用户资料/关系）                                         |
-| **Community** | 社区内容功能 | Content Service（帖子/瀑布流）、Interaction Service（转评赞）、Comment Service（评论）           |
-| **Messenger** | 消息通知功能 | Message Service（通知管理、互动管理）                                                     |
-| **CMS**       | 官网管理功能 | CMS Service（官网信息展示）                                                            |
-| **Admin**     | 管理员功能  | Governance Service（社区治理/审核）、UserAdmin Service（权限/封禁）、SiteAdmin Service（官网后台管理） |
-
+| 微服务        | 功能         | 包含模块                                                                                               |
+| ------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| **Account**   | 用户核心功能 | Auth Service（认证）、User Service（用户资料/关系）                                                    |
+| **Community** | 社区内容功能 | Content Service（帖子/瀑布流）、Interaction Service（转评赞）、Comment Service（评论）                 |
+| **Messenger** | 消息通知功能 | Message Service（通知管理、互动管理）                                                                  |
+| **CMS**       | 官网管理功能 | CMS Service（官网信息展示）                                                                            |
+| **Admin**     | 管理员功能   | Governance Service（社区治理/审核）、UserAdmin Service（权限/封禁）、SiteAdmin Service（官网后台管理） |
 
 ### 技术栈
 
@@ -87,16 +88,42 @@ go run main.go
 
 ### 测试 API
 
-**使用 curl（HTTP/JSON）：**
+服务同时支持 **ConnectRPC 标准路径** 和 **RESTful API 路径**：
+
+**使用 RESTful API（推荐）：**
+
+```bash
+# 登录 (RESTful)
+curl -X POST http://localhost:8080/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"credential": "your-qq-token", "device": {"device_id": "uuid-123", "device_name": "iPhone 14", "platform": 1, "os_version": "iOS 16.0", "client_version": "1.0.0"}}'
+
+# 获取当前用户信息 (RESTful)
+curl -X GET http://localhost:8080/v1/me \
+  -H "Authorization: Bearer your-access-token"
+
+# 获取帖子列表 (RESTful)
+curl -X GET "http://localhost:8080/v1/posts?scene=1&pagination.page_size=10"
+
+# 关注用户 (RESTful)
+curl -X PUT http://localhost:8080/v1/me/following/user-id-123 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-access-token" \
+  -d '{"is_active": true}'
+```
+
+**使用 ConnectRPC 标准路径（HTTP/JSON）：**
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.AuthService/Login \
   -H "Content-Type: application/json" \
-  -d '{"type": 1, "credential": "your-qq-token", "device": {"device_type": "mobile", "device_name": "iPhone 14", "os_version": "iOS 16.0", "client_version": "1.0.0"}}'
+  -d '{"credential": "your-qq-token", "device": {"device_id": "uuid-123", "device_name": "iPhone 14", "platform": 1, "os_version": "iOS 16.0", "client_version": "1.0.0"}}'
 ```
 
 **使用 gRPC 客户端：**
+
 ```bash
-grpcurl -plaintext -d '{"type": 1, "credential": "your-qq-token", "device": {"device_type": "mobile", "device_name": "iPhone 14", "os_version": "iOS 16.0", "client_version": "1.0.0"}}' \
+grpcurl -plaintext -d '{"credential": "your-qq-token", "device": {"device_id": "uuid-123", "device_name": "iPhone 14", "platform": 1, "os_version": "iOS 16.0", "client_version": "1.0.0"}}' \
   localhost:8080 api.account.v1.AuthService/Login
 ```
 
@@ -161,4 +188,4 @@ server/
 
 ---
 
-*最后更新：2026-02-03*
+_最后更新：2026-02-03_

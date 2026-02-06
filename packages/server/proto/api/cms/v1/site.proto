@@ -4,6 +4,7 @@ syntax = "proto3";
 package api.cms.v1;
 
 import "api/common/v1/common.proto"; // 假设这里有分页等定义
+import "google/api/annotations.proto";
 
 // 门户/官网服务
 // 特点：除了 Trending 外，其他接口数据变化频率极低，建议服务端做强缓存
@@ -13,36 +14,57 @@ service PortalService {
   // 1. 获取首页聚合信息 (可选，一次性拉取所有首屏需要的配置，减少请求数)
   // 包含：Logo, 宣传视频, 基础SiteInfo
   rpc GetSiteConfig(GetSiteConfigRequest) returns (GetSiteConfigResponse) {
+    option (google.api.http) = {
+      get: "/v1/site/config"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 2. 部门列表 (支持按优先级排序)
   rpc ListDepartments(ListDepartmentsRequest) returns (ListDepartmentsResponse) {
+    option (google.api.http) = {
+      get: "/v1/departments"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 3. 活动列表
   rpc ListActivities(ListActivitiesRequest) returns (ListActivitiesResponse) {
+    option (google.api.http) = {
+      get: "/v1/activities"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 4. 发展历程 (大事记)
   rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse) {
+    option (google.api.http) = {
+      get: "/v1/history"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 5. 部长/历代领导 (按年份/届数查询)
   rpc ListMinisters(ListMinistersRequest) returns (ListMinistersResponse) {
+    option (google.api.http) = {
+      get: "/v1/ministers"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 6. Staff 名单 (按分组返回)
   rpc ListStaff(ListStaffRequest) returns (ListStaffResponse) {
+    option (google.api.http) = {
+      get: "/v1/staff"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 7. 赞助商/鸣谢名单
   rpc ListSponsors(ListSponsorsRequest) returns (ListSponsorsResponse) {
+    option (google.api.http) = {
+      get: "/v1/sponsors"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -50,6 +72,9 @@ service PortalService {
 
   // 8. 热门动态 (对应需求：同步社区动态，无Token访问)
   rpc ListHomeTrending(ListHomeTrendingRequest) returns (ListHomeTrendingResponse) {
+    option (google.api.http) = {
+      get: "/v1/trending"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

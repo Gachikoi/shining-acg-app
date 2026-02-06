@@ -11,21 +11,8 @@ import (
 )
 
 // UserServiceServer 是 UserService 的伪实现
-type UserServiceServer struct{}
-
-func (s *UserServiceServer) GetPrivacySettings(ctx context.Context, c *connect.Request[accountv1.GetPrivacySettingsRequest]) (*connect.Response[accountv1.GetPrivacySettingsResponse], error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *UserServiceServer) GetUserSettings(ctx context.Context, c *connect.Request[accountv1.GetUserSettingsRequest]) (*connect.Response[accountv1.GetUserSettingsResponse], error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *UserServiceServer) ApplyVerification(ctx context.Context, c *connect.Request[accountv1.ApplyVerificationRequest]) (*connect.Response[accountv1.ApplyVerificationResponse], error) {
-	//TODO implement me
-	panic("implement me")
+type UserServiceServer struct {
+	accountv1connect.UnimplementedUserServiceHandler
 }
 
 // 确保 UserServiceServer 实现了 UserServiceHandler 接口
@@ -41,68 +28,51 @@ func (s *UserServiceServer) GetMe(ctx context.Context, req *connect.Request[acco
 				Avatar:   "https://example.com/avatar.png",
 				Departments: []*commonv1.DepartmentBase{
 					{
-						Id:   commonv1.Department_DEPARTMENT_LIGHT_MUSIC,
+						Id:   "light_music",
 						Name: "轻音部",
 					},
 				},
 				IsVerified:    true,
 				VerifiedTitle: "测试认证",
 			},
-			Intro:           "这是我的个人简介",
-			BackgroundImage: "https://example.com/background.jpg",
-			Links:           []*commonv1.Link{},
+			Links: []*commonv1.Link{},
 			Stats: &accountv1.UserStats{
-				FollowerCount:     100,
-				FollowingCount:    50,
-				PostCount:         20,
-				LikeCountReceived: 1000,
-				ViewCountReceived: 10000,
+				FollowerCount:        100,
+				FollowingCount:       50,
+				LikeCountReceived:    1000,
+				CollectCountReceived: 500,
+				ViewCountReceived:    10000,
 			},
 			RelationStatus: &accountv1.UserRelationStatus{},
 			Role:           commonv1.Role_ROLE_USER,
 		},
-		PrivacySettings: &accountv1.PrivacySettings{
-			MessagePermission: accountv1.PrivacyLevel_PRIVACY_LEVEL_PUBLIC,
-			ListVisibility:    accountv1.PrivacyLevel_PRIVACY_LEVEL_PUBLIC,
-		},
-		UserSettings: &accountv1.UserSettings{
-			EnablePush:              true,
-			EnableEmailNotification: false,
+		Settings: &accountv1.UserSettings{
+			Notification: &accountv1.NotificationSettings{
+				PushEnabled:     true,
+				PushChat:        true,
+				PushCommentAt:   true,
+				PushLikeCollect: true,
+				PushNewFollower: true,
+				PushPostUpdate:  true,
+				PushSystem:      true,
+			},
+			Privacy: &accountv1.PrivacySettings{
+				MessagePermission:        accountv1.MessagePrivacyLevel_MESSAGE_PRIVACY_LEVEL_PUBLIC,
+				LikedPostsVisibility:     accountv1.BasePrivacyLevel_BASE_PRIVACY_LEVEL_PUBLIC,
+				CollectedPostsVisibility: accountv1.BasePrivacyLevel_BASE_PRIVACY_LEVEL_PUBLIC,
+			},
+			Appearance: &accountv1.AppearanceSettings{
+				Theme: accountv1.AppearanceSettings_THEME_SYSTEM,
+			},
 		},
 	}), nil
 }
 
-// GetUser 伪实现获取用户信息接口
-func (s *UserServiceServer) GetUser(ctx context.Context, req *connect.Request[accountv1.GetUserRequest]) (*connect.Response[accountv1.GetUserResponse], error) {
-	return connect.NewResponse(&accountv1.GetUserResponse{
-		Profile: &accountv1.UserProfile{
-			Base: &commonv1.UserSummary{
-				UserId:     req.Msg.TargetUserId,
-				Nickname:   "测试用户",
-				Avatar:     "https://example.com/avatar.png",
-				IsVerified: false,
-			},
-			Intro:           "这是测试用户的个人简介",
-			BackgroundImage: "https://example.com/background.jpg",
-			Links:           []*commonv1.Link{},
-			Stats: &accountv1.UserStats{
-				FollowerCount:     10,
-				FollowingCount:    5,
-				PostCount:         2,
-				LikeCountReceived: 100,
-				ViewCountReceived: 1000,
-			},
-			RelationStatus: &accountv1.UserRelationStatus{},
-			Role:           commonv1.Role_ROLE_USER,
-		},
-	}), nil
-}
-
-// BatchGetUsers 伪实现批量获取用户信息接口
-func (s *UserServiceServer) BatchGetUsers(ctx context.Context, req *connect.Request[accountv1.BatchGetUsersRequest]) (*connect.Response[accountv1.BatchGetUsersResponse], error) {
-	var profiles []*accountv1.UserProfile
-	for _, userId := range req.Msg.UserIds {
-		profiles = append(profiles, &accountv1.UserProfile{
+// GetUsers 伪实现获取用户信息接口
+func (s *UserServiceServer) GetUsers(ctx context.Context, req *connect.Request[accountv1.GetUsersRequest]) (*connect.Response[accountv1.GetUsersResponse], error) {
+	var users []*accountv1.UserProfile
+	for _, userId := range req.Msg.GetUserIds() {
+		users = append(users, &accountv1.UserProfile{
 			Base: &commonv1.UserSummary{
 				UserId:     userId,
 				Nickname:   "用户" + userId,
@@ -111,9 +81,8 @@ func (s *UserServiceServer) BatchGetUsers(ctx context.Context, req *connect.Requ
 			},
 		})
 	}
-
-	return connect.NewResponse(&accountv1.BatchGetUsersResponse{
-		Profiles: profiles,
+	return connect.NewResponse(&accountv1.GetUsersResponse{
+		Users: users,
 	}), nil
 }
 
@@ -137,12 +106,12 @@ func (s *UserServiceServer) ListRelationships(ctx context.Context, req *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListRelationships 接口尚未实现"))
 }
 
-// ListMutualFollowers 伪实现获取共同关注接口
-func (s *UserServiceServer) ListMutualFollowers(ctx context.Context, req *connect.Request[accountv1.ListMutualFollowersRequest]) (*connect.Response[accountv1.ListMutualFollowersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMutualFollowers 接口尚未实现"))
+// ApplyVerification 伪实现申请认证接口
+func (s *UserServiceServer) ApplyVerification(ctx context.Context, req *connect.Request[accountv1.ApplyVerificationRequest]) (*connect.Response[accountv1.ApplyVerificationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ApplyVerification 接口尚未实现"))
 }
 
-// SearchUsers 伪实现搜索用户接口
-func (s *UserServiceServer) SearchUsers(ctx context.Context, req *connect.Request[accountv1.SearchUsersRequest]) (*connect.Response[accountv1.SearchUsersResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SearchUsers 接口尚未实现"))
+// ModifyDepartments 伪实现修改部门接口
+func (s *UserServiceServer) ModifyDepartments(ctx context.Context, req *connect.Request[accountv1.ModifyDepartmentsRequest]) (*connect.Response[accountv1.ModifyDepartmentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ModifyDepartments 接口尚未实现"))
 }

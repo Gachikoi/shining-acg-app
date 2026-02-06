@@ -3,6 +3,7 @@ syntax = "proto3";
 package api.messenger.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 // 消息与通知服务
 service MessageService {
@@ -13,18 +14,29 @@ service MessageService {
   // 获取通知列表
   // 支持按“大类”筛选（如：只看赞和收藏、只看系统通知）
   rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
+    option (google.api.http) = {
+      get: "/v1/notifications"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 获取未读计数
   // 用于在 App 消息页面的顶部 Tab 显示红点数字 (e.g., 赞:5, 评论:2, 系统:0)
   rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse) {
+    option (google.api.http) = {
+      get: "/v1/notifications/unread-count"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 标记已读
   // 支持：点开某个Tab一键已读、点击某条通知已读、全部已读
-  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {
+    option (google.api.http) = {
+      put: "/v1/notifications/read"
+      body: "*"
+    };
+  }
 }
 
 // ==========================================
