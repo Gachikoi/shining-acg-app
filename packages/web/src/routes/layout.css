@@ -118,6 +118,12 @@
 		@apply border-border outline-ring/50;
 	}
 
+	html,
+	body {
+		overflow: hidden;
+		height: 100%;
+	}
+
 	body {
 		@apply bg-background font-sans text-foreground;
 
@@ -140,5 +146,15 @@
 
 		/* 去除移动端点击高亮 (打造原生 App 质感) */
 		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* 隐藏滚动条但保持滚动功能 */
+	.scrollbar-hide {
+		-ms-overflow-style: none; /* IE and Edge */
+		scrollbar-width: none; /* Firefox */
+	}
+
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none; /* Chrome, Safari and Opera */
 	}
 }

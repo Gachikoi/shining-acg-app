@@ -16,7 +16,9 @@
 
 <Header />
 <div class="flex h-[calc(100vh-4.5rem)] flex-col lg:flex-row">
-	<aside class="m-4 mr-0 hidden flex-col justify-between lg:flex">
+	<aside
+		class="m-4 mr-0 hidden flex-col justify-between lg:sticky lg:top-0 lg:flex lg:h-[calc(100vh-4.5rem)] lg:self-start"
+	>
 		<div class="flex flex-col gap-2">
 			<TabButton text="首页" icon={House} href="/" />
 			<TabButton badgeText="1" text="消息" icon={Bell} href="/notification" />
@@ -27,7 +29,7 @@
 		<SettingPopover></SettingPopover>
 	</aside>
 
-	<section class="grow px-6">
+	<section class="scrollbar-hide grow overflow-y-auto px-6">
 		{@render children()}
 	</section>
 
