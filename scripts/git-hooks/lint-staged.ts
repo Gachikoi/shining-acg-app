@@ -37,7 +37,7 @@ export async function runCommandAsync(
 export class LintStaged {
   private stashed = false;
 
-  getStagedFiles(): string[] {
+  private getStagedFiles(): string[] {
     const { stdout } = runCommand("git", [
       "diff",
       "--cached",
@@ -47,7 +47,12 @@ export class LintStaged {
     return stdout ? stdout.split("\n") : [];
   }
 
-  hasUnstagedChanges(): boolean {
+  private getUnstagedFiles(): string[] {
+    const { stdout } = runCommand("git", ["diff", "--name-only"]);
+    return stdout ? stdout.split("\n") : [];
+  }
+
+  private hasUnstagedChanges(): boolean {
     const { stdout: modified } = runCommand("git", ["diff", "--name-only"]);
     const { stdout: untracked } = runCommand("git", [
       "ls-files",
@@ -57,7 +62,7 @@ export class LintStaged {
     return !!modified || !!untracked;
   }
 
-  stashBackup() {
+  private stashBackup() {
     console.log("📦 Stash unstaged 文件...");
     // -k (--keep-index): 不 stash 索引内容（即 staged changes）
     // -u (--include-untracked): stash 包括未跟踪的文件
@@ -81,7 +86,7 @@ export class LintStaged {
     }
   }
 
-  restoreBackup() {
+  private restoreBackup() {
     if (!this.stashed) return;
     console.log("♻️ 恢复 stashed 文件...");
     const { code, stderr } = runCommand("git", ["stash", "pop"]);
@@ -93,7 +98,15 @@ export class LintStaged {
     }
   }
 
-  async run(task: (files: string[]) => Promise<void> | void) {
+  /**
+   * @param {boolean} allowSideEffects - 是否允许副作用（开启后，在 lint-staged 过程中对非原始 staged 文件的修改也会被添加到索引中）
+   * @param {(files: string[]) => Promise<void> | void} task - 运行的任务闭包
+   * @returns {Promise<void>}
+   */
+  async run(
+    allowSideEffects: boolean = false,
+    task: (files: string[]) => Promise<void> | void,
+  ) {
     const stagedFiles = this.getStagedFiles();
     if (stagedFiles.length === 0) {
       console.log("✨ No staged files to check.");
@@ -110,9 +123,18 @@ export class LintStaged {
     try {
       await task(stagedFiles);
 
+      const newStagedFiles = (() => {
+        switch (allowSideEffects) {
+          case true:
+            return [...new Set([...stagedFiles, ...this.getUnstagedFiles()])];
+          case false:
+            return stagedFiles;
+        }
+      })();
+
       // 将修改后的 stagedFiles 重新放到索引中
-      if (stagedFiles.length > 0) {
-        runCommand("git", ["add", ...stagedFiles]);
+      if (newStagedFiles.length > 0) {
+        runCommand("git", ["add", ...newStagedFiles]);
       }
     } catch (e) {
       console.error("❌ lint-staged 任务失败");

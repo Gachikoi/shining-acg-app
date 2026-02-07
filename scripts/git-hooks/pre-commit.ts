@@ -9,7 +9,7 @@ import { LintStaged, runCommandAsync } from "./lint-staged.ts";
 
 const lintStaged = new LintStaged();
 
-lintStaged.run(async (stagedFiles) => {
+lintStaged.run(true, async (stagedFiles) => {
   console.log("正在运行预提交检查...\n");
 
   const results = await Promise.all([
