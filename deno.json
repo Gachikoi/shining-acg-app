@@ -3,8 +3,8 @@
   "exports": {},
   "tasks": {
     "prepare": "deno run -A scripts/git-hooks/install-hooks.ts",
-    "fmt": "deno fmt scripts/",
-    "lint": "deno lint scripts/",
-    "lint:fix":"deno lint --fix scripts/"
+    "fmt": "deno fmt scripts/ deno.json ",
+    "lint": "deno lint scripts/ deno.json ",
+    "lint:fix": "deno lint --fix scripts/ deno.json "
   }
 }
