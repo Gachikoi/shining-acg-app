@@ -55,8 +55,8 @@ sw.addEventListener('fetch', (event) => {
 				throw new Error('invalid response from fetch');
 			}
 
-			// 仅缓存非 API 请求且状态为 200 的响应
-			if (response.status === 200 && !url.pathname.startsWith('/api')) {
+			// 仅缓存 assets 中的文件
+			if (response.status === 200 && ASSETS.includes(url.pathname)) {
 				cache.put(event.request, response.clone());
 			}
 
