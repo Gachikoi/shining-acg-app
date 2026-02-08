@@ -17,8 +17,8 @@ service AuthService {
   // 退出登录
   rpc Logout(LogoutRequest) returns (LogoutResponse) {
     option (google.api.http) = {
-      delete: "/v1/auth/session"
-    };
+      delete: "/v1/auth/logout"
+    }; 
   }
 
   // 刷新 Token (换取新的 AccessToken)
@@ -69,10 +69,8 @@ message LoginRequest {
 }
 
 message LoginResponse {
-  string access_token = 1;   // 短期令牌 (如 2小时)
-  string refresh_token = 2;  // 长期令牌 (如 30天)
-  int64 access_expire_at = 3;  // 过期绝对时间戳
-  int64 refresh_expire_at = 4; // 过期绝对时间戳
+  string access_token = 1;   // 短期令牌 (如 2小时)，过期绝对时间戳及user_id放在payload中
+  string refresh_token = 2;  // 长期令牌 (如 30天)，过期绝对时间戳放在payload中
 
   api.common.v1.UserSummary user = 5; // 用户基本信息
 }
@@ -91,8 +89,6 @@ message RefreshTokenRequest {
 message RefreshTokenResponse {
   string access_token = 1;
   string refresh_token = 2;    // 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
-  int64 access_expire_at = 3;
-  int64 refresh_expire_at = 4; // 过期绝对时间戳
 }
 message UpdatePushTokenRequest {
   string push_token = 1;

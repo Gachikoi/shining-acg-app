@@ -9,27 +9,19 @@ import "google/api/annotations.proto";
 // 用户后台管理服务
 service UserAdminService {
   // 修改用户角色 (提拔管理员)
-  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse) {
+  rpc UpdateUsersRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse) {
     option (google.api.http) = {
-      put: "/v1/admin/users/{user_id}/role"
+      put: "/v1/admin/users/role"
       body: "*"
     };
   }
 
-  // 封禁/解封用户 (更细粒度的控制，比如封禁3天)
-  rpc BanUser(BanUserRequest) returns (BanUserResponse) {
+  // 
+  rpc Ban(BanRequest) returns (BanResponse) {
     option (google.api.http) = {
-      put: "/v1/admin/users/{user_id}/ban"
+      put: "/v1/admin/ban"
       body: "*"
     };
-  }
-
-  // 后台搜索用户 (比前台搜索权限更大，能搜到封禁用户等)
-  rpc AdminSearchUsers(AdminSearchUsersRequest) returns (AdminSearchUsersResponse) {
-    option (google.api.http) = {
-      get: "/v1/admin/users"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 获取待审核的认证申请列表
@@ -50,26 +42,33 @@ service UserAdminService {
 }
 
 message UpdateUserRoleRequest {
-  string user_id = 1;
+  repeated string user_ids = 1;
   api.common.v1.Role role = 2;
 }
 message UpdateUserRoleResponse {}
 
-message BanUserRequest {
-  string user_id = 1;
-  int64 ban_duration_seconds = 2; // 0 = 永久
-  string reason = 3;
+enum BanType {
+  BAN_TYPE_UNSPECIFIED = 0;
+  BAN_TYPE_USER = 1; // 封禁用户
+  BAN_TYPE_POST = 2; // 删除帖子
+  BAN_TYPE_COMMENT = 3; // 删除评论
 }
-message BanUserResponse {}
 
-message AdminSearchUsersRequest {
-  string keyword = 1;
-  api.common.v1.Pagination pagination = 2;
+enum BanStatus {
+  BAN_STATUS_UNSPECIFIED = 0;
+  BAN_STATUS_BAN = 1;    // 封禁/删除
+  BAN_STATUS_UNBAN = 2;  // 解封/恢复
 }
-message AdminSearchUsersResponse {
-  // 这里可以复用 UserSummary 或定义更详细的 AdminUserView
-  repeated api.common.v1.UserSummary users = 1;
+
+message BanItem {
+  string report_id = 1; // 相关的举报 ID
+  BanStatus status = 3;
 }
+
+message BanRequest {
+  repeated BanItem ban_items = 1;
+}
+message BanResponse {}
 
 // 认证申请状态枚举
 enum VerificationStatus {

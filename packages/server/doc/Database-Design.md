@@ -50,6 +50,7 @@ type BaseModel struct {
 ```go
 type User struct {
     BaseModel
+    // 虽然项目中采用qq号作为用户id，但是必须有属于自己业务的id作为主键，而qq号作为唯一约束
     QQID                string         `gorm:"type:varchar(32);uniqueIndex;not null" json:"qq_id"`
     Nickname            string         `gorm:"type:varchar(100);not null" json:"nickname"`
     Avatar              string         `gorm:"type:text" json:"avatar"`
