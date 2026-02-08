@@ -1,0 +1,96 @@
+name: CD
+
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  deploy-dev:
+    name: Deploy to Development Server
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'develop'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Development Environment
+        run: |
+          # 连接到开发服务器
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.DEV_SERVER_IP }} << 'EOF'
+            # 进入开发环境目录
+            cd /opt/shiningacg_dev
+
+            # 登录 GHCR
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # 拉取最新的 Account 微服务镜像
+            docker pull ghcr.io/${{ github.repository_owner }}/shining-acg-account:develop
+
+            # 重启服务
+            docker stop shining-acg-account-service || true
+            docker rm shining-acg-account-service || true
+            docker run -d \
+              --name shining-acg-account-service \
+              --network shining-acg-network \
+              --env-file .env \
+              -p 8080:8080 \
+              -p 8081:8081 \
+              -v $(pwd)/logs/account:/app/logs \
+              --depends-on postgres redis \
+              ghcr.io/${{ github.repository_owner }}/shining-acg-account:develop
+
+            # 检查服务是否正常启动
+            sleep 5
+            docker logs shining-acg-account-service
+          EOF
+
+  deploy-prod:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Production Environment
+        run: |
+          # 连接到生产服务器
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.PROD_SERVER_IP }} << 'EOF'
+            # 进入生产环境目录
+            cd /opt/shiningacg_prod
+
+            # 登录 GHCR
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # 拉取最新的 Account 微服务镜像
+            docker pull ghcr.io/${{ github.repository_owner }}/shining-acg-account:latest
+
+            # 重启服务
+            docker stop shining-acg-account-service || true
+            docker rm shining-acg-account-service || true
+            docker run -d \
+              --name shining-acg-account-service \
+              --network shining-acg-network \
+              --env-file .env \
+              -p 8080:8080 \
+              -p 8081:8081 \
+              -v $(pwd)/logs/account:/app/logs \
+              --depends-on postgres redis \
+              ghcr.io/${{ github.repository_owner }}/shining-acg-account:latest
+
+            # 检查服务是否正常启动
+            sleep 5
+            docker logs shining-acg-account-service
+          EOF

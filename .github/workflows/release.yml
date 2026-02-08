@@ -29,42 +29,6 @@ jobs:
           name: frontend-build
           path: packages/web/build
 
-  build-backend:
-    name: Build Backend
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.21"
-
-      - name: Build binary
-        working-directory: packages/server
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          OUTPUT_NAME="server-${{ matrix.goos }}-${{ matrix.goarch }}"
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            OUTPUT_NAME="${OUTPUT_NAME}.exe"
-          fi
-          go build -o bin/$OUTPUT_NAME ./cmd/server
-
-      - name: Upload backend artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: backend-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: packages/server/bin/*
-
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest

@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: shining123
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./packages/server/build/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./build/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -36,14 +36,12 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Account 微服务 - 用户核心功能
-  account-service:
+  # Shining ACG 单体服务
+  shining-acg-service:
     build:
-      context: ./packages/server
-      dockerfile: build/Dockerfile
-      args:
-        SERVICE_NAME: account
-    container_name: shining-acg-account-service
+      context: ./
+      dockerfile: Dockerfile
+    container_name: shining-acg-service
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -51,134 +49,16 @@ services:
       - DB_PASSWORD=shining123
       - DB_NAME=shining_acg
       - REDIS_ADDR=redis:6379
-      - GRPC_PORT=8080
-      - HTTP_PORT=8081
+      - PORT=8080
     ports:
       - "8080:8080"
-      - "8081:8081"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./packages/server/logs/account:/app/logs
-    restart: unless-stopped
-
-  # Community 微服务 - 社区内容功能
-  community-service:
-    build:
-      context: ./packages/server
-      dockerfile: build/Dockerfile
-      args:
-        SERVICE_NAME: community
-    container_name: shining-acg-community-service
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=shining
-      - DB_PASSWORD=shining123
-      - DB_NAME=shining_acg
-      - REDIS_ADDR=redis:6379
-      - GRPC_PORT=8082
-      - HTTP_PORT=8083
-    ports:
-      - "8082:8082"
-      - "8083:8083"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./packages/server/logs/community:/app/logs
-    restart: unless-stopped
-
-  # Messenger 微服务 - 消息通知功能
-  messenger-service:
-    build:
-      context: ./packages/server
-      dockerfile: build/Dockerfile
-      args:
-        SERVICE_NAME: messenger
-    container_name: shining-acg-messenger-service
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=shining
-      - DB_PASSWORD=shining123
-      - DB_NAME=shining_acg
-      - REDIS_ADDR=redis:6379
-      - GRPC_PORT=8084
-      - HTTP_PORT=8085
-    ports:
-      - "8084:8084"
-      - "8085:8085"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./packages/server/logs/messenger:/app/logs
-    restart: unless-stopped
-
-  # CMS 微服务 - 官网管理功能
-  cms-service:
-    build:
-      context: ./packages/server
-      dockerfile: build/Dockerfile
-      args:
-        SERVICE_NAME: cms
-    container_name: shining-acg-cms-service
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=shining
-      - DB_PASSWORD=shining123
-      - DB_NAME=shining_acg
-      - REDIS_ADDR=redis:6379
-      - GRPC_PORT=8086
-      - HTTP_PORT=8087
-    ports:
-      - "8086:8086"
-      - "8087:8087"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./packages/server/logs/cms:/app/logs
-    restart: unless-stopped
-
-  # Admin 微服务 - 管理员功能
-  admin-service:
-    build:
-      context: ./packages/server
-      dockerfile: build/Dockerfile
-      args:
-        SERVICE_NAME: admin
-    container_name: shining-acg-admin-service
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=shining
-      - DB_PASSWORD=shining123
-      - DB_NAME=shining_acg
-      - REDIS_ADDR=redis:6379
-      - GRPC_PORT=8088
-      - HTTP_PORT=8089
-    ports:
-      - "8088:8088"
-      - "8089:8089"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./packages/server/logs/admin:/app/logs
+      - ./logs:/app/logs
     restart: unless-stopped
 
 volumes:

@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package api.admin.v1;
+
+import "api/common/v1/common.proto";
+
+// 系统管理服务 - 负责系统配置和管理功能
+// 包含系统配置、日志管理、统计分析等功能
+service SystemAdminService {
+  // 获取系统配置 - 获取所有系统配置项
+  rpc GetSystemConfig(GetSystemConfigRequest) returns (GetSystemConfigResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 更新系统配置 - 更新系统配置项
+  rpc UpdateSystemConfig(UpdateSystemConfigRequest) returns (UpdateSystemConfigResponse);
+
+  // 获取系统日志 - 分页获取系统操作日志
+  rpc ListSystemLogs(ListSystemLogsRequest) returns (ListSystemLogsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取系统统计 - 获取系统整体统计信息
+  rpc GetSystemStats(GetSystemStatsRequest) returns (GetSystemStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 清理系统缓存 - 清理系统缓存
+  rpc ClearSystemCache(ClearSystemCacheRequest) returns (ClearSystemCacheResponse);
+}
+
+// 系统配置项
+message SystemConfigItem {
+  string key = 1;                // 配置键
+  string value = 2;              // 配置值
+  string description = 3;        // 配置描述
+  ConfigType type = 4;           // 配置类型
+  bool is_secret = 5;            // 是否是敏感信息（需要脱敏显示）
+  int64 updated_at = 6;          // 更新时间戳
+}
+
+// 配置类型枚举
+enum ConfigType {
+  CONFIG_TYPE_STRING = 0;        // 字符串
+  CONFIG_TYPE_NUMBER = 1;        // 数字
+  CONFIG_TYPE_BOOLEAN = 2;       // 布尔值
+  CONFIG_TYPE_JSON = 3;          // JSON 对象
+}
+
+// 获取系统配置请求
+message GetSystemConfigRequest {}
+
+// 获取系统配置响应
+message GetSystemConfigResponse {
+  repeated SystemConfigItem configs = 1; // 配置列表
+}
+
+// 更新系统配置请求
+message UpdateSystemConfigRequest {
+  repeated SystemConfigItem configs = 1; // 要更新的配置项
+}
+
+// 更新系统配置响应
+message UpdateSystemConfigResponse {}
+
+// 系统日志信息
+message SystemLog {
+  string id = 1;                 // 日志ID
+  string user_id = 2;            // 操作用户ID
+  string action = 3;             // 操作类型
+  string resource_type = 4;      // 资源类型
+  string resource_id = 5;        // 资源ID
+  string details = 6;            // 操作详情
+  int64 created_at = 7;          // 操作时间戳
+}
+
+// 获取系统日志请求
+message ListSystemLogsRequest {
+  string user_id = 1;            // 操作用户筛选（可选）
+  string action = 2;             // 操作类型筛选（可选）
+  string resource_type = 3;      // 资源类型筛选（可选）
+  int64 start_time = 4;          // 开始时间（可选）
+  int64 end_time = 5;            // 结束时间（可选）
+  api.common.v1.Pagination pagination = 6; // 分页参数
+}
+
+// 获取系统日志响应
+message ListSystemLogsResponse {
+  repeated SystemLog logs = 1;   // 日志列表
+  string next_page_token = 2;    // 下一页令牌
+}
+
+// 系统统计信息
+message SystemStats {
+  int64 total_users = 1;         // 总用户数
+  int64 active_users = 2;       // 活跃用户数
+  int64 total_posts = 3;        // 总帖子数
+  int64 total_comments = 4;     // 总评论数
+  int64 total_reports = 5;      // 总举报数
+  int64 pending_reports = 6;    // 待处理举报数
+  int64 pending_applications = 7; // 待审核认证申请数
+}
+
+// 获取系统统计请求
+message GetSystemStatsRequest {}
+
+// 获取系统统计响应
+message GetSystemStatsResponse {
+  SystemStats stats = 1;         // 统计信息
+}
+
+// 清理系统缓存请求
+message ClearSystemCacheRequest {
+  repeated string cache_namespaces = 1; // 要清理的缓存命名空间（可选，为空则清理所有）
+}
+
+// 清理系统缓存响应
+message ClearSystemCacheResponse {
+  bool succeed = 1;              // 是否成功
+  string message = 2;            // 响应信息
+}
