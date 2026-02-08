@@ -4,9 +4,9 @@ package api.common.v1;
 
 // 分页请求
 message Pagination {
-  int32 page_size = 1;    // 每页数量
-  string page_token = 2;  // 游标（用于无限滚动，最后一条数据的id）
-  int32 page = 3;         // 页码（用于传统分页，页面偏移量）
+  string page_token = 1;  // 游标（用于无限滚动，最后一条数据的id）
+  int32 need_num=2;
+  
 }
 
 // 部门基础元数据 (Lightweight)

@@ -49,11 +49,7 @@ message Post {
   api.common.v1.UserSummary author = 2;
   string title = 3;
   string content = 4;        // 详情页返回全文
-  repeated api.common.v1.Media media = 5;
-
-  // 分区信息
-  string department_id = 6;
-  string department_name = 7;
+  repeated api.common.v1.Media media = 5; // 后面需更改media结构
 
   // 交互数据
   int32 like_count = 8;
@@ -65,10 +61,11 @@ message Post {
   bool is_liked = 12;
   bool is_collected = 13;
   bool is_following_author = 16; // 新增：是否已关注作者
+  bool is_followed_by_author = 18; // 新增：作者是否已关注当前用户
 
   // 时间与状态
-  int64 created_at = 14;
-  int64 updated_at = 15;
+  int64 publish_time = 14;
+  int64 edit_time = 15;
   PostStatus status = 17;    // 新增：帖子状态
 }
 
@@ -83,7 +80,7 @@ message PostPreview {
 
   // 封面：专门用于列表展示的媒体对象。
   // 后端逻辑：如果有图，取第一张的缩略图地址；如果是视频，取视频封面。
-  api.common.v1.Media cover = 4;
+  api.common.v1.Media cover = 4; // TODO后续需要改变Media数据结构
 
   // 作者信息 (包含头像 avatar, 用户名 name, id 等)
   api.common.v1.UserSummary author = 5;
@@ -95,11 +92,10 @@ message PostPreview {
 
   // 状态标记 (前端用于渲染 UI 状态)
   bool is_liked = 9;        // 当前用户是否点赞
-  bool has_video = 10;      // UI上是否显示一个“播放”的小图标
+  bool is_only_video = 10;      // UI上是否显示一个“播放”的小图标
 
   // 辅助信息
   int64 publish_time = 11;  // 发布时间戳，前端显示 "3小时前"
-  string partition_name = 12; // 显示在卡片角落的标签，如 "后端开发"
 }
 
 enum PostStatus {
@@ -112,52 +108,20 @@ enum PostStatus {
 // ---------------------------------------------------------
 // 统一筛选请求设计 (The Unified Request)
 // ---------------------------------------------------------
-
-message ListPostsRequest {
-  // 1. 场景 (必填)：决定数据源和基础逻辑
-  enum Scene {
-    SCENE_UNSPECIFIED = 0;
-    SCENE_RECOMMEND = 1;     // 推荐 (算法流)
-    SCENE_TIMELINE = 2;      // 综合瀑布流 (用于最新、热门)
-    SCENE_FOLLOWING = 3;     // 关注的人
-    SCENE_PARTITION = 4;     // 部门/分区视图 (前端"固定部门"Tab用这个)
-    SCENE_USER_PROFILE = 5;  // 个人主页 (查看某人发布的/喜欢的)
-  }
-  Scene scene = 1;
-
-  // 2. 筛选条件 (可选)：支持多维度组合
-  PostFilter filter = 2;
-
-  // 3. 排序规则 (可选)：除了推荐流外，其他流通常需要指定
-  enum SortBy {
-    SORT_BY_UNSPECIFIED = 0;
-    SORT_BY_CREATED_AT = 1;  // 按发布时间 (最新)
-    SORT_BY_HOT_SCORE = 2;   // 按热度 (热门)
-    SORT_BY_RELEVANCE = 3;   // 按相关度 (搜索时用)
-  }
-  SortBy sort = 3;
-
-  // 4. 分页
-  api.common.v1.Pagination pagination = 4;
+enum RefreshType {
+  REFRESH_TYPE_UNSPECIFIED = 0;
+  REFRESH_TYPE_PULL_DOWN = 1; // 下拉刷新，获取最新数据
+  REFRESH_TYPE_PULL_UP = 2;   // 上拉加载，获取历史数据
 }
 
-// 具体的筛选器
-message PostFilter {
-  // 关键词搜索
-  string keyword = 1;
+enum TAG_TYPE {
+  TAG_TYPE_UNSPECIFIED = 0;
+  TAG_TYPE_SORT_METHOD = 1; // 包含该标签。对应的 value 有："latest"（最新）、"hot"（热门）、“recommended"（推荐）
+}
 
-  // 部门分区筛选 (支持多选，后台只有部门分区，这里传ID)
-  repeated string department_ids = 2;
-
-  // 时间范围筛选
-  TimeRange time_range = 3;
-
-  // 作者ID筛选 (用于个人主页场景，或者只看某人)
-  string author_id = 4;
-
-  // 用户帖子类型 (仅当 Scene = USER_PROFILE 时有效)
-  // 用于区分：他发布的、他点赞的、他收藏的
-  UserPostType user_post_type = 5;
+message TAG{
+  repeated string values = 1;
+  TAG_TYPE type = 2;
 }
 
 message TimeRange {
@@ -165,15 +129,39 @@ message TimeRange {
   int64 end_timestamp = 2;   // 结束时间
 }
 
-enum UserPostType {
-  USER_POST_TYPE_PUBLISHED = 0;
-  USER_POST_TYPE_LIKED = 1;
-  USER_POST_TYPE_COLLECTED = 2;
+// 具体的筛选器
+message PostFilter {
+  // 关键词搜索
+  string keyword = 1;
+  // 时间范围筛选
+  TimeRange time_range = 3;
+}
+
+enum OrderType {
+  ORDER_TYPE_UNSPECIFIED = 0;
+  ORDER_TYPE_RECOMMENDED = 1; // 推荐排序
+  ORDER_TYPE_LATEST = 2; // 最新排序
+  ORDER_TYPE_HOT = 3; // 热门排序
+}
+
+message ListPostsRequest {
+  string scene = 1; // 帖子瀑布流类别："all"：全部, "following": 关注，“user”：用户，“self_post”：自己发布的帖子，“self_like”：自己点赞的帖子，“self_collect”：自己收藏的帖子，剩下的根据“编辑分区”中的分区id来区分。
+  RefreshType refresh_type=2; // 刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）
+  PostFilter filter=4; // 过滤标签：用于高级筛选功能，支持多选
+  int32 need_num=5; // 需要返回的帖子数量
+  OrderType order_type=6; // 排序类型："score"（分数排序）、"timestamp"（时间戳排序）
+  oneof cursor{
+    string cursor_score=7; // 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数，order_type=ORDER_TYPE_RECOMMENDED 或 order_type=ORDER_TYPE_HOT
+    string cursor_timestamp=8; // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间，order_type=ORDER_TYPE_LATEST
+  }
 }
 
 message ListPostsResponse {
   repeated PostPreview posts = 1;
-  string next_page_token = 2; // 游标分页 Token
+  oneof cursor{
+    string cursor_score=6; // 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+    string cursor_timestamp=7; // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+  }
 }
 
 // ---------------------------------------------------------
