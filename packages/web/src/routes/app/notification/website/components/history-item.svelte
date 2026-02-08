@@ -55,15 +55,15 @@
 				<Label class="mb-0 w-20 shrink-0 text-sm font-medium text-zinc-900">
 					描述<span class="text-red-500">*</span>
 				</Label>
-				<div class="flex flex-1 items-center gap-4">
+				<div class="relative flex-1">
 					<Input
 						placeholder="填写描述"
 						value={item.description}
 						maxlength={30}
 						oninput={(e) => (item.description = e.currentTarget.value)}
-						class="w-full"
+						class="w-full pr-16"
 					/>
-					<div class="shrink-0 text-right">
+					<div class="absolute top-1/2 right-3 -translate-y-1/2">
 						<CharCounter current={item.description.length} max={30} />
 					</div>
 				</div>

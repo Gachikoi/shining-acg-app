@@ -4,18 +4,18 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import VideoUpload from './components/video-upload.svelte';
-	import LinkItem from './components/link-item.svelte';
-	import HistoryItem from './components/history-item.svelte';
-	import DepartmentForm from './components/department-form.svelte';
-	import DepartmentTabs from './components/department-tabs.svelte';
-	import ActivityForm from './components/activity-form.svelte';
-	import ActivityTabs from './components/activity-tabs.svelte';
-	import CharCounter from './components/char-counter.svelte';
-	import MinisterForm from './components/minister-form.svelte';
-	import MinisterTabs from './components/minister-tabs.svelte';
-	import SponsorForm from './components/sponsor-form.svelte';
-	import StaffForm from './components/staff-form.svelte';
+	import VideoUpload from '../../notification/website/components/video-upload.svelte';
+	import LinkItem from '../../notification/website/components/link-item.svelte';
+	import HistoryItem from '../../notification/website/components/history-item.svelte';
+	import DepartmentForm from '../../notification/website/components/department-form.svelte';
+	import DepartmentTabs from '../../notification/website/components/department-tabs.svelte';
+	import ActivityForm from '../../notification/website/components/activity-form.svelte';
+	import ActivityTabs from '../../notification/website/components/activity-tabs.svelte';
+	import CharCounter from '../../notification/website/components/char-counter.svelte';
+	import MinisterForm from '../../notification/website/components/minister-form.svelte';
+	import MinisterTabs from '../../notification/website/components/minister-tabs.svelte';
+	import SponsorForm from '../../notification/website/components/sponsor-form.svelte';
+	import StaffForm from '../../notification/website/components/staff-form.svelte';
 	import {
 		uploadVideo,
 		getWebsiteContent,
@@ -28,6 +28,8 @@
 		DevelopmentHistoryItem,
 		Link,
 		MinisterDeclaration,
+		SponsorItem,
+		StaffItem,
 		SponsorItem,
 		StaffItem,
 		WebsiteContent
@@ -86,6 +88,9 @@
 		}
 	]);
 	let activeMinisterIndex = $state(0);
+
+	let sponsors = $state<SponsorItem[]>([]);
+	let staff = $state<StaffItem[]>([]);
 
 	let sponsors = $state<SponsorItem[]>([]);
 	let staff = $state<StaffItem[]>([]);
@@ -165,6 +170,8 @@
 		];
 		sponsors = content.aboutWebsite?.sponsors || [];
 		staff = content.aboutWebsite?.staff || [];
+		sponsors = content.aboutWebsite?.sponsors || [];
+		staff = content.aboutWebsite?.staff || [];
 	}
 
 	// 构建要保存的数据
@@ -182,6 +189,8 @@
 			activities,
 			ministerDeclarations,
 			aboutWebsite: {
+				sponsors,
+				staff
 				sponsors,
 				staff
 			}
@@ -329,6 +338,8 @@
 			}
 		];
 		activeMinisterIndex = 0;
+		sponsors = [];
+		staff = [];
 		sponsors = [];
 		staff = [];
 		lastSaved = null;
@@ -642,6 +653,57 @@
 		return errors;
 	}
 
+	// 校验关于网站
+	function validateAboutWebsite() {
+		const errors: string[] = [];
+
+		// 校验赞助感谢
+		sponsors.forEach((sponsor, index) => {
+			const sponsorLabel = `【赞助感谢（第 ${index + 1} 项）】`;
+
+			if (!sponsor.qqNumber?.trim()) {
+				errors.push(`${sponsorLabel} QQ 号未填写`);
+			} else if (!isValidQQNumber(sponsor.qqNumber)) {
+				errors.push(`${sponsorLabel} QQ 号格式不正确（应为 5-11 位数字）`);
+			} else if (sponsor.qqNumber.length > 20) {
+				errors.push(`${sponsorLabel} QQ 号长度超过 20`);
+			}
+
+			if (sponsor.sponsorAmount && sponsor.sponsorAmount.length > 20) {
+				errors.push(`${sponsorLabel} 赞助金额长度超过 20`);
+			}
+
+			if (sponsor.description && sponsor.description.length > 200) {
+				errors.push(`${sponsorLabel} 简介长度超过 200`);
+			}
+		});
+
+		// 校验网站 Staff
+		staff.forEach((item, index) => {
+			const staffLabel = `【网站 Staff（第 ${index + 1} 项）】`;
+
+			if (!item.qqNumber?.trim()) {
+				errors.push(`${staffLabel} QQ 号未填写`);
+			} else if (!isValidQQNumber(item.qqNumber)) {
+				errors.push(`${staffLabel} QQ 号格式不正确（应为 5-11 位数字）`);
+			} else if (item.qqNumber.length > 20) {
+				errors.push(`${staffLabel} QQ 号长度超过 20`);
+			}
+
+			if (!item.role?.trim()) {
+				errors.push(`${staffLabel} 职责未填写`);
+			} else if (item.role.length > 20) {
+				errors.push(`${staffLabel} 职责长度超过 20`);
+			}
+
+			if (item.description && item.description.length > 200) {
+				errors.push(`${staffLabel} 简介长度超过 200`);
+			}
+		});
+
+		return errors;
+	}
+
 	async function handleSave() {
 		const allErrors: string[] = [];
 
@@ -664,6 +726,10 @@
 		// 校验部长宣言
 		const ministerErrors = validateMinisterDeclarations();
 		allErrors.push(...ministerErrors);
+
+		// 校验关于网站
+		const aboutWebsiteErrors = validateAboutWebsite();
+		allErrors.push(...aboutWebsiteErrors);
 
 		// 校验关于网站
 		const aboutWebsiteErrors = validateAboutWebsite();
@@ -897,6 +963,21 @@
 
 		<div class="rounded-lg bg-white dark:bg-zinc-900">
 			<MinisterForm bind:declaration={ministerDeclarations[activeMinisterIndex]} {departments} />
+		</div>
+	</div>
+
+	<!-- 关于网站 -->
+	<div class="space-y-6">
+		<h2 class="mb-4 text-xl font-bold">关于网站</h2>
+
+		<div class="rounded-lg bg-white dark:bg-zinc-900">
+			<!-- 赞助感谢 -->
+			<SponsorForm bind:sponsors />
+		</div>
+
+		<div class="rounded-lg bg-white dark:bg-zinc-900">
+			<!-- 网站 Staff -->
+			<StaffForm bind:staff />
 		</div>
 	</div>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import SortableButtonGroup from '$lib/components/custom/sortable-button-group.svelte';
+	import { draggableScroll } from '$lib/actions';
+	import { cn } from '$lib/utils';
 
 	// 管理功能菜单项（从消息界面迁移过来，并改为 /management 路由）
 	const MENU_ITEMS = [
@@ -16,10 +17,42 @@
 	const STORAGE_KEY = 'management-menu-order';
 
 	let currentPath = $derived(page.url.pathname);
+
+	// 判断路径是否匹配
+	function isPathActive(href: string): boolean {
+		// 直接比较路径，因为 currentPath 已经是完整路径
+		return currentPath === href || currentPath.startsWith(href + '/');
+	}
 </script>
 
-<SortableButtonGroup
-	items={MENU_ITEMS}
-	storageKey={STORAGE_KEY}
-	isActive={(item) => currentPath === item.href || currentPath.startsWith(item.href + '/')}
-/>
+<nav
+	use:draggableScroll={{
+		direction: 'horizontal',
+		dragThreshold: 5,
+		scrollSpeed: 1,
+		shouldPreventClick: (hasMoved) => hasMoved
+	}}
+	class="scrollbar-hide flex h-[72px] items-center gap-[10px] overflow-x-auto pb-2"
+>
+	{#each menuItems as item (item.href)}
+		{@const isActive = isPathActive(item.href)}
+		<a
+			href={resolve(
+				// @ts-expect-error - SvelteKit resolve 类型限制，实际路径存在
+				item.href as ResolvePath
+			)}
+			draggable="false"
+			data-sveltekit-preload-code="eager"
+			data-sveltekit-replacestate
+			data-sveltekit-preload-data="tap"
+			class={cn(
+				'flex h-10 w-24 items-center justify-center rounded-full px-4 py-2 text-base whitespace-nowrap transition-colors select-none',
+				isActive
+					? 'bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+					: 'font-normal text-zinc-900 hover:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-800'
+			)}
+		>
+			{item.label}
+		</a>
+	{/each}
+</nav>
