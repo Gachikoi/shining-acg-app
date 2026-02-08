@@ -140,7 +140,7 @@
 			variant="tertiary"
 			size="default"
 			class={cn(
-				'flex h-9 w-full items-center justify-between rounded-full bg-zinc-100 px-3 py-1 text-base font-medium text-zinc-900 shadow-xs hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800',
+				'flex h-9 w-full items-center justify-between rounded-full border-0 bg-zinc-100 px-3 py-1 text-base font-medium text-zinc-900 shadow-xs hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800',
 				!selected && 'text-zinc-500'
 			)}
 			{disabled}

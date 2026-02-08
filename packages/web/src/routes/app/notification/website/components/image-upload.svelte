@@ -77,7 +77,7 @@
 					onchange={handleFileSelect}
 				/>
 				<div class="flex flex-col items-center gap-2">
-					<Plus class="size-12 text-zinc-400" />
+					<Plus class="size-8 text-zinc-400" />
 				</div>
 			</label>
 		{/if}
