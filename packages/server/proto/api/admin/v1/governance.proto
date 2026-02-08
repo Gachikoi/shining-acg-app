@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package api.admin.v1;
+
+import "api/common/v1/common.proto";
+
+// 社区治理服务 - 负责社区内容的审核和治理功能
+// 包含举报管理、违规处理、内容审核等功能
+service GovernanceService {
+  // 获取举报列表 - 分页获取所有举报信息
+  // 支持按状态筛选（待处理、已处理、已驳回）
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 处理举报 - 对举报进行处理，支持忽略、删除内容或封禁用户
+  // 处理结果会记录到系统日志中
+  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse);
+}
+
+// 举报状态枚举
+enum ReportStatus {
+  REPORT_STATUS_PENDING = 0;    // 待处理
+  REPORT_STATUS_RESOLVED = 1;   // 已处理
+  REPORT_STATUS_REJECTED = 2;   // 已驳回
+}
+
+// 举报目标类型枚举
+enum ReportTargetType {
+  REPORT_TARGET_TYPE_POST = 0;    // 帖子
+  REPORT_TARGET_TYPE_COMMENT = 1; // 评论
+  REPORT_TARGET_TYPE_USER = 2;    // 用户
+}
+
+// 举报信息
+message Report {
+  string id = 1;                 // 举报ID
+  string reporter_id = 2;        // 举报人ID
+  string target_id = 3;          // 被举报对象ID
+  ReportTargetType type = 4;     // 被举报对象类型
+  string reason = 5;             // 举报原因
+  ReportStatus status = 6;       // 处理状态
+  int64 created_at = 7;          // 举报时间戳
+}
+
+// 获取举报列表请求
+message ListReportsRequest {
+  ReportStatus status = 1;       // 筛选状态（可选）
+  api.common.v1.Pagination pagination = 2; // 分页参数
+}
+
+// 获取举报列表响应
+message ListReportsResponse {
+  repeated Report reports = 1;   // 举报列表
+  string next_page_token = 2;    // 下一页令牌
+}
+
+// 处理举报请求
+message ResolveReportRequest {
+  string report_id = 1;          // 举报ID
+
+  // 处理动作枚举
+  enum Action {
+    ACTION_IGNORE = 0;           // 忽略/无违规
+    ACTION_DELETE_CONTENT = 1;   // 删除内容
+    ACTION_BAN_USER = 2;         // 封禁用户（会调用 UserAdminService）
+  }
+
+  Action action = 2;             // 处理动作
+  string note = 3;               // 处理备注
+}
+
+// 处理举报响应
+message ResolveReportResponse {}

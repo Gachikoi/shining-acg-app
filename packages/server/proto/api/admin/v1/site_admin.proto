@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package api.admin.v1;
+
+import "api/cms/v1/site.proto";
+
+// 官网管理服务 - 负责官网内容的后台管理功能
+// 包含部门管理、活动管理、历史事件管理、人员管理等功能
+service SiteAdminService {
+  // 部门管理 - 新增或更新部门信息
+  // 支持创建新部门或修改已有部门的信息
+  rpc UpsertDepartment(UpsertDepartmentRequest) returns (UpsertDepartmentResponse);
+
+  // 删除部门 - 删除指定的部门
+  // 注意：删除部门前需要确保该部门下没有关联的用户或内容
+  rpc DeleteDepartment(DeleteDepartmentRequest) returns (DeleteDepartmentResponse);
+
+  // 活动管理 - 新增或更新活动信息
+  // 支持创建新活动或修改已有活动的信息
+  rpc UpsertActivity(UpsertActivityRequest) returns (UpsertActivityResponse);
+
+  // 删除活动 - 删除指定的活动
+  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse);
+
+  // 历史事件管理 - 新增或更新历史事件信息
+  // 支持创建新历史事件或修改已有历史事件的信息
+  rpc UpsertHistoryEvent(UpsertHistoryEventRequest) returns (UpsertHistoryEventResponse);
+
+  // 删除历史事件 - 删除指定的历史事件
+  rpc DeleteHistoryEvent(DeleteHistoryEventRequest) returns (DeleteHistoryEventResponse);
+
+  // 部长管理 - 新增或更新部长信息
+  // 支持创建新部长或修改已有部长的信息
+  rpc UpsertMinister(UpsertMinisterRequest) returns (UpsertMinisterResponse);
+
+  // 删除部长 - 删除指定的部长
+  rpc DeleteMinister(DeleteMinisterRequest) returns (DeleteMinisterResponse);
+
+  // Staff 管理 - 新增或更新 Staff 团队信息
+  // 支持创建新的 Staff 团队或修改已有团队的信息
+  rpc UpsertStaffGroup(UpsertStaffGroupRequest) returns (UpsertStaffGroupResponse);
+
+  // 删除 Staff 团队 - 删除指定的 Staff 团队
+  rpc DeleteStaffGroup(DeleteStaffGroupRequest) returns (DeleteStaffGroupResponse);
+
+  // 赞助者管理 - 新增或更新赞助者信息
+  // 支持创建新赞助者或修改已有赞助者的信息
+  rpc UpsertSponsor(UpsertSponsorRequest) returns (UpsertSponsorResponse);
+
+  // 删除赞助者 - 删除指定的赞助者
+  rpc DeleteSponsor(DeleteSponsorRequest) returns (DeleteSponsorResponse);
+}
+
+// 部门管理请求
+message UpsertDepartmentRequest {
+  api.cms.v1.DepartmentInfo department = 1; // 部门信息，包含ID，ID存在则更新，不存在则创建
+}
+
+// 部门管理响应
+message UpsertDepartmentResponse {
+  string department_id = 1; // 部门ID
+}
+
+// 删除部门请求
+message DeleteDepartmentRequest {
+  string id = 1; // 部门ID
+}
+
+// 删除部门响应
+message DeleteDepartmentResponse {}
+
+// 活动管理请求
+message UpsertActivityRequest {
+  api.cms.v1.Activity activity = 1; // 活动信息
+}
+
+// 活动管理响应
+message UpsertActivityResponse {
+  string activity_id = 1; // 活动ID
+}
+
+// 删除活动请求
+message DeleteActivityRequest {
+  string id = 1; // 活动ID
+}
+
+// 删除活动响应
+message DeleteActivityResponse {}
+
+// 历史事件管理请求
+message UpsertHistoryEventRequest {
+  api.cms.v1.HistoryEvent history_event = 1; // 历史事件信息
+}
+
+// 历史事件管理响应
+message UpsertHistoryEventResponse {
+  string event_id = 1; // 历史事件ID
+}
+
+// 删除历史事件请求
+message DeleteHistoryEventRequest {
+  string id = 1; // 历史事件ID
+}
+
+// 删除历史事件响应
+message DeleteHistoryEventResponse {}
+
+// 部长管理请求
+message UpsertMinisterRequest {
+  api.cms.v1.Minister minister = 1; // 部长信息
+}
+
+// 部长管理响应
+message UpsertMinisterResponse {
+  string minister_id = 1; // 部长ID
+}
+
+// 删除部长请求
+message DeleteMinisterRequest {
+  string id = 1; // 部长ID
+}
+
+// 删除部长响应
+message DeleteMinisterResponse {}
+
+// Staff 管理请求
+message UpsertStaffGroupRequest {
+  api.cms.v1.StaffGroup staff_group = 1; // Staff 团队信息
+}
+
+// Staff 管理响应
+message UpsertStaffGroupResponse {
+  string group_id = 1; // 团队ID
+}
+
+// 删除 Staff 团队请求
+message DeleteStaffGroupRequest {
+  string id = 1; // 团队ID
+}
+
+// 删除 Staff 团队响应
+message DeleteStaffGroupResponse {}
+
+// 赞助者管理请求
+message UpsertSponsorRequest {
+  api.cms.v1.Sponsor sponsor = 1; // 赞助者信息
+}
+
+// 赞助者管理响应
+message UpsertSponsorResponse {
+  string sponsor_id = 1; // 赞助者ID
+}
+
+// 删除赞助者请求
+message DeleteSponsorRequest {
+  string id = 1; // 赞助者ID
+}
+
+// 删除赞助者响应
+message DeleteSponsorResponse {}

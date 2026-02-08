@@ -1,28 +1,33 @@
 # Shining ACG 后端服务
 
-Shining ACG 后端是一个基于 Go 语言开发的微服务架构系统，为 Shining ACG App 和 Site 提供完整的后端支持。系统采用 Protocol Buffers 定义 API，使用 Connect-Go 框架实现同时支持 gRPC、gRPC-Web 和 HTTP/JSON 三种接口类型。
+Shining ACG 后端是一个基于 Go 语言开发的单体服务系统，为 Shining ACG App 和 Site 提供完整的后端支持。系统采用 Protocol Buffers 定义 API，使用 Connect-Go 框架实现同时支持 gRPC、gRPC-Web 和 HTTP/JSON 三种接口类型。
 
 ## 项目特点
 
-- **多协议支持**：同时支持 gRPC、gRPC-Web、Connect 和 RESTful API 接口
+- **多协议支持**：同时支持 gRPC、gRPC-Web 和 HTTP/JSON 接口
+- **单体服务架构**：采用单体服务架构，便于开发、部署和维护
 - **RESTful API 转码**：使用 [Vanguard](https://github.com/connectrpc/vanguard-go) 库自动将 REST 请求转码为 RPC 调用，支持标准的 `google.api.http` 注解
-- **微服务架构**：将系统划分为 Account、Community、Messenger 和 CMS 四个物理微服务
 - **高效开发**：使用 Protocol Buffers 和 Buf v2 管理 API 定义，自动生成代码
 - **高性能**：使用 PostgreSQL 作为主数据库，Redis 作为缓存
-- **现代化工具链**：支持 Docker 容器化部署，Kubernetes 编排
 - **现代化工具链**：支持 Docker 容器化部署，Kubernetes 编排
 
 ## 架构概览
 
-### 微服务划分
+### 系统架构
 
-| 微服务        | 功能         | 包含模块                                                                                               |
-| ------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-| **Account**   | 用户核心功能 | Auth Service（认证）、User Service（用户资料/关系）                                                    |
-| **Community** | 社区内容功能 | Content Service（帖子/瀑布流）、Interaction Service（转评赞）、Comment Service（评论）                 |
-| **Messenger** | 消息通知功能 | Message Service（通知管理、互动管理）                                                                  |
-| **CMS**       | 官网管理功能 | CMS Service（官网信息展示）                                                                            |
-| **Admin**     | 管理员功能   | Governance Service（社区治理/审核）、UserAdmin Service（权限/封禁）、SiteAdmin Service（官网后台管理） |
+```
+Client (gRPC/HTTP) → Gateway (Connect-Go) → Monolithic Service
+```
+
+### 模块划分
+
+| 模块           | 功能     | 包含服务                                                                          |
+|---------------|--------|---------------------------------------------------------------------------------|
+| **Account**   | 用户核心功能 | Auth Service（认证）、User Service（用户资料/关系）                                  |
+| **Community** | 社区内容功能 | Content Service（帖子/瀑布流）、Interaction Service（转评赞）、Comment Service（评论）  |
+| **Messenger** | 消息通知功能 | Message Service（通知管理、互动管理）                                                |
+| **CMS**       | 官网管理功能 | CMS Service（官网信息展示）                                                       |
+| **Admin**     | 管理后台功能 | UserAdminService（用户管理）、SiteAdminService（官网管理）、GovernanceService（社区治理）、ContentAdminService（内容管理）、SystemAdminService（系统管理） |
 
 ### 技术栈
 
@@ -81,8 +86,8 @@ buf generate
 # 4. 配置数据库（需要本地安装 PostgreSQL 和 Redis）
 # 请参考 DEVELOPMENT.md 中的详细说明
 
-# 5. 启动服务（以 Account 服务为例）
-cd service/account/cmd
+# 5. 启动服务
+cd cmd
 go run main.go
 ```
 
@@ -140,19 +145,18 @@ server/
 ├── proto/                          # Protocol Buffers 定义
 │   └── api/
 │       ├── common/v1/             # 公共模块（分页、枚举、媒体类型）
-│       ├── account/v1/            # 用户账户模块（认证、用户信息、权限）
+│       ├── account/v1/            # 用户账户模块（认证、用户信息）
 │       ├── cms/v1/               # 官网管理模块（展示、后台管理）
 │       ├── community/v1/         # 社区模块（内容、互动、评论、治理）
-│       └── messenger/v1/         # 消息通知模块（通知）
+│       ├── messenger/v1/         # 消息通知模块（通知）
+│       └── admin/v1/             # 管理后台模块（用户管理、官网管理、社区治理、内容管理、系统管理）
 ├── gen/                            # 生成的代码
-├── service/                        # 微服务实现
-│   ├── account/                    # Account 微服务
-│   │   ├── cmd/                   # 服务入口
-│   │   └── internal/
-│   │       ├── interceptor/       # 拦截器
-│   │       └── service/           # 业务逻辑实现
-│   ├── community/                 # Community 微服务（待实现）
-│   └── messenger/                 # Messenger 微服务（待实现）
+├── cmd/                            # 服务入口
+│   └── main.go                   # 主入口文件
+├── internal/                       # 内部代码
+│   └── service/                   # 业务逻辑实现
+│       ├── auth.go               # 认证服务实现
+│       └── user.go               # 用户服务实现
 ├── pkg/                           # 公共库（拦截器、工具等）
 ├── doc/                           # 文档
 ├── build/                         # 构建脚本和配置
@@ -165,7 +169,7 @@ server/
 1. **需求分析**：确定功能需求和 API 设计
 2. **Protobuf 定义**：在 `proto/api/<module>/v1/` 目录下编写 .proto 文件
 3. **代码生成**：运行 `buf generate` 生成 Go 代码
-4. **业务实现**：在对应的微服务目录下实现业务逻辑
+4. **业务实现**：在 `internal/service/` 目录下实现业务逻辑
 5. **单元测试**：编写单元测试验证功能
 6. **集成测试**：部署到测试环境进行集成测试
 7. **发布上线**：合并到 main 分支并部署到生产环境
@@ -188,4 +192,4 @@ server/
 
 ---
 
-_最后更新：2026-02-03_
+*最后更新：2026-02-08*
