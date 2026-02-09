@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"errors"
 
@@ -23,10 +22,8 @@ var _ accountv1connect.AuthServiceHandler = (*AuthServiceServer)(nil)
 // Login 伪实现登录接口
 func (s *AuthServiceServer) Login(ctx context.Context, req *connect.Request[accountv1.LoginRequest]) (*connect.Response[accountv1.LoginResponse], error) {
 	return connect.NewResponse(&accountv1.LoginResponse{
-		AccessToken:     "test-session-token-123",
-		RefreshToken:    "refresh-token",
-		AccessExpireAt:  time.Now().Unix(),
-		RefreshExpireAt: time.Now().Unix(),
+		AccessToken:  "test-session-token-123",
+		RefreshToken: "refresh-token",
 		User: &commonv1.UserSummary{
 			UserId:        "114514",
 			Nickname:      "ciallo",

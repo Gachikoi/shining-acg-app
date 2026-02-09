@@ -57,7 +57,6 @@ func (s *UserServiceServer) GetMe(ctx context.Context, req *connect.Request[acco
 				PushSystem:      true,
 			},
 			Privacy: &accountv1.PrivacySettings{
-				MessagePermission:        accountv1.MessagePrivacyLevel_MESSAGE_PRIVACY_LEVEL_PUBLIC,
 				LikedPostsVisibility:     accountv1.BasePrivacyLevel_BASE_PRIVACY_LEVEL_PUBLIC,
 				CollectedPostsVisibility: accountv1.BasePrivacyLevel_BASE_PRIVACY_LEVEL_PUBLIC,
 			},
