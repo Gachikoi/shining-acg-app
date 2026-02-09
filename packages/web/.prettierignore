@@ -4,6 +4,8 @@ pnpm-lock.yaml
 yarn.lock
 bun.lock
 bun.lockb
+src/lib/api/*
+swagger.swagger.json
 
 # Miscellaneous
 /static/

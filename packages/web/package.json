@@ -11,7 +11,9 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint ."
+		"lint": "prettier --check . && eslint .",
+		"format:check:path": "prettier --check ",
+		"lint:path": "eslint"
 	},
 	"dependencies": {
 		"@sveltejs/adapter-cloudflare": "^7.2.4",

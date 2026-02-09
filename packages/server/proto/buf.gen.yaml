@@ -4,12 +4,6 @@ managed:
   override:
     - file_option: go_package_prefix
       value: app.shiningacg.club/gen/proto
-inputs:
-  - directory: .
-  - module: buf.build/googleapis/googleapis
-    paths:
-      - google/api/annotations.proto
-      - google/api/http.proto
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.31.0 # pb
     out: ../gen/proto
@@ -17,3 +11,9 @@ plugins:
   - remote: buf.build/connectrpc/go:v1.11.0 # go后端
     out: ../gen/proto
     opt: paths=source_relative
+  - remote: buf.build/grpc-ecosystem/openapiv2:v2.27.7 # swagger文档
+    out: ../../web
+    opt:
+      - allow_merge=true
+      - merge_file_name=swagger
+      - json_names_for_fields=false

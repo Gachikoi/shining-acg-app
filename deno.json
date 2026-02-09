@@ -2,9 +2,14 @@
   "name": "shining-acg-app",
   "exports": {},
   "tasks": {
+    "gen:api": "deno run -A scripts/api/gen-api.ts",
     "prepare": "deno run -A scripts/git-hooks/install-hooks.ts",
     "fmt": "deno fmt scripts/ deno.json ",
     "lint": "deno lint scripts/ deno.json ",
     "lint:fix": "deno lint --fix scripts/ deno.json "
+  },
+  "imports": {
+    "@hey-api/openapi-ts": "npm:@hey-api/openapi-ts@^0.92.3",
+    "@std/path": "https://deno.land/std@0.213.0/path/mod.ts"
   }
 }

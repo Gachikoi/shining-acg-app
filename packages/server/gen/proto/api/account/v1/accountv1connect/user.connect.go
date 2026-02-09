@@ -58,6 +58,7 @@ const (
 
 // UserServiceClient is a client for the api.account.v1.UserService service.
 type UserServiceClient interface {
+	// --- 个人信息 ---
 	// 获取当前登录用户的完整信息（包含敏感设置）
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// 获取他人公开信息 (经过隐私计算)
@@ -116,7 +117,8 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 		listRelationships: connect.NewClient[v1.ListRelationshipsRequest, v1.ListRelationshipsResponse](
 			httpClient,
 			baseURL+UserServiceListRelationshipsProcedure,
-			opts...,
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
 		),
 		applyVerification: connect.NewClient[v1.ApplyVerificationRequest, v1.ApplyVerificationResponse](
 			httpClient,
@@ -185,6 +187,7 @@ func (c *userServiceClient) ModifyDepartments(ctx context.Context, req *connect.
 
 // UserServiceHandler is an implementation of the api.account.v1.UserService service.
 type UserServiceHandler interface {
+	// --- 个人信息 ---
 	// 获取当前登录用户的完整信息（包含敏感设置）
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 	// 获取他人公开信息 (经过隐私计算)
@@ -239,7 +242,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 	userServiceListRelationshipsHandler := connect.NewUnaryHandler(
 		UserServiceListRelationshipsProcedure,
 		svc.ListRelationships,
-		opts...,
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
 	)
 	userServiceApplyVerificationHandler := connect.NewUnaryHandler(
 		UserServiceApplyVerificationProcedure,

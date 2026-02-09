@@ -5,7 +5,14 @@
  * Automatically runs formatting and linting on staged files
  */
 
-import { LintStaged, runCommandAsync } from "./lint-staged.ts";
+import { runCommand, runCommandAsync } from "../utils.ts";
+import { LintStaged } from "./lint-staged.ts";
+
+import { dirname, fromFileUrl, relative, resolve } from "@std/path";
+
+const __dirname = dirname(fromFileUrl(import.meta.url));
+const workspaceRoot = resolve(__dirname, "../../");
+const webDir = resolve(workspaceRoot, "packages/web");
 
 const lintStaged = new LintStaged();
 
@@ -13,8 +20,8 @@ lintStaged.run(true, async (stagedFiles) => {
   console.log("正在运行预提交检查...\n");
 
   const results = await Promise.all([
-    // 1.1. Protocol Buffers 文件检查 (packages/server)
-    (async () => {
+    // 1.1. Proto gen 生成及前端 api 生成
+    (() => {
       const protoFiles = stagedFiles.filter(
         (f) => f.startsWith("packages/server/") && f.endsWith(".proto"),
       );
@@ -29,11 +36,10 @@ lintStaged.run(true, async (stagedFiles) => {
       const header = `正在检查 ${
         protoFiles.length + bufConfigFiles.length
       } 个 Protocol Buffers 文件...`;
+
       try {
         // 检查 buf 是否可用
-        const { code: bufCheckCode } = await runCommandAsync("buf", [
-          "--version",
-        ]);
+        const { code: bufCheckCode } = runCommand("buf", ["--version"]);
         if (bufCheckCode !== 0) {
           return {
             header,
@@ -41,33 +47,29 @@ lintStaged.run(true, async (stagedFiles) => {
             logs: "❌ 未找到 buf 命令，Protocol Buffers 检查失败\n",
           };
         }
-        // 检查代码生成
-        const { code: bufGenCode, stderr: bufGenErr } = await runCommandAsync(
-          "buf",
-          [
-            "generate",
-            "packages/server/proto",
-            "--template",
-            "packages/server/proto/buf.gen.yaml",
-          ],
-        );
-        if (bufGenCode !== 0) {
+
+        const { code, stderr, stdout } = runCommand("deno", [
+          "task",
+          "gen:api",
+        ]);
+
+        if (code !== 0) {
           return {
             header,
             success: false,
-            logs: `${bufGenErr}❌ Protocol Buffers 代码生成失败\n`,
+            logs: `${stderr}❌ Protocol 及前端 api 代码生成失败\n`,
           };
         }
         return {
           header,
           success: true,
-          logs: "✅ Protocol Buffers 代码生成检查通过\n",
+          logs: `${stdout}✅ Protocol 及前端 api 代码生成成功\n`,
         };
       } catch (err) {
         return {
           header,
           success: false,
-          logs: `❌ Protocol Buffers 检查失败: ${err}\n`,
+          logs: `❌ Protocol 及前端 api 代码生成失败: ${err}\n`,
         };
       }
     })(),
@@ -149,24 +151,44 @@ lintStaged.run(true, async (stagedFiles) => {
       }
     })(),
 
-    // 4. Web 项目
+    // 2. Web 项目
     (async () => {
-      const webFiles = stagedFiles.filter((f) => f.startsWith("packages/web/"));
+      const webFiles = stagedFiles
+        .filter(
+          (f) =>
+            f.startsWith("packages/web/") && !f.endsWith(".prettierignore"),
+        )
+        .map((f) => relative(webDir, f)); // 不检查 $lib/api 中 @hey-api 自动生成的文件
       if (webFiles.length === 0) return null;
 
       const header = `正在检查 ${webFiles.length} 个 Web 文件...`;
       try {
-        const { code, stderr } = await runCommandAsync("deno", [
-          "task",
-          "--cwd=packages/web",
-          "lint",
+        const [
+          {
+            code: prettierCode,
+            stdout: prettierStdout,
+            stderr: prettierStderr,
+          },
+          { code: eslintCode, stderr: eslintStderr, stdout: eslintStdout },
+        ] = await Promise.all([
+          runCommandAsync(
+            "deno",
+            ["task", "format:check:path", ...webFiles],
+            webDir,
+          ),
+          runCommandAsync(
+            "deno",
+            ["task", "lint:path", "--no-warn-ignored", ...webFiles],
+            webDir,
+          ),
         ]);
-        if (code !== 0) {
+
+        if (prettierCode !== 0 || eslintCode !== 0) {
           return {
             header,
             success: false,
             logs:
-              `${stderr}\n❌ Web 文件检查失败：请在代码格式化并修复 eslint 后再提交代码\n`,
+              `1. prettier：\n${prettierStderr}\n${prettierStdout}\n2. eslint：\n${eslintStderr}\n${eslintStdout}\n❌ Web 文件检查失败：请在代码格式化并修复 eslint 后再提交代码\n`,
           };
         } else {
           return {
@@ -184,13 +206,14 @@ lintStaged.run(true, async (stagedFiles) => {
       }
     })(),
 
-    // 5. 根目录管理文件
+    // 3. 根目录管理文件
     (async () => {
       const scriptsFiles = stagedFiles.filter((f) => f.startsWith("scripts/"));
       if (scriptsFiles.length === 0) return null;
 
       const header = `正在检查 ${scriptsFiles.length} 个根目录或脚本文件...`;
       try {
+        // 最佳实践是根目录也用prettier和eslint提升项目一致性
         const [fmt, lint] = await Promise.all([
           runCommandAsync("deno", ["fmt", ...scriptsFiles]),
           runCommandAsync("deno", ["lint", "--fix", ...scriptsFiles]),

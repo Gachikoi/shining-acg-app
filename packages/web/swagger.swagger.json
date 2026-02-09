@@ -1,0 +1,3854 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/common/v1/common.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AuthService"
+    },
+    {
+      "name": "UserService"
+    },
+    {
+      "name": "UserAdminService"
+    },
+    {
+      "name": "PortalService"
+    },
+    {
+      "name": "SiteAdminService"
+    },
+    {
+      "name": "ResourceService"
+    },
+    {
+      "name": "ContentService"
+    },
+    {
+      "name": "GovernanceService"
+    },
+    {
+      "name": "InteractionService"
+    },
+    {
+      "name": "CommentService"
+    },
+    {
+      "name": "MessageService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/activities": {
+      "get": {
+        "summary": "3. 活动列表",
+        "operationId": "PortalService_ListActivities",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListActivitiesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/admin/activities": {
+      "put": {
+        "summary": "活动管理",
+        "operationId": "SiteAdminService_UpsertActivity",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertActivityResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertActivityRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/activities/{id}": {
+      "delete": {
+        "operationId": "SiteAdminService_DeleteActivity",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteActivityResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/ban": {
+      "put": {
+        "operationId": "UserAdminService_Ban",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/BanResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BanRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserAdminService"
+        ]
+      }
+    },
+    "/v1/admin/departments": {
+      "put": {
+        "summary": "部门管理",
+        "operationId": "SiteAdminService_UpsertDepartment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertDepartmentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertDepartmentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/departments/{id}": {
+      "delete": {
+        "operationId": "SiteAdminService_DeleteDepartment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteDepartmentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/history-events": {
+      "put": {
+        "summary": "历史事件管理",
+        "operationId": "SiteAdminService_UpsertHistoryEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertHistoryEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertHistoryEventRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/history-events/{id}": {
+      "delete": {
+        "operationId": "SiteAdminService_DeleteHistoryEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteHistoryEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/ministers": {
+      "put": {
+        "summary": "部长管理",
+        "operationId": "SiteAdminService_UpsertMinister",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertMinisterResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertMinisterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/ministers/{id}": {
+      "delete": {
+        "operationId": "SiteAdminService_DeleteMinister",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteMinisterResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/reports": {
+      "get": {
+        "summary": "举报列表",
+        "operationId": "GovernanceService_ListReports",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListReportsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "description": " - REPORT_STATUS_REJECTED: 驳回",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REPORT_STATUS_PENDING",
+              "REPORT_STATUS_RESOLVED",
+              "REPORT_STATUS_REJECTED"
+            ],
+            "default": "REPORT_STATUS_PENDING"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "GovernanceService"
+        ]
+      }
+    },
+    "/v1/admin/reports/{report_id}": {
+      "put": {
+        "summary": "裁决举报 (封禁、删除、忽略)",
+        "operationId": "GovernanceService_ResolveReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ResolveReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GovernanceServiceResolveReportBody"
+            }
+          }
+        ],
+        "tags": [
+          "GovernanceService"
+        ]
+      }
+    },
+    "/v1/admin/sponsors": {
+      "put": {
+        "summary": "赞助者管理",
+        "operationId": "SiteAdminService_UpsertSponsor",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertSponsorResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertSponsorRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/sponsors/{id}": {
+      "delete": {
+        "operationId": "SiteAdminService_DeleteSponsor",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteSponsorResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/staff-groups": {
+      "put": {
+        "summary": "Staff 管理",
+        "operationId": "SiteAdminService_UpsertStaffGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertStaffGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertStaffGroupRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/staff-groups/{id}": {
+      "delete": {
+        "operationId": "SiteAdminService_DeleteStaffGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteStaffGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/users/role": {
+      "put": {
+        "summary": "修改用户角色 (提拔管理员)",
+        "operationId": "UserAdminService_UpdateUsersRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpdateUserRoleResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateUserRoleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserAdminService"
+        ]
+      }
+    },
+    "/v1/admin/verifications": {
+      "get": {
+        "summary": "获取待审核的认证申请列表",
+        "operationId": "UserAdminService_ListVerificationApplications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListVerificationApplicationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "description": "筛选状态 (可选，默认 PENDING)\n\n - VERIFICATION_STATUS_PENDING: 待审核\n - VERIFICATION_STATUS_APPROVED: 已通过\n - VERIFICATION_STATUS_REJECTED: 已驳回",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "VERIFICATION_STATUS_PENDING",
+              "VERIFICATION_STATUS_APPROVED",
+              "VERIFICATION_STATUS_REJECTED"
+            ],
+            "default": "VERIFICATION_STATUS_PENDING"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "UserAdminService"
+        ]
+      }
+    },
+    "/v1/admin/verifications/{application_id}": {
+      "put": {
+        "summary": "审核认证申请 (通过/驳回)",
+        "operationId": "UserAdminService_ApproveVerification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ApproveVerificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "application_id",
+            "description": "申请ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserAdminServiceApproveVerificationBody"
+            }
+          }
+        ],
+        "tags": [
+          "UserAdminService"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "summary": "统一登录接口 (支持 QQ, 微信, 手机号等)",
+        "operationId": "AuthService_Login",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/LoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "delete": {
+        "summary": "退出登录",
+        "operationId": "AuthService_Logout",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/LogoutResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/v1/auth/push-token": {
+      "patch": {
+        "summary": "更新推送 Token (FCM/APNS 等)",
+        "operationId": "AuthService_UpdatePushToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpdatePushTokenResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdatePushTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "summary": "刷新 Token (换取新的 AccessToken)",
+        "operationId": "AuthService_RefreshToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/RefreshTokenResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RefreshTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/v1/collections/{post_id}": {
+      "put": {
+        "summary": "收藏/取消收藏 (通常仅针对帖子)",
+        "operationId": "InteractionService_SetCollect",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SetCollectResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/InteractionServiceSetCollectBody"
+            }
+          }
+        ],
+        "tags": [
+          "InteractionService"
+        ]
+      }
+    },
+    "/v1/comments/{comment_id}": {
+      "delete": {
+        "summary": "删除评论",
+        "operationId": "CommentService_DeleteComment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeleteCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "CommentService"
+        ]
+      }
+    },
+    "/v1/departments": {
+      "get": {
+        "summary": "2. 部门列表 (支持按优先级排序)",
+        "operationId": "PortalService_ListDepartments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListDepartmentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/history": {
+      "get": {
+        "summary": "4. 发展历程 (大事记)",
+        "operationId": "PortalService_ListHistory",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListHistoryResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/likes/{target_id}": {
+      "put": {
+        "summary": "点赞/取消赞 (支持帖子、评论)\n响应中包含最新点赞数，方便前端直接更新 UI",
+        "operationId": "InteractionService_SetLike",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SetLikeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "target_id",
+            "description": "PostID 或 CommentID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/InteractionServiceSetLikeBody"
+            }
+          }
+        ],
+        "tags": [
+          "InteractionService"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "summary": "--- 个人信息 ---\n获取当前登录用户的完整信息（包含敏感设置）",
+        "operationId": "UserService_GetMe",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetMeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/me/departments": {
+      "put": {
+        "summary": "修改所属部门",
+        "operationId": "UserService_ModifyDepartments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ModifyDepartmentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ModifyDepartmentsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/me/following/{target_user_id}": {
+      "put": {
+        "summary": "关注/取消关注",
+        "operationId": "UserService_SetFollow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SetFollowResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserServiceSetFollowBody"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/me/profile": {
+      "patch": {
+        "summary": "更新个人资料 (支持部分更新)",
+        "operationId": "UserService_UpdateProfile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpdateProfileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "profile",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/me/settings": {
+      "patch": {
+        "summary": "更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)",
+        "operationId": "UserService_UpdateSettings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpdateSettingsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "settings",
+            "description": "可选：将 Privacy 和 UserSettings 分开传，或者合并",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserSettings"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/me/verification": {
+      "put": {
+        "summary": "申请身份认证",
+        "operationId": "UserService_ApplyVerification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ApplyVerificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplyVerificationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/ministers": {
+      "get": {
+        "summary": "5. 部长/历代领导 (按年份/届数查询)",
+        "operationId": "PortalService_ListMinisters",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListMinistersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "year",
+            "description": "如果为 0，返回所有届部长的聚合列表？或者需要新的聚合结构\n建议：可以不传参数，直接返回按届分组好的数据",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "summary": "获取通知列表\n支持按“大类”筛选（如：只看赞和收藏、只看系统通知）",
+        "operationId": "MessageService_ListNotifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListNotificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "category",
+            "description": "必填：按大类拉取\n\n - CATEGORY_INTERACTION: 赞、收藏 (通常合并展示)\n - CATEGORY_COMMENT: 评论、@提到 (通常合并展示)\n - CATEGORY_FOLLOW: 新增关注\n - CATEGORY_SYSTEM: 系统通知 (活动、公告、举报反馈)",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "CATEGORY_UNSPECIFIED",
+              "CATEGORY_INTERACTION",
+              "CATEGORY_COMMENT",
+              "CATEGORY_FOLLOW",
+              "CATEGORY_SYSTEM"
+            ],
+            "default": "CATEGORY_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "MessageService"
+        ]
+      }
+    },
+    "/v1/notifications/read": {
+      "put": {
+        "summary": "标记已读\n支持：点开某个Tab一键已读、点击某条通知已读、全部已读",
+        "operationId": "MessageService_MarkRead",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/MarkReadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MarkReadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MessageService"
+        ]
+      }
+    },
+    "/v1/notifications/unread-count": {
+      "get": {
+        "summary": "获取未读计数\n用于在 App 消息页面的顶部 Tab 显示红点数字 (e.g., 赞:5, 评论:2, 系统:0)",
+        "operationId": "MessageService_GetUnreadCount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetUnreadCountResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "MessageService"
+        ]
+      }
+    },
+    "/v1/posts": {
+      "get": {
+        "summary": "统一帖子列表接口\n涵盖：首页推荐、最新、热门、关注、部门分区、个人页作品、关键词搜索、高级筛选",
+        "operationId": "ContentService_ListPosts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListPostsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scene",
+            "description": "帖子瀑布流类别：\"all\"：全部, \"following\": 关注，“user”：用户，“self_post”：自己发布的帖子，“self_like”：自己点赞的帖子，“self_collect”：自己收藏的帖子，剩下的根据“编辑分区”中的分区id来区分。",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "refresh_type",
+            "description": "刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "filter.keyword",
+            "description": "关键词搜索",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter.time_range.start_timestamp",
+            "description": "开始时间",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "filter.time_range.end_timestamp",
+            "description": "结束时间",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "order_type",
+            "description": "排序类型：\"score\"（分数排序）、\"timestamp\"（时间戳排序）\n\n - ORDER_TYPE_RECOMMENDED: 推荐排序\n - ORDER_TYPE_LATEST: 最新排序\n - ORDER_TYPE_HOT: 热门排序",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ORDER_TYPE_UNSPECIFIED",
+              "ORDER_TYPE_RECOMMENDED",
+              "ORDER_TYPE_LATEST",
+              "ORDER_TYPE_HOT"
+            ],
+            "default": "ORDER_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "cursor_score",
+            "description": "游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数，order_type=ORDER_TYPE_RECOMMENDED 或 order_type=ORDER_TYPE_HOT",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "cursor_timestamp",
+            "description": "游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间，order_type=ORDER_TYPE_LATEST",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ContentService"
+        ]
+      },
+      "post": {
+        "summary": "发布帖子",
+        "operationId": "ContentService_CreatePost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CreatePostResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreatePostRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ContentService"
+        ]
+      }
+    },
+    "/v1/posts/{post_id}": {
+      "get": {
+        "summary": "帖子详情",
+        "operationId": "ContentService_GetPost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetPostResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ContentService"
+        ]
+      },
+      "delete": {
+        "summary": "删除帖子",
+        "operationId": "ContentService_DeletePost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeletePostResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ContentService"
+        ]
+      }
+    },
+    "/v1/posts/{post_id}/comments": {
+      "get": {
+        "summary": "获取评论列表\n场景1：获取帖子的主评论列表 (Post下的 Level-1 评论)\n场景2：获取某条评论的子评论列表 (Comment下的 Level-2 评论)",
+        "operationId": "CommentService_ListComments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListCommentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "description": "必须：帖子ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "root_id",
+            "description": "可选：如果不传(或空)，则获取该帖子的一级评论列表\n     如果传了 comment_id，则获取该评论下的子评论列表 (展开回复)",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "sort",
+            "description": " - SORT_HOT: 热度 (点赞+回复权重)\n - SORT_NEW: 最新 (时间倒序)\n - SORT_OLD: 最早 (时间正序，常用于楼中楼)",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "SORT_UNSPECIFIED",
+              "SORT_HOT",
+              "SORT_NEW",
+              "SORT_OLD"
+            ],
+            "default": "SORT_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "CommentService"
+        ]
+      },
+      "post": {
+        "summary": "发送评论 (支持一级评论和子评论)",
+        "operationId": "CommentService_CreateComment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CreateCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CommentServiceCreateCommentBody"
+            }
+          }
+        ],
+        "tags": [
+          "CommentService"
+        ]
+      }
+    },
+    "/v1/resources/upload-tokens": {
+      "post": {
+        "summary": "获取上传凭证 (支持批量)\n包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)",
+        "operationId": "ResourceService_GetUploadTokens",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetUploadTokensResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GetUploadTokensRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      }
+    },
+    "/v1/site/config": {
+      "get": {
+        "summary": "1. 获取首页聚合信息 (可选，一次性拉取所有首屏需要的配置，减少请求数)\n包含：Logo, 宣传视频, 基础SiteInfo",
+        "operationId": "PortalService_GetSiteConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetSiteConfigResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/sponsors": {
+      "get": {
+        "summary": "7. 赞助商/鸣谢名单",
+        "operationId": "PortalService_ListSponsors",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListSponsorsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/staff": {
+      "get": {
+        "summary": "6. Staff 名单 (按分组返回)",
+        "operationId": "PortalService_ListStaff",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListStaffResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/trending": {
+      "get": {
+        "summary": "8. 热门动态 (对应需求：同步社区动态，无Token访问)",
+        "operationId": "PortalService_ListHomeTrending",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListHomeTrendingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "description": "限制数量，如 6 条",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "PortalService"
+        ]
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "summary": "获取他人公开信息 (经过隐私计算)",
+        "operationId": "UserService_GetUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetUsersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_ids",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/v1/users/{user_id}/relationships": {
+      "get": {
+        "summary": "关系列表 (粉丝/关注/Ta 也关注了)",
+        "operationId": "UserService_ListRelationships",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListRelationshipsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "description": "查看谁的关系",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "description": " - RELATION_TYPE_FOLLOWING: 关注的人\n - RELATION_TYPE_FOLLOWERS: 粉丝\n - RELATION_TYPE_MUTUAL_FOLLOWERS: 互相关注",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "RELATION_TYPE_FOLLOWING",
+              "RELATION_TYPE_FOLLOWERS",
+              "RELATION_TYPE_MUTUAL_FOLLOWERS"
+            ],
+            "default": "RELATION_TYPE_FOLLOWING"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "keyword",
+            "description": "可选：按昵称/备注/QQ号搜索过滤",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "AppearanceSettingsTheme": {
+      "type": "string",
+      "enum": [
+        "THEME_SYSTEM",
+        "THEME_LIGHT",
+        "THEME_DARK"
+      ],
+      "default": "THEME_SYSTEM",
+      "title": "- THEME_SYSTEM: 跟随系统\n - THEME_LIGHT: 日间模式\n - THEME_DARK: 夜间模式"
+    },
+    "CommentServiceCreateCommentBody": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "root_id": {
+          "type": "string",
+          "title": "如果是回复一级评论或二级评论，需要填这些\n回复帖子(一级评论)时：root_id=\"\", parent_id=\"\"\n回复评论(二级评论)时：root_id=\"一级评论ID\", parent_id=\"被回复的评论ID\""
+        },
+        "parent_id": {
+          "type": "string",
+          "title": "reply_to_user_id 可以由后端根据 parent_id 查出来，不需要前端传，防篡改"
+        }
+      },
+      "title": "发评论"
+    },
+    "GovernanceServiceResolveReportBody": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/ResolveReportRequestAction"
+        },
+        "note": {
+          "type": "string",
+          "title": "处理备注"
+        }
+      }
+    },
+    "HomeTrendingItemSource": {
+      "type": "string",
+      "enum": [
+        "SOURCE_COMMUNITY",
+        "SOURCE_OFFICIAL",
+        "SOURCE_EXTERNAL"
+      ],
+      "default": "SOURCE_COMMUNITY",
+      "description": "- SOURCE_COMMUNITY: 社区帖子\n - SOURCE_OFFICIAL: 官方公告\n - SOURCE_EXTERNAL: 外部爬取的红书/B站动态",
+      "title": "来源标记"
+    },
+    "InteractionServiceSetCollectBody": {
+      "type": "object",
+      "properties": {
+        "is_active": {
+          "type": "boolean"
+        }
+      },
+      "title": "收藏"
+    },
+    "InteractionServiceSetLikeBody": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/TargetType"
+        },
+        "is_active": {
+          "type": "boolean",
+          "title": "true=点赞, false=取消"
+        }
+      },
+      "title": "点赞"
+    },
+    "ListCommentsRequestSort": {
+      "type": "string",
+      "enum": [
+        "SORT_UNSPECIFIED",
+        "SORT_HOT",
+        "SORT_NEW",
+        "SORT_OLD"
+      ],
+      "default": "SORT_UNSPECIFIED",
+      "description": "- SORT_HOT: 热度 (点赞+回复权重)\n - SORT_NEW: 最新 (时间倒序)\n - SORT_OLD: 最早 (时间正序，常用于楼中楼)",
+      "title": "排序：热门/最新 (通常子评论默认按时间正序，一级评论按热度)"
+    },
+    "ListMinistersResponseYearGroup": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "session_number": {
+          "type": "integer",
+          "format": "int32",
+          "title": "第几届"
+        },
+        "ministers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Minister"
+          }
+        }
+      }
+    },
+    "ListRelationshipsRequestRelationType": {
+      "type": "string",
+      "enum": [
+        "RELATION_TYPE_FOLLOWING",
+        "RELATION_TYPE_FOLLOWERS",
+        "RELATION_TYPE_MUTUAL_FOLLOWERS"
+      ],
+      "default": "RELATION_TYPE_FOLLOWING",
+      "title": "- RELATION_TYPE_FOLLOWING: 关注的人\n - RELATION_TYPE_FOLLOWERS: 粉丝\n - RELATION_TYPE_MUTUAL_FOLLOWERS: 互相关注"
+    },
+    "MarkReadRequestScope": {
+      "type": "string",
+      "enum": [
+        "SCOPE_ALL",
+        "SCOPE_CATEGORY",
+        "SCOPE_ID"
+      ],
+      "default": "SCOPE_ALL",
+      "title": "范围：全部已读 | 指定分类已读 | 指定单条已读"
+    },
+    "ResolveReportRequestAction": {
+      "type": "string",
+      "enum": [
+        "ACTION_IGNORE",
+        "ACTION_DELETE_CONTENT",
+        "ACTION_BAN_USER"
+      ],
+      "default": "ACTION_IGNORE",
+      "description": "- ACTION_IGNORE: 忽略/无违规\n - ACTION_DELETE_CONTENT: 删除内容\n - ACTION_BAN_USER: 封禁用户 (通常需调用 UserAdminService)",
+      "title": "裁决动作"
+    },
+    "UserAdminServiceApproveVerificationBody": {
+      "type": "object",
+      "properties": {
+        "approve": {
+          "type": "boolean",
+          "title": "true=通过, false=驳回"
+        },
+        "reject_reason": {
+          "type": "string",
+          "title": "驳回原因 (仅当 approve 为 false 时需要)"
+        }
+      },
+      "title": "审核认证申请请求"
+    },
+    "UserServiceSetFollowBody": {
+      "type": "object",
+      "properties": {
+        "is_active": {
+          "type": "boolean",
+          "title": "true=关注, false=取关"
+        }
+      },
+      "title": "统一关注操作"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "name_en": {
+          "type": "string"
+        },
+        "cover_image": {
+          "type": "string"
+        },
+        "intro_video_url": {
+          "type": "string",
+          "title": "B站或红书视频链接"
+        },
+        "description": {
+          "type": "string"
+        },
+        "start_time": {
+          "type": "string",
+          "format": "int64",
+          "title": "建议用 int64 时间戳"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "int64"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Link"
+          }
+        },
+        "sort_order": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "活动"
+    },
+    "AppearanceSettings": {
+      "type": "object",
+      "properties": {
+        "theme": {
+          "$ref": "#/definitions/AppearanceSettingsTheme"
+        }
+      },
+      "title": "外观设置"
+    },
+    "ApplyVerificationRequest": {
+      "type": "object",
+      "properties": {
+        "verified_title": {
+          "type": "string",
+          "title": "申请的认证头衔 (如: 23届部长, 社团负责人)"
+        }
+      }
+    },
+    "ApplyVerificationResponse": {
+      "type": "object"
+    },
+    "ApproveVerificationResponse": {
+      "type": "object",
+      "properties": {
+        "succeed": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "title": "审核认证申请响应"
+    },
+    "BanItem": {
+      "type": "object",
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "title": "相关的举报 ID"
+        },
+        "status": {
+          "$ref": "#/definitions/BanStatus"
+        }
+      }
+    },
+    "BanRequest": {
+      "type": "object",
+      "properties": {
+        "ban_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/BanItem"
+          }
+        }
+      }
+    },
+    "BanResponse": {
+      "type": "object"
+    },
+    "BanStatus": {
+      "type": "string",
+      "enum": [
+        "BAN_STATUS_UNSPECIFIED",
+        "BAN_STATUS_BAN",
+        "BAN_STATUS_UNBAN"
+      ],
+      "default": "BAN_STATUS_UNSPECIFIED",
+      "title": "- BAN_STATUS_BAN: 封禁/删除\n - BAN_STATUS_UNBAN: 解封/恢复"
+    },
+    "BasePrivacyLevel": {
+      "type": "string",
+      "enum": [
+        "BASE_PRIVACY_LEVEL_PUBLIC",
+        "BASE_PRIVACY_LEVEL_PRIVATE"
+      ],
+      "default": "BASE_PRIVACY_LEVEL_PUBLIC"
+    },
+    "ChatPrivacyLevel": {
+      "type": "string",
+      "enum": [
+        "CHAT_PRIVACY_LEVEL_PUBLIC",
+        "CHAT_PRIVACY_LEVEL_FOLLOWERS",
+        "CHAT_PRIVACY_LEVEL_MUTUAL",
+        "CHAT_PRIVACY_LEVEL_PRIVATE"
+      ],
+      "default": "CHAT_PRIVACY_LEVEL_PUBLIC"
+    },
+    "Comment": {
+      "type": "object",
+      "properties": {
+        "comment_id": {
+          "type": "string"
+        },
+        "author": {
+          "$ref": "#/definitions/UserSummary",
+          "title": "评论者信息"
+        },
+        "content": {
+          "type": "string"
+        },
+        "post_id": {
+          "type": "string",
+          "description": "所属帖子ID",
+          "title": "关联关系"
+        },
+        "root_id": {
+          "type": "string",
+          "title": "所属根评论ID (如果是1级评论，此字段为空或0)"
+        },
+        "parent_id": {
+          "type": "string",
+          "title": "直接回复的父评论ID"
+        },
+        "reply_to_user_id": {
+          "type": "string",
+          "title": "回复对象信息 (用于前端显示 \"回复 @某某\")"
+        },
+        "reply_to_user_name": {
+          "type": "string"
+        },
+        "like_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "点赞数",
+          "title": "互动数据"
+        },
+        "reply_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "子评论总数 (Critical: 用于前端显示 \"查看5条回复\")"
+        },
+        "is_liked": {
+          "type": "boolean",
+          "title": "当前用户是否已赞"
+        },
+        "is_author": {
+          "type": "boolean",
+          "title": "是否是楼主(帖子的作者)发的评论"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64"
+        },
+        "preview_replies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Comment"
+          },
+          "title": "预览回复 (Optimization: 仅在一级评论中返回前2-3条高热回复，避免全量拉取)"
+        }
+      }
+    },
+    "CreateCommentResponse": {
+      "type": "object",
+      "properties": {
+        "comment": {
+          "$ref": "#/definitions/Comment",
+          "title": "返回创建成功的完整评论对象，前端直接插到列表头部"
+        }
+      }
+    },
+    "CreatePostRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Media"
+          }
+        },
+        "partition_id": {
+          "type": "integer",
+          "format": "int32",
+          "title": "可以增加 tags 等"
+        }
+      }
+    },
+    "CreatePostResponse": {
+      "type": "object",
+      "properties": {
+        "post": {
+          "$ref": "#/definitions/Post"
+        }
+      }
+    },
+    "DeleteActivityResponse": {
+      "type": "object"
+    },
+    "DeleteCommentResponse": {
+      "type": "object",
+      "title": "空响应通常足够，或者返回 boolean"
+    },
+    "DeleteDepartmentResponse": {
+      "type": "object"
+    },
+    "DeleteHistoryEventResponse": {
+      "type": "object"
+    },
+    "DeleteMinisterResponse": {
+      "type": "object"
+    },
+    "DeletePostResponse": {
+      "type": "object"
+    },
+    "DeleteSponsorResponse": {
+      "type": "object"
+    },
+    "DeleteStaffGroupResponse": {
+      "type": "object"
+    },
+    "DepartmentBase": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "全称 (如 \"轻音部\")"
+        }
+      },
+      "title": "部门基础元数据 (Lightweight)\n用于：用户徽章渲染、帖子分区标签、侧边栏导航\n前端应该在 App 启动时拉取一次“全量 DepartmentBase 列表”并缓存"
+    },
+    "DepartmentInfo": {
+      "type": "object",
+      "properties": {
+        "department_base": {
+          "$ref": "#/definitions/DepartmentBase"
+        },
+        "logo": {
+          "type": "string"
+        },
+        "cover_image": {
+          "type": "string"
+        },
+        "intro_video_url": {
+          "type": "string",
+          "title": "需求提到的部门视频"
+        },
+        "description": {
+          "type": "string"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Link"
+          },
+          "title": "使用 repeated 保证顺序"
+        },
+        "sort_order": {
+          "type": "integer",
+          "format": "int32",
+          "title": "排序权重，越大越靠前"
+        }
+      },
+      "title": "部门信息"
+    },
+    "DeviceInfo": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "title": "唯一设备 ID (如 UUID 或 厂商自生成 ID)"
+        },
+        "device_name": {
+          "type": "string",
+          "title": "设备名 (e.g. \"iPhone 14 Pro\")"
+        },
+        "platform": {
+          "$ref": "#/definitions/DevicePlatform",
+          "title": "平台类型"
+        },
+        "os_version": {
+          "type": "string",
+          "title": "系统版本 (e.g. \"iOS 16.0\")"
+        },
+        "client_version": {
+          "type": "string",
+          "title": "App/前端版本号"
+        },
+        "push_token": {
+          "type": "string",
+          "title": "推送 Token (FCM/APNS/MiPush)"
+        }
+      }
+    },
+    "DevicePlatform": {
+      "type": "string",
+      "enum": [
+        "DEVICE_PLATFORM_UNSPECIFIED",
+        "DEVICE_PLATFORM_IOS",
+        "DEVICE_PLATFORM_ANDROID",
+        "DEVICE_PLATFORM_WEB"
+      ],
+      "default": "DEVICE_PLATFORM_UNSPECIFIED"
+    },
+    "GetMeResponse": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "$ref": "#/definitions/UserProfile"
+        },
+        "settings": {
+          "$ref": "#/definitions/UserSettings"
+        }
+      }
+    },
+    "GetPostResponse": {
+      "type": "object",
+      "properties": {
+        "post": {
+          "$ref": "#/definitions/Post"
+        }
+      }
+    },
+    "GetSiteConfigResponse": {
+      "type": "object",
+      "properties": {
+        "site_name": {
+          "type": "string"
+        },
+        "promo_video_url": {
+          "type": "string",
+          "title": "首页背景宣传视频"
+        }
+      }
+    },
+    "GetUnreadCountResponse": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "category_interaction": {
+          "type": "integer",
+          "format": "int32",
+          "title": "各分类未读数，方便前端渲染 Tab 上的红点"
+        },
+        "category_comment": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "category_follow": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "category_system": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "GetUploadTokensRequest": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "$ref": "#/definitions/ResourceScene",
+          "title": "场景 (决定存储桶 Bucket 和 路径前缀)"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/UploadTask"
+          },
+          "title": "批量请求"
+        }
+      }
+    },
+    "GetUploadTokensResponse": {
+      "type": "object",
+      "properties": {
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/UploadToken"
+          }
+        }
+      }
+    },
+    "GetUsersResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/UserProfile"
+          }
+        }
+      }
+    },
+    "HistoryEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "year": {
+          "type": "integer",
+          "format": "int32",
+          "title": "单独拆分年份，方便前端做时间轴分组"
+        },
+        "date_str": {
+          "type": "string",
+          "title": "显示用日期字符串 \"2023.10.01\""
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "可能有多张图"
+        }
+      },
+      "title": "历史事件"
+    },
+    "HomeTrendingItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "原始帖子ID"
+        },
+        "title": {
+          "type": "string"
+        },
+        "cover_image": {
+          "type": "string",
+          "title": "封面"
+        },
+        "summary": {
+          "type": "string",
+          "title": "摘要"
+        },
+        "author_name": {
+          "type": "string"
+        },
+        "author_avatar": {
+          "type": "string"
+        },
+        "jump_url": {
+          "type": "string",
+          "title": "点击跳转地址 (App内链或H5链接)"
+        },
+        "source": {
+          "$ref": "#/definitions/HomeTrendingItemSource"
+        },
+        "like_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "统计"
+        }
+      },
+      "title": "首页热门动态 (聚合自社区)"
+    },
+    "Link": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "title": "链接显示文字"
+        },
+        "url": {
+          "type": "string",
+          "title": "实际跳转地址"
+        }
+      },
+      "title": "外部链接结构"
+    },
+    "ListActivitiesResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Activity"
+          }
+        }
+      }
+    },
+    "ListCommentsResponse": {
+      "type": "object",
+      "properties": {
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Comment"
+          }
+        },
+        "next_page_token": {
+          "type": "string"
+        },
+        "total_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "该维度下的总评论数 (一级总数 或 某条评论的子回复总数)"
+        }
+      }
+    },
+    "ListDepartmentsResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/DepartmentInfo"
+          }
+        }
+      }
+    },
+    "ListHistoryResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/HistoryEvent"
+          }
+        }
+      }
+    },
+    "ListHomeTrendingResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/HomeTrendingItem"
+          }
+        }
+      }
+    },
+    "ListMinistersResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListMinistersResponseYearGroup"
+          },
+          "title": "按年份分组返回，方便前端渲染侧边栏年份选择"
+        }
+      }
+    },
+    "ListNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Notification"
+          }
+        },
+        "next_page_token": {
+          "type": "string"
+        }
+      }
+    },
+    "ListPostsResponse": {
+      "type": "object",
+      "properties": {
+        "posts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/PostPreview"
+          }
+        },
+        "cursor_score": {
+          "type": "string",
+          "title": "游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数"
+        },
+        "cursor_timestamp": {
+          "type": "string",
+          "title": "游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间"
+        }
+      }
+    },
+    "ListRelationshipsResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/UserProfile"
+          },
+          "title": "这里不直接返回 UserSummary，建议返回 UserProfile 或者包含 RelationStatus 的对象\n这样在列表中就能知道\"我是否也关注了这个粉丝\""
+        },
+        "next_page_token": {
+          "type": "string"
+        }
+      }
+    },
+    "ListReportsResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Report"
+          }
+        },
+        "next_page_token": {
+          "type": "string"
+        }
+      }
+    },
+    "ListSponsorsResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Sponsor"
+          }
+        }
+      }
+    },
+    "ListStaffResponse": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/StaffGroup"
+          }
+        }
+      }
+    },
+    "ListVerificationApplicationsResponse": {
+      "type": "object",
+      "properties": {
+        "applications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/VerificationApplication"
+          }
+        },
+        "next_page_token": {
+          "type": "string"
+        }
+      },
+      "title": "获取认证申请列表响应"
+    },
+    "LoginRequest": {
+      "type": "object",
+      "properties": {
+        "credential": {
+          "type": "string",
+          "title": "凭证载荷：QQ 传 AccessToken"
+        },
+        "device": {
+          "$ref": "#/definitions/DeviceInfo"
+        }
+      }
+    },
+    "LoginResponse": {
+      "type": "object",
+      "properties": {
+        "access_token": {
+          "type": "string",
+          "title": "短期令牌 (如 2小时)，过期绝对时间戳及user_id放在payload中"
+        },
+        "refresh_token": {
+          "type": "string",
+          "title": "长期令牌 (如 30天)，过期绝对时间戳放在payload中"
+        },
+        "user": {
+          "$ref": "#/definitions/UserSummary",
+          "title": "用户基本信息"
+        }
+      }
+    },
+    "LogoutResponse": {
+      "type": "object"
+    },
+    "MarkReadRequest": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/MarkReadRequestScope"
+        },
+        "category": {
+          "$ref": "#/definitions/NotificationCategory",
+          "description": "当 scope=CATEGORY 时必填",
+          "title": "配合 Scope 使用"
+        },
+        "notification_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "当 scope=ID 时必填 (支持批量)"
+        }
+      }
+    },
+    "MarkReadResponse": {
+      "type": "object"
+    },
+    "Media": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "\"image\" | \"video\""
+        },
+        "url": {
+          "type": "string",
+          "title": "资源地址"
+        },
+        "thumbnail": {
+          "type": "string",
+          "title": "缩略图（视频用）"
+        },
+        "width": {
+          "type": "integer",
+          "format": "int32",
+          "title": "宽"
+        },
+        "height": {
+          "type": "integer",
+          "format": "int32",
+          "title": "高"
+        }
+      },
+      "title": "多媒体资源"
+    },
+    "Minister": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "title": "CN (需求中的 name)"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string",
+          "title": "签名"
+        },
+        "description": {
+          "type": "string",
+          "title": "简介"
+        },
+        "department_name": {
+          "type": "string",
+          "title": "所属部门名称"
+        },
+        "session_number": {
+          "type": "integer",
+          "format": "int32",
+          "description": "第几届 (需求提到的按年代/代目划分)",
+          "title": "届数/年份信息"
+        },
+        "year": {
+          "type": "integer",
+          "format": "int32",
+          "title": "任职年份"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Link"
+          }
+        }
+      },
+      "title": "部长"
+    },
+    "ModifyDepartmentsRequest": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "选择的部门 ID 列表"
+        }
+      }
+    },
+    "ModifyDepartmentsResponse": {
+      "type": "object"
+    },
+    "Notification": {
+      "type": "object",
+      "properties": {
+        "notification_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/NotificationType",
+          "title": "具体类型"
+        },
+        "category": {
+          "$ref": "#/definitions/NotificationCategory",
+          "title": "所属大类"
+        },
+        "actors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/UserSummary"
+          },
+          "title": "--- 触发者信息 ---\n聚合展示逻辑：如果是 TYPE_LIKE_POST，这里可能是 1 人，也可能是 \"A, B 等 5 人\"\n后端在列表返回时，只返回最近的 1-3 个头像即可"
+        },
+        "actor_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "总参与人数 (如果大于 actors.length，前端显示 \"等N人\")"
+        },
+        "title": {
+          "type": "string",
+          "description": "标题 (系统通知用，或者显示 \"评论了你\")",
+          "title": "--- 核心内容 ---"
+        },
+        "content": {
+          "type": "string",
+          "title": "内容 (评论的文本内容，或者系统通知详情)"
+        },
+        "target_id": {
+          "type": "string",
+          "description": "帖子ID 或 评论ID",
+          "title": "--- 目标/上下文快照 (Snapshot) ---\n关键优化：让前端在列表页能直接渲染出“被赞的是哪张图”"
+        },
+        "target_type": {
+          "type": "string",
+          "title": "post / comment / url"
+        },
+        "target_preview_image": {
+          "type": "string",
+          "title": "被赞帖子/被评论帖子的封面图"
+        },
+        "target_summary": {
+          "type": "string",
+          "title": "被赞评论的原文摘要 (截取前20字)"
+        },
+        "redirect_url": {
+          "type": "string",
+          "title": "--- 跳转逻辑 ---\n用于系统通知点击后跳转到 WebView 或 App 内特定页面"
+        },
+        "is_read": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "NotificationCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_INTERACTION",
+        "CATEGORY_COMMENT",
+        "CATEGORY_FOLLOW",
+        "CATEGORY_SYSTEM"
+      ],
+      "default": "CATEGORY_UNSPECIFIED",
+      "description": "- CATEGORY_INTERACTION: 赞、收藏 (通常合并展示)\n - CATEGORY_COMMENT: 评论、@提到 (通常合并展示)\n - CATEGORY_FOLLOW: 新增关注\n - CATEGORY_SYSTEM: 系统通知 (活动、公告、举报反馈)",
+      "title": "通知大类 (用于列表筛选和角标统计)"
+    },
+    "NotificationSettings": {
+      "type": "object",
+      "properties": {
+        "push_enabled": {
+          "type": "boolean",
+          "title": "全局推送开关"
+        },
+        "push_chat": {
+          "type": "boolean",
+          "title": "私信推送"
+        },
+        "push_comment_at": {
+          "type": "boolean",
+          "title": "评论与 @ 推送"
+        },
+        "push_like_collect": {
+          "type": "boolean",
+          "title": "点赞与收藏推送"
+        },
+        "push_new_follower": {
+          "type": "boolean",
+          "title": "新粉丝推送"
+        },
+        "push_post_update": {
+          "type": "boolean",
+          "title": "关注动态推送"
+        },
+        "push_system": {
+          "type": "boolean",
+          "title": "系统/举报反馈推送"
+        }
+      },
+      "title": "通知设置 (仅自己可见)"
+    },
+    "NotificationType": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "TYPE_LIKE_POST",
+        "TYPE_LIKE_COMMENT",
+        "TYPE_COLLECT_POST",
+        "TYPE_COMMENT_POST",
+        "TYPE_REPLY_COMMENT",
+        "TYPE_MENTION",
+        "TYPE_FOLLOW",
+        "TYPE_SYSTEM_ANNOUNCEMENT",
+        "TYPE_REPORT_RESULT"
+      ],
+      "default": "TYPE_UNSPECIFIED",
+      "description": "- TYPE_LIKE_POST: 互动类\n\n赞了帖子\n - TYPE_LIKE_COMMENT: 赞了评论\n - TYPE_COLLECT_POST: 收藏了帖子\n - TYPE_COMMENT_POST: 内容类\n\n评论了帖子\n - TYPE_REPLY_COMMENT: 回复了评论\n - TYPE_MENTION: @了你\n - TYPE_FOLLOW: 关系类\n\n关注了你\n - TYPE_SYSTEM_ANNOUNCEMENT: 系统类\n\n官方公告 (晒你宣传视频等)\n - TYPE_REPORT_RESULT: 举报处理结果",
+      "title": "通知具体类型 (用于前端渲染不同的 UI 模板)"
+    },
+    "OrderType": {
+      "type": "string",
+      "enum": [
+        "ORDER_TYPE_UNSPECIFIED",
+        "ORDER_TYPE_RECOMMENDED",
+        "ORDER_TYPE_LATEST",
+        "ORDER_TYPE_HOT"
+      ],
+      "default": "ORDER_TYPE_UNSPECIFIED",
+      "title": "- ORDER_TYPE_RECOMMENDED: 推荐排序\n - ORDER_TYPE_LATEST: 最新排序\n - ORDER_TYPE_HOT: 热门排序"
+    },
+    "Pagination": {
+      "type": "object",
+      "properties": {
+        "page_token": {
+          "type": "string",
+          "title": "游标（用于无限滚动，最后一条数据的id）"
+        },
+        "need_num": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "分页请求"
+    },
+    "Post": {
+      "type": "object",
+      "properties": {
+        "post_id": {
+          "type": "string"
+        },
+        "author": {
+          "$ref": "#/definitions/UserSummary"
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "title": "详情页返回全文"
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Media"
+          },
+          "title": "后面需更改media结构"
+        },
+        "like_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "交互数据"
+        },
+        "comment_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "collect_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "view_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "is_liked": {
+          "type": "boolean",
+          "title": "当前用户状态"
+        },
+        "is_collected": {
+          "type": "boolean"
+        },
+        "is_following_author": {
+          "type": "boolean",
+          "title": "新增：是否已关注作者"
+        },
+        "is_followed_by_author": {
+          "type": "boolean",
+          "title": "新增：作者是否已关注当前用户"
+        },
+        "publish_time": {
+          "type": "string",
+          "format": "int64",
+          "title": "时间与状态"
+        },
+        "edit_time": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "$ref": "#/definitions/PostStatus",
+          "title": "新增：帖子状态"
+        }
+      }
+    },
+    "PostFilter": {
+      "type": "object",
+      "properties": {
+        "keyword": {
+          "type": "string",
+          "title": "关键词搜索"
+        },
+        "time_range": {
+          "$ref": "#/definitions/TimeRange",
+          "title": "时间范围筛选"
+        }
+      },
+      "title": "具体的筛选器"
+    },
+    "PostPreview": {
+      "type": "object",
+      "properties": {
+        "post_id": {
+          "type": "string",
+          "title": "基础信息"
+        },
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string",
+          "title": "摘要：后端截取内容的前N个字符（如前60字），去除Markdown/HTML格式，用于纯文本展示"
+        },
+        "cover": {
+          "$ref": "#/definitions/Media",
+          "description": "TODO后续需要改变Media数据结构",
+          "title": "封面：专门用于列表展示的媒体对象。\n后端逻辑：如果有图，取第一张的缩略图地址；如果是视频，取视频封面。"
+        },
+        "author": {
+          "$ref": "#/definitions/UserSummary",
+          "title": "作者信息 (包含头像 avatar, 用户名 name, id 等)"
+        },
+        "like_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "核心统计数据"
+        },
+        "view_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "列表页通常也显示浏览量"
+        },
+        "comment_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "显眼的评论数能引导点击"
+        },
+        "is_liked": {
+          "type": "boolean",
+          "description": "当前用户是否点赞",
+          "title": "状态标记 (前端用于渲染 UI 状态)"
+        },
+        "is_only_video": {
+          "type": "boolean",
+          "title": "UI上是否显示一个“播放”的小图标"
+        },
+        "publish_time": {
+          "type": "string",
+          "format": "int64",
+          "description": "发布时间戳，前端显示 \"3小时前\"",
+          "title": "辅助信息"
+        }
+      },
+      "title": "帖子预览（卡片视图数据）"
+    },
+    "PostStatus": {
+      "type": "string",
+      "enum": [
+        "POST_STATUS_UNSPECIFIED",
+        "POST_STATUS_PUBLISHED",
+        "POST_STATUS_AUDITING",
+        "POST_STATUS_DELETED"
+      ],
+      "default": "POST_STATUS_UNSPECIFIED",
+      "title": "- POST_STATUS_PUBLISHED: 已发布\n - POST_STATUS_AUDITING: 审核中\n - POST_STATUS_DELETED: 已删除"
+    },
+    "PrivacySettings": {
+      "type": "object",
+      "properties": {
+        "message_permission": {
+          "$ref": "#/definitions/ChatPrivacyLevel",
+          "title": "谁可以私信我"
+        },
+        "liked_posts_visibility": {
+          "$ref": "#/definitions/BasePrivacyLevel",
+          "description": "谁可以看我的点赞帖子",
+          "title": "PrivacyLevel list_visibility = 2;       // 谁可以看我的关注/粉丝列表"
+        },
+        "collected_posts_visibility": {
+          "$ref": "#/definitions/BasePrivacyLevel",
+          "title": "谁可以看我的收藏帖子"
+        }
+      },
+      "title": "隐私设置 (仅自己可见)"
+    },
+    "RefreshTokenRequest": {
+      "type": "object",
+      "properties": {
+        "refresh_token": {
+          "type": "string"
+        }
+      }
+    },
+    "RefreshTokenResponse": {
+      "type": "object",
+      "properties": {
+        "access_token": {
+          "type": "string"
+        },
+        "refresh_token": {
+          "type": "string",
+          "title": "可选：实现 RefreshToken 轮转机制时，会下发新的 RT"
+        }
+      }
+    },
+    "RefreshType": {
+      "type": "string",
+      "enum": [
+        "REFRESH_TYPE_UNSPECIFIED",
+        "REFRESH_TYPE_PULL_DOWN",
+        "REFRESH_TYPE_PULL_UP"
+      ],
+      "default": "REFRESH_TYPE_UNSPECIFIED",
+      "description": "- REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+      "title": "---------------------------------------------------------\n统一筛选请求设计 (The Unified Request)\n---------------------------------------------------------"
+    },
+    "Report": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "reporter_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/ReportTargetType"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/ReportStatus"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "ReportStatus": {
+      "type": "string",
+      "enum": [
+        "REPORT_STATUS_PENDING",
+        "REPORT_STATUS_RESOLVED",
+        "REPORT_STATUS_REJECTED"
+      ],
+      "default": "REPORT_STATUS_PENDING",
+      "title": "- REPORT_STATUS_REJECTED: 驳回"
+    },
+    "ReportTargetType": {
+      "type": "string",
+      "enum": [
+        "REPORT_TARGET_TYPE_POST",
+        "REPORT_TARGET_TYPE_COMMENT",
+        "REPORT_TARGET_TYPE_USER"
+      ],
+      "default": "REPORT_TARGET_TYPE_POST"
+    },
+    "ResolveReportResponse": {
+      "type": "object"
+    },
+    "ResourceScene": {
+      "type": "string",
+      "enum": [
+        "SCENE_UNSPECIFIED",
+        "SCENE_USER_AVATAR",
+        "SCENE_POST_IMAGE",
+        "SCENE_POST_VIDEO",
+        "SCENE_COMMENT_IMAGE",
+        "SCENE_CHAT_FILE"
+      ],
+      "default": "SCENE_UNSPECIFIED",
+      "title": "- SCENE_USER_AVATAR: 用户头像 (限制如 <2MB, 正方形)\n - SCENE_POST_IMAGE: 帖子图片 (限制如 <10MB)\n - SCENE_POST_VIDEO: 帖子视频 (限制如 <500MB)\n - SCENE_COMMENT_IMAGE: 评论图片\n - SCENE_CHAT_FILE: 私聊文件 (可能需要私有读权限)"
+    },
+    "Role": {
+      "type": "string",
+      "enum": [
+        "ROLE_VISITOR",
+        "ROLE_USER",
+        "ROLE_ADMIN",
+        "ROLE_SUPER_ADMIN"
+      ],
+      "default": "ROLE_VISITOR",
+      "description": "- ROLE_VISITOR: 游客\n - ROLE_USER: 用户\n - ROLE_ADMIN: 内容管理员\n - ROLE_SUPER_ADMIN: 超级管理员",
+      "title": "用户角色枚举"
+    },
+    "SetCollectResponse": {
+      "type": "object",
+      "properties": {
+        "is_active": {
+          "type": "boolean"
+        },
+        "collect_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "操作后的最新收藏数"
+        }
+      }
+    },
+    "SetFollowResponse": {
+      "type": "object",
+      "properties": {
+        "is_active": {
+          "type": "boolean"
+        },
+        "is_mutual": {
+          "type": "boolean",
+          "title": "返回是否变成了互关，前端可显示\"互相关注\"图标"
+        }
+      }
+    },
+    "SetLikeResponse": {
+      "type": "object",
+      "properties": {
+        "is_active": {
+          "type": "boolean",
+          "title": "最终状态"
+        },
+        "like_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "操作后的最新点赞数 (UI直接更新这个数字)"
+        }
+      }
+    },
+    "Sponsor": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "intro": {
+          "type": "string"
+        },
+        "amount_display": {
+          "type": "string",
+          "title": "显示金额，如 \"￥50.00\""
+        }
+      },
+      "title": "赞助者 (如果和Staff页面分开展示)"
+    },
+    "StaffGroup": {
+      "type": "object",
+      "properties": {
+        "group_name": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/StaffMember"
+          }
+        }
+      },
+      "title": "Staff 分组 (如：开发组、设计组、甚至 赞助组 也可以复用这个结构)"
+    },
+    "StaffMember": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "CN"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "title": "职责 (e.g. \"后端开发\")"
+        },
+        "description": {
+          "type": "string",
+          "title": "简介/寄语"
+        },
+        "donation_amount": {
+          "type": "string",
+          "title": "(可选) 赞助金额，对应需求"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Link"
+          }
+        }
+      },
+      "title": "Staff 成员"
+    },
+    "TargetType": {
+      "type": "string",
+      "enum": [
+        "TARGET_TYPE_UNSPECIFIED",
+        "TARGET_TYPE_POST",
+        "TARGET_TYPE_COMMENT"
+      ],
+      "default": "TARGET_TYPE_UNSPECIFIED"
+    },
+    "TimeRange": {
+      "type": "object",
+      "properties": {
+        "start_timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "开始时间"
+        },
+        "end_timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "结束时间"
+        }
+      }
+    },
+    "UpdateProfileResponse": {
+      "type": "object"
+    },
+    "UpdatePushTokenRequest": {
+      "type": "object",
+      "properties": {
+        "push_token": {
+          "type": "string"
+        },
+        "device_id": {
+          "type": "string",
+          "title": "标识是哪个设备变更了 token"
+        }
+      }
+    },
+    "UpdatePushTokenResponse": {
+      "type": "object"
+    },
+    "UpdateSettingsResponse": {
+      "type": "object"
+    },
+    "UpdateUserRoleRequest": {
+      "type": "object",
+      "properties": {
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "role": {
+          "$ref": "#/definitions/Role"
+        }
+      }
+    },
+    "UpdateUserRoleResponse": {
+      "type": "object"
+    },
+    "UploadTask": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "title": "原始文件名 (e.g. \"photo.jpg\")"
+        },
+        "size_bytes": {
+          "type": "string",
+          "format": "int64",
+          "title": "文件大小 (字节)"
+        },
+        "mime_type": {
+          "type": "string",
+          "title": "MIME类型 (e.g. \"image/jpeg\", \"video/mp4\")"
+        },
+        "file_hash": {
+          "type": "string",
+          "title": "(可选) MD5/SHA256，用于秒传检测"
+        }
+      }
+    },
+    "UploadToken": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "对应请求中的文件名或索引"
+        },
+        "upload_url": {
+          "type": "string",
+          "title": "上传地址 (PUT Signed URL)"
+        },
+        "public_url": {
+          "type": "string",
+          "title": "最终访问地址 (存入 DB 的地址)"
+        },
+        "required_headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "HTTP Header 要求 (通常 PUT 上传需要指定 Content-Type)"
+        },
+        "skip_upload": {
+          "type": "boolean",
+          "description": "如果为 true，说明 hash 已存在，无需上传，直接使用 public_url",
+          "title": "秒传标志"
+        }
+      }
+    },
+    "UpsertActivityRequest": {
+      "type": "object",
+      "properties": {
+        "activity": {
+          "$ref": "#/definitions/Activity"
+        }
+      },
+      "title": "活动管理"
+    },
+    "UpsertActivityResponse": {
+      "type": "object",
+      "properties": {
+        "activity_id": {
+          "type": "string"
+        }
+      }
+    },
+    "UpsertDepartmentRequest": {
+      "type": "object",
+      "properties": {
+        "department": {
+          "$ref": "#/definitions/DepartmentInfo",
+          "title": "包含ID，ID存在则更新，不存在则创建"
+        }
+      },
+      "title": "部门管理"
+    },
+    "UpsertDepartmentResponse": {
+      "type": "object",
+      "properties": {
+        "department_id": {
+          "type": "string"
+        }
+      }
+    },
+    "UpsertHistoryEventRequest": {
+      "type": "object",
+      "properties": {
+        "history_event": {
+          "$ref": "#/definitions/HistoryEvent"
+        }
+      },
+      "title": "历史事件管理"
+    },
+    "UpsertHistoryEventResponse": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string"
+        }
+      }
+    },
+    "UpsertMinisterRequest": {
+      "type": "object",
+      "properties": {
+        "minister": {
+          "$ref": "#/definitions/Minister"
+        }
+      },
+      "title": "部长管理"
+    },
+    "UpsertMinisterResponse": {
+      "type": "object",
+      "properties": {
+        "minister_id": {
+          "type": "string"
+        }
+      }
+    },
+    "UpsertSponsorRequest": {
+      "type": "object",
+      "properties": {
+        "sponsor": {
+          "$ref": "#/definitions/Sponsor"
+        }
+      },
+      "title": "赞助者管理"
+    },
+    "UpsertSponsorResponse": {
+      "type": "object",
+      "properties": {
+        "sponsor_id": {
+          "type": "string"
+        }
+      }
+    },
+    "UpsertStaffGroupRequest": {
+      "type": "object",
+      "properties": {
+        "staff_group": {
+          "$ref": "#/definitions/StaffGroup"
+        }
+      },
+      "title": "Staff 管理"
+    },
+    "UpsertStaffGroupResponse": {
+      "type": "object",
+      "properties": {
+        "group_id": {
+          "type": "string"
+        }
+      }
+    },
+    "UserProfile": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "#/definitions/UserSummary",
+          "title": "基础信息 (ID, Name, 头像, 部门徽章, 认证头衔)"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Link"
+          },
+          "title": "外部链接"
+        },
+        "stats": {
+          "$ref": "#/definitions/UserStats",
+          "title": "统计数据 (建议单独通过 FieldMask 控制是否返回)"
+        },
+        "relation_status": {
+          "$ref": "#/definitions/UserRelationStatus",
+          "title": "关系状态 (当前查看者 vs 这个用户)"
+        },
+        "role": {
+          "$ref": "#/definitions/Role",
+          "description": "用户角色",
+          "title": "扩展字段"
+        }
+      },
+      "title": "用户公开资料 (他人可见)"
+    },
+    "UserRelationStatus": {
+      "type": "object",
+      "properties": {
+        "is_following": {
+          "type": "boolean",
+          "title": "我是否关注了他"
+        },
+        "is_followed_by": {
+          "type": "boolean",
+          "title": "他是否关注了我 (互关判断)"
+        },
+        "origin_name": {
+          "type": "string",
+          "description": "用户原名",
+          "title": "bool is_blocking = 3;        // 我是否拉黑了他"
+        },
+        "can_send_message": {
+          "type": "boolean",
+          "description": "是否能发私信",
+          "title": "隐私权限结果 (Critical: 不要返回 PrivacySettings，返回 Capability)"
+        },
+        "can_view_liked_posts": {
+          "type": "boolean",
+          "description": "是否能看他的点赞帖子",
+          "title": "bool can_view_list = 11;     // 是否能看他的关注列表"
+        },
+        "can_view_collected_posts": {
+          "type": "boolean",
+          "title": "是否能看他的收藏帖子"
+        }
+      },
+      "title": "关系状态 (计算后的结果)"
+    },
+    "UserSettings": {
+      "type": "object",
+      "properties": {
+        "notification": {
+          "$ref": "#/definitions/NotificationSettings"
+        },
+        "privacy": {
+          "$ref": "#/definitions/PrivacySettings"
+        },
+        "appearance": {
+          "$ref": "#/definitions/AppearanceSettings"
+        }
+      },
+      "title": "用户通用设置 (仅自己可见)"
+    },
+    "UserStats": {
+      "type": "object",
+      "properties": {
+        "follower_count": {
+          "type": "string",
+          "format": "int64"
+        },
+        "following_count": {
+          "type": "string",
+          "format": "int64"
+        },
+        "like_count_received": {
+          "type": "string",
+          "format": "int64",
+          "title": "获得的赞"
+        },
+        "collect_count_received": {
+          "type": "string",
+          "format": "int64",
+          "title": "获得的收藏"
+        },
+        "view_count_received": {
+          "type": "string",
+          "format": "int64",
+          "title": "获得浏览"
+        }
+      },
+      "title": "统计数据"
+    },
+    "UserSummary": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string"
+        },
+        "nickname": {
+          "type": "string",
+          "title": "昵称，若有备注优先显示备注"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "departments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/DepartmentBase"
+          },
+          "title": "所有所属部门徽章"
+        },
+        "is_verified": {
+          "type": "boolean",
+          "title": "身份认证状态"
+        },
+        "verified_title": {
+          "type": "string",
+          "title": "认证头衔（如：23届部长）"
+        }
+      },
+      "title": "基础信息摘要（用于瀑布流、列表页）"
+    },
+    "VerificationApplication": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "type": "string",
+          "title": "申请ID"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "申请人ID"
+        },
+        "user": {
+          "$ref": "#/definitions/UserSummary",
+          "title": "申请人信息"
+        },
+        "verified_title": {
+          "type": "string",
+          "title": "申请的认证头衔"
+        },
+        "status": {
+          "$ref": "#/definitions/VerificationStatus",
+          "title": "审核状态"
+        },
+        "reject_reason": {
+          "type": "string",
+          "title": "驳回原因 (仅当 status 为 REJECTED 时有效)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "申请时间戳"
+        },
+        "processed_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "处理时间戳"
+        },
+        "processed_by": {
+          "type": "string",
+          "title": "处理人ID"
+        }
+      },
+      "title": "认证申请信息"
+    },
+    "VerificationStatus": {
+      "type": "string",
+      "enum": [
+        "VERIFICATION_STATUS_PENDING",
+        "VERIFICATION_STATUS_APPROVED",
+        "VERIFICATION_STATUS_REJECTED"
+      ],
+      "default": "VERIFICATION_STATUS_PENDING",
+      "description": "- VERIFICATION_STATUS_PENDING: 待审核\n - VERIFICATION_STATUS_APPROVED: 已通过\n - VERIFICATION_STATUS_REJECTED: 已驳回",
+      "title": "认证申请状态枚举"
+    }
+  }
+}
