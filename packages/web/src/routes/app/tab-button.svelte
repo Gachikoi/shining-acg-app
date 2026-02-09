@@ -24,7 +24,7 @@
 		icon?: ComponentType<SvelteComponent>;
 	} = $props();
 
-	let isSelected = $derived(page.url.pathname === href);
+	let isSelected = $derived(href ? page.url.pathname.includes(href) : false);
 </script>
 
 {#if href}
