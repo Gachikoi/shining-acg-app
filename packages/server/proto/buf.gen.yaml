@@ -4,6 +4,10 @@ managed:
   override:
     - file_option: go_package_prefix
       value: app.shiningacg.club/gen/proto
+  disable:
+    - module: buf.build/googleapis/googleapis
+inputs:
+  - directory: .
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.31.0 # pb
     out: ../gen/proto

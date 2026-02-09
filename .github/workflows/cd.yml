@@ -3,8 +3,12 @@ name: CD
 on:
   push:
     branches: [main, develop]
+  workflow_dispatch: # 添加这一行，开启手动触发按钮
 
 jobs:
+  # ------------------------------------------------------------------
+  # 1. 部署到开发环境 (Develop 分支)
+  # ------------------------------------------------------------------
   deploy-dev:
     name: Deploy to Development Server
     runs-on: ubuntu-latest
@@ -21,35 +25,37 @@ jobs:
 
       - name: Deploy to Development Environment
         run: |
-          # 连接到开发服务器
-          ssh -o StrictHostKeyChecking=no root@${{ secrets.DEV_SERVER_IP }} << 'EOF'
-            # 进入开发环境目录
+          # 使用 -p 指定端口，StrictHostKeyChecking=no 跳过指纹验证
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.DEV_SERVER_IP }} << 'EOF'
+            set -e # 遇到错误立即停止
+          
+            # 1. 进入预设的开发环境目录
             cd /opt/shiningacg_dev
 
-            # 登录 GHCR
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            # 2. 登录 GHCR (使用环境变量传递密码，更安全)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-            # 拉取最新的 Account 微服务镜像
-            docker pull ghcr.io/${{ github.repository_owner }}/shining-acg-account:develop
+            # 3. 拉取最新镜像 (CI阶段构建的 develop 标签)
+            # 注意：这里对应 CI 中的镜像命名 ghcr.io/owner/shining-acg-server
+            docker compose pull api-dev
 
-            # 重启服务
-            docker stop shining-acg-account-service || true
-            docker rm shining-acg-account-service || true
-            docker run -d \
-              --name shining-acg-account-service \
-              --network shining-acg-network \
-              --env-file .env \
-              -p 8080:8080 \
-              -p 8081:8081 \
-              -v $(pwd)/logs/account:/app/logs \
-              --depends-on postgres redis \
-              ghcr.io/${{ github.repository_owner }}/shining-acg-account:develop
+            # 4. 更新服务
+            # -d: 后台运行
+            # --no-deps: 不重启依赖服务 (如 postgres/redis)
+            # api-dev: 仅更新 docker-compose.yml 中名为 'api-dev' 的服务
+            docker compose up -d --no-deps api-dev
 
-            # 检查服务是否正常启动
-            sleep 5
-            docker logs shining-acg-account-service
+            # 5. 清理悬空的旧镜像 (节约磁盘空间)
+            docker image prune -f
+
+            # 6. 简单的健康检查 (查看最近几行日志)
+            sleep 3
+            docker compose logs --tail=20 api-dev
           EOF
 
+  # ------------------------------------------------------------------
+  # 2. 部署到生产环境 (Main 分支)
+  # ------------------------------------------------------------------
   deploy-prod:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
@@ -66,31 +72,31 @@ jobs:
 
       - name: Deploy to Production Environment
         run: |
-          # 连接到生产服务器
-          ssh -o StrictHostKeyChecking=no root@${{ secrets.PROD_SERVER_IP }} << 'EOF'
-            # 进入生产环境目录
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.PROD_SERVER_IP }} << 'EOF'
+            set -e
+
+            # 1. 进入生产环境目录
             cd /opt/shiningacg_prod
 
-            # 登录 GHCR
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            # 2. 登录 GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-            # 拉取最新的 Account 微服务镜像
-            docker pull ghcr.io/${{ github.repository_owner }}/shining-acg-account:latest
+            # 3. 拉取最新镜像 (CI阶段构建的 latest 标签)
+            docker compose pull api-prod
 
-            # 重启服务
-            docker stop shining-acg-account-service || true
-            docker rm shining-acg-account-service || true
-            docker run -d \
-              --name shining-acg-account-service \
-              --network shining-acg-network \
-              --env-file .env \
-              -p 8080:8080 \
-              -p 8081:8081 \
-              -v $(pwd)/logs/account:/app/logs \
-              --depends-on postgres redis \
-              ghcr.io/${{ github.repository_owner }}/shining-acg-account:latest
+            # 4. 更新服务 (Prod 尽量无感知)
+            # Docker Compose V2 会自动处理：创建新容器 -> 停止旧容器 -> 启动新容器
+            # 对于 Go 单体应用，这通常只有 1-2 秒的服务中断
+            docker compose up -d --no-deps api-prod
 
-            # 检查服务是否正常启动
+            # 5. 清理旧镜像
+            docker image prune -f
+
+            # 6. 检查状态
             sleep 5
-            docker logs shining-acg-account-service
+            if [ $(docker compose ps -q api-prod | wc -l) -eq 0 ]; then
+              echo "Error: Server container is not running!"
+              exit 1
+            fi
+            docker compose logs --tail=20 api-prod
           EOF

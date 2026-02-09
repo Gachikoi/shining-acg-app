@@ -3,30 +3,50 @@ syntax = "proto3";
 package api.admin.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 // 系统管理服务 - 负责系统配置和管理功能
 // 包含系统配置、日志管理、统计分析等功能
 service SystemAdminService {
   // 获取系统配置 - 获取所有系统配置项
   rpc GetSystemConfig(GetSystemConfigRequest) returns (GetSystemConfigResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/config"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 更新系统配置 - 更新系统配置项
-  rpc UpdateSystemConfig(UpdateSystemConfigRequest) returns (UpdateSystemConfigResponse);
+  rpc UpdateSystemConfig(UpdateSystemConfigRequest) returns (UpdateSystemConfigResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/config"
+      body: "*"
+    };
+  }
 
   // 获取系统日志 - 分页获取系统操作日志
   rpc ListSystemLogs(ListSystemLogsRequest) returns (ListSystemLogsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/logs"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 获取系统统计 - 获取系统整体统计信息
   rpc GetSystemStats(GetSystemStatsRequest) returns (GetSystemStatsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/stats"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 清理系统缓存 - 清理系统缓存
-  rpc ClearSystemCache(ClearSystemCacheRequest) returns (ClearSystemCacheResponse);
+  rpc ClearSystemCache(ClearSystemCacheRequest) returns (ClearSystemCacheResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/cache/clear"
+      body: "*"
+    };
+  }
 }
 
 // 系统配置项

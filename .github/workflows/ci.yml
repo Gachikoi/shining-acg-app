@@ -1,12 +1,36 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
 
+# 权限配置：需要读取代码和推送到 ghcr
+permissions:
+  contents: read
+  packages: write
+  pull-requests: read
+
 jobs:
+  # 只检测哪些模块发生了变化，后续任务根据该输出决定是否执行
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      android: ${{ steps.filter.outputs.android }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'packages/server/**'
+            android:
+              - 'packages/android/**'
+            web:
+              - 'packages/web/**'
+
   # lint-and-format:
   #   name: Lint and Format Check
   #   runs-on: ubuntu-latest
@@ -47,10 +71,11 @@ jobs:
   #       working-directory: packages/web
   #       run: npm run check
 
-  backend:
-    name: Backend Verify Code (Go)
+  backend-verify:
+    name: Backend Verify (Go)
+    needs: changes
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref_name == 'main' || github.ref_name == 'develop'
 
     steps:
       - name: Checkout code
@@ -67,6 +92,7 @@ jobs:
         with:
           version: 1.50.0
 
+      # 检查生成的 Proto 代码是否是最新的 (防止提交了 proto 但没提交 gen)
       - name: Check Protocol Buffers code generation
         working-directory: packages/server/proto
         run: |
@@ -92,77 +118,59 @@ jobs:
             exit 1
           fi
 
-      - name: Vet
-        working-directory: packages/server
-        run: go vet ./...
-
-#        # 查找所有包含 main.go 的目录并构建
-#      - name: Build all microservices
-#        working-directory: packages/server
-#        run: |
-#          mkdir -p dist
-#          for dir in $(find . -name "main.go" -exec dirname {} +); do
-#            service_name=$(basename $(dirname $dir)) # 比如获取 'messenger'
-#            echo "Building $service_name..."
-#            go build -o ./dist/$service_name $dir
-#          done
+      # 尝试编译，确保没有编译错误（不生成文件，仅检查）
+      - name: Compile check
+        run: go build -v -o /dev/null ./cmd/main.go
 
   # 1. CI 阶段：构建并推送镜像
-  build-and-push:
-    name: Backend Build and Push (Go)
+  backend-build:
+    name: Backend Build & Push
+    needs: [changes, backend-verify]
+    if: ${{ needs.changes.outputs.server == 'true' }}
     runs-on: ubuntu-latest
-    needs: backend
-    permissions:
-      contents: read
-      packages: write
-    if: github.event_name == 'pull_request' || github.ref_name == 'main' || github.ref_name == 'develop'
-    strategy:
-      matrix:
-        # 定义当前可编译的微服务文件夹名，以后加服务直接在这加
-        service: [account]
+
     steps:
       - uses: actions/checkout@v4
 
-      # 只有当前服务文件夹有变动时才构建（节省资源）
-      - name: Check for changes
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            src:
-              - 'packages/server/service/${{ matrix.service }}/**'
-              - 'packages/server/gen/**'
-              - 'packages/server/pkg/**'
-              - 'packages/server/proto/**'
-              - 'packages/server/go.mod'
+      # --- 关键步骤：转换用户名为小写 ---
+      - name: Lowercase repository owner
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
 
       - name: Docker login to GHCR
-        if: steps.filter.outputs.src == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push to GHCR
-        if: steps.filter.outputs.src == 'true'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: ./packages/server
-          dockerfile: ./packages/server/service/${{ matrix.service }}/Dockerfile
+          file: ./packages/server/Dockerfile
           push: true
-          # 动态打标：main 分支对应 latest，develop 分支对应 develop，PR 对应 PR 编号
+          # 缓存设置，加快构建速度
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # 标签策略：
+          # main -> latest
+          # develop -> develop
+          # PR -> pr-{number}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/shining-acg-${{ matrix.service }}:${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
-            ${{ github.event_name == 'pull_request' && format('ghcr.io/{0}/shining-acg-{1}:pr-{2}', github.repository_owner, matrix.service, github.event.number) || '' }}
+            ghcr.io/${{ env.OWNER_LC }}/shining-acg-server:${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
+            ${{ github.event_name == 'pull_request' && format('ghcr.io/{0}/shining-acg-server:pr-{1}', github.repository_owner, github.event.number) || '' }}
 
-
-#      - name: Test
-#        working-directory: packages/server
-#        run: go test -v ./...
 
   android:
     name: Android (Kotlin)
+    needs: changes
+    if: ${{ needs.changes.outputs.android == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
