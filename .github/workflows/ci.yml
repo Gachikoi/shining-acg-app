@@ -120,6 +120,7 @@ jobs:
 
       # 尝试编译，确保没有编译错误（不生成文件，仅检查）
       - name: Compile check
+        working-directory: packages/server
         run: go build -v -o /dev/null ./cmd/main.go
 
   # 1. CI 阶段：构建并推送镜像
@@ -163,8 +164,9 @@ jobs:
           # develop -> develop
           # PR -> pr-{number}
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/shining-acg-server:${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
-            ${{ github.event_name == 'pull_request' && format('ghcr.io/{0}/shining-acg-server:pr-{1}', github.repository_owner, github.event.number) || '' }}
+            ${{ github.event_name == 'pull_request' && format('ghcr.io/{0}/shining-acg-server:pr-{1}', env.OWNER_LC, github.event.pull_request.number) || '' }}
+            ${{ github.event_name == 'pull_request' && github.base_ref == 'develop' && format('ghcr.io/{0}/shining-acg-server:develop', env.OWNER_LC) || '' }}
+            ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && format('ghcr.io/{0}/shining-acg-server:latest', env.OWNER_LC) || '' }}
 
 
   android:

@@ -4,6 +4,19 @@ on:
   push:
     branches: [main, develop]
   workflow_dispatch: # 添加这一行，开启手动触发按钮
+    inputs:
+      environment:
+        description: '选择部署环境 (manual 为空则根据分支自动判断)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - dev
+          - prod
+          - ''
+
+permissions:
+  packages: read
 
 jobs:
   # ------------------------------------------------------------------
@@ -12,7 +25,9 @@ jobs:
   deploy-dev:
     name: Deploy to Development Server
     runs-on: ubuntu-latest
-    if: github.ref_name == 'develop'
+    if: |
+      (github.event_name == 'push' && github.ref_name == 'develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
 
     steps:
       - name: Checkout code
@@ -59,7 +74,9 @@ jobs:
   deploy-prod:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
-    if: github.ref_name == 'main'
+    if: |
+      (github.event_name == 'push' && github.ref_name == 'main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
 
     steps:
       - name: Checkout code
