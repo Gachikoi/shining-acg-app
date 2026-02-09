@@ -4,6 +4,7 @@ package api.admin.v1;
 
 import "api/common/v1/common.proto";
 import "api/community/v1/content.proto";
+import "google/api/annotations.proto";
 
 // 内容管理服务 - 负责社区内容的后台管理功能
 // 包含帖子管理、分区管理、内容审核等功能
@@ -11,27 +12,51 @@ service ContentAdminService {
   // 获取帖子列表 - 分页获取所有帖子信息
   // 支持按状态、分区、作者等筛选
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/posts"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 删除帖子 - 删除指定的帖子
   // 支持批量删除，删除后不可恢复
-  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/posts/{post_id}"
+    };
+  }
 
   // 审核帖子 - 对帖子进行审核，支持通过或驳回
   // 驳回时需要填写驳回原因
-  rpc ApprovePost(ApprovePostRequest) returns (ApprovePostResponse);
+  rpc ApprovePost(ApprovePostRequest) returns (ApprovePostResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/posts/{post_id}/approve"
+      body: "*"
+    };
+  }
 
   // 分区管理 - 新增或更新分区信息
   // 支持创建新分区或修改已有分区的信息
-  rpc UpsertPartition(UpsertPartitionRequest) returns (UpsertPartitionResponse);
+  rpc UpsertPartition(UpsertPartitionRequest) returns (UpsertPartitionResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/partitions"
+      body: "*"
+    };
+  }
 
   // 删除分区 - 删除指定的分区
   // 注意：删除分区前需要确保该分区下没有关联的帖子
-  rpc DeletePartition(DeletePartitionRequest) returns (DeletePartitionResponse);
+  rpc DeletePartition(DeletePartitionRequest) returns (DeletePartitionResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/partitions/{id}"
+    };
+  }
 
   // 获取分区列表 - 获取所有分区信息
   rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/partitions"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

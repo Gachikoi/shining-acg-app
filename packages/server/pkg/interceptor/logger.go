@@ -11,13 +11,14 @@ func LoggerInterceptor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// 创建响应包装器以捕获状态码
-		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		// 使用支持更多接口（如 Flusher）的包装器
+		lrw := &loggingResponseWriter{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+		}
 
-		// 继续处理请求
 		next.ServeHTTP(lrw, r)
 
-		// 记录请求信息
 		log.Printf(
 			"%s %s %d %s %s",
 			r.Method,
@@ -29,7 +30,6 @@ func LoggerInterceptor(next http.Handler) http.Handler {
 	})
 }
 
-// loggingResponseWriter 是 http.ResponseWriter 的包装器，用于捕获状态码
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -38,4 +38,12 @@ type loggingResponseWriter struct {
 func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.statusCode = code
 	lrw.ResponseWriter.WriteHeader(code)
+}
+
+// Flush
+// 当 Vanguard 调用 Flush 时，它会通过这个方法调用到底层真正的 ResponseWriter
+func (lrw *loggingResponseWriter) Flush() {
+	if f, ok := lrw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }

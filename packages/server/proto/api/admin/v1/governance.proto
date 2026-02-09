@@ -3,6 +3,7 @@ syntax = "proto3";
 package api.admin.v1;
 
 import "api/common/v1/common.proto";
+import "google/api/annotations.proto";
 
 // 社区治理服务 - 负责社区内容的审核和治理功能
 // 包含举报管理、违规处理、内容审核等功能
@@ -10,12 +11,20 @@ service GovernanceService {
   // 获取举报列表 - 分页获取所有举报信息
   // 支持按状态筛选（待处理、已处理、已驳回）
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {
+    option (google.api.http) = {
+      get: "/v1/admin/reports"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 处理举报 - 对举报进行处理，支持忽略、删除内容或封禁用户
   // 处理结果会记录到系统日志中
-  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse);
+  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/reports/{report_id}"
+      body: "*"
+    };
+  }
 }
 
 // 举报状态枚举

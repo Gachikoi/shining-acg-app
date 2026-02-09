@@ -10,7 +10,7 @@ package cmsv1
 
 import (
 	v1 "app.shiningacg.club/gen/proto/api/common/v1"
-	_ "app.shiningacg.club/gen/proto/google/api"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

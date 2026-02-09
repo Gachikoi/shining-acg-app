@@ -3,52 +3,107 @@ syntax = "proto3";
 package api.admin.v1;
 
 import "api/cms/v1/site.proto";
+import "google/api/annotations.proto";
 
 // 官网管理服务 - 负责官网内容的后台管理功能
 // 包含部门管理、活动管理、历史事件管理、人员管理等功能
 service SiteAdminService {
   // 部门管理 - 新增或更新部门信息
   // 支持创建新部门或修改已有部门的信息
-  rpc UpsertDepartment(UpsertDepartmentRequest) returns (UpsertDepartmentResponse);
+  rpc UpsertDepartment(UpsertDepartmentRequest) returns (UpsertDepartmentResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/departments"
+      body: "*"
+    };
+  }
 
   // 删除部门 - 删除指定的部门
   // 注意：删除部门前需要确保该部门下没有关联的用户或内容
-  rpc DeleteDepartment(DeleteDepartmentRequest) returns (DeleteDepartmentResponse);
+  rpc DeleteDepartment(DeleteDepartmentRequest) returns (DeleteDepartmentResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/departments/{id}"
+    };
+  }
 
   // 活动管理 - 新增或更新活动信息
   // 支持创建新活动或修改已有活动的信息
-  rpc UpsertActivity(UpsertActivityRequest) returns (UpsertActivityResponse);
+  rpc UpsertActivity(UpsertActivityRequest) returns (UpsertActivityResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/activities"
+      body: "*"
+    };
+  }
 
   // 删除活动 - 删除指定的活动
-  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse);
+  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/activities/{id}"
+    };
+  }
 
   // 历史事件管理 - 新增或更新历史事件信息
   // 支持创建新历史事件或修改已有历史事件的信息
-  rpc UpsertHistoryEvent(UpsertHistoryEventRequest) returns (UpsertHistoryEventResponse);
+  rpc UpsertHistoryEvent(UpsertHistoryEventRequest) returns (UpsertHistoryEventResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/history-events"
+      body: "*"
+    };
+  }
 
   // 删除历史事件 - 删除指定的历史事件
-  rpc DeleteHistoryEvent(DeleteHistoryEventRequest) returns (DeleteHistoryEventResponse);
+  rpc DeleteHistoryEvent(DeleteHistoryEventRequest) returns (DeleteHistoryEventResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/history-events/{id}"
+    };
+  }
 
   // 部长管理 - 新增或更新部长信息
   // 支持创建新部长或修改已有部长的信息
-  rpc UpsertMinister(UpsertMinisterRequest) returns (UpsertMinisterResponse);
+  rpc UpsertMinister(UpsertMinisterRequest) returns (UpsertMinisterResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/ministers"
+      body: "*"
+    };
+  }
 
   // 删除部长 - 删除指定的部长
-  rpc DeleteMinister(DeleteMinisterRequest) returns (DeleteMinisterResponse);
+  rpc DeleteMinister(DeleteMinisterRequest) returns (DeleteMinisterResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/ministers/{id}"
+    };
+  }
 
   // Staff 管理 - 新增或更新 Staff 团队信息
   // 支持创建新的 Staff 团队或修改已有团队的信息
-  rpc UpsertStaffGroup(UpsertStaffGroupRequest) returns (UpsertStaffGroupResponse);
+  rpc UpsertStaffGroup(UpsertStaffGroupRequest) returns (UpsertStaffGroupResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/staff-groups"
+      body: "*"
+    };
+  }
 
   // 删除 Staff 团队 - 删除指定的 Staff 团队
-  rpc DeleteStaffGroup(DeleteStaffGroupRequest) returns (DeleteStaffGroupResponse);
+  rpc DeleteStaffGroup(DeleteStaffGroupRequest) returns (DeleteStaffGroupResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/staff-groups/{id}"
+    };
+  }
 
   // 赞助者管理 - 新增或更新赞助者信息
   // 支持创建新赞助者或修改已有赞助者的信息
-  rpc UpsertSponsor(UpsertSponsorRequest) returns (UpsertSponsorResponse);
+  rpc UpsertSponsor(UpsertSponsorRequest) returns (UpsertSponsorResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/sponsors"
+      body: "*"
+    };
+  }
 
   // 删除赞助者 - 删除指定的赞助者
-  rpc DeleteSponsor(DeleteSponsorRequest) returns (DeleteSponsorResponse);
+  rpc DeleteSponsor(DeleteSponsorRequest) returns (DeleteSponsorResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/sponsors/{id}"
+    };
+  }
 }
 
 // 部门管理请求
