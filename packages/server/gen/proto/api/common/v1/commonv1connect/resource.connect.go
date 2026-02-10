@@ -36,6 +36,9 @@ const (
 	// ResourceServiceGetUploadTokensProcedure is the fully-qualified name of the ResourceService's
 	// GetUploadTokens RPC.
 	ResourceServiceGetUploadTokensProcedure = "/api.common.v1.ResourceService/GetUploadTokens"
+	// ResourceServiceCompleteUploadProcedure is the fully-qualified name of the ResourceService's
+	// CompleteUpload RPC.
+	ResourceServiceCompleteUploadProcedure = "/api.common.v1.ResourceService/CompleteUpload"
 )
 
 // ResourceServiceClient is a client for the api.common.v1.ResourceService service.
@@ -43,6 +46,10 @@ type ResourceServiceClient interface {
 	// 获取上传凭证 (支持批量)
 	// 包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)
 	GetUploadTokens(context.Context, *connect.Request[v1.GetUploadTokensRequest]) (*connect.Response[v1.GetUploadTokensResponse], error)
+	// 2. [新增] 完成上传并触发处理 (非常重要！)
+	// 前端上传到 MinIO 成功后，调用此接口。
+	// 后端接收到后，记录数据库，并开启异步转码任务。
+	CompleteUpload(context.Context, *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error)
 }
 
 // NewResourceServiceClient constructs a client for the api.common.v1.ResourceService service. By
@@ -60,12 +67,18 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			baseURL+ResourceServiceGetUploadTokensProcedure,
 			opts...,
 		),
+		completeUpload: connect.NewClient[v1.CompleteUploadRequest, v1.CompleteUploadResponse](
+			httpClient,
+			baseURL+ResourceServiceCompleteUploadProcedure,
+			opts...,
+		),
 	}
 }
 
 // resourceServiceClient implements ResourceServiceClient.
 type resourceServiceClient struct {
 	getUploadTokens *connect.Client[v1.GetUploadTokensRequest, v1.GetUploadTokensResponse]
+	completeUpload  *connect.Client[v1.CompleteUploadRequest, v1.CompleteUploadResponse]
 }
 
 // GetUploadTokens calls api.common.v1.ResourceService.GetUploadTokens.
@@ -73,11 +86,20 @@ func (c *resourceServiceClient) GetUploadTokens(ctx context.Context, req *connec
 	return c.getUploadTokens.CallUnary(ctx, req)
 }
 
+// CompleteUpload calls api.common.v1.ResourceService.CompleteUpload.
+func (c *resourceServiceClient) CompleteUpload(ctx context.Context, req *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error) {
+	return c.completeUpload.CallUnary(ctx, req)
+}
+
 // ResourceServiceHandler is an implementation of the api.common.v1.ResourceService service.
 type ResourceServiceHandler interface {
 	// 获取上传凭证 (支持批量)
 	// 包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)
 	GetUploadTokens(context.Context, *connect.Request[v1.GetUploadTokensRequest]) (*connect.Response[v1.GetUploadTokensResponse], error)
+	// 2. [新增] 完成上传并触发处理 (非常重要！)
+	// 前端上传到 MinIO 成功后，调用此接口。
+	// 后端接收到后，记录数据库，并开启异步转码任务。
+	CompleteUpload(context.Context, *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error)
 }
 
 // NewResourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -91,10 +113,17 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		svc.GetUploadTokens,
 		opts...,
 	)
+	resourceServiceCompleteUploadHandler := connect.NewUnaryHandler(
+		ResourceServiceCompleteUploadProcedure,
+		svc.CompleteUpload,
+		opts...,
+	)
 	return "/api.common.v1.ResourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ResourceServiceGetUploadTokensProcedure:
 			resourceServiceGetUploadTokensHandler.ServeHTTP(w, r)
+		case ResourceServiceCompleteUploadProcedure:
+			resourceServiceCompleteUploadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +135,8 @@ type UnimplementedResourceServiceHandler struct{}
 
 func (UnimplementedResourceServiceHandler) GetUploadTokens(context.Context, *connect.Request[v1.GetUploadTokensRequest]) (*connect.Response[v1.GetUploadTokensResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.common.v1.ResourceService.GetUploadTokens is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) CompleteUpload(context.Context, *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.common.v1.ResourceService.CompleteUpload is not implemented"))
 }

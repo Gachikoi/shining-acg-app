@@ -13,6 +13,16 @@ service ResourceService {
       body: "*"
     };
   }
+
+  // 2. [新增] 完成上传并触发处理 (非常重要！)
+  // 前端上传到 MinIO 成功后，调用此接口。
+  // 后端接收到后，记录数据库，并开启异步转码任务。
+  rpc CompleteUpload(CompleteUploadRequest) returns (CompleteUploadResponse) {
+    option (google.api.http) = {
+      post: "/v1/resources/complete-upload"
+      body: "*"
+    };
+  }
 }
 
 // ---------------------------------------------------------
@@ -58,4 +68,17 @@ message GetUploadTokensRequest {
 
 message GetUploadTokensResponse {
   repeated UploadToken tokens = 1;
+}
+
+// [新增] 完成上传请求
+message CompleteUploadRequest {
+  string task_id = 1;      // 对应 GetUploadTokens 返回的 task_id
+  ResourceScene scene = 2; // 场景
+  string object_key = 3;   // MinIO 中的文件路径 (GetUploadTokens 时后端生成的路径)
+}
+
+// [新增] 完成上传响应
+message CompleteUploadResponse {
+  int64 resource_id = 1;   // 数据库生成的 ID
+  string status = 2;       // 当前状态: "PROCESSING" (处理中) 或 "COMPLETED" (图片通常立即可用)
 }
