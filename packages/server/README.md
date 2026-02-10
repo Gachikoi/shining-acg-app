@@ -99,19 +99,19 @@ go run main.go
 
 ```bash
 # 登录 (RESTful)
-curl -X POST http://localhost:8080/v1/auth/login \
+curl -X POST http://localhost:9000/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"credential": "your-qq-token", "device": {"device_id": "uuid-123", "device_name": "iPhone 14", "platform": 1, "os_version": "iOS 16.0", "client_version": "1.0.0"}}'
 
 # 获取当前用户信息 (RESTful)
-curl -X GET http://localhost:8080/v1/me \
+curl -X GET http://localhost:9000/v1/me \
   -H "Authorization: Bearer your-access-token"
 
 # 获取帖子列表 (RESTful)
-curl -X GET "http://localhost:8080/v1/posts?scene=1&pagination.page_size=10"
+curl -X GET "http://localhost:9000/v1/posts?scene=1&pagination.page_size=10"
 
 # 关注用户 (RESTful)
-curl -X PUT http://localhost:8080/v1/me/following/user-id-123 \
+curl -X PUT http://localhost:9000/v1/me/following/user-id-123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-access-token" \
   -d '{"is_active": true}'
@@ -120,7 +120,7 @@ curl -X PUT http://localhost:8080/v1/me/following/user-id-123 \
 **使用 ConnectRPC 标准路径（HTTP/JSON）：**
 
 ```bash
-curl -X POST http://localhost:8080/api.account.v1.AuthService/Login \
+curl -X POST http://localhost:9000/api.account.v1.AuthService/Login \
   -H "Content-Type: application/json" \
   -d '{"credential": "your-qq-token", "device": {"device_id": "uuid-123", "device_name": "iPhone 14", "platform": 1, "os_version": "iOS 16.0", "client_version": "1.0.0"}}'
 ```
@@ -129,7 +129,7 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/Login \
 
 ```bash
 grpcurl -plaintext -d '{"credential": "your-qq-token", "device": {"device_id": "uuid-123", "device_name": "iPhone 14", "platform": 1, "os_version": "iOS 16.0", "client_version": "1.0.0"}}' \
-  localhost:8080 api.account.v1.AuthService/Login
+  localhost:9000 api.account.v1.AuthService/Login
 ```
 
 ## 开发文档

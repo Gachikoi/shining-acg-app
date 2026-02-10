@@ -36,7 +36,7 @@ FROM alpine:3.20
 
 # 安装运行依赖
 RUN apk add --no-cache \
-    ca-certificates
+    ca-certificates ffmpeg
 
 # 创建非 root 用户
 RUN addgroup -g 1001 -S shining && \

@@ -1,70 +1,115 @@
-version: '3.8'
+name: shining-acg-dev
 
 services:
-  # PostgreSQL 数据库
-  postgres:
-    image: postgres:15-alpine
-    container_name: shining-acg-postgres
-    environment:
-      POSTGRES_DB: shining_acg
-      POSTGRES_USER: shining
-      POSTGRES_PASSWORD: shining123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./build/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shining -d shining_acg"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  api-dev:
+    build: .
+    container_name: api-dev
     restart: unless-stopped
 
-  # Redis 缓存
-  redis:
-    image: redis:7-alpine
-    container_name: shining-acg-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Shining ACG 单体服务
-  shining-acg-service:
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    container_name: shining-acg-service
+    # 环境变量：建议使用 .env 文件管理敏感信息
+    # 这里列出的是连接 postgres-dev 所需的关键变量
     environment:
-      - DB_HOST=postgres
+      - APP_ENV=development
+      - HTTP_PORT=8000
+
+      # 数据库连接：host 直接写 postgres-dev 服务名
+      - DB_HOST=postgres-dev
       - DB_PORT=5432
-      - DB_USER=shining
-      - DB_PASSWORD=shining123
-      - DB_NAME=shining_acg
-      - REDIS_ADDR=redis:6379
-      - PORT=8080
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB:-shining_db}
+
+      # 新增 MinIO 连接配置
+      - OSS_ENDPOINT=minio-dev:9000
+      - OSS_ACCESS_KEY=${MINIO_ROOT_USER:-shining}
+      - OSS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-shiningoss}
+      - OSS_USE_SSL=false
+      - OSS_BUCKET=shining-bucket
+
+    # 网络配置：同时加入网关网络和内部网络
+    networks:
+      - dev_internal     # 用于连接数据库
     ports:
-      - "8080:8080"
+      - "8000:8000"
     depends_on:
-      postgres:
+      postgres-dev:
         condition: service_healthy
-      redis:
+      minio-dev:
         condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
+
+  # MinIO 对象存储服务
+  minio-dev:
+    image: minio/minio:RELEASE.2025-03-12T18-04-18Z
+    container_name: minio-dev
     restart: unless-stopped
+    command: server /data --address ":9000" --console-address ":9001"
 
-volumes:
-  postgres_data:
-  redis_data:
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-shining}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-shiningoss}
+      # 优化：设置浏览器访问的域名（如果有的话）
+      MINIO_BROWSER_REDIRECT_URL: "http://localhost:9001"
 
+    volumes:
+      # 建议使用命名卷，或者确保 ./data/minio_data 目录存在且有写入权限
+      - minio_data_dev:/data
+
+    networks:
+      - dev_internal     # 允许 api-dev 访问
+
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web 控制台
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-dev:
+    image: postgres:17-alpine
+    container_name: postgres-dev
+    restart: always
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-shining_db}
+
+    # 数据持久化卷
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+
+    # 网络：只加入内部网络，不暴露给网关
+    networks:
+      - dev_internal
+
+    # 端口：开发环境映射出来方便用 Navicat/DataGrip 连接
+    ports:
+      - "5433:5432" # 映射到宿主机 5433，避免和本地 postgres 冲突
+
+    # 健康检查：这是 depends_on 生效的关键
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-shining_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# --------------------------------------------------------------------------------
+# 网络定义
+# --------------------------------------------------------------------------------
 networks:
-  default:
-    name: shining-acg-network
+  # 开发环境内部网络 (自动创建)
+  dev_internal:
+    driver: bridge
+    name: dev_internal
+
+# --------------------------------------------------------------------------------
+# 卷定义
+# --------------------------------------------------------------------------------
+volumes:
+  postgres_data_dev:
+    name: minio_data_dev
+  minio_data_dev:
+    name: minio_data_dev

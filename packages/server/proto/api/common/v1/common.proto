@@ -25,13 +25,34 @@ enum Role {
   ROLE_SUPER_ADMIN = 3; // 超级管理员
 }
 
-// 多媒体资源
+// 媒体资源
 message Media {
-  string type = 1;        // "image" | "video"
-  string url = 2;         // 资源地址
-  string thumbnail = 3;   // 缩略图（视频用）
-  int32 width = 4;        // 宽
-  int32 height = 5;       // 高
+  string id = 1;               // 雪花 ID
+  MediaType type = 2;         // 使用枚举代替字符串
+
+  // 核心存储标识
+  string bucket = 3;          // 存储桶：shining-vod
+  string object_key = 4;      // 对象路径：videos/2024/01/v001.m3u8
+
+  // 元数据 (用 sub-message 保持整洁)
+  MediaMeta meta = 5;
+
+  // 状态与权限
+  int32 status = 6;           // 0:处理中, 1:就绪, 2:违规屏蔽
+}
+
+enum MediaType {
+  MEDIA_TYPE_UNSPECIFIED = 0;
+  MEDIA_TYPE_IMAGE = 1;
+  MEDIA_TYPE_VIDEO = 2;
+}
+
+message MediaMeta {
+  int32 width = 1;
+  int32 height = 2;
+  int32 duration = 3;         // 视频时长（秒）
+  int64 size = 4;             // 文件大小（字节）
+  string mime_type = 5;       // video/mp4, image/webp
 }
 
 // 外部链接结构
