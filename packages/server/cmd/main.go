@@ -42,7 +42,7 @@ func main() {
 	handler = h2c.NewHandler(handler, &http2.Server{}) // 支持 h2c
 
 	// 获取监听地址
-	addr := ":9000"
+	addr := ":8000"
 	if port := os.Getenv("PORT"); port != "" {
 		addr = ":" + port
 	}
