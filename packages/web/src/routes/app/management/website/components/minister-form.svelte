@@ -43,7 +43,11 @@
 		<Label>
 			上任时间<span class="text-red-500">*</span>
 		</Label>
+<<<<<<< HEAD
 		<div class="w-[18.75rem]">
+=======
+		<div class="w-[300px]">
+>>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 			<DatePicker bind:value={declaration.appointmentDate} />
 		</div>
 	</div>
@@ -94,7 +98,11 @@
 							<Label class="mb-0 w-20 shrink-0" for={`minister-dept-${index}`}>
 								统领部门<span class="text-red-500">*</span>
 							</Label>
+<<<<<<< HEAD
 							<div class="w-[10.625rem]">
+=======
+							<div class="w-[170px]">
+>>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 								<select
 									id={`minister-dept-${index}`}
 									class="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none"
@@ -124,7 +132,11 @@
 									maxlength={200}
 									oninput={(e) =>
 										(declaration.ministers[index].description = e.currentTarget.value)}
+<<<<<<< HEAD
 									class="min-h-[8.75rem] pb-16"
+=======
+									class="min-h-[140px] pb-16"
+>>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 								/>
 								<div class="pointer-events-none absolute right-4 bottom-3">
 									<CharCounter current={minister.description?.length ?? 0} max={200} />
@@ -146,7 +158,11 @@
 			<Button
 				variant="block"
 				onclick={addMinister}
+<<<<<<< HEAD
 				class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+=======
+				class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+>>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
 			>
 				<PlusCircle class="size-4" />
 				新增
