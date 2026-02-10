@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://api.shiningacg.club https://test.api.shiningacg.club; style-src 'self' 'unsafe-inline'; img-src https://api.shiningacg.club https://api.shiningacg.club data:;
