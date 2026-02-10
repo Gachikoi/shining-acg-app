@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthServiceLoginData, AuthServiceLoginErrors, AuthServiceLoginResponses, AuthServiceLogoutData, AuthServiceLogoutErrors, AuthServiceLogoutResponses, AuthServiceRefreshTokenData, AuthServiceRefreshTokenErrors, AuthServiceRefreshTokenResponses, AuthServiceUpdatePushTokenData, AuthServiceUpdatePushTokenErrors, AuthServiceUpdatePushTokenResponses, CommentServiceCreateCommentData, CommentServiceCreateCommentErrors, CommentServiceCreateCommentResponses, CommentServiceDeleteCommentData, CommentServiceDeleteCommentErrors, CommentServiceDeleteCommentResponses, CommentServiceListCommentsData, CommentServiceListCommentsErrors, CommentServiceListCommentsResponses, ContentServiceCreatePostData, ContentServiceCreatePostErrors, ContentServiceCreatePostResponses, ContentServiceDeletePostData, ContentServiceDeletePostErrors, ContentServiceDeletePostResponses, ContentServiceGetPostData, ContentServiceGetPostErrors, ContentServiceGetPostResponses, ContentServiceListPostsData, ContentServiceListPostsErrors, ContentServiceListPostsResponses, GovernanceServiceListReportsData, GovernanceServiceListReportsErrors, GovernanceServiceListReportsResponses, GovernanceServiceResolveReportData, GovernanceServiceResolveReportErrors, GovernanceServiceResolveReportResponses, InteractionServiceSetCollectData, InteractionServiceSetCollectErrors, InteractionServiceSetCollectResponses, InteractionServiceSetLikeData, InteractionServiceSetLikeErrors, InteractionServiceSetLikeResponses, MessageServiceGetUnreadCountData, MessageServiceGetUnreadCountErrors, MessageServiceGetUnreadCountResponses, MessageServiceListNotificationsData, MessageServiceListNotificationsErrors, MessageServiceListNotificationsResponses, MessageServiceMarkReadData, MessageServiceMarkReadErrors, MessageServiceMarkReadResponses, PortalServiceGetSiteConfigData, PortalServiceGetSiteConfigErrors, PortalServiceGetSiteConfigResponses, PortalServiceListActivitiesData, PortalServiceListActivitiesErrors, PortalServiceListActivitiesResponses, PortalServiceListDepartmentsData, PortalServiceListDepartmentsErrors, PortalServiceListDepartmentsResponses, PortalServiceListHistoryData, PortalServiceListHistoryErrors, PortalServiceListHistoryResponses, PortalServiceListHomeTrendingData, PortalServiceListHomeTrendingErrors, PortalServiceListHomeTrendingResponses, PortalServiceListMinistersData, PortalServiceListMinistersErrors, PortalServiceListMinistersResponses, PortalServiceListSponsorsData, PortalServiceListSponsorsErrors, PortalServiceListSponsorsResponses, PortalServiceListStaffData, PortalServiceListStaffErrors, PortalServiceListStaffResponses, ResourceServiceGetUploadTokensData, ResourceServiceGetUploadTokensErrors, ResourceServiceGetUploadTokensResponses, SiteAdminServiceDeleteActivityData, SiteAdminServiceDeleteActivityErrors, SiteAdminServiceDeleteActivityResponses, SiteAdminServiceDeleteDepartmentData, SiteAdminServiceDeleteDepartmentErrors, SiteAdminServiceDeleteDepartmentResponses, SiteAdminServiceDeleteHistoryEventData, SiteAdminServiceDeleteHistoryEventErrors, SiteAdminServiceDeleteHistoryEventResponses, SiteAdminServiceDeleteMinisterData, SiteAdminServiceDeleteMinisterErrors, SiteAdminServiceDeleteMinisterResponses, SiteAdminServiceDeleteSponsorData, SiteAdminServiceDeleteSponsorErrors, SiteAdminServiceDeleteSponsorResponses, SiteAdminServiceDeleteStaffGroupData, SiteAdminServiceDeleteStaffGroupErrors, SiteAdminServiceDeleteStaffGroupResponses, SiteAdminServiceUpsertActivityData, SiteAdminServiceUpsertActivityErrors, SiteAdminServiceUpsertActivityResponses, SiteAdminServiceUpsertDepartmentData, SiteAdminServiceUpsertDepartmentErrors, SiteAdminServiceUpsertDepartmentResponses, SiteAdminServiceUpsertHistoryEventData, SiteAdminServiceUpsertHistoryEventErrors, SiteAdminServiceUpsertHistoryEventResponses, SiteAdminServiceUpsertMinisterData, SiteAdminServiceUpsertMinisterErrors, SiteAdminServiceUpsertMinisterResponses, SiteAdminServiceUpsertSponsorData, SiteAdminServiceUpsertSponsorErrors, SiteAdminServiceUpsertSponsorResponses, SiteAdminServiceUpsertStaffGroupData, SiteAdminServiceUpsertStaffGroupErrors, SiteAdminServiceUpsertStaffGroupResponses, UserAdminServiceApproveVerificationData, UserAdminServiceApproveVerificationErrors, UserAdminServiceApproveVerificationResponses, UserAdminServiceBanData, UserAdminServiceBanErrors, UserAdminServiceBanResponses, UserAdminServiceListVerificationApplicationsData, UserAdminServiceListVerificationApplicationsErrors, UserAdminServiceListVerificationApplicationsResponses, UserAdminServiceUpdateUsersRoleData, UserAdminServiceUpdateUsersRoleErrors, UserAdminServiceUpdateUsersRoleResponses, UserServiceApplyVerificationData, UserServiceApplyVerificationErrors, UserServiceApplyVerificationResponses, UserServiceGetMeData, UserServiceGetMeErrors, UserServiceGetMeResponses, UserServiceGetUsersData, UserServiceGetUsersErrors, UserServiceGetUsersResponses, UserServiceListRelationshipsData, UserServiceListRelationshipsErrors, UserServiceListRelationshipsResponses, UserServiceModifyDepartmentsData, UserServiceModifyDepartmentsErrors, UserServiceModifyDepartmentsResponses, UserServiceSetFollowData, UserServiceSetFollowErrors, UserServiceSetFollowResponses, UserServiceUpdateProfileData, UserServiceUpdateProfileErrors, UserServiceUpdateProfileResponses, UserServiceUpdateSettingsData, UserServiceUpdateSettingsErrors, UserServiceUpdateSettingsResponses } from './types.gen';
+import type { AuthServiceLoginData, AuthServiceLoginErrors, AuthServiceLoginResponses, AuthServiceLogoutData, AuthServiceLogoutErrors, AuthServiceLogoutResponses, AuthServiceRefreshTokenData, AuthServiceRefreshTokenErrors, AuthServiceRefreshTokenResponses, AuthServiceUpdatePushTokenData, AuthServiceUpdatePushTokenErrors, AuthServiceUpdatePushTokenResponses, CommentServiceCreateCommentData, CommentServiceCreateCommentErrors, CommentServiceCreateCommentResponses, CommentServiceDeleteCommentData, CommentServiceDeleteCommentErrors, CommentServiceDeleteCommentResponses, CommentServiceListCommentsData, CommentServiceListCommentsErrors, CommentServiceListCommentsResponses, ContentAdminServiceApprovePostData, ContentAdminServiceApprovePostErrors, ContentAdminServiceApprovePostResponses, ContentAdminServiceDeletePartitionData, ContentAdminServiceDeletePartitionErrors, ContentAdminServiceDeletePartitionResponses, ContentAdminServiceDeletePostData, ContentAdminServiceDeletePostErrors, ContentAdminServiceDeletePostResponses, ContentAdminServiceListPartitionsData, ContentAdminServiceListPartitionsErrors, ContentAdminServiceListPartitionsResponses, ContentAdminServiceListPostsData, ContentAdminServiceListPostsErrors, ContentAdminServiceListPostsResponses, ContentAdminServiceUpsertPartitionData, ContentAdminServiceUpsertPartitionErrors, ContentAdminServiceUpsertPartitionResponses, ContentServiceCreatePostData, ContentServiceCreatePostErrors, ContentServiceCreatePostResponses, ContentServiceDeletePostData, ContentServiceDeletePostErrors, ContentServiceDeletePostResponses, ContentServiceGetPostData, ContentServiceGetPostErrors, ContentServiceGetPostResponses, ContentServiceListPostsData, ContentServiceListPostsErrors, ContentServiceListPostsResponses, GovernanceServiceListReportsData, GovernanceServiceListReportsErrors, GovernanceServiceListReportsResponses, GovernanceServiceResolveReport2Data, GovernanceServiceResolveReport2Errors, GovernanceServiceResolveReport2Responses, GovernanceServiceResolveReportData, GovernanceServiceResolveReportErrors, GovernanceServiceResolveReportResponses, InteractionServiceSetCollectData, InteractionServiceSetCollectErrors, InteractionServiceSetCollectResponses, InteractionServiceSetLikeData, InteractionServiceSetLikeErrors, InteractionServiceSetLikeResponses, MessageServiceGetUnreadCountData, MessageServiceGetUnreadCountErrors, MessageServiceGetUnreadCountResponses, MessageServiceListNotificationsData, MessageServiceListNotificationsErrors, MessageServiceListNotificationsResponses, MessageServiceMarkReadData, MessageServiceMarkReadErrors, MessageServiceMarkReadResponses, PortalServiceGetSiteConfigData, PortalServiceGetSiteConfigErrors, PortalServiceGetSiteConfigResponses, PortalServiceListActivitiesData, PortalServiceListActivitiesErrors, PortalServiceListActivitiesResponses, PortalServiceListDepartmentsData, PortalServiceListDepartmentsErrors, PortalServiceListDepartmentsResponses, PortalServiceListHistoryData, PortalServiceListHistoryErrors, PortalServiceListHistoryResponses, PortalServiceListHomeTrendingData, PortalServiceListHomeTrendingErrors, PortalServiceListHomeTrendingResponses, PortalServiceListMinistersData, PortalServiceListMinistersErrors, PortalServiceListMinistersResponses, PortalServiceListSponsorsData, PortalServiceListSponsorsErrors, PortalServiceListSponsorsResponses, PortalServiceListStaffData, PortalServiceListStaffErrors, PortalServiceListStaffResponses, ResourceServiceGetUploadTokensData, ResourceServiceGetUploadTokensErrors, ResourceServiceGetUploadTokensResponses, SiteAdminServiceDeleteActivityData, SiteAdminServiceDeleteActivityErrors, SiteAdminServiceDeleteActivityResponses, SiteAdminServiceDeleteDepartmentData, SiteAdminServiceDeleteDepartmentErrors, SiteAdminServiceDeleteDepartmentResponses, SiteAdminServiceDeleteHistoryEventData, SiteAdminServiceDeleteHistoryEventErrors, SiteAdminServiceDeleteHistoryEventResponses, SiteAdminServiceDeleteMinisterData, SiteAdminServiceDeleteMinisterErrors, SiteAdminServiceDeleteMinisterResponses, SiteAdminServiceDeleteSponsorData, SiteAdminServiceDeleteSponsorErrors, SiteAdminServiceDeleteSponsorResponses, SiteAdminServiceDeleteStaffGroupData, SiteAdminServiceDeleteStaffGroupErrors, SiteAdminServiceDeleteStaffGroupResponses, SiteAdminServiceUpsertActivityData, SiteAdminServiceUpsertActivityErrors, SiteAdminServiceUpsertActivityResponses, SiteAdminServiceUpsertDepartmentData, SiteAdminServiceUpsertDepartmentErrors, SiteAdminServiceUpsertDepartmentResponses, SiteAdminServiceUpsertHistoryEventData, SiteAdminServiceUpsertHistoryEventErrors, SiteAdminServiceUpsertHistoryEventResponses, SiteAdminServiceUpsertMinisterData, SiteAdminServiceUpsertMinisterErrors, SiteAdminServiceUpsertMinisterResponses, SiteAdminServiceUpsertSponsorData, SiteAdminServiceUpsertSponsorErrors, SiteAdminServiceUpsertSponsorResponses, SiteAdminServiceUpsertStaffGroupData, SiteAdminServiceUpsertStaffGroupErrors, SiteAdminServiceUpsertStaffGroupResponses, SystemAdminServiceClearSystemCacheData, SystemAdminServiceClearSystemCacheErrors, SystemAdminServiceClearSystemCacheResponses, SystemAdminServiceGetSystemConfigData, SystemAdminServiceGetSystemConfigErrors, SystemAdminServiceGetSystemConfigResponses, SystemAdminServiceGetSystemStatsData, SystemAdminServiceGetSystemStatsErrors, SystemAdminServiceGetSystemStatsResponses, SystemAdminServiceListSystemLogsData, SystemAdminServiceListSystemLogsErrors, SystemAdminServiceListSystemLogsResponses, SystemAdminServiceUpdateSystemConfigData, SystemAdminServiceUpdateSystemConfigErrors, SystemAdminServiceUpdateSystemConfigResponses, UserAdminServiceAdminSearchUsersData, UserAdminServiceAdminSearchUsersErrors, UserAdminServiceAdminSearchUsersResponses, UserAdminServiceApproveVerificationData, UserAdminServiceApproveVerificationErrors, UserAdminServiceApproveVerificationResponses, UserAdminServiceBanData, UserAdminServiceBanErrors, UserAdminServiceBanResponses, UserAdminServiceListVerificationApplicationsData, UserAdminServiceListVerificationApplicationsErrors, UserAdminServiceListVerificationApplicationsResponses, UserAdminServiceUpdateUsersRoleData, UserAdminServiceUpdateUsersRoleErrors, UserAdminServiceUpdateUsersRoleResponses, UserServiceApplyVerificationData, UserServiceApplyVerificationErrors, UserServiceApplyVerificationResponses, UserServiceGetMeData, UserServiceGetMeErrors, UserServiceGetMeResponses, UserServiceGetUsersData, UserServiceGetUsersErrors, UserServiceGetUsersResponses, UserServiceListRelationshipsData, UserServiceListRelationshipsErrors, UserServiceListRelationshipsResponses, UserServiceModifyDepartmentsData, UserServiceModifyDepartmentsErrors, UserServiceModifyDepartmentsResponses, UserServiceSetFollowData, UserServiceSetFollowErrors, UserServiceSetFollowResponses, UserServiceUpdateProfileData, UserServiceUpdateProfileErrors, UserServiceUpdateProfileResponses, UserServiceUpdateSettingsData, UserServiceUpdateSettingsErrors, UserServiceUpdateSettingsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -28,7 +28,8 @@ export const portalServiceListActivities = <ThrowOnError extends boolean = false
 });
 
 /**
- * 活动管理
+ * 活动管理 - 新增或更新活动信息
+ * 支持创建新活动或修改已有活动的信息
  */
 export const siteAdminServiceUpsertActivity = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertActivityData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertActivityResponses, SiteAdminServiceUpsertActivityErrors, ThrowOnError>({
     responseType: 'json',
@@ -40,12 +41,19 @@ export const siteAdminServiceUpsertActivity = <ThrowOnError extends boolean = fa
     }
 });
 
+/**
+ * 删除活动 - 删除指定的活动
+ */
 export const siteAdminServiceDeleteActivity = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteActivityData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteActivityResponses, SiteAdminServiceDeleteActivityErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/activities/{id}',
     ...options
 });
 
+/**
+ * 封禁/解封操作 - 对违规用户、帖子或评论进行封禁/解封操作
+ * 支持批量操作，支持临时封禁和永久封禁
+ */
 export const userAdminServiceBan = <ThrowOnError extends boolean = false>(options: Options<UserAdminServiceBanData, ThrowOnError>) => (options.client ?? client).put<UserAdminServiceBanResponses, UserAdminServiceBanErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/ban',
@@ -57,7 +65,43 @@ export const userAdminServiceBan = <ThrowOnError extends boolean = false>(option
 });
 
 /**
- * 部门管理
+ * 清理系统缓存 - 清理系统缓存
+ */
+export const systemAdminServiceClearSystemCache = <ThrowOnError extends boolean = false>(options: Options<SystemAdminServiceClearSystemCacheData, ThrowOnError>) => (options.client ?? client).post<SystemAdminServiceClearSystemCacheResponses, SystemAdminServiceClearSystemCacheErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/cache/clear',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取系统配置 - 获取所有系统配置项
+ */
+export const systemAdminServiceGetSystemConfig = <ThrowOnError extends boolean = false>(options?: Options<SystemAdminServiceGetSystemConfigData, ThrowOnError>) => (options?.client ?? client).get<SystemAdminServiceGetSystemConfigResponses, SystemAdminServiceGetSystemConfigErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/config',
+    ...options
+});
+
+/**
+ * 更新系统配置 - 更新系统配置项
+ */
+export const systemAdminServiceUpdateSystemConfig = <ThrowOnError extends boolean = false>(options: Options<SystemAdminServiceUpdateSystemConfigData, ThrowOnError>) => (options.client ?? client).put<SystemAdminServiceUpdateSystemConfigResponses, SystemAdminServiceUpdateSystemConfigErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/config',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 部门管理 - 新增或更新部门信息
+ * 支持创建新部门或修改已有部门的信息
  */
 export const siteAdminServiceUpsertDepartment = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertDepartmentData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertDepartmentResponses, SiteAdminServiceUpsertDepartmentErrors, ThrowOnError>({
     responseType: 'json',
@@ -69,6 +113,10 @@ export const siteAdminServiceUpsertDepartment = <ThrowOnError extends boolean = 
     }
 });
 
+/**
+ * 删除部门 - 删除指定的部门
+ * 注意：删除部门前需要确保该部门下没有关联的用户或内容
+ */
 export const siteAdminServiceDeleteDepartment = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteDepartmentData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteDepartmentResponses, SiteAdminServiceDeleteDepartmentErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/departments/{id}',
@@ -76,7 +124,8 @@ export const siteAdminServiceDeleteDepartment = <ThrowOnError extends boolean = 
 });
 
 /**
- * 历史事件管理
+ * 历史事件管理 - 新增或更新历史事件信息
+ * 支持创建新历史事件或修改已有历史事件的信息
  */
 export const siteAdminServiceUpsertHistoryEvent = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertHistoryEventData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertHistoryEventResponses, SiteAdminServiceUpsertHistoryEventErrors, ThrowOnError>({
     responseType: 'json',
@@ -88,6 +137,9 @@ export const siteAdminServiceUpsertHistoryEvent = <ThrowOnError extends boolean 
     }
 });
 
+/**
+ * 删除历史事件 - 删除指定的历史事件
+ */
 export const siteAdminServiceDeleteHistoryEvent = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteHistoryEventData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteHistoryEventResponses, SiteAdminServiceDeleteHistoryEventErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/history-events/{id}',
@@ -95,7 +147,17 @@ export const siteAdminServiceDeleteHistoryEvent = <ThrowOnError extends boolean 
 });
 
 /**
- * 部长管理
+ * 获取系统日志 - 分页获取系统操作日志
+ */
+export const systemAdminServiceListSystemLogs = <ThrowOnError extends boolean = false>(options?: Options<SystemAdminServiceListSystemLogsData, ThrowOnError>) => (options?.client ?? client).get<SystemAdminServiceListSystemLogsResponses, SystemAdminServiceListSystemLogsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/logs',
+    ...options
+});
+
+/**
+ * 部长管理 - 新增或更新部长信息
+ * 支持创建新部长或修改已有部长的信息
  */
 export const siteAdminServiceUpsertMinister = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertMinisterData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertMinisterResponses, SiteAdminServiceUpsertMinisterErrors, ThrowOnError>({
     responseType: 'json',
@@ -107,10 +169,80 @@ export const siteAdminServiceUpsertMinister = <ThrowOnError extends boolean = fa
     }
 });
 
+/**
+ * 删除部长 - 删除指定的部长
+ */
 export const siteAdminServiceDeleteMinister = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteMinisterData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteMinisterResponses, SiteAdminServiceDeleteMinisterErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/ministers/{id}',
     ...options
+});
+
+/**
+ * 获取分区列表 - 获取所有分区信息
+ */
+export const contentAdminServiceListPartitions = <ThrowOnError extends boolean = false>(options?: Options<ContentAdminServiceListPartitionsData, ThrowOnError>) => (options?.client ?? client).get<ContentAdminServiceListPartitionsResponses, ContentAdminServiceListPartitionsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions',
+    ...options
+});
+
+/**
+ * 分区管理 - 新增或更新分区信息
+ * 支持创建新分区或修改已有分区的信息
+ */
+export const contentAdminServiceUpsertPartition = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceUpsertPartitionData, ThrowOnError>) => (options.client ?? client).put<ContentAdminServiceUpsertPartitionResponses, ContentAdminServiceUpsertPartitionErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除分区 - 删除指定的分区
+ * 注意：删除分区前需要确保该分区下没有关联的帖子
+ */
+export const contentAdminServiceDeletePartition = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceDeletePartitionData, ThrowOnError>) => (options.client ?? client).delete<ContentAdminServiceDeletePartitionResponses, ContentAdminServiceDeletePartitionErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions/{id}',
+    ...options
+});
+
+/**
+ * 获取帖子列表 - 分页获取所有帖子信息
+ * 支持按状态、分区、作者等筛选
+ */
+export const contentAdminServiceListPosts = <ThrowOnError extends boolean = false>(options?: Options<ContentAdminServiceListPostsData, ThrowOnError>) => (options?.client ?? client).get<ContentAdminServiceListPostsResponses, ContentAdminServiceListPostsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/posts',
+    ...options
+});
+
+/**
+ * 删除帖子 - 删除指定的帖子
+ * 支持批量删除，删除后不可恢复
+ */
+export const contentAdminServiceDeletePost = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceDeletePostData, ThrowOnError>) => (options.client ?? client).delete<ContentAdminServiceDeletePostResponses, ContentAdminServiceDeletePostErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/posts/{post_id}',
+    ...options
+});
+
+/**
+ * 审核帖子 - 对帖子进行审核，支持通过或驳回
+ * 驳回时需要填写驳回原因
+ */
+export const contentAdminServiceApprovePost = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceApprovePostData, ThrowOnError>) => (options.client ?? client).put<ContentAdminServiceApprovePostResponses, ContentAdminServiceApprovePostErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/posts/{post_id}/approve',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });
 
 /**
@@ -127,6 +259,20 @@ export const governanceServiceListReports = <ThrowOnError extends boolean = fals
  */
 export const governanceServiceResolveReport = <ThrowOnError extends boolean = false>(options: Options<GovernanceServiceResolveReportData, ThrowOnError>) => (options.client ?? client).put<GovernanceServiceResolveReportResponses, GovernanceServiceResolveReportErrors, ThrowOnError>({
     responseType: 'json',
+    url: '/v1/admin/reports/{report_id_1}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 处理举报 - 对举报进行处理，支持忽略、删除内容或封禁用户
+ * 处理结果会记录到系统日志中
+ */
+export const governanceServiceResolveReport2 = <ThrowOnError extends boolean = false>(options: Options<GovernanceServiceResolveReport2Data, ThrowOnError>) => (options.client ?? client).put<GovernanceServiceResolveReport2Responses, GovernanceServiceResolveReport2Errors, ThrowOnError>({
+    responseType: 'json',
     url: '/v1/admin/reports/{report_id}',
     ...options,
     headers: {
@@ -136,7 +282,8 @@ export const governanceServiceResolveReport = <ThrowOnError extends boolean = fa
 });
 
 /**
- * 赞助者管理
+ * 赞助者管理 - 新增或更新赞助者信息
+ * 支持创建新赞助者或修改已有赞助者的信息
  */
 export const siteAdminServiceUpsertSponsor = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertSponsorData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertSponsorResponses, SiteAdminServiceUpsertSponsorErrors, ThrowOnError>({
     responseType: 'json',
@@ -148,6 +295,9 @@ export const siteAdminServiceUpsertSponsor = <ThrowOnError extends boolean = fal
     }
 });
 
+/**
+ * 删除赞助者 - 删除指定的赞助者
+ */
 export const siteAdminServiceDeleteSponsor = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteSponsorData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteSponsorResponses, SiteAdminServiceDeleteSponsorErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/sponsors/{id}',
@@ -155,7 +305,8 @@ export const siteAdminServiceDeleteSponsor = <ThrowOnError extends boolean = fal
 });
 
 /**
- * Staff 管理
+ * Staff 管理 - 新增或更新 Staff 团队信息
+ * 支持创建新的 Staff 团队或修改已有团队的信息
  */
 export const siteAdminServiceUpsertStaffGroup = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertStaffGroupData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertStaffGroupResponses, SiteAdminServiceUpsertStaffGroupErrors, ThrowOnError>({
     responseType: 'json',
@@ -167,6 +318,9 @@ export const siteAdminServiceUpsertStaffGroup = <ThrowOnError extends boolean = 
     }
 });
 
+/**
+ * 删除 Staff 团队 - 删除指定的 Staff 团队
+ */
 export const siteAdminServiceDeleteStaffGroup = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteStaffGroupData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteStaffGroupResponses, SiteAdminServiceDeleteStaffGroupErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/staff-groups/{id}',
@@ -174,7 +328,17 @@ export const siteAdminServiceDeleteStaffGroup = <ThrowOnError extends boolean = 
 });
 
 /**
- * 修改用户角色 (提拔管理员)
+ * 获取系统统计 - 获取系统整体统计信息
+ */
+export const systemAdminServiceGetSystemStats = <ThrowOnError extends boolean = false>(options?: Options<SystemAdminServiceGetSystemStatsData, ThrowOnError>) => (options?.client ?? client).get<SystemAdminServiceGetSystemStatsResponses, SystemAdminServiceGetSystemStatsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/stats',
+    ...options
+});
+
+/**
+ * 修改用户角色 - 用于提拔或降级用户角色（如普通用户→管理员）
+ * 支持批量操作，仅超级管理员可使用此接口
  */
 export const userAdminServiceUpdateUsersRole = <ThrowOnError extends boolean = false>(options: Options<UserAdminServiceUpdateUsersRoleData, ThrowOnError>) => (options.client ?? client).put<UserAdminServiceUpdateUsersRoleResponses, UserAdminServiceUpdateUsersRoleErrors, ThrowOnError>({
     responseType: 'json',
@@ -187,7 +351,18 @@ export const userAdminServiceUpdateUsersRole = <ThrowOnError extends boolean = f
 });
 
 /**
- * 获取待审核的认证申请列表
+ * 后台搜索用户 - 提供比前台搜索更强大的搜索能力
+ * 可搜索包括封禁用户在内的所有用户，支持按关键词搜索
+ */
+export const userAdminServiceAdminSearchUsers = <ThrowOnError extends boolean = false>(options?: Options<UserAdminServiceAdminSearchUsersData, ThrowOnError>) => (options?.client ?? client).get<UserAdminServiceAdminSearchUsersResponses, UserAdminServiceAdminSearchUsersErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/users/search',
+    ...options
+});
+
+/**
+ * 获取待审核的认证申请列表 - 分页获取所有待审核的用户认证申请
+ * 支持按状态筛选（待审核、已通过、已驳回）
  */
 export const userAdminServiceListVerificationApplications = <ThrowOnError extends boolean = false>(options?: Options<UserAdminServiceListVerificationApplicationsData, ThrowOnError>) => (options?.client ?? client).get<UserAdminServiceListVerificationApplicationsResponses, UserAdminServiceListVerificationApplicationsErrors, ThrowOnError>({
     responseType: 'json',
@@ -196,7 +371,8 @@ export const userAdminServiceListVerificationApplications = <ThrowOnError extend
 });
 
 /**
- * 审核认证申请 (通过/驳回)
+ * 审核认证申请 - 处理用户的认证申请，支持通过或驳回
+ * 驳回时需要填写驳回原因，审核结果会通知用户
  */
 export const userAdminServiceApproveVerification = <ThrowOnError extends boolean = false>(options: Options<UserAdminServiceApproveVerificationData, ThrowOnError>) => (options.client ?? client).put<UserAdminServiceApproveVerificationResponses, UserAdminServiceApproveVerificationErrors, ThrowOnError>({
     responseType: 'json',

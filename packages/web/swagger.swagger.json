@@ -12,7 +12,13 @@
       "name": "UserService"
     },
     {
-      "name": "UserAdminService"
+      "name": "ContentService"
+    },
+    {
+      "name": "ContentAdminService"
+    },
+    {
+      "name": "GovernanceService"
     },
     {
       "name": "PortalService"
@@ -21,13 +27,13 @@
       "name": "SiteAdminService"
     },
     {
+      "name": "SystemAdminService"
+    },
+    {
+      "name": "UserAdminService"
+    },
+    {
       "name": "ResourceService"
-    },
-    {
-      "name": "ContentService"
-    },
-    {
-      "name": "GovernanceService"
     },
     {
       "name": "InteractionService"
@@ -71,7 +77,7 @@
     },
     "/v1/admin/activities": {
       "put": {
-        "summary": "活动管理",
+        "summary": "活动管理 - 新增或更新活动信息\n支持创建新活动或修改已有活动的信息",
         "operationId": "SiteAdminService_UpsertActivity",
         "responses": {
           "200": {
@@ -104,6 +110,7 @@
     },
     "/v1/admin/activities/{id}": {
       "delete": {
+        "summary": "删除活动 - 删除指定的活动",
         "operationId": "SiteAdminService_DeleteActivity",
         "responses": {
           "200": {
@@ -122,6 +129,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "活动ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -134,6 +142,7 @@
     },
     "/v1/admin/ban": {
       "put": {
+        "summary": "封禁/解封操作 - 对违规用户、帖子或评论进行封禁/解封操作\n支持批量操作，支持临时封禁和永久封禁",
         "operationId": "UserAdminService_Ban",
         "responses": {
           "200": {
@@ -164,9 +173,96 @@
         ]
       }
     },
+    "/v1/admin/cache/clear": {
+      "post": {
+        "summary": "清理系统缓存 - 清理系统缓存",
+        "operationId": "SystemAdminService_ClearSystemCache",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ClearSystemCacheResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ClearSystemCacheRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SystemAdminService"
+        ]
+      }
+    },
+    "/v1/admin/config": {
+      "get": {
+        "summary": "获取系统配置 - 获取所有系统配置项",
+        "operationId": "SystemAdminService_GetSystemConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetSystemConfigResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SystemAdminService"
+        ]
+      },
+      "put": {
+        "summary": "更新系统配置 - 更新系统配置项",
+        "operationId": "SystemAdminService_UpdateSystemConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpdateSystemConfigResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateSystemConfigRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SystemAdminService"
+        ]
+      }
+    },
     "/v1/admin/departments": {
       "put": {
-        "summary": "部门管理",
+        "summary": "部门管理 - 新增或更新部门信息\n支持创建新部门或修改已有部门的信息",
         "operationId": "SiteAdminService_UpsertDepartment",
         "responses": {
           "200": {
@@ -199,6 +295,7 @@
     },
     "/v1/admin/departments/{id}": {
       "delete": {
+        "summary": "删除部门 - 删除指定的部门\n注意：删除部门前需要确保该部门下没有关联的用户或内容",
         "operationId": "SiteAdminService_DeleteDepartment",
         "responses": {
           "200": {
@@ -217,6 +314,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "部门ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -229,7 +327,7 @@
     },
     "/v1/admin/history-events": {
       "put": {
-        "summary": "历史事件管理",
+        "summary": "历史事件管理 - 新增或更新历史事件信息\n支持创建新历史事件或修改已有历史事件的信息",
         "operationId": "SiteAdminService_UpsertHistoryEvent",
         "responses": {
           "200": {
@@ -262,6 +360,7 @@
     },
     "/v1/admin/history-events/{id}": {
       "delete": {
+        "summary": "删除历史事件 - 删除指定的历史事件",
         "operationId": "SiteAdminService_DeleteHistoryEvent",
         "responses": {
           "200": {
@@ -280,6 +379,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "历史事件ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -290,9 +390,85 @@
         ]
       }
     },
+    "/v1/admin/logs": {
+      "get": {
+        "summary": "获取系统日志 - 分页获取系统操作日志",
+        "operationId": "SystemAdminService_ListSystemLogs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListSystemLogsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user_id",
+            "description": "操作用户筛选（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "action",
+            "description": "操作类型筛选（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "resource_type",
+            "description": "资源类型筛选（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "start_time",
+            "description": "开始时间（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "end_time",
+            "description": "结束时间（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "SystemAdminService"
+        ]
+      }
+    },
     "/v1/admin/ministers": {
       "put": {
-        "summary": "部长管理",
+        "summary": "部长管理 - 新增或更新部长信息\n支持创建新部长或修改已有部长的信息",
         "operationId": "SiteAdminService_UpsertMinister",
         "responses": {
           "200": {
@@ -325,6 +501,7 @@
     },
     "/v1/admin/ministers/{id}": {
       "delete": {
+        "summary": "删除部长 - 删除指定的部长",
         "operationId": "SiteAdminService_DeleteMinister",
         "responses": {
           "200": {
@@ -343,6 +520,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "部长ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -350,6 +528,232 @@
         ],
         "tags": [
           "SiteAdminService"
+        ]
+      }
+    },
+    "/v1/admin/partitions": {
+      "get": {
+        "summary": "获取分区列表 - 获取所有分区信息",
+        "operationId": "ContentAdminService_ListPartitions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListPartitionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "ContentAdminService"
+        ]
+      },
+      "put": {
+        "summary": "分区管理 - 新增或更新分区信息\n支持创建新分区或修改已有分区的信息",
+        "operationId": "ContentAdminService_UpsertPartition",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpsertPartitionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertPartitionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ContentAdminService"
+        ]
+      }
+    },
+    "/v1/admin/partitions/{id}": {
+      "delete": {
+        "summary": "删除分区 - 删除指定的分区\n注意：删除分区前需要确保该分区下没有关联的帖子",
+        "operationId": "ContentAdminService_DeletePartition",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/DeletePartitionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "分区ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ContentAdminService"
+        ]
+      }
+    },
+    "/v1/admin/posts": {
+      "get": {
+        "summary": "获取帖子列表 - 分页获取所有帖子信息\n支持按状态、分区、作者等筛选",
+        "operationId": "ContentAdminService_ListPosts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiAdminV1ListPostsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "partition_id",
+            "description": "分区ID（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "author_id",
+            "description": "作者ID（可选）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "description": "状态筛选（可选）\n\n - POST_STATUS_DRAFT: 草稿\n - POST_STATUS_PENDING: 待审核\n - POST_STATUS_PUBLISHED: 已发布\n - POST_STATUS_REJECTED: 已驳回\n - POST_STATUS_DELETED: 已删除",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "POST_STATUS_DRAFT",
+              "POST_STATUS_PENDING",
+              "POST_STATUS_PUBLISHED",
+              "POST_STATUS_REJECTED",
+              "POST_STATUS_DELETED"
+            ],
+            "default": "POST_STATUS_DRAFT"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "ContentAdminService"
+        ]
+      }
+    },
+    "/v1/admin/posts/{post_id}": {
+      "delete": {
+        "summary": "删除帖子 - 删除指定的帖子\n支持批量删除，删除后不可恢复",
+        "operationId": "ContentAdminService_DeletePost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiAdminV1DeletePostResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "description": "帖子ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ContentAdminService"
+        ]
+      }
+    },
+    "/v1/admin/posts/{post_id}/approve": {
+      "put": {
+        "summary": "审核帖子 - 对帖子进行审核，支持通过或驳回\n驳回时需要填写驳回原因",
+        "operationId": "ContentAdminService_ApprovePost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ApprovePostResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "post_id",
+            "description": "帖子ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ContentAdminServiceApprovePostBody"
+            }
+          }
+        ],
+        "tags": [
+          "ContentAdminService"
         ]
       }
     },
@@ -361,7 +765,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/ListReportsResponse"
+              "$ref": "#/definitions/apiCommunityV1ListReportsResponse"
             }
           },
           "default": {
@@ -405,7 +809,7 @@
         ]
       }
     },
-    "/v1/admin/reports/{report_id}": {
+    "/v1/admin/reports/{report_id_1}": {
       "put": {
         "summary": "裁决举报 (封禁、删除、忽略)",
         "operationId": "GovernanceService_ResolveReport",
@@ -413,7 +817,46 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/ResolveReportResponse"
+              "$ref": "#/definitions/apiCommunityV1ResolveReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "report_id_1",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/apiCommunityV1GovernanceServiceResolveReportBody"
+            }
+          }
+        ],
+        "tags": [
+          "GovernanceService"
+        ]
+      }
+    },
+    "/v1/admin/reports/{report_id}": {
+      "put": {
+        "summary": "处理举报 - 对举报进行处理，支持忽略、删除内容或封禁用户\n处理结果会记录到系统日志中",
+        "operationId": "GovernanceService_ResolveReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiAdminV1ResolveReportResponse"
             }
           },
           "default": {
@@ -426,6 +869,7 @@
         "parameters": [
           {
             "name": "report_id",
+            "description": "举报ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -435,7 +879,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/GovernanceServiceResolveReportBody"
+              "$ref": "#/definitions/apiAdminV1GovernanceServiceResolveReportBody"
             }
           }
         ],
@@ -446,7 +890,7 @@
     },
     "/v1/admin/sponsors": {
       "put": {
-        "summary": "赞助者管理",
+        "summary": "赞助者管理 - 新增或更新赞助者信息\n支持创建新赞助者或修改已有赞助者的信息",
         "operationId": "SiteAdminService_UpsertSponsor",
         "responses": {
           "200": {
@@ -479,6 +923,7 @@
     },
     "/v1/admin/sponsors/{id}": {
       "delete": {
+        "summary": "删除赞助者 - 删除指定的赞助者",
         "operationId": "SiteAdminService_DeleteSponsor",
         "responses": {
           "200": {
@@ -497,6 +942,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "赞助者ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -509,7 +955,7 @@
     },
     "/v1/admin/staff-groups": {
       "put": {
-        "summary": "Staff 管理",
+        "summary": "Staff 管理 - 新增或更新 Staff 团队信息\n支持创建新的 Staff 团队或修改已有团队的信息",
         "operationId": "SiteAdminService_UpsertStaffGroup",
         "responses": {
           "200": {
@@ -542,6 +988,7 @@
     },
     "/v1/admin/staff-groups/{id}": {
       "delete": {
+        "summary": "删除 Staff 团队 - 删除指定的 Staff 团队",
         "operationId": "SiteAdminService_DeleteStaffGroup",
         "responses": {
           "200": {
@@ -560,6 +1007,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "团队ID",
             "in": "path",
             "required": true,
             "type": "string"
@@ -570,9 +1018,32 @@
         ]
       }
     },
+    "/v1/admin/stats": {
+      "get": {
+        "summary": "获取系统统计 - 获取系统整体统计信息",
+        "operationId": "SystemAdminService_GetSystemStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetSystemStatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SystemAdminService"
+        ]
+      }
+    },
     "/v1/admin/users/role": {
       "put": {
-        "summary": "修改用户角色 (提拔管理员)",
+        "summary": "修改用户角色 - 用于提拔或降级用户角色（如普通用户→管理员）\n支持批量操作，仅超级管理员可使用此接口",
         "operationId": "UserAdminService_UpdateUsersRole",
         "responses": {
           "200": {
@@ -603,9 +1074,55 @@
         ]
       }
     },
+    "/v1/admin/users/search": {
+      "get": {
+        "summary": "后台搜索用户 - 提供比前台搜索更强大的搜索能力\n可搜索包括封禁用户在内的所有用户，支持按关键词搜索",
+        "operationId": "UserAdminService_AdminSearchUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/AdminSearchUsersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "keyword",
+            "description": "搜索关键词（支持用户名、昵称、邮箱等）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.page_token",
+            "description": "游标（用于无限滚动，最后一条数据的id）",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "UserAdminService"
+        ]
+      }
+    },
     "/v1/admin/verifications": {
       "get": {
-        "summary": "获取待审核的认证申请列表",
+        "summary": "获取待审核的认证申请列表 - 分页获取所有待审核的用户认证申请\n支持按状态筛选（待审核、已通过、已驳回）",
         "operationId": "UserAdminService_ListVerificationApplications",
         "responses": {
           "200": {
@@ -624,7 +1141,7 @@
         "parameters": [
           {
             "name": "status",
-            "description": "筛选状态 (可选，默认 PENDING)\n\n - VERIFICATION_STATUS_PENDING: 待审核\n - VERIFICATION_STATUS_APPROVED: 已通过\n - VERIFICATION_STATUS_REJECTED: 已驳回",
+            "description": "筛选状态（可选，默认 PENDING）\n\n - VERIFICATION_STATUS_PENDING: 待审核\n - VERIFICATION_STATUS_APPROVED: 已通过\n - VERIFICATION_STATUS_REJECTED: 已驳回",
             "in": "query",
             "required": false,
             "type": "string",
@@ -657,7 +1174,7 @@
     },
     "/v1/admin/verifications/{application_id}": {
       "put": {
-        "summary": "审核认证申请 (通过/驳回)",
+        "summary": "审核认证申请 - 处理用户的认证申请，支持通过或驳回\n驳回时需要填写驳回原因，审核结果会通知用户",
         "operationId": "UserAdminService_ApproveVerification",
         "responses": {
           "200": {
@@ -1319,7 +1836,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/ListPostsResponse"
+              "$ref": "#/definitions/apiCommunityV1ListPostsResponse"
             }
           },
           "default": {
@@ -1396,15 +1913,8 @@
             "default": "ORDER_TYPE_UNSPECIFIED"
           },
           {
-            "name": "cursor_score",
-            "description": "游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数，order_type=ORDER_TYPE_RECOMMENDED 或 order_type=ORDER_TYPE_HOT",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "cursor_timestamp",
-            "description": "游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间，order_type=ORDER_TYPE_LATEST",
+            "name": "cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1483,7 +1993,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/DeletePostResponse"
+              "$ref": "#/definitions/apiCommunityV1DeletePostResponse"
             }
           },
           "default": {
@@ -1875,17 +2385,19 @@
       },
       "title": "发评论"
     },
-    "GovernanceServiceResolveReportBody": {
+    "ContentAdminServiceApprovePostBody": {
       "type": "object",
       "properties": {
-        "action": {
-          "$ref": "#/definitions/ResolveReportRequestAction"
+        "approve": {
+          "type": "boolean",
+          "title": "true=通过, false=驳回"
         },
-        "note": {
+        "reject_reason": {
           "type": "string",
-          "title": "处理备注"
+          "title": "驳回原因（仅当 approve 为 false 时需要）"
         }
-      }
+      },
+      "title": "审核帖子请求"
     },
     "HomeTrendingItemSource": {
       "type": "string",
@@ -1973,17 +2485,6 @@
       "default": "SCOPE_ALL",
       "title": "范围：全部已读 | 指定分类已读 | 指定单条已读"
     },
-    "ResolveReportRequestAction": {
-      "type": "string",
-      "enum": [
-        "ACTION_IGNORE",
-        "ACTION_DELETE_CONTENT",
-        "ACTION_BAN_USER"
-      ],
-      "default": "ACTION_IGNORE",
-      "description": "- ACTION_IGNORE: 忽略/无违规\n - ACTION_DELETE_CONTENT: 删除内容\n - ACTION_BAN_USER: 封禁用户 (通常需调用 UserAdminService)",
-      "title": "裁决动作"
-    },
     "UserAdminServiceApproveVerificationBody": {
       "type": "object",
       "properties": {
@@ -1993,7 +2494,7 @@
         },
         "reject_reason": {
           "type": "string",
-          "title": "驳回原因 (仅当 approve 为 false 时需要)"
+          "title": "驳回原因（仅当 approve 为 false 时需要）"
         }
       },
       "title": "审核认证申请请求"
@@ -2007,6 +2508,262 @@
         }
       },
       "title": "统一关注操作"
+    },
+    "apiAdminV1DeletePostResponse": {
+      "type": "object",
+      "title": "删除帖子响应"
+    },
+    "apiAdminV1GovernanceServiceResolveReportBody": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/apiAdminV1ResolveReportRequestAction",
+          "title": "处理动作"
+        },
+        "note": {
+          "type": "string",
+          "title": "处理备注"
+        }
+      },
+      "title": "处理举报请求"
+    },
+    "apiAdminV1ListPostsResponse": {
+      "type": "object",
+      "properties": {
+        "posts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Post"
+          },
+          "title": "帖子列表"
+        },
+        "next_page_token": {
+          "type": "string",
+          "title": "下一页令牌"
+        }
+      },
+      "title": "获取帖子列表响应"
+    },
+    "apiAdminV1ListReportsResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/apiAdminV1Report"
+          },
+          "title": "举报列表"
+        },
+        "next_page_token": {
+          "type": "string",
+          "title": "下一页令牌"
+        }
+      },
+      "title": "获取举报列表响应"
+    },
+    "apiAdminV1PostStatus": {
+      "type": "string",
+      "enum": [
+        "POST_STATUS_DRAFT",
+        "POST_STATUS_PENDING",
+        "POST_STATUS_PUBLISHED",
+        "POST_STATUS_REJECTED",
+        "POST_STATUS_DELETED"
+      ],
+      "default": "POST_STATUS_DRAFT",
+      "description": "- POST_STATUS_DRAFT: 草稿\n - POST_STATUS_PENDING: 待审核\n - POST_STATUS_PUBLISHED: 已发布\n - POST_STATUS_REJECTED: 已驳回\n - POST_STATUS_DELETED: 已删除",
+      "title": "审核状态枚举"
+    },
+    "apiAdminV1Report": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "举报ID"
+        },
+        "reporter_id": {
+          "type": "string",
+          "title": "举报人ID"
+        },
+        "target_id": {
+          "type": "string",
+          "title": "被举报对象ID"
+        },
+        "type": {
+          "$ref": "#/definitions/apiAdminV1ReportTargetType",
+          "title": "被举报对象类型"
+        },
+        "reason": {
+          "type": "string",
+          "title": "举报原因"
+        },
+        "status": {
+          "$ref": "#/definitions/apiAdminV1ReportStatus",
+          "title": "处理状态"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "举报时间戳"
+        }
+      },
+      "title": "举报信息"
+    },
+    "apiAdminV1ReportStatus": {
+      "type": "string",
+      "enum": [
+        "REPORT_STATUS_PENDING",
+        "REPORT_STATUS_RESOLVED",
+        "REPORT_STATUS_REJECTED"
+      ],
+      "default": "REPORT_STATUS_PENDING",
+      "description": "- REPORT_STATUS_PENDING: 待处理\n - REPORT_STATUS_RESOLVED: 已处理\n - REPORT_STATUS_REJECTED: 已驳回",
+      "title": "举报状态枚举"
+    },
+    "apiAdminV1ReportTargetType": {
+      "type": "string",
+      "enum": [
+        "REPORT_TARGET_TYPE_POST",
+        "REPORT_TARGET_TYPE_COMMENT",
+        "REPORT_TARGET_TYPE_USER"
+      ],
+      "default": "REPORT_TARGET_TYPE_POST",
+      "description": "- REPORT_TARGET_TYPE_POST: 帖子\n - REPORT_TARGET_TYPE_COMMENT: 评论\n - REPORT_TARGET_TYPE_USER: 用户",
+      "title": "举报目标类型枚举"
+    },
+    "apiAdminV1ResolveReportRequestAction": {
+      "type": "string",
+      "enum": [
+        "ACTION_IGNORE",
+        "ACTION_DELETE_CONTENT",
+        "ACTION_BAN_USER"
+      ],
+      "default": "ACTION_IGNORE",
+      "description": "- ACTION_IGNORE: 忽略/无违规\n - ACTION_DELETE_CONTENT: 删除内容\n - ACTION_BAN_USER: 封禁用户（会调用 UserAdminService）",
+      "title": "处理动作枚举"
+    },
+    "apiAdminV1ResolveReportResponse": {
+      "type": "object",
+      "title": "处理举报响应"
+    },
+    "apiCommunityV1DeletePostResponse": {
+      "type": "object"
+    },
+    "apiCommunityV1GovernanceServiceResolveReportBody": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/apiCommunityV1ResolveReportRequestAction"
+        },
+        "note": {
+          "type": "string",
+          "title": "处理备注"
+        }
+      }
+    },
+    "apiCommunityV1ListPostsResponse": {
+      "type": "object",
+      "properties": {
+        "posts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/PostPreview"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "title": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间"
+        }
+      }
+    },
+    "apiCommunityV1ListReportsResponse": {
+      "type": "object",
+      "properties": {
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/apiCommunityV1Report"
+          }
+        },
+        "next_page_token": {
+          "type": "string"
+        }
+      }
+    },
+    "apiCommunityV1PostStatus": {
+      "type": "string",
+      "enum": [
+        "POST_STATUS_UNSPECIFIED",
+        "POST_STATUS_PUBLISHED",
+        "POST_STATUS_AUDITING",
+        "POST_STATUS_DELETED"
+      ],
+      "default": "POST_STATUS_UNSPECIFIED",
+      "title": "- POST_STATUS_PUBLISHED: 已发布\n - POST_STATUS_AUDITING: 审核中\n - POST_STATUS_DELETED: 已删除"
+    },
+    "apiCommunityV1Report": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "reporter_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/apiCommunityV1ReportTargetType"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/apiCommunityV1ReportStatus"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "apiCommunityV1ReportStatus": {
+      "type": "string",
+      "enum": [
+        "REPORT_STATUS_PENDING",
+        "REPORT_STATUS_RESOLVED",
+        "REPORT_STATUS_REJECTED"
+      ],
+      "default": "REPORT_STATUS_PENDING",
+      "title": "- REPORT_STATUS_REJECTED: 驳回"
+    },
+    "apiCommunityV1ReportTargetType": {
+      "type": "string",
+      "enum": [
+        "REPORT_TARGET_TYPE_POST",
+        "REPORT_TARGET_TYPE_COMMENT",
+        "REPORT_TARGET_TYPE_USER"
+      ],
+      "default": "REPORT_TARGET_TYPE_POST"
+    },
+    "apiCommunityV1ResolveReportRequestAction": {
+      "type": "string",
+      "enum": [
+        "ACTION_IGNORE",
+        "ACTION_DELETE_CONTENT",
+        "ACTION_BAN_USER"
+      ],
+      "default": "ACTION_IGNORE",
+      "description": "- ACTION_IGNORE: 忽略/无违规\n - ACTION_DELETE_CONTENT: 删除内容\n - ACTION_BAN_USER: 封禁用户 (通常需调用 UserAdminService)",
+      "title": "裁决动作"
+    },
+    "apiCommunityV1ResolveReportResponse": {
+      "type": "object"
     },
     "protobufAny": {
       "type": "object",
@@ -2081,6 +2838,20 @@
       },
       "title": "活动"
     },
+    "AdminSearchUsersResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/UserSummary"
+          },
+          "title": "用户列表"
+        }
+      },
+      "title": "后台搜索用户响应"
+    },
     "AppearanceSettings": {
       "type": "object",
       "properties": {
@@ -2102,14 +2873,30 @@
     "ApplyVerificationResponse": {
       "type": "object"
     },
+    "ApprovePostResponse": {
+      "type": "object",
+      "properties": {
+        "succeed": {
+          "type": "boolean",
+          "title": "是否成功"
+        },
+        "message": {
+          "type": "string",
+          "title": "响应信息"
+        }
+      },
+      "title": "审核帖子响应"
+    },
     "ApproveVerificationResponse": {
       "type": "object",
       "properties": {
         "succeed": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": "是否成功"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "title": "响应信息"
         }
       },
       "title": "审核认证申请响应"
@@ -2122,9 +2909,11 @@
           "title": "相关的举报 ID"
         },
         "status": {
-          "$ref": "#/definitions/BanStatus"
+          "$ref": "#/definitions/BanStatus",
+          "title": "封禁状态"
         }
-      }
+      },
+      "title": "封禁项"
     },
     "BanRequest": {
       "type": "object",
@@ -2134,12 +2923,15 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/BanItem"
-          }
+          },
+          "title": "封禁项列表（支持批量操作）"
         }
-      }
+      },
+      "title": "封禁请求"
     },
     "BanResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "封禁响应"
     },
     "BanStatus": {
       "type": "string",
@@ -2149,7 +2941,8 @@
         "BAN_STATUS_UNBAN"
       ],
       "default": "BAN_STATUS_UNSPECIFIED",
-      "title": "- BAN_STATUS_BAN: 封禁/删除\n - BAN_STATUS_UNBAN: 解封/恢复"
+      "description": "- BAN_STATUS_BAN: 封禁/删除\n - BAN_STATUS_UNBAN: 解封/恢复",
+      "title": "封禁状态枚举"
     },
     "BasePrivacyLevel": {
       "type": "string",
@@ -2168,6 +2961,33 @@
         "CHAT_PRIVACY_LEVEL_PRIVATE"
       ],
       "default": "CHAT_PRIVACY_LEVEL_PUBLIC"
+    },
+    "ClearSystemCacheRequest": {
+      "type": "object",
+      "properties": {
+        "cache_namespaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "要清理的缓存命名空间（可选，为空则清理所有）"
+        }
+      },
+      "title": "清理系统缓存请求"
+    },
+    "ClearSystemCacheResponse": {
+      "type": "object",
+      "properties": {
+        "succeed": {
+          "type": "boolean",
+          "title": "是否成功"
+        },
+        "message": {
+          "type": "string",
+          "title": "响应信息"
+        }
+      },
+      "title": "清理系统缓存响应"
     },
     "Comment": {
       "type": "object",
@@ -2235,6 +3055,18 @@
         }
       }
     },
+    "ConfigType": {
+      "type": "string",
+      "enum": [
+        "CONFIG_TYPE_STRING",
+        "CONFIG_TYPE_NUMBER",
+        "CONFIG_TYPE_BOOLEAN",
+        "CONFIG_TYPE_JSON"
+      ],
+      "default": "CONFIG_TYPE_STRING",
+      "description": "- CONFIG_TYPE_STRING: 字符串\n - CONFIG_TYPE_NUMBER: 数字\n - CONFIG_TYPE_BOOLEAN: 布尔值\n - CONFIG_TYPE_JSON: JSON 对象",
+      "title": "配置类型枚举"
+    },
     "CreateCommentResponse": {
       "type": "object",
       "properties": {
@@ -2276,29 +3108,36 @@
       }
     },
     "DeleteActivityResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "删除活动响应"
     },
     "DeleteCommentResponse": {
       "type": "object",
       "title": "空响应通常足够，或者返回 boolean"
     },
     "DeleteDepartmentResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "删除部门响应"
     },
     "DeleteHistoryEventResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "删除历史事件响应"
     },
     "DeleteMinisterResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "删除部长响应"
     },
-    "DeletePostResponse": {
-      "type": "object"
+    "DeletePartitionResponse": {
+      "type": "object",
+      "title": "删除分区响应"
     },
     "DeleteSponsorResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "删除赞助者响应"
     },
     "DeleteStaffGroupResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "删除 Staff 团队响应"
     },
     "DepartmentBase": {
       "type": "object",
@@ -2418,6 +3257,30 @@
           "title": "首页背景宣传视频"
         }
       }
+    },
+    "GetSystemConfigResponse": {
+      "type": "object",
+      "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/SystemConfigItem"
+          },
+          "title": "配置列表"
+        }
+      },
+      "title": "获取系统配置响应"
+    },
+    "GetSystemStatsResponse": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "$ref": "#/definitions/SystemStats",
+          "title": "统计信息"
+        }
+      },
+      "title": "获取系统统计响应"
     },
     "GetUnreadCountResponse": {
       "type": "object",
@@ -2666,25 +3529,19 @@
         }
       }
     },
-    "ListPostsResponse": {
+    "ListPartitionsResponse": {
       "type": "object",
       "properties": {
-        "posts": {
+        "partitions": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/PostPreview"
-          }
-        },
-        "cursor_score": {
-          "type": "string",
-          "title": "游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数"
-        },
-        "cursor_timestamp": {
-          "type": "string",
-          "title": "游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间"
+            "$ref": "#/definitions/Partition"
+          },
+          "title": "分区列表"
         }
-      }
+      },
+      "title": "获取分区列表响应"
     },
     "ListRelationshipsResponse": {
       "type": "object",
@@ -2696,21 +3553,6 @@
             "$ref": "#/definitions/UserProfile"
           },
           "title": "这里不直接返回 UserSummary，建议返回 UserProfile 或者包含 RelationStatus 的对象\n这样在列表中就能知道\"我是否也关注了这个粉丝\""
-        },
-        "next_page_token": {
-          "type": "string"
-        }
-      }
-    },
-    "ListReportsResponse": {
-      "type": "object",
-      "properties": {
-        "reports": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/Report"
-          }
         },
         "next_page_token": {
           "type": "string"
@@ -2741,6 +3583,24 @@
         }
       }
     },
+    "ListSystemLogsResponse": {
+      "type": "object",
+      "properties": {
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/SystemLog"
+          },
+          "title": "日志列表"
+        },
+        "next_page_token": {
+          "type": "string",
+          "title": "下一页令牌"
+        }
+      },
+      "title": "获取系统日志响应"
+    },
     "ListVerificationApplicationsResponse": {
       "type": "object",
       "properties": {
@@ -2749,10 +3609,12 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/VerificationApplication"
-          }
+          },
+          "title": "申请列表"
         },
         "next_page_token": {
-          "type": "string"
+          "type": "string",
+          "title": "下一页令牌"
         }
       },
       "title": "获取认证申请列表响应"
@@ -3057,6 +3919,47 @@
       },
       "title": "分页请求"
     },
+    "Partition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "分区ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "分区名称"
+        },
+        "description": {
+          "type": "string",
+          "title": "分区描述"
+        },
+        "icon_url": {
+          "type": "string",
+          "title": "分区图标"
+        },
+        "sort_order": {
+          "type": "integer",
+          "format": "int32",
+          "title": "排序顺序"
+        },
+        "is_active": {
+          "type": "boolean",
+          "title": "是否启用"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "创建时间戳"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "更新时间戳"
+        }
+      },
+      "title": "分区信息"
+    },
     "Post": {
       "type": "object",
       "properties": {
@@ -3123,7 +4026,7 @@
           "format": "int64"
         },
         "status": {
-          "$ref": "#/definitions/PostStatus",
+          "$ref": "#/definitions/apiCommunityV1PostStatus",
           "title": "新增：帖子状态"
         }
       }
@@ -3198,17 +4101,6 @@
       },
       "title": "帖子预览（卡片视图数据）"
     },
-    "PostStatus": {
-      "type": "string",
-      "enum": [
-        "POST_STATUS_UNSPECIFIED",
-        "POST_STATUS_PUBLISHED",
-        "POST_STATUS_AUDITING",
-        "POST_STATUS_DELETED"
-      ],
-      "default": "POST_STATUS_UNSPECIFIED",
-      "title": "- POST_STATUS_PUBLISHED: 已发布\n - POST_STATUS_AUDITING: 审核中\n - POST_STATUS_DELETED: 已删除"
-    },
     "PrivacySettings": {
       "type": "object",
       "properties": {
@@ -3258,55 +4150,6 @@
       "default": "REFRESH_TYPE_UNSPECIFIED",
       "description": "- REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
       "title": "---------------------------------------------------------\n统一筛选请求设计 (The Unified Request)\n---------------------------------------------------------"
-    },
-    "Report": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "reporter_id": {
-          "type": "string"
-        },
-        "target_id": {
-          "type": "string"
-        },
-        "type": {
-          "$ref": "#/definitions/ReportTargetType"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/definitions/ReportStatus"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
-    },
-    "ReportStatus": {
-      "type": "string",
-      "enum": [
-        "REPORT_STATUS_PENDING",
-        "REPORT_STATUS_RESOLVED",
-        "REPORT_STATUS_REJECTED"
-      ],
-      "default": "REPORT_STATUS_PENDING",
-      "title": "- REPORT_STATUS_REJECTED: 驳回"
-    },
-    "ReportTargetType": {
-      "type": "string",
-      "enum": [
-        "REPORT_TARGET_TYPE_POST",
-        "REPORT_TARGET_TYPE_COMMENT",
-        "REPORT_TARGET_TYPE_USER"
-      ],
-      "default": "REPORT_TARGET_TYPE_POST"
-    },
-    "ResolveReportResponse": {
-      "type": "object"
     },
     "ResourceScene": {
       "type": "string",
@@ -3439,6 +4282,113 @@
       },
       "title": "Staff 成员"
     },
+    "SystemConfigItem": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "title": "配置键"
+        },
+        "value": {
+          "type": "string",
+          "title": "配置值"
+        },
+        "description": {
+          "type": "string",
+          "title": "配置描述"
+        },
+        "type": {
+          "$ref": "#/definitions/ConfigType",
+          "title": "配置类型"
+        },
+        "is_secret": {
+          "type": "boolean",
+          "title": "是否是敏感信息（需要脱敏显示）"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "更新时间戳"
+        }
+      },
+      "title": "系统配置项"
+    },
+    "SystemLog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "日志ID"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "操作用户ID"
+        },
+        "action": {
+          "type": "string",
+          "title": "操作类型"
+        },
+        "resource_type": {
+          "type": "string",
+          "title": "资源类型"
+        },
+        "resource_id": {
+          "type": "string",
+          "title": "资源ID"
+        },
+        "details": {
+          "type": "string",
+          "title": "操作详情"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "操作时间戳"
+        }
+      },
+      "title": "系统日志信息"
+    },
+    "SystemStats": {
+      "type": "object",
+      "properties": {
+        "total_users": {
+          "type": "string",
+          "format": "int64",
+          "title": "总用户数"
+        },
+        "active_users": {
+          "type": "string",
+          "format": "int64",
+          "title": "活跃用户数"
+        },
+        "total_posts": {
+          "type": "string",
+          "format": "int64",
+          "title": "总帖子数"
+        },
+        "total_comments": {
+          "type": "string",
+          "format": "int64",
+          "title": "总评论数"
+        },
+        "total_reports": {
+          "type": "string",
+          "format": "int64",
+          "title": "总举报数"
+        },
+        "pending_reports": {
+          "type": "string",
+          "format": "int64",
+          "title": "待处理举报数"
+        },
+        "pending_applications": {
+          "type": "string",
+          "format": "int64",
+          "title": "待审核认证申请数"
+        }
+      },
+      "title": "系统统计信息"
+    },
     "TargetType": {
       "type": "string",
       "enum": [
@@ -3484,6 +4434,24 @@
     "UpdateSettingsResponse": {
       "type": "object"
     },
+    "UpdateSystemConfigRequest": {
+      "type": "object",
+      "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/SystemConfigItem"
+          },
+          "title": "要更新的配置项"
+        }
+      },
+      "title": "更新系统配置请求"
+    },
+    "UpdateSystemConfigResponse": {
+      "type": "object",
+      "title": "更新系统配置响应"
+    },
     "UpdateUserRoleRequest": {
       "type": "object",
       "properties": {
@@ -3491,15 +4459,19 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "title": "用户ID列表（支持批量操作）"
         },
         "role": {
-          "$ref": "#/definitions/Role"
+          "$ref": "#/definitions/Role",
+          "title": "目标角色"
         }
-      }
+      },
+      "title": "修改用户角色请求"
     },
     "UpdateUserRoleResponse": {
-      "type": "object"
+      "type": "object",
+      "title": "修改用户角色响应"
     },
     "UploadTask": {
       "type": "object",
@@ -3556,104 +4528,141 @@
       "type": "object",
       "properties": {
         "activity": {
-          "$ref": "#/definitions/Activity"
+          "$ref": "#/definitions/Activity",
+          "title": "活动信息"
         }
       },
-      "title": "活动管理"
+      "title": "活动管理请求"
     },
     "UpsertActivityResponse": {
       "type": "object",
       "properties": {
         "activity_id": {
-          "type": "string"
+          "type": "string",
+          "title": "活动ID"
         }
-      }
+      },
+      "title": "活动管理响应"
     },
     "UpsertDepartmentRequest": {
       "type": "object",
       "properties": {
         "department": {
           "$ref": "#/definitions/DepartmentInfo",
-          "title": "包含ID，ID存在则更新，不存在则创建"
+          "title": "部门信息，包含ID，ID存在则更新，不存在则创建"
         }
       },
-      "title": "部门管理"
+      "title": "部门管理请求"
     },
     "UpsertDepartmentResponse": {
       "type": "object",
       "properties": {
         "department_id": {
-          "type": "string"
+          "type": "string",
+          "title": "部门ID"
         }
-      }
+      },
+      "title": "部门管理响应"
     },
     "UpsertHistoryEventRequest": {
       "type": "object",
       "properties": {
         "history_event": {
-          "$ref": "#/definitions/HistoryEvent"
+          "$ref": "#/definitions/HistoryEvent",
+          "title": "历史事件信息"
         }
       },
-      "title": "历史事件管理"
+      "title": "历史事件管理请求"
     },
     "UpsertHistoryEventResponse": {
       "type": "object",
       "properties": {
         "event_id": {
-          "type": "string"
+          "type": "string",
+          "title": "历史事件ID"
         }
-      }
+      },
+      "title": "历史事件管理响应"
     },
     "UpsertMinisterRequest": {
       "type": "object",
       "properties": {
         "minister": {
-          "$ref": "#/definitions/Minister"
+          "$ref": "#/definitions/Minister",
+          "title": "部长信息"
         }
       },
-      "title": "部长管理"
+      "title": "部长管理请求"
     },
     "UpsertMinisterResponse": {
       "type": "object",
       "properties": {
         "minister_id": {
-          "type": "string"
+          "type": "string",
+          "title": "部长ID"
         }
-      }
+      },
+      "title": "部长管理响应"
+    },
+    "UpsertPartitionRequest": {
+      "type": "object",
+      "properties": {
+        "partition": {
+          "$ref": "#/definitions/Partition",
+          "title": "分区信息，包含ID，ID存在则更新，不存在则创建"
+        }
+      },
+      "title": "分区管理请求"
+    },
+    "UpsertPartitionResponse": {
+      "type": "object",
+      "properties": {
+        "partition_id": {
+          "type": "string",
+          "title": "分区ID"
+        }
+      },
+      "title": "分区管理响应"
     },
     "UpsertSponsorRequest": {
       "type": "object",
       "properties": {
         "sponsor": {
-          "$ref": "#/definitions/Sponsor"
+          "$ref": "#/definitions/Sponsor",
+          "title": "赞助者信息"
         }
       },
-      "title": "赞助者管理"
+      "title": "赞助者管理请求"
     },
     "UpsertSponsorResponse": {
       "type": "object",
       "properties": {
         "sponsor_id": {
-          "type": "string"
+          "type": "string",
+          "title": "赞助者ID"
         }
-      }
+      },
+      "title": "赞助者管理响应"
     },
     "UpsertStaffGroupRequest": {
       "type": "object",
       "properties": {
         "staff_group": {
-          "$ref": "#/definitions/StaffGroup"
+          "$ref": "#/definitions/StaffGroup",
+          "title": "Staff 团队信息"
         }
       },
-      "title": "Staff 管理"
+      "title": "Staff 管理请求"
     },
     "UpsertStaffGroupResponse": {
       "type": "object",
       "properties": {
         "group_id": {
-          "type": "string"
+          "type": "string",
+          "title": "团队ID"
         }
-      }
+      },
+      "title": "Staff 管理响应"
     },
     "UserProfile": {
       "type": "object",
@@ -3820,7 +4829,7 @@
         },
         "reject_reason": {
           "type": "string",
-          "title": "驳回原因 (仅当 status 为 REJECTED 时有效)"
+          "title": "驳回原因（仅当 status 为 REJECTED 时有效）"
         },
         "created_at": {
           "type": "string",
