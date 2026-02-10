@@ -4,18 +4,18 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import VideoUpload from '../../notification/website/components/video-upload.svelte';
-	import LinkItem from '../../notification/website/components/link-item.svelte';
-	import HistoryItem from '../../notification/website/components/history-item.svelte';
-	import DepartmentForm from '../../notification/website/components/department-form.svelte';
-	import DepartmentTabs from '../../notification/website/components/department-tabs.svelte';
-	import ActivityForm from '../../notification/website/components/activity-form.svelte';
-	import ActivityTabs from '../../notification/website/components/activity-tabs.svelte';
-	import CharCounter from '../../notification/website/components/char-counter.svelte';
-	import MinisterForm from '../../notification/website/components/minister-form.svelte';
-	import MinisterTabs from '../../notification/website/components/minister-tabs.svelte';
-	import SponsorForm from '../../notification/website/components/sponsor-form.svelte';
-	import StaffForm from '../../notification/website/components/staff-form.svelte';
+	import VideoUpload from './components/video-upload.svelte';
+	import LinkItem from './components/link-item.svelte';
+	import HistoryItem from './components/history-item.svelte';
+	import DepartmentForm from './components/department-form.svelte';
+	import DepartmentTabs from './components/department-tabs.svelte';
+	import ActivityForm from './components/activity-form.svelte';
+	import ActivityTabs from './components/activity-tabs.svelte';
+	import CharCounter from './components/char-counter.svelte';
+	import MinisterForm from './components/minister-form.svelte';
+	import MinisterTabs from './components/minister-tabs.svelte';
+	import SponsorForm from './components/sponsor-form.svelte';
+	import StaffForm from './components/staff-form.svelte';
 	import {
 		uploadVideo,
 		getWebsiteContent,

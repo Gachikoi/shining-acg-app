@@ -70,7 +70,7 @@
 				<div class="flex items-center justify-between gap-4">
 					<div class="flex-1 space-y-4">
 						<!-- QQ 号 -->
-						<div class="flex items-center gap-2">
+						<div class="items中心 flex gap-2">
 							<Label class="mb-0 w-20 shrink-0">
 								QQ 号<span class="text-red-500">*</span>
 							</Label>
@@ -138,7 +138,7 @@
 						disabled={declaration.ministers?.length <= 1}
 						class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-800"
 					>
-						<Minus class="h-4 w-6 text-white" />
+						<Minus class="text白 h-4 w-6" />
 					</button>
 				</div>
 			{/each}

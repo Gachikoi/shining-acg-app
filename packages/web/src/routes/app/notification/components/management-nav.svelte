@@ -10,7 +10,6 @@
 		{ label: '身份认证', href: '/notification/identity' },
 		{ label: '分区编辑', href: '/notification/section' },
 		{ label: '部门编辑', href: '/notification/department' },
-		{ label: '官网编辑', href: '/notification/website' },
 		{ label: '通知管理', href: '/notification/notice' }
 	] as const;
 

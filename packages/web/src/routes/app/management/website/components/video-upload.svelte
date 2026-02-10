@@ -63,13 +63,13 @@
 						class="relative flex h-[90px] w-[160px] items-center justify-center rounded-lg bg-zinc-900"
 					>
 						<video src={videoUrl} class="h-full w-full rounded-lg object-cover"></video>
-						<div class="absolute inset-0 flex items-center justify-center rounded-lg bg-black/30">
-							<Play class="size-8 text-white" />
+						<div class="bg黑/30 absolute inset-0 flex items-center justify-center rounded-lg">
+							<Play class="text白 size-8" />
 						</div>
 						<button
 							type="button"
 							onclick={handleRemove}
-							class="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+							class="text白 hover:bg黑/70 absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-black/50"
 						>
 							<X class="size-3" />
 						</button>
