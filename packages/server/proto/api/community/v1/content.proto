@@ -150,18 +150,18 @@ message ListPostsRequest {
   PostFilter filter=4; // 过滤标签：用于高级筛选功能，支持多选
   int32 need_num=5; // 需要返回的帖子数量
   OrderType order_type=6; // 排序类型："score"（分数排序）、"timestamp"（时间戳排序）
-  oneof cursor{
-    string cursor_score=7; // 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数，order_type=ORDER_TYPE_RECOMMENDED 或 order_type=ORDER_TYPE_HOT
-    string cursor_timestamp=8; // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间，order_type=ORDER_TYPE_LATEST
-  }
+  // 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+  // 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+ // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+  string cursor=3;
 }
 
 message ListPostsResponse {
   repeated PostPreview posts = 1;
-  oneof cursor{
-    string cursor_score=6; // 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
-    string cursor_timestamp=7; // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
-  }
+  // 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+// 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+ // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+  string cursor=2; 
 }
 
 // ---------------------------------------------------------
