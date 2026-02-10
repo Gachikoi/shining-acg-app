@@ -77,7 +77,7 @@
 <div class="space-y-6">
 	<!-- Logo -->
 	<div class="space-y-2">
-		<div class="w-[6rem]">
+		<div class="w-[96px]">
 			<ImageUpload
 				label="logo"
 				required
@@ -94,7 +94,7 @@
 			宣传图<span class="text-red-500">*</span>
 			<span class="ml-2 text-sm font-normal text-zinc-500">比例最好在 16:9 左右</span>
 		</Label>
-		<div class="w-[10.6875rem]">
+		<div class="w-[171px]">
 			<ImageUpload
 				aspectRatio="16:9"
 				imageUrl={department.promotionalImage}
@@ -178,7 +178,7 @@
 				value={department.description}
 				maxlength={200}
 				oninput={(e) => (department.description = e.currentTarget.value)}
-				class="min-h-[7.5rem] pb-16"
+				class="min-h-[120px] pb-16"
 			/>
 			<div class="absolute right-3 bottom-3">
 				<CharCounter current={department.description.length} max={200} />
@@ -217,7 +217,7 @@
 			<Button
 				variant="block"
 				onclick={addDeptLink}
-				class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+				class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
 				<PlusCircle class="size-4" />
 				新增
