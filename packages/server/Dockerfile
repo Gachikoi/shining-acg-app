@@ -29,7 +29,7 @@ RUN cd proto && buf generate
 
 # 4. 编译
 # -s: 去掉符号表; -w: 去掉调试信息。能缩小约 20%-30% 的体积
-RUN go build -ldflags="-s -w" -o /app/server ./cmd/main.go
+RUN go build -ldflags="-s -w" -o /app/server "./cmd"
 
 # 第二阶段：运行阶段
 FROM alpine:3.20
@@ -55,7 +55,7 @@ RUN mkdir -p /app/logs && chown -R shining:shining /app
 USER shining
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 8000
 
 # 启动服务
 ENTRYPOINT ["./server"]
