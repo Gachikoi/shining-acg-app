@@ -249,50 +249,174 @@ func runFFmpegCommandWithWorkingDir(ctx context.Context, workingDir string, args
 //}
 
 // GenerateCover 生成视频封面（截取指定时间的帧）
-func GenerateCover(ctx context.Context, inputPath, outputPath string, timeOffset string) error {
+func GenerateCover(ctx context.Context, inputPath, outputPath string, timeOffset string, targetWidth, targetHeight int) error {
 	// 默认截取第一秒
 	if timeOffset == "" {
 		timeOffset = "00:00:01"
 	}
 
-	args := []string{
+	// 获取视频原始尺寸信息
+	meta, err := GetMeta(ctx, inputPath)
+	if err != nil {
+		return err
+	}
+
+	var args []string
+	if targetWidth > 0 && targetHeight > 0 {
+		originalWidth, originalHeight := meta.Width, meta.Height
+
+		if originalWidth <= targetWidth && originalHeight <= targetHeight {
+			// 原始尺寸较小，直接缩放
+			args = append(args, "-vf", fmt.Sprintf("scale=%d:%d", targetWidth, targetHeight))
+		} else {
+			// 计算裁剪参数
+			var cropArgs string
+			if originalWidth > originalHeight {
+				// 宽图：保持高度，裁剪宽度
+				cropWidth := originalHeight
+				cropX := (originalWidth - cropWidth) / 2
+				cropArgs = fmt.Sprintf("crop=%d:%d:%d:0,scale=%d:%d", cropWidth, originalHeight, cropX, targetWidth, targetHeight)
+			} else if originalHeight > originalWidth {
+				// 高图：保持宽度，裁剪高度
+				cropHeight := originalWidth
+				cropY := (originalHeight - cropHeight) / 2
+				cropArgs = fmt.Sprintf("crop=%d:%d:0:%d,scale=%d:%d", originalWidth, cropHeight, cropY, targetWidth, targetHeight)
+			} else {
+				// 正方形：直接缩放
+				cropArgs = fmt.Sprintf("scale=%d:%d", targetWidth, targetHeight)
+			}
+
+			args = append(args, "-vf", cropArgs)
+		}
+	} else {
+		// 默认缩放
+		args = append(args, "-vf", "scale=-2:720")
+	}
+
+	// 基础参数
+	args = append([]string{
 		"-i", inputPath,
 		"-ss", timeOffset,
 		"-vframes", "1",
-		"-vf", "scale=-2:720", // 封面图通常不需要特别高的配置，这里暂时硬编码，也可以提取配置
 		"-q:v", "2",
-		outputPath,
-	}
+	}, args...)
+
+	// 输出文件
+	args = append(args, outputPath)
 
 	return runFFmpegCommand(ctx, args, nil)
 }
 
 // CompressImage 压缩图片为 webp 格式
-// 如果 width 或 height 为 0，则保持宽高比
+// 如果 width 和 height 都 >0，则裁剪为正方形
 func CompressImage(ctx context.Context, inputPath, outputPath string, targetWidth, targetHeight int) error {
-	var scaleFilter string
+	var args []string
+
 	if targetWidth > 0 && targetHeight > 0 {
-		// 保持宽高比，按最小边缩放，避免拉伸
-		scaleFilter = fmt.Sprintf("scale='if(gt(iw,ih),%d,-1)':'if(gt(iw,ih),-1,%d)'", targetWidth, targetHeight)
+		// 获取图片原始尺寸
+		meta, err := GetImageMeta(ctx, inputPath)
+		if err != nil {
+			return err
+		}
+
+		originalWidth, originalHeight := meta.Width, meta.Height
+
+		if originalWidth <= targetWidth && originalHeight <= targetHeight {
+			// 原始尺寸较小，直接缩放
+			args = append(args, "-vf", fmt.Sprintf("scale=%d:%d", targetWidth, targetHeight))
+		} else {
+			// 计算裁剪参数
+			var cropArgs string
+			if originalWidth > originalHeight {
+				// 宽图：保持高度，裁剪宽度
+				cropWidth := originalHeight
+				cropX := (originalWidth - cropWidth) / 2
+				cropArgs = fmt.Sprintf("crop=%d:%d:%d:0,scale=%d:%d", cropWidth, originalHeight, cropX, targetWidth, targetHeight)
+			} else if originalHeight > originalWidth {
+				// 高图：保持宽度，裁剪高度
+				cropHeight := originalWidth
+				cropY := (originalHeight - cropHeight) / 2
+				cropArgs = fmt.Sprintf("crop=%d:%d:0:%d,scale=%d:%d", originalWidth, cropHeight, cropY, targetWidth, targetHeight)
+			} else {
+				// 正方形：直接缩放
+				cropArgs = fmt.Sprintf("scale=%d:%d", targetWidth, targetHeight)
+			}
+
+			args = append(args, "-vf", cropArgs)
+		}
 	} else if targetWidth > 0 {
-		scaleFilter = fmt.Sprintf("scale=%d:-2", targetWidth)
+		// 只指定宽度，保持比例缩放
+		args = append(args, "-vf", fmt.Sprintf("scale=%d:-2", targetWidth))
 	} else if targetHeight > 0 {
-		scaleFilter = fmt.Sprintf("scale=-2:%d", targetHeight)
-	} else {
-		// 不改变尺寸，只压缩质量
-		scaleFilter = ""
+		// 只指定高度，保持比例缩放
+		args = append(args, "-vf", fmt.Sprintf("scale=-2:%d", targetHeight))
 	}
+
+	args = append([]string{
+		"-i", inputPath,
+		"-q:v", "80",
+	}, args...)
+
+	args = append(args, outputPath)
+
+	return runFFmpegCommand(ctx, args, nil)
+}
+
+// CropImage 裁剪图片为指定宽高比（3:4），自适应保留核心内容
+func CropImage(ctx context.Context, inputPath, outputPath string, targetWidth, targetHeight int) error {
+	// 首先获取图片原始尺寸
+	meta, err := GetImageMeta(ctx, inputPath)
+	if err != nil {
+		return err
+	}
+
+	// 检查原始尺寸是否小于目标尺寸，如果是则直接缩放
+	if meta.Width < targetWidth || meta.Height < targetHeight {
+		// 直接缩放，不裁剪
+		args := []string{
+			"-i", inputPath,
+			"-q:v", "80",
+			"-vf", fmt.Sprintf("scale=%d:%d", targetWidth, targetHeight),
+			outputPath,
+		}
+		return runFFmpegCommand(ctx, args, nil)
+	}
+
+	// 计算裁剪参数
+	var cropFilter string
+	originalAspect := float64(meta.Width) / float64(meta.Height)
+	targetAspect := float64(targetWidth) / float64(targetHeight) // 3:4 = 0.75
+
+	if originalAspect > targetAspect {
+		// 原始图片更宽，需要裁剪宽度
+		cropWidth := int(float64(meta.Height) * targetAspect)
+		xOffset := (meta.Width - cropWidth) / 2
+		cropFilter = fmt.Sprintf("crop=%d:%d:%d:0", cropWidth, meta.Height, xOffset)
+	} else if originalAspect < targetAspect {
+		// 原始图片更高，需要裁剪高度
+		cropHeight := int(float64(meta.Width) / targetAspect)
+		yOffset := (meta.Height - cropHeight) / 2
+		cropFilter = fmt.Sprintf("crop=%d:%d:0:%d", meta.Width, cropHeight, yOffset)
+	} else {
+		// 宽高比匹配，不需要裁剪
+		cropFilter = ""
+	}
+
+	// 添加缩放
+	scaleFilter := fmt.Sprintf("scale=%d:%d", targetWidth, targetHeight)
+
+	var filters []string
+	if cropFilter != "" {
+		filters = append(filters, cropFilter)
+	}
+	filters = append(filters, scaleFilter)
 
 	args := []string{
 		"-i", inputPath,
 		"-q:v", "80",
+		"-vf", strings.Join(filters, ","),
+		outputPath,
 	}
-
-	if scaleFilter != "" {
-		args = append(args, "-vf", scaleFilter)
-	}
-
-	args = append(args, outputPath)
 
 	return runFFmpegCommand(ctx, args, nil)
 }

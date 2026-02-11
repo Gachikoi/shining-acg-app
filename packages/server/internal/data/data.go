@@ -10,29 +10,6 @@ import (
 	"app.shiningacg.club/config"
 )
 
-// Data 数据层实例
-type Data struct {
-	db *gorm.DB
-}
-
-// NewData 创建数据层实例
-//func NewData(cfg *config.Config) (*Data, func(), error) {
-//	db, err := NewDB(cfg)
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//
-//	cleanup := func() {
-//		sqlDB, err := db.DB()
-//		if err != nil {
-//			return
-//		}
-//		sqlDB.Close()
-//	}
-//
-//	return &Data{db: db}, cleanup, nil
-//}
-
 // NewDB 创建数据库连接
 func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(cfg.GetDBConnectionString()), &gorm.Config{

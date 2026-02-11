@@ -2120,6 +2120,71 @@
         ]
       }
     },
+    "/v1/resources/complete-upload": {
+      "post": {
+        "summary": "2. [新增] 完成上传并触发处理 (非常重要！)\n前端上传到 MinIO 成功后，调用此接口。\n后端接收到后，记录数据库，并开启异步转码任务。",
+        "operationId": "ResourceService_CompleteUpload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CompleteUploadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CompleteUploadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      }
+    },
+    "/v1/resources/upload-status/{task_id}": {
+      "get": {
+        "summary": "3. [新增] 查询上传状态\n前端可以通过此接口轮询上传状态，获取最终的资源地址",
+        "operationId": "ResourceService_GetUploadStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetUploadStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "description": "对应 GetUploadTokens 返回的 task_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      }
+    },
     "/v1/resources/upload-tokens": {
       "post": {
         "summary": "获取上传凭证 (支持批量)\n包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)",
@@ -3055,6 +3120,39 @@
         }
       }
     },
+    "CompleteUploadRequest": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "对应 GetUploadTokens 返回的 task_id"
+        },
+        "scene": {
+          "$ref": "#/definitions/ResourceScene",
+          "title": "场景"
+        },
+        "object_key": {
+          "type": "string",
+          "title": "MinIO 中的文件路径 (GetUploadTokens 时后端生成的路径)"
+        }
+      },
+      "title": "[新增] 完成上传请求"
+    },
+    "CompleteUploadResponse": {
+      "type": "object",
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "format": "int64",
+          "title": "数据库生成的 ID"
+        },
+        "status": {
+          "type": "string",
+          "title": "当前状态: \"PROCESSING\" (处理中) 或 \"COMPLETED\" (图片通常立即可用)"
+        }
+      },
+      "title": "[新增] 完成上传响应"
+    },
     "ConfigType": {
       "type": "string",
       "enum": [
@@ -3307,6 +3405,24 @@
           "format": "int32"
         }
       }
+    },
+    "GetUploadStatusResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/MediaStatus",
+          "title": "媒体状态"
+        },
+        "public_url": {
+          "type": "string",
+          "title": "最终访问地址 (处理后的图片地址)"
+        },
+        "meta": {
+          "$ref": "#/definitions/MediaMeta",
+          "title": "媒体元数据"
+        }
+      },
+      "title": "[新增] 查询上传状态响应"
     },
     "GetUploadTokensRequest": {
       "type": "object",
@@ -3677,30 +3793,84 @@
     "Media": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "title": "雪花 ID"
+        },
         "type": {
-          "type": "string",
-          "title": "\"image\" | \"video\""
+          "$ref": "#/definitions/MediaType",
+          "title": "使用枚举代替字符串"
         },
-        "url": {
+        "bucket": {
           "type": "string",
-          "title": "资源地址"
+          "description": "存储桶：shining-vod",
+          "title": "核心存储标识"
         },
-        "thumbnail": {
+        "object_key": {
           "type": "string",
-          "title": "缩略图（视频用）"
+          "title": "对象路径：videos/2024/01/v001.m3u8"
         },
-        "width": {
+        "meta": {
+          "$ref": "#/definitions/MediaMeta",
+          "title": "元数据 (用 sub-message 保持整洁)"
+        },
+        "status": {
           "type": "integer",
           "format": "int32",
-          "title": "宽"
+          "description": "0:处理中, 1:就绪, 2:违规屏蔽",
+          "title": "状态与权限"
+        }
+      },
+      "title": "媒体资源"
+    },
+    "MediaMeta": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "format": "int32"
         },
         "height": {
           "type": "integer",
+          "format": "int32"
+        },
+        "duration": {
+          "type": "integer",
           "format": "int32",
-          "title": "高"
+          "title": "视频时长（秒）"
+        },
+        "size": {
+          "type": "string",
+          "format": "int64",
+          "title": "文件大小（字节）"
+        },
+        "mime_type": {
+          "type": "string",
+          "title": "video/mp4, image/webp"
         }
-      },
-      "title": "多媒体资源"
+      }
+    },
+    "MediaStatus": {
+      "type": "string",
+      "enum": [
+        "MEDIA_STATUS_UNSPECIFIED",
+        "MEDIA_STATUS_PROCESSING",
+        "MEDIA_STATUS_COMPLETED",
+        "MEDIA_STATUS_BLOCKED",
+        "MEDIA_STATUS_FAILED"
+      ],
+      "default": "MEDIA_STATUS_UNSPECIFIED",
+      "description": "- MEDIA_STATUS_UNSPECIFIED: 未指定\n - MEDIA_STATUS_PROCESSING: 处理中\n - MEDIA_STATUS_COMPLETED: 已完成\n - MEDIA_STATUS_BLOCKED: 违规屏蔽\n - MEDIA_STATUS_FAILED: 处理失败",
+      "title": "媒体状态枚举"
+    },
+    "MediaType": {
+      "type": "string",
+      "enum": [
+        "MEDIA_TYPE_UNSPECIFIED",
+        "MEDIA_TYPE_IMAGE",
+        "MEDIA_TYPE_VIDEO"
+      ],
+      "default": "MEDIA_TYPE_UNSPECIFIED"
     },
     "Minister": {
       "type": "object",
@@ -4159,10 +4329,11 @@
         "SCENE_POST_IMAGE",
         "SCENE_POST_VIDEO",
         "SCENE_COMMENT_IMAGE",
-        "SCENE_CHAT_FILE"
+        "SCENE_CHAT_FILE",
+        "SCENE_POST_COVER"
       ],
       "default": "SCENE_UNSPECIFIED",
-      "title": "- SCENE_USER_AVATAR: 用户头像 (限制如 <2MB, 正方形)\n - SCENE_POST_IMAGE: 帖子图片 (限制如 <10MB)\n - SCENE_POST_VIDEO: 帖子视频 (限制如 <500MB)\n - SCENE_COMMENT_IMAGE: 评论图片\n - SCENE_CHAT_FILE: 私聊文件 (可能需要私有读权限)"
+      "title": "- SCENE_USER_AVATAR: 用户头像 (限制如 <2MB, 正方形)\n - SCENE_POST_IMAGE: 帖子图片 (限制如 <10MB)\n - SCENE_POST_VIDEO: 帖子视频 (限制如 <500MB)\n - SCENE_COMMENT_IMAGE: 评论图片\n - SCENE_CHAT_FILE: 私聊文件 (可能需要私有读权限)\n - SCENE_POST_COVER: 帖子封面 (限制如 <10MB)"
     },
     "Role": {
       "type": "string",

@@ -508,6 +508,35 @@ export type Comment = {
 };
 
 /**
+ * [新增] 完成上传请求
+ */
+export type CompleteUploadRequest = {
+    /**
+     * 对应 GetUploadTokens 返回的 task_id
+     */
+    task_id?: string;
+    scene?: ResourceScene;
+    /**
+     * MinIO 中的文件路径 (GetUploadTokens 时后端生成的路径)
+     */
+    object_key?: string;
+};
+
+/**
+ * [新增] 完成上传响应
+ */
+export type CompleteUploadResponse = {
+    /**
+     * 数据库生成的 ID
+     */
+    resource_id?: string;
+    /**
+     * 当前状态: "PROCESSING" (处理中) 或 "COMPLETED" (图片通常立即可用)
+     */
+    status?: string;
+};
+
+/**
  * 配置类型枚举
  *
  * - CONFIG_TYPE_STRING: 字符串
@@ -698,6 +727,18 @@ export type GetUnreadCountResponse = {
     category_comment?: number;
     category_follow?: number;
     category_system?: number;
+};
+
+/**
+ * [新增] 查询上传状态响应
+ */
+export type GetUploadStatusResponse = {
+    status?: MediaStatus;
+    /**
+     * 最终访问地址 (处理后的图片地址)
+     */
+    public_url?: string;
+    meta?: MediaMeta;
 };
 
 export type GetUploadTokensRequest = {
@@ -911,30 +952,62 @@ export type MarkReadResponse = {
 };
 
 /**
- * 多媒体资源
+ * 媒体资源
  */
 export type Media = {
     /**
-     * "image" | "video"
+     * 雪花 ID
      */
-    type?: string;
+    id?: string;
+    type?: MediaType;
     /**
-     * 资源地址
+     * 核心存储标识
+     *
+     * 存储桶：shining-vod
      */
-    url?: string;
+    bucket?: string;
     /**
-     * 缩略图（视频用）
+     * 对象路径：videos/2024/01/v001.m3u8
      */
-    thumbnail?: string;
+    object_key?: string;
+    meta?: MediaMeta;
     /**
-     * 宽
+     * 状态与权限
+     *
+     * 0:处理中, 1:就绪, 2:违规屏蔽
      */
-    width?: number;
-    /**
-     * 高
-     */
-    height?: number;
+    status?: number;
 };
+
+export type MediaMeta = {
+    width?: number;
+    height?: number;
+    /**
+     * 视频时长（秒）
+     */
+    duration?: number;
+    /**
+     * 文件大小（字节）
+     */
+    size?: string;
+    /**
+     * video/mp4, image/webp
+     */
+    mime_type?: string;
+};
+
+/**
+ * 媒体状态枚举
+ *
+ * - MEDIA_STATUS_UNSPECIFIED: 未指定
+ * - MEDIA_STATUS_PROCESSING: 处理中
+ * - MEDIA_STATUS_COMPLETED: 已完成
+ * - MEDIA_STATUS_BLOCKED: 违规屏蔽
+ * - MEDIA_STATUS_FAILED: 处理失败
+ */
+export type MediaStatus = 'MEDIA_STATUS_UNSPECIFIED' | 'MEDIA_STATUS_PROCESSING' | 'MEDIA_STATUS_COMPLETED' | 'MEDIA_STATUS_BLOCKED' | 'MEDIA_STATUS_FAILED';
+
+export type MediaType = 'MEDIA_TYPE_UNSPECIFIED' | 'MEDIA_TYPE_IMAGE' | 'MEDIA_TYPE_VIDEO';
 
 /**
  * 部长
@@ -1290,8 +1363,9 @@ export type RefreshType = 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' 
  * - SCENE_POST_VIDEO: 帖子视频 (限制如 <500MB)
  * - SCENE_COMMENT_IMAGE: 评论图片
  * - SCENE_CHAT_FILE: 私聊文件 (可能需要私有读权限)
+ * - SCENE_POST_COVER: 帖子封面 (限制如 <10MB)
  */
-export type ResourceScene = 'SCENE_UNSPECIFIED' | 'SCENE_USER_AVATAR' | 'SCENE_POST_IMAGE' | 'SCENE_POST_VIDEO' | 'SCENE_COMMENT_IMAGE' | 'SCENE_CHAT_FILE';
+export type ResourceScene = 'SCENE_UNSPECIFIED' | 'SCENE_USER_AVATAR' | 'SCENE_POST_IMAGE' | 'SCENE_POST_VIDEO' | 'SCENE_COMMENT_IMAGE' | 'SCENE_CHAT_FILE' | 'SCENE_POST_COVER';
 
 /**
  * 用户角色枚举
@@ -3521,6 +3595,61 @@ export type CommentServiceCreateCommentResponses = {
 };
 
 export type CommentServiceCreateCommentResponse = CommentServiceCreateCommentResponses[keyof CommentServiceCreateCommentResponses];
+
+export type ResourceServiceCompleteUploadData = {
+    body: CompleteUploadRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/resources/complete-upload';
+};
+
+export type ResourceServiceCompleteUploadErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type ResourceServiceCompleteUploadError = ResourceServiceCompleteUploadErrors[keyof ResourceServiceCompleteUploadErrors];
+
+export type ResourceServiceCompleteUploadResponses = {
+    /**
+     * A successful response.
+     */
+    200: CompleteUploadResponse;
+};
+
+export type ResourceServiceCompleteUploadResponse = ResourceServiceCompleteUploadResponses[keyof ResourceServiceCompleteUploadResponses];
+
+export type ResourceServiceGetUploadStatusData = {
+    body?: never;
+    path: {
+        /**
+         * 对应 GetUploadTokens 返回的 task_id
+         */
+        task_id: string;
+    };
+    query?: never;
+    url: '/v1/resources/upload-status/{task_id}';
+};
+
+export type ResourceServiceGetUploadStatusErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type ResourceServiceGetUploadStatusError = ResourceServiceGetUploadStatusErrors[keyof ResourceServiceGetUploadStatusErrors];
+
+export type ResourceServiceGetUploadStatusResponses = {
+    /**
+     * A successful response.
+     */
+    200: GetUploadStatusResponse;
+};
+
+export type ResourceServiceGetUploadStatusResponse = ResourceServiceGetUploadStatusResponses[keyof ResourceServiceGetUploadStatusResponses];
 
 export type ResourceServiceGetUploadTokensData = {
     body: GetUploadTokensRequest;

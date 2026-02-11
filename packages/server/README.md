@@ -39,6 +39,82 @@ Client (gRPC/HTTP) → Gateway (Connect-Go) → Monolithic Service
 - **数据库**：PostgreSQL 15+
 - **缓存**：Redis（计划）
 - **存储**：Cloudflare R2（计划）
+- **资源处理**：FFmpeg v6.0+
+- **对象存储**：S3 兼容存储（MinIO/Cloudflare R2）
+
+### 核心资源服务架构
+
+#### Media 资源类型
+```proto
+// 媒体资源
+message Media {
+  string id = 1;               // 雪花 ID
+  MediaType type = 2;         // 媒体类型：IMAGE/VIDEO
+  string bucket = 3;          // 存储桶
+  string object_key = 4;      // 对象路径
+  MediaMeta meta = 5;         // 元数据（宽高、大小、MIME类型）
+  int32 status = 6;           // 状态：0-处理中/1-已完成/2-违规屏蔽/4-处理失败
+}
+```
+
+#### 资源处理流程
+
+**1. 图片处理**
+- **场景分类**：
+  - 头像：自动裁剪为 256x256 正方形
+  - 帖子图片：压缩为 WebP 格式（最大宽高 1080x1080）
+  - 评论图片：压缩为 WebP 格式（最大宽高 800x800）
+  - 帖子封面：自动裁剪为 3:4 比例（600x800）
+- **核心功能**：自动缩放、格式转换、居中裁剪
+- **支持格式**：JPEG、PNG、WebP
+
+**2. 视频处理**
+- **转码**：H.264 编码，HLS 分片（m4s）
+- **分辨率**：720p（1280x720），可配置
+- **码率**：视频 1500k，音频 128k
+- **分片时长**：6秒
+- **格式**：MP4（原始）→ HLS（m3u8 + m4s）
+
+**3. FFmpeg 处理链**
+- **图片压缩**：`ffmpeg -i input -q:v 80 -vf "scale=1080:-2" output.webp`
+- **头像裁剪**：`ffmpeg -i input -vf "crop=w:h:x:y,scale=256:256" output.webp`
+- **视频转码**：`ffmpeg -i input -c:v libx264 -c:a aac -hls_time 6 -hls_list_size 0 output.m3u8`
+
+#### 关键配置参数
+
+**图片处理配置**：
+```go
+// 头像尺寸
+const AvatarWidth = 256
+const AvatarHeight = 256
+
+// 帖子图片尺寸
+const PostImageMaxWidth = 1080
+const PostImageMaxHeight = 1080
+
+// 评论图片尺寸
+const CommentImageMaxWidth = 800
+const CommentImageMaxHeight = 800
+
+// 帖子封面尺寸（3:4）
+const CoverWidth = 600
+const CoverHeight = 800
+```
+
+**视频处理配置**：
+```go
+// 转码质量
+const VideoBitrate = "1500k"
+const AudioBitrate = "128k"
+const TargetHeight = 720 // 720p
+
+// HLS 配置
+const HLSTime = 6 // 分片时长（秒）
+const HLSListSize = 0 // 保留所有分片
+
+// 工作池大小
+const WorkerPoolSize = 4 // 并发处理数
+```
 
 ## 快速开始
 
@@ -47,30 +123,7 @@ Client (gRPC/HTTP) → Gateway (Connect-Go) → Monolithic Service
 - **开发环境**：Go 1.25.3 或更高版本、Buf CLI、PostgreSQL 15+
 - **部署环境**：Docker 20+、Docker Compose 2+
 
-### 快速启动（Docker Compose）
-
-```bash
-# 1. 克隆代码
-git clone <repo-url>
-cd packages/server
-
-# 2. 使用 Docker Compose 启动所有服务
-docker-compose up -d
-
-# 3. 检查服务状态
-docker-compose ps
-
-# 4. 查看服务日志
-docker-compose logs -f <service-name>
-
-# 5. 停止服务
-docker-compose down
-
-# 6. 停止服务并清理数据卷
-docker-compose down -v
-```
-
-### 开发模式（本地启动）
+### 本地调试启动
 
 ```bash
 # 1. 克隆代码
@@ -83,19 +136,81 @@ go mod tidy
 # 3. 生成代码
 buf generate
 
-# 4. 配置数据库（需要本地安装 PostgreSQL 和 Redis）
-# 请参考 DEVELOPMENT.md 中的详细说明
+# 4. 启动依赖服务
+docker-compose up -d
 
 # 5. 启动服务
-cd cmd
-go run main.go
+go run ./cmd
 ```
 
-### 测试 API
+### 资源服务 API
 
-服务同时支持 **ConnectRPC 标准路径** 和 **RESTful API 路径**：
+服务提供完整的资源处理 API，支持图片、视频的上传和处理：
 
-**使用 RESTful API（推荐）：**
+**1. 获取上传凭证**
+```bash
+# 获取图片上传凭证
+curl -X POST http://localhost:9000/api.common.v1.ResourceService/GetUploadTokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scene": 1,
+    "tasks": [{"filename": "avatar.jpg", "size_bytes": 1048576, "mime_type": "image/jpeg"}]
+  }'
+
+# 获取视频上传凭证
+curl -X POST http://localhost:9000/api.common.v1.ResourceService/GetUploadTokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scene": 3,
+    "tasks": [{"filename": "video.mp4", "size_bytes": 10485760, "mime_type": "video/mp4"}]
+  }'
+```
+
+**2. 完成上传**
+```bash
+curl -X POST http://localhost:9000/api.common.v1.ResourceService/CompleteUpload \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "2021626092003004416",
+    "scene": 1,
+    "object_key": "image/avatar/2021626092003004416.webp"
+  }'
+```
+
+**3. 查询处理状态**
+```bash
+curl -X GET "http://localhost:9000/api.common.v1.ResourceService/GetUploadStatus?task_id=2021626092003004416"
+```
+
+**场景枚举值：**
+- 0: SCENE_UNSPECIFIED（未指定）
+- 1: SCENE_USER_AVATAR（用户头像）
+- 2: SCENE_POST_IMAGE（帖子图片）
+- 3: SCENE_POST_VIDEO（帖子视频）
+- 4: SCENE_COMMENT_IMAGE（评论图片）
+- 5: SCENE_CHAT_FILE（私聊文件）
+- 6: SCENE_POST_COVER（帖子封面）
+
+### 测试工具
+
+项目提供了完整的测试工具：
+
+```bash
+# 运行集成测试
+go run test/test_upload.go
+```
+
+**功能测试：**
+1. 本地文件路径输入
+2. 场景选择
+3. 预签名 URL 获取
+4. 文件上传
+5. 异步处理通知
+6. 状态轮询
+
+**测试图片/视频要求：**
+- 测试图片：test/test.jpg（1448x2048）
+- 测试视频：test/test.mp4（建议 < 50MB）
 
 ```bash
 # 登录 (RESTful)
@@ -154,10 +269,22 @@ server/
 ├── cmd/                            # 服务入口
 │   └── main.go                   # 主入口文件
 ├── internal/                       # 内部代码
-│   └── service/                   # 业务逻辑实现
-│       ├── auth.go               # 认证服务实现
-│       └── user.go               # 用户服务实现
-├── pkg/                           # 公共库（拦截器、工具等）
+│   ├── biz/                      # 业务逻辑（Use Case）
+│   │   └── resource.go          # 资源处理核心逻辑
+│   ├── service/                   # 业务实现
+│   │   ├── auth.go               # 认证服务实现
+│   │   ├── user.go               # 用户服务实现
+│   │   └── resource.go          # 资源服务 API 实现
+│   └── data/                     # 数据访问层
+│       └── resource.go          # 资源存储库实现
+├── pkg/                           # 公共库
+│   ├── ffmpeg/                  # FFmpeg 音视频处理
+│   │   ├── ffmpeg.go           # 核心处理函数
+│   │   └── worker.go           # 工作池实现
+│   ├── pathutil/               # 文件路径工具
+│   │   └── pathutil.go        # 路径生成和管理
+│   └── s3/                     # S3 对象存储
+│       └── s3.go              # S3 客户端实现
 ├── doc/                           # 文档
 ├── build/                         # 构建脚本和配置
 ├── go.mod                         # Go 模块依赖

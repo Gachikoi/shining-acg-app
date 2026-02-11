@@ -21,3 +21,7 @@ oss:
 # Snowflake 雪花算法配置
 snowflake:
   node_id: 1
+
+ffmpeg:
+  max_workers: 4
+  queue_size: 100
