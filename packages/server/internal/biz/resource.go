@@ -71,6 +71,8 @@ func (uc *ResourceUseCase) CreateUploadTask(ctx context.Context, scene commonv1.
 		category = pathutil.TypeImageCommon
 	case commonv1.ResourceScene_SCENE_POST_VIDEO:
 		category = pathutil.TypeVideoRaw
+	case commonv1.ResourceScene_SCENE_POST_COVER:
+		category = pathutil.TypeImageCover
 	}
 
 	objectKey := pathutil.GenerateObjectKey(mediaID, category, task.Filename)
@@ -105,7 +107,8 @@ func (uc *ResourceUseCase) CompleteUpload(ctx context.Context, req *commonv1.Com
 	switch req.Scene {
 	case commonv1.ResourceScene_SCENE_USER_AVATAR,
 		commonv1.ResourceScene_SCENE_POST_IMAGE,
-		commonv1.ResourceScene_SCENE_COMMENT_IMAGE:
+		commonv1.ResourceScene_SCENE_COMMENT_IMAGE,
+		commonv1.ResourceScene_SCENE_POST_COVER:
 		mediaType = commonv1.MediaType_MEDIA_TYPE_IMAGE
 	case commonv1.ResourceScene_SCENE_POST_VIDEO:
 		mediaType = commonv1.MediaType_MEDIA_TYPE_VIDEO
@@ -283,6 +286,39 @@ func (uc *ResourceUseCase) processImage(ctx context.Context, mediaID int64, obje
 		if err != nil {
 			return fmt.Errorf("failed to update object key: %w", err)
 		}
+
+	case commonv1.ResourceScene_SCENE_POST_COVER:
+		// 封面需要裁剪为 3:4 比例
+		compressedPath := filepath.Join(tempDir, fmt.Sprintf("image_%d_compressed.webp", mediaID))
+
+		// 使用 WorkerPool 执行图片裁剪压缩
+		const targetWidth = 600
+		const targetHeight = 800
+		resultChan, err := uc.pool.Submit(func() error {
+			return ffmpeg.CropImage(ctx, localPath, compressedPath, targetWidth, targetHeight)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to submit crop task: %w", err)
+		}
+
+		// 等待任务完成
+		if err = <-resultChan; err != nil {
+			return fmt.Errorf("failed to crop cover: %w", err)
+		}
+		defer os.Remove(compressedPath)
+
+		// 上传处理后的封面
+		coverObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageCover, "cover.webp")
+		err = uc.s3.UploadFile(ctx, coverObjectKey, compressedPath, "image/webp")
+		if err != nil {
+			return fmt.Errorf("failed to upload cover: %w", err)
+		}
+
+		// 更新为处理后的封面地址
+		err = uc.repo.UpdateObjectKey(ctx, mediaID, coverObjectKey)
+		if err != nil {
+			return fmt.Errorf("failed to update object key: %w", err)
+		}
 	}
 
 	err = uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusCompleted))
@@ -332,24 +368,6 @@ func (uc *ResourceUseCase) processVideo(ctx context.Context, mediaID int64, obje
 	}
 	defer os.RemoveAll(outputDir)
 
-	// 生成封面
-	coverPath := filepath.Join(tempDir, fmt.Sprintf("video_%d_cover.webp", mediaID))
-	resultChan, err = uc.pool.Submit(func() error {
-		return ffmpeg.GenerateCover(ctx, localPath, coverPath, "")
-	})
-	if err != nil {
-		err = fmt.Errorf("failed to submit cover generation task: %w", err)
-		uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusFailed))
-		return err
-	}
-
-	if err = <-resultChan; err != nil {
-		err = fmt.Errorf("failed to generate cover: %w", err)
-		uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusFailed))
-		return err
-	}
-	defer os.Remove(coverPath)
-
 	// 上传转码后的文件
 	vodDir := pathutil.GetVodDirectory(mediaID)
 	err = uc.s3.UploadDirectory(ctx, outputDir, vodDir)
@@ -359,16 +377,7 @@ func (uc *ResourceUseCase) processVideo(ctx context.Context, mediaID int64, obje
 		return err
 	}
 
-	// 上传封面
-	coverObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageCover, "cover.webp")
-	err = uc.s3.UploadFile(ctx, coverObjectKey, coverPath, "image/webp")
-	if err != nil {
-		err = fmt.Errorf("failed to upload cover: %w", err)
-		uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusFailed))
-		return err
-	}
-
-	// 更新数据库
+	// 更新数据库 - 视频记录
 	hlsObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeVideoVod, "index.m3u8")
 	err = uc.repo.UpdateObjectKey(ctx, mediaID, hlsObjectKey)
 	if err != nil {
@@ -377,7 +386,7 @@ func (uc *ResourceUseCase) processVideo(ctx context.Context, mediaID int64, obje
 		return err
 	}
 
-	// 保存视频元数据
+	// 保存视频元数据（可以考虑在 meta 中存储 cover_id）
 	err = uc.repo.UpdateMeta(ctx, mediaID, &commonv1.MediaMeta{
 		Width:    int32(meta.Width),
 		Height:   int32(meta.Height),

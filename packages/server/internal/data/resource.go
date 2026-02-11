@@ -25,8 +25,6 @@ type Media struct {
 	StorageType string             `gorm:"type:varchar(20);not null;default:'minio'" json:"storage_type"`
 	Bucket      string             `gorm:"type:varchar(100);not null" json:"bucket"`
 	ObjectKey   string             `gorm:"type:text;not null" json:"object_key"`
-	FileSize    int64              `gorm:"type:bigint;not null;default:0" json:"file_size"`
-	MimeType    string             `gorm:"type:varchar(100);not null;default:''" json:"mime_type"`
 	Status      int32              `gorm:"type:integer;not null;default:0" json:"status"`
 	Meta        json.RawMessage    `gorm:"type:jsonb;not null;default:'{}'" json:"meta"`
 }

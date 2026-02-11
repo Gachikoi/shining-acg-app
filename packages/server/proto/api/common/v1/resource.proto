@@ -54,6 +54,7 @@ enum ResourceScene {
   SCENE_POST_VIDEO = 3;    // 帖子视频 (限制如 <500MB)
   SCENE_COMMENT_IMAGE = 4; // 评论图片
   SCENE_CHAT_FILE = 5;     // 私聊文件 (可能需要私有读权限)
+  SCENE_POST_COVER = 6;    // 帖子封面 (限制如 <10MB)
 }
 
 message UploadTask {
