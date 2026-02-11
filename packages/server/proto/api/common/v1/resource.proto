@@ -3,6 +3,16 @@ syntax = "proto3";
 package api.common.v1;
 
 import "google/api/annotations.proto";
+import "api/common/v1/common.proto";
+
+// 媒体状态枚举
+enum MediaStatus {
+  MEDIA_STATUS_UNSPECIFIED = 0; // 未指定
+  MEDIA_STATUS_PROCESSING = 1;  // 处理中
+  MEDIA_STATUS_COMPLETED = 2;   // 已完成
+  MEDIA_STATUS_BLOCKED = 3;     // 违规屏蔽
+  MEDIA_STATUS_FAILED = 4;      // 处理失败
+}
 
 service ResourceService {
   // 获取上传凭证 (支持批量)
@@ -21,6 +31,14 @@ service ResourceService {
     option (google.api.http) = {
       post: "/v1/resources/complete-upload"
       body: "*"
+    };
+  }
+
+  // 3. [新增] 查询上传状态
+  // 前端可以通过此接口轮询上传状态，获取最终的资源地址
+  rpc GetUploadStatus(GetUploadStatusRequest) returns (GetUploadStatusResponse) {
+    option (google.api.http) = {
+      get: "/v1/resources/upload-status/{task_id}"
     };
   }
 }
@@ -81,4 +99,16 @@ message CompleteUploadRequest {
 message CompleteUploadResponse {
   int64 resource_id = 1;   // 数据库生成的 ID
   string status = 2;       // 当前状态: "PROCESSING" (处理中) 或 "COMPLETED" (图片通常立即可用)
+}
+
+// [新增] 查询上传状态请求
+message GetUploadStatusRequest {
+  string task_id = 1;      // 对应 GetUploadTokens 返回的 task_id
+}
+
+// [新增] 查询上传状态响应
+message GetUploadStatusResponse {
+  MediaStatus status = 1;     // 媒体状态
+  string public_url = 2;      // 最终访问地址 (处理后的图片地址)
+  MediaMeta meta = 3;         // 媒体元数据
 }

@@ -49,6 +49,7 @@ packages/harmonyos/.hvigor/
 
 # IDE
 .vscode/
+.claude/
 .idea/
 *.swp
 *.swo
@@ -70,3 +71,6 @@ logs/
 # Test coverage
 coverage/
 *.lcov
+
+# TestObj
+test.*
