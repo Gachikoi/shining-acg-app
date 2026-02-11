@@ -1,0 +1,23 @@
+# 服务器配置
+server:
+  port: 8000
+
+# 数据库配置（与 docker-compose 保持一致）
+db:
+  host: localhost
+  port: 5433
+  user: postgres
+  password: password
+  name: shining_db
+
+# OSS 对象存储配置（与 docker-compose 保持一致）
+oss:
+  endpoint: localhost:9000
+  access_key: shining
+  secret_key: shiningoss
+  bucket: shining-bucket
+  use_ssl: false
+
+# Snowflake 雪花算法配置
+snowflake:
+  node_id: 1

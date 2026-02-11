@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="">
+<head>
+    <title>HLS fMP4 Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+<video id="video" controls style="width: 800px;"></video>
+<script>
+    var video = document.getElementById('video');
+    var videoSrc = 'http://localhost:9000/shining-bucket/video/vod/2021599100134232064/index.m3u8';
+
+    if (Hls.isSupported()) {
+        var hls = new Hls();
+        hls.loadSource(videoSrc);
+        hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // 针对 Safari 的原生支持
+        video.src = videoSrc;
+    }
+</script>
+</body>
+</html>

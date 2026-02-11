@@ -1,41 +1,43 @@
 name: shining-acg-dev
 
 services:
-  api-dev:
-    build: .
-    container_name: api-dev
-    restart: unless-stopped
-
-    # 环境变量：建议使用 .env 文件管理敏感信息
-    # 这里列出的是连接 postgres-dev 所需的关键变量
-    environment:
-      - APP_ENV=development
-      - HTTP_PORT=8000
-
-      # 数据库连接：host 直接写 postgres-dev 服务名
-      - DB_HOST=postgres-dev
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - DB_NAME=${POSTGRES_DB:-shining_db}
-
-      # 新增 MinIO 连接配置
-      - OSS_ENDPOINT=minio-dev:9000
-      - OSS_ACCESS_KEY=${MINIO_ROOT_USER:-shining}
-      - OSS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-shiningoss}
-      - OSS_USE_SSL=false
-      - OSS_BUCKET=shining-bucket
-
-    # 网络配置：同时加入网关网络和内部网络
-    networks:
-      - dev_internal     # 用于连接数据库
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres-dev:
-        condition: service_healthy
-      minio-dev:
-        condition: service_healthy
+#  api-dev:
+#    build: .
+#    container_name: api-dev
+#    restart: unless-stopped
+#
+#    # 环境变量：建议使用 .env 文件管理敏感信息
+#    # 这里列出的是连接 postgres-dev 所需的关键变量
+#    environment:
+#      - APP_ENV=development
+#      - HTTP_PORT=8000
+#
+#      # 数据库连接：host 直接写 postgres-dev 服务名
+#      - DB_HOST=postgres-dev
+#      - DB_PORT=5432
+#      - DB_USER=${POSTGRES_USER:-postgres}
+#      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+#      - DB_NAME=${POSTGRES_DB:-shining_db}
+#
+#      # 新增 MinIO 连接配置
+#      - OSS_ENDPOINT=minio-dev:9000
+#      - OSS_ACCESS_KEY=${MINIO_ROOT_USER:-shining}
+#      - OSS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-shiningoss}
+#      - OSS_USE_SSL=false
+#      - OSS_BUCKET=shining-bucket
+#
+#    # 网络配置：同时加入网关网络和内部网络
+#    networks:
+#      - dev_internal     # 用于连接数据库
+#    ports:
+#      - "8000:8000"
+#    volumes:
+#      - ./config.yaml:/app/config.yaml
+#    depends_on:
+#      postgres-dev:
+#        condition: service_healthy
+#      minio-dev:
+#        condition: service_healthy
 
   # MinIO 对象存储服务
   minio-dev:
@@ -110,6 +112,6 @@ networks:
 # --------------------------------------------------------------------------------
 volumes:
   postgres_data_dev:
-    name: minio_data_dev
+    name: postgres_data_dev
   minio_data_dev:
     name: minio_data_dev
