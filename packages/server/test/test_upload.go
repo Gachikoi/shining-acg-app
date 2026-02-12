@@ -17,7 +17,8 @@ import (
 
 const (
 	BaseURL = "http://localhost:8000"
-	Bucket  = "shining-bucket"
+	//BaseURL = "https://test.api.shiningacg.club:61080"
+	Bucket = "shining-bucket"
 )
 
 // MediaStatus 对应 Proto 中的枚举
@@ -162,6 +163,8 @@ func main() {
 		return
 	}
 	token := tokenResp.Tokens[0]
+	token.UploadUrl = strings.Replace(token.UploadUrl, "http://minio-dev:9000", BaseURL, 1)
+	fmt.Println(token)
 
 	// --- 步骤 2: 上传文件 ---
 	fmt.Printf("\n[步骤 2] 正在上传至 MinIO (%s)...\n", fileInfo.Name())

@@ -40,6 +40,7 @@ func NewSnowflakeNode(cfg *config.Config) (*snowflake.Node, error) {
 func NewS3Client(cfg *config.Config) (*s3.Client, error) {
 	return s3.NewClient(
 		cfg.OSS.Endpoint,
+		cfg.OSS.BaseHost,
 		cfg.OSS.AccessKey,
 		cfg.OSS.SecretKey,
 		cfg.OSS.Bucket,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -14,17 +16,44 @@ import (
 
 // Client 是 MinIO 客户端的封装
 type Client struct {
-	client *minio.Client
-	Bucket string // 改为导出字段
+	client   *minio.Client
+	Bucket   string // 改为导出字段
+	BaseHost string // 新增：用于生成签名的外网域名
 }
 
 // NewClient 初始化 MinIO 客户端
-func NewClient(endpoint, ak, sk, bucket string, useSSL bool) (*Client, error) {
+func NewClient(endpoint, baseHost, ak, sk, bucket string, useSSL bool) (*Client, error) {
 	fmt.Printf("DEBUG: MinIO Init - Endpoint: %s, AK: %s, SK: %s\n", endpoint, ak, sk)
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(ak, sk, ""),
-		Secure: useSSL,
-	})
+
+	var finalEndpoint string
+	var options *minio.Options
+
+	if baseHost != "" {
+		// [核心逻辑]：
+		// 1. 让 SDK 认为 Endpoint 是外网域名（这样签名里的 Host 才是对的）
+		finalEndpoint = baseHost
+
+		// 2. 通过自定义 Transport，强行将该域名的请求转发到内网 endpoint
+		options = &minio.Options{
+			Creds:  credentials.NewStaticV4(ak, sk, ""),
+			Secure: useSSL,
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					// 无论 SDK 想连接什么地址，都拨号到内网真实的 endpoint
+					return (&net.Dialer{}).DialContext(ctx, network, endpoint)
+				},
+			},
+		}
+	} else {
+		finalEndpoint = endpoint
+		options = &minio.Options{
+			Creds:  credentials.NewStaticV4(ak, sk, ""),
+			Secure: useSSL,
+		}
+	}
+
+	client, err := minio.New(finalEndpoint, options)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create minio client: %w", err)
 	}
@@ -43,8 +72,9 @@ func NewClient(endpoint, ak, sk, bucket string, useSSL bool) (*Client, error) {
 	}
 
 	return &Client{
-		client: client,
-		Bucket: bucket,
+		client:   client,
+		Bucket:   bucket,
+		BaseHost: baseHost,
 	}, nil
 }
 

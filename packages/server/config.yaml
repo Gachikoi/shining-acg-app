@@ -13,6 +13,7 @@ db:
 # OSS 对象存储配置（与 docker-compose 保持一致）
 oss:
   endpoint: localhost:9000
+  base_host: test.api.shiningacg.club:61080
   access_key: shining
   secret_key: shiningoss
   bucket: shining-bucket

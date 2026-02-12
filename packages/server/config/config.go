@@ -24,6 +24,7 @@ type Config struct {
 
 	OSS struct {
 		Endpoint  string `mapstructure:"endpoint" yaml:"endpoint"`
+		BaseHost  string `mapstructure:"base_host" yaml:"base_host"` // 外部可访问的基础 URL，用于返回给客户端
 		AccessKey string `mapstructure:"access_key" yaml:"access_key"`
 		SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
 		Bucket    string `mapstructure:"bucket" yaml:"bucket"`
@@ -116,6 +117,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	_ = viper.BindEnv("db.password", "DB_PASSWORD")
 	_ = viper.BindEnv("db.name", "DB_NAME")
 	_ = viper.BindEnv("oss.endpoint", "OSS_ENDPOINT")
+	_ = viper.BindEnv("oss.base_url", "OSS_BASE_URL")
 	_ = viper.BindEnv("oss.access_key", "OSS_ACCESS_KEY")
 	_ = viper.BindEnv("oss.secret_key", "OSS_SECRET_KEY")
 	_ = viper.BindEnv("oss.bucket", "OSS_BUCKET")
@@ -138,6 +140,7 @@ func setDefaultValues() {
 	viper.SetDefault("db.password", "password")
 	viper.SetDefault("db.name", "shining_db")
 	viper.SetDefault("oss.endpoint", "localhost:9000")
+	viper.SetDefault("oss.base_url", "") // 默认空，表示使用 endpoint 作为 base_url
 	viper.SetDefault("oss.access_key", "shining")
 	viper.SetDefault("oss.secret_key", "shiningoss")
 	viper.SetDefault("oss.bucket", "shining-bucket")
