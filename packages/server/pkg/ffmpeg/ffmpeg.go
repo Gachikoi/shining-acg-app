@@ -249,6 +249,7 @@ func runFFmpegCommandWithWorkingDir(ctx context.Context, workingDir string, args
 //}
 
 // GenerateCover 生成视频封面（截取指定时间的帧）
+// 如果 targetWidth 或 targetHeight 为 0，则返回原图大小，不进行任何裁剪
 func GenerateCover(ctx context.Context, inputPath, outputPath string, timeOffset string, targetWidth, targetHeight int) error {
 	// 默认截取第一秒
 	if timeOffset == "" {
@@ -288,10 +289,14 @@ func GenerateCover(ctx context.Context, inputPath, outputPath string, timeOffset
 
 			args = append(args, "-vf", cropArgs)
 		}
-	} else {
-		// 默认缩放
-		args = append(args, "-vf", "scale=-2:720")
+	} else if targetWidth > 0 {
+		// 只指定宽度，保持比例缩放
+		args = append(args, "-vf", fmt.Sprintf("scale=%d:-2", targetWidth))
+	} else if targetHeight > 0 {
+		// 只指定高度，保持比例缩放
+		args = append(args, "-vf", fmt.Sprintf("scale=-2:%d", targetHeight))
 	}
+	// 如果 targetWidth 和 targetHeight 都为 0，则不添加任何缩放或裁剪滤镜，返回原图
 
 	// 基础参数
 	args = append([]string{
@@ -305,6 +310,11 @@ func GenerateCover(ctx context.Context, inputPath, outputPath string, timeOffset
 	args = append(args, outputPath)
 
 	return runFFmpegCommand(ctx, args, nil)
+}
+
+// GenerateCoverOriginal 获取视频第一帧原图（不进行任何裁剪，返回原始尺寸）
+func GenerateCoverOriginal(ctx context.Context, inputPath, outputPath string, timeOffset string) error {
+	return GenerateCover(ctx, inputPath, outputPath, timeOffset, 0, 0)
 }
 
 // CompressImage 压缩图片为 webp 格式

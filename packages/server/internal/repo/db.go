@@ -1,13 +1,13 @@
-package data
+package repo
 
 import (
 	"time"
 
+	"app.shiningacg.club/config"
+	"app.shiningacg.club/internal/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-
-	"app.shiningacg.club/config"
 )
 
 // NewDB 创建数据库连接
@@ -20,7 +20,7 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	// 自动迁移数据库
-	err = db.AutoMigrate(&Media{})
+	err = db.AutoMigrate(&model.Media{})
 	if err != nil {
 		return nil, err
 	}

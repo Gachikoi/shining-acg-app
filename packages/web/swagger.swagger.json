@@ -3134,6 +3134,10 @@
         "object_key": {
           "type": "string",
           "title": "MinIO 中的文件路径 (GetUploadTokens 时后端生成的路径)"
+        },
+        "crop_cover": {
+          "type": "boolean",
+          "title": "是否需要裁剪封面（仅适用于 SCENE_POST_COVER 场景）"
         }
       },
       "title": "[新增] 完成上传请求"
