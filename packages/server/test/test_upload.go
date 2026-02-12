@@ -163,7 +163,6 @@ func main() {
 		return
 	}
 	token := tokenResp.Tokens[0]
-	token.UploadUrl = strings.Replace(token.UploadUrl, "http://minio-dev:9000", BaseURL, 1)
 	fmt.Println(token)
 
 	// --- 步骤 2: 上传文件 ---

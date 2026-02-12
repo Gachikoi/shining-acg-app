@@ -52,7 +52,9 @@ func NewClient(endpoint, baseHost, ak, sk, bucket string, useSSL bool) (*Client,
 		}
 	}
 
+	fmt.Println(finalEndpoint)
 	client, err := minio.New(finalEndpoint, options)
+	fmt.Println("DEBUG: Client Endpoint Scheme:", client.EndpointURL().Scheme)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create minio client: %w", err)
