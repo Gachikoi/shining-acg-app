@@ -6,7 +6,7 @@ package main
 import (
 	"app.shiningacg.club/config"
 	"app.shiningacg.club/internal/biz"
-	"app.shiningacg.club/internal/data"
+	"app.shiningacg.club/internal/repo"
 	"app.shiningacg.club/internal/service"
 	"app.shiningacg.club/pkg/ffmpeg"
 	"app.shiningacg.club/pkg/s3"
@@ -16,9 +16,9 @@ import (
 
 // DataProviderSet 数据层依赖注入集合
 var DataProviderSet = wire.NewSet(
-	data.NewDB,
-	data.NewResourceRepo,
-	wire.Bind(new(biz.ResourceRepo), new(*data.ResourceRepo)),
+	repo.NewDB,
+	repo.NewResourceRepo,
+	wire.Bind(new(repo.ResourceRepo), new(*repo.ResourceRepoImpl)),
 )
 
 // BizProviderSet 业务逻辑层依赖注入集合

@@ -94,6 +94,9 @@ message CompleteUploadRequest {
   string task_id = 1;      // 对应 GetUploadTokens 返回的 task_id
   ResourceScene scene = 2; // 场景
   string object_key = 3;   // MinIO 中的文件路径 (GetUploadTokens 时后端生成的路径)
+  bool crop_cover = 4;     // 是否需要裁剪封面（仅适用于 SCENE_POST_COVER 场景）
+                           // true: 需要裁剪为 3:4 比例（系统生成的封面）
+                           // false: 保留原始宽高比（用户上传的封面），默认 false
 }
 
 // [新增] 完成上传响应

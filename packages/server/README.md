@@ -64,8 +64,10 @@ message Media {
   - 头像：自动裁剪为 256x256 正方形
   - 帖子图片：压缩为 WebP 格式（最大宽高 1080x1080）
   - 评论图片：压缩为 WebP 格式（最大宽高 800x800）
-  - 帖子封面：自动裁剪为 3:4 比例（600x800）
-- **核心功能**：自动缩放、格式转换、居中裁剪
+  - 帖子封面：
+    - 用户上传的封面：保持原始宽高比（支持 3:4、4:3、1:1 等比例），直接压缩为 WebP 格式
+    - 系统生成的封面：自动裁剪为 3:4 比例（600x800），自适应保留核心内容
+- **核心功能**：自动缩放、格式转换、居中裁剪、条件裁剪（根据场景需求）
 - **支持格式**：JPEG、PNG、WebP
 
 **2. 视频处理**
@@ -74,11 +76,17 @@ message Media {
 - **码率**：视频 1500k，音频 128k
 - **分片时长**：6秒
 - **格式**：MP4（原始）→ HLS（m3u8 + m4s）
+- **封面生成**：
+  - 自动从视频第一帧提取原始封面
+  - 对原始封面进行自适应裁剪，生成 3:4 比例（600x800）的封面
+  - 支持保留核心内容的智能裁剪算法
 
 **3. FFmpeg 处理链**
 - **图片压缩**：`ffmpeg -i input -q:v 80 -vf "scale=1080:-2" output.webp`
 - **头像裁剪**：`ffmpeg -i input -vf "crop=w:h:x:y,scale=256:256" output.webp`
+- **封面裁剪**：`ffmpeg -i input -q:v 80 -vf "crop=w:h:x:y,scale=600:800" output.webp`（自适应裁剪保留核心内容）
 - **视频转码**：`ffmpeg -i input -c:v libx264 -c:a aac -hls_time 6 -hls_list_size 0 output.m3u8`
+- **视频封面提取**：`ffmpeg -i input -ss 00:00:01 -vframes 1 -q:v 2 output.jpg`（获取第一帧原图）
 
 #### 关键配置参数
 
@@ -191,6 +199,20 @@ curl -X GET "http://localhost:9000/api.common.v1.ResourceService/GetUploadStatus
 - 5: SCENE_CHAT_FILE（私聊文件）
 - 6: SCENE_POST_COVER（帖子封面）
 
+**CompleteUpload API 新增字段：**
+```json
+{
+  "task_id": "2021626092003004416",
+  "scene": 6,
+  "object_key": "image/cover/2021626092003004416.jpg",
+  "crop_cover": false  // 新增字段
+}
+```
+
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| crop_cover | boolean | 是否需要裁剪封面（仅适用于 SCENE_POST_COVER 场景）<br>true: 需要裁剪为 3:4 比例（系统生成的封面）<br>false: 保留原始宽高比（用户上传的封面）<br>默认值: false
+
 ### 测试工具
 
 项目提供了完整的测试工具：
@@ -275,8 +297,11 @@ server/
 │   │   ├── auth.go               # 认证服务实现
 │   │   ├── user.go               # 用户服务实现
 │   │   └── resource.go          # 资源服务 API 实现
-│   └── data/                     # 数据访问层
-│       └── resource.go          # 资源存储库实现
+│   ├── model/                    # 数据模型定义（Entity/Model）
+│   │   └── model.go           # 数据库模型定义
+│   ├── repo/                     # 数据访问层（Repository 接口与实现）
+│   │   ├── db.go             # 数据库连接管理
+│   │   └── resource.go       # 资源存储库实现
 ├── pkg/                           # 公共库
 │   ├── ffmpeg/                  # FFmpeg 音视频处理
 │   │   ├── ffmpeg.go           # 核心处理函数
