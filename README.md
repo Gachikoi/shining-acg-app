@@ -1,30 +1,41 @@
-# 🌅 Shining ACG APP
+# Shining ACG APP
 
 一个使用 Deno 管理的跨平台 monorepo 项目，包含前端、后端和多个移动端应用。
 
-# 🏗️ 项目结构
+# 项目结构
 
 ```
 shining-acg-app/
-├── packages/
-│   ├── web/              # SvelteKit 前端应用
-│   ├── server/           # Go 后端服务
+├── packages/             # 各端应用代码
+│   ├── web/              # SvelteKit 前端应用 (npm managed)
+│   ├── server/           # Go 后端服务 (go modules)
 │   ├── android/          # Android 应用 (Kotlin + Jetpack Compose)
 │   ├── ios/              # iOS 应用 (Swift + SwiftUI)
 │   └── harmonyos/        # 鸿蒙应用 (ArkTS + ArkUI)
-├── scripts/              # 构建和工具脚本
-|   ├── ci                # 与 CI/CD 相关的脚本
-|   └── git-hooks         # 与 git-hooks 相关的脚本
-│        ├── format-*.ts       # 代码格式化脚本
-│        ├── lint-*.ts         # 代码检查脚本
-│        ├── commitlint.ts     # Commit 消息验证
-│        ├── pre-commit.ts     # Pre-commit hook
-│        ├── commit-msg.ts     # Commit-msg hook
-│        └── install-hooks.ts  # Git hooks 安装脚本
-├── .github/workflows/    # GitHub Actions CI/CD
+├── scripts/              # 全局构建和工具脚本 (Deno managed)
+│   ├── api/              # API 生成相关
+│   │   ├── gen-api.ts         # 前端 API 生成脚本
+│   │   └── process-swagger.ts # Swagger 处理脚本
+│   ├── git-hooks/        # Git hooks 管理
+│   │   ├── commit-msg.ts      # Commit 消息验证 hook
+│   │   ├── commitlint.ts      # commitlint 配置
+│   │   ├── install-hooks.ts   # Git hooks 安装脚本
+│   │   ├── lint-staged.ts     # 暂存区文件检查逻辑
+│   │   └── pre-commit.ts      # Pre-commit hook
+│   └── utils.ts          # 通用工具函数
+├── .github/workflows/    # GitHub Actions CI/CD 配置
+│   ├── ci.yml            # 持续集成流程
+│   ├── cd.yml            # 持续部署流程
+│   └── release.yml       # 发布流程
 ├── docs/                 # 项目文档
-├── deno.json             # Deno 配置和任务
-└── .gitignore            # Git 忽略文件
+│   ├── 产品需求文档.md
+│   ├── 技术架构设计.md
+│   ├── 赞助管理方案.md
+│   └── Web 安全.md
+├── deno.json             # Deno 配置文件及任务入口
+├── deno.lock             # Deno 依赖锁定文件
+├── .gitignore            # Git 忽略规则
+└── README.md             # 项目说明文档
 ```
 
 # 🚀 快速开始
@@ -50,10 +61,10 @@ deno task prepare
 
 这将自动安装：
 
-- `pre-commit`: 提交前自动格式化和 lint 代码
+- `pre-commit`: 提交前自动进行代码格式化、lint以及代码生成工作
 - `commit-msg`: 验证 commit 消息格式
 
-‼️ 这很重要！！！安装后在提交代码前项目会自动格式化和 lint 代码并规范 commit message。
+‼️ 这很重要！！！安装后在提交代码前项目会自动格式化和 lint 代码，还会生成 rpc 桩文件和前端 api，并规范 commit message。
 
 3. **初始化并开发子项目**
 
@@ -82,7 +93,7 @@ deno task prepare
   创建分支进行热修复，修复完成后合并到 develop 和 main 分支。
 
 main、develop 分支有且仅有一个，并且受到严格的分支保护。feature、hotfix
-分支命名方式为：`[分支类型]/[开发人员昵称]`，如 `feature/gachikoi`。
+分支命名方式为：`[分支类型]/[分支描述]`，如 `feature/gachikoi`、`feature/server_oss`。
 
 ## 分支保护说明
 
