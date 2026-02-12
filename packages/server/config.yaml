@@ -25,3 +25,25 @@ snowflake:
 ffmpeg:
   max_workers: 4
   queue_size: 100
+
+# 媒体处理配置
+media:
+  image:
+    avatar:
+      max_width: 256
+      max_height: 256
+    post:
+      max_width: 1080
+      max_height: 0
+    comment:
+      max_width: 800
+      max_height: 0
+    cover:
+      max_width: 1080
+      max_height: 0
+      crop_width: 600
+      crop_height: 800
+
+  video:
+    hls:
+      enabled: true
