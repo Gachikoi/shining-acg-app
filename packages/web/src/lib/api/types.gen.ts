@@ -520,6 +520,10 @@ export type CompleteUploadRequest = {
      * MinIO 中的文件路径 (GetUploadTokens 时后端生成的路径)
      */
     object_key?: string;
+    /**
+     * 是否需要裁剪封面（仅适用于 SCENE_POST_COVER 场景）
+     */
+    crop_cover?: boolean;
 };
 
 /**

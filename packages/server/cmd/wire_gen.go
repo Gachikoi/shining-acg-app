@@ -9,7 +9,7 @@ package main
 import (
 	"app.shiningacg.club/config"
 	"app.shiningacg.club/internal/biz"
-	"app.shiningacg.club/internal/data"
+	"app.shiningacg.club/internal/repo"
 	"app.shiningacg.club/internal/service"
 	"app.shiningacg.club/pkg/ffmpeg"
 	"app.shiningacg.club/pkg/s3"
@@ -21,11 +21,11 @@ import (
 
 // InitializeApp 初始化应用程序依赖
 func InitializeApp(cfg *config.Config) (*App, func(), error) {
-	db, err := data.NewDB(cfg)
+	db, err := repo.NewDB(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	resourceRepo := data.NewResourceRepo(db)
+	resourceRepoImpl := repo.NewResourceRepo(db)
 	client, err := NewS3Client(cfg)
 	if err != nil {
 		return nil, nil, err
@@ -38,7 +38,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	resourceUseCase := biz.NewResourceUseCase(resourceRepo, client, node, workerPool)
+	resourceUseCase := biz.NewResourceUseCase(resourceRepoImpl, client, node, workerPool)
 	resourceServiceServer := service.NewResourceServiceServer(resourceUseCase)
 	app, err := NewApp(cfg, resourceServiceServer, workerPool)
 	if err != nil {
@@ -51,7 +51,7 @@ func InitializeApp(cfg *config.Config) (*App, func(), error) {
 // wire.go:
 
 // DataProviderSet 数据层依赖注入集合
-var DataProviderSet = wire.NewSet(data.NewDB, data.NewResourceRepo, wire.Bind(new(biz.ResourceRepo), new(*data.ResourceRepo)))
+var DataProviderSet = wire.NewSet(repo.NewDB, repo.NewResourceRepo, wire.Bind(new(repo.ResourceRepo), new(*repo.ResourceRepoImpl)))
 
 // BizProviderSet 业务逻辑层依赖注入集合
 var BizProviderSet = wire.NewSet(biz.NewResourceUseCase)
