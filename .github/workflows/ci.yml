@@ -6,6 +6,7 @@ on:
   push:
     branches: [ main, develop ] # 新增：合并后触发构建正式镜像
     tags: ['v*']
+  workflow_dispatch: # 允许手动触发部署
 
 # 权限配置：需要读取代码和推送到 ghcr
 permissions:
@@ -153,25 +154,130 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Docker Meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.OWNER_LC }}/shining-acg-server
+          # 核心标签策略配置
+          tags: |
+            # 1. Develop 分支 -> :develop
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            
+            # 2. Git Tag (v1.0.0) -> :1.0.0 和 :latest
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: ./packages/server
           file: ./packages/server/Dockerfile
-          push: true
-          # 缓存设置，加快构建速度
+          # 关键点：如果是 PR，只 Build 不 Push
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # 标签策略：
-          # main -> latest
-          # develop -> develop
-          # PR -> pr-{number}
-          tags: |
-            ${{ github.event_name == 'pull_request' && format('ghcr.io/{0}/shining-acg-server:pr-{1}', env.OWNER_LC, github.event.pull_request.number) || '' }}
-            ${{ github.event_name == 'push' && github.ref_name == 'develop' && format('ghcr.io/{0}/shining-acg-server:develop', env.OWNER_LC) || '' }}
-            ${{ github.event_name == 'push' && github.ref_name == 'main' && format('ghcr.io/{0}/shining-acg-server:main', env.OWNER_LC) || '' }}
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}/shining-acg-server:{1}', env.OWNER_LC, github.ref_name) || '' }}
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}/shining-acg-server:latest', env.OWNER_LC) || '' }}
+
+  # ------------------------------------------------------------------
+  # 部署到开发环境 (Develop 分支)
+  # ------------------------------------------------------------------
+  deploy-dev:
+    name: Deploy to Development Server
+    runs-on: ubuntu-latest
+    needs: [backend-build]
+    if: |
+      (github.event_name == 'push' && github.ref_name == 'develop') ||
+      (github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Development Environment
+        run: |
+          # 使用 -p 指定端口，StrictHostKeyChecking=no 跳过指纹验证
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.DEV_SERVER_IP }} << 'EOF'
+            set -e # 遇到错误立即停止
+
+            # 1. 进入预设的开发环境目录
+            cd /opt/shiningacg_dev
+
+            # 2. 登录 GHCR (使用环境变量传递密码，更安全)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # 3. 拉取最新镜像 (CI阶段构建的 develop 标签)
+            # 注意：这里对应 CI 中的镜像命名 ghcr.io/owner/shining-acg-server
+            docker compose pull api-dev
+
+            # 4. 更新服务
+            # -d: 后台运行
+            # --no-deps: 不重启依赖服务 (如 postgres/redis)
+            # api-dev: 仅更新 docker-compose.yml 中名为 'api-dev' 的服务
+            docker compose up -d --no-deps api-dev
+
+            # 5. 清理悬空的旧镜像 (节约磁盘空间)
+            docker image prune -f
+
+            # 6. 简单的健康检查 (查看最近几行日志)
+            sleep 3
+            docker compose logs --tail=20 api-dev
+          EOF
+
+  # ------------------------------------------------------------------
+  # 2. 部署到生产环境 (推送 TAG)
+  # ------------------------------------------------------------------
+  deploy-prod:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    needs: [backend-build]
+    if: (github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v')))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Production Environment
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.PROD_SERVER_IP }} << 'EOF'
+            set -e
+
+            # 1. 进入生产环境目录
+            cd /opt/shiningacg_prod
+
+            # 2. 登录 GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # 3. 拉取最新镜像 (CI阶段构建的 latest 标签)
+            docker compose pull api-prod
+
+            # 4. 更新服务 (Prod 尽量无感知)
+            # Docker Compose V2 会自动处理：创建新容器 -> 停止旧容器 -> 启动新容器
+            # 对于 Go 单体应用，这通常只有 1-2 秒的服务中断
+            docker compose up -d --no-deps api-prod
+
+            # 5. 清理旧镜像
+            docker image prune -f
+
+            # 6. 检查状态
+            sleep 5
+            if [ $(docker compose ps -q api-prod | wc -l) -eq 0 ]; then
+              echo "Error: Server container is not running!"
+              exit 1
+            fi
+            docker compose logs --tail=20 api-prod
+          EOF
 
   android:
     name: Android (Kotlin)
