@@ -124,7 +124,7 @@ jobs:
       # 尝试编译，确保没有编译错误（不生成文件，仅检查）
       - name: Compile check
         working-directory: packages/server
-        run: go build -v -o /dev/null ./cmd/main.go
+        run: go build -v -o /dev/null ./cmd
 
   # 1. CI 阶段：构建并推送镜像
   backend-build:

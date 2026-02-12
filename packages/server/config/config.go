@@ -38,6 +38,41 @@ type Config struct {
 		MaxWorkers int `mapstructure:"max_workers" yaml:"max_workers"`
 		QueueSize  int `mapstructure:"queue_size" yaml:"queue_size"`
 	} `mapstructure:"ffmpeg"`
+
+	// MediaConfig 媒体处理配置
+	Media struct {
+		Image struct {
+			// 头像配置
+			Avatar struct {
+				MaxWidth  int `mapstructure:"max_width" yaml:"max_width"`
+				MaxHeight int `mapstructure:"max_height" yaml:"max_height"`
+			} `mapstructure:"avatar"`
+			// 帖子图片配置
+			Post struct {
+				MaxWidth  int `mapstructure:"max_width" yaml:"max_width"`
+				MaxHeight int `mapstructure:"max_height" yaml:"max_height"`
+			} `mapstructure:"post"`
+			// 评论图片配置
+			Comment struct {
+				MaxWidth  int `mapstructure:"max_width" yaml:"max_width"`
+				MaxHeight int `mapstructure:"max_height" yaml:"max_height"`
+			} `mapstructure:"comment"`
+			// 封面配置
+			Cover struct {
+				MaxWidth   int `mapstructure:"max_width" yaml:"max_width"`
+				MaxHeight  int `mapstructure:"max_height" yaml:"max_height"`
+				CropWidth  int `mapstructure:"crop_width" yaml:"crop_width"`
+				CropHeight int `mapstructure:"crop_height" yaml:"crop_height"`
+			} `mapstructure:"cover"`
+		} `mapstructure:"image"`
+
+		Video struct {
+			// HLS 转码配置
+			HLS struct {
+				Enabled bool `mapstructure:"enabled" yaml:"enabled"`
+			} `mapstructure:"hls"`
+		} `mapstructure:"video"`
+	} `mapstructure:"media"`
 }
 
 // LoadConfig 加载配置
@@ -110,6 +145,21 @@ func setDefaultValues() {
 	viper.SetDefault("snowflake.node_id", 1)
 	viper.SetDefault("ffmpeg.max_workers", 4)
 	viper.SetDefault("ffmpeg.queue_size", 100)
+
+	// 图片处理默认配置
+	viper.SetDefault("media.image.avatar.max_width", 256)
+	viper.SetDefault("media.image.avatar.max_height", 256)
+	viper.SetDefault("media.image.post.max_width", 1080)
+	viper.SetDefault("media.image.post.max_height", 0) // 0 表示保持比例
+	viper.SetDefault("media.image.comment.max_width", 800)
+	viper.SetDefault("media.image.comment.max_height", 0)
+	viper.SetDefault("media.image.cover.max_width", 1080)
+	viper.SetDefault("media.image.cover.max_height", 0)
+	viper.SetDefault("media.image.cover.crop_width", 600)
+	viper.SetDefault("media.image.cover.crop_height", 800)
+
+	// 视频处理默认配置
+	viper.SetDefault("media.video.hls.enabled", true)
 }
 
 // GetDBConnectionString 获取数据库连接字符串
