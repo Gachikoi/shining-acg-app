@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -25,8 +26,16 @@ type Client struct {
 // externalEndpoint: 外网域名 (如 test.api.shiningacg.club:61080)
 // externalUseSSL: 外网是否使用 HTTPS
 func NewClient(internalEndpoint string, internalUseSSL bool, externalEndpoint string, externalUseSSL bool, ak, sk, bucket string) (*Client, error) {
-	fmt.Printf("DEBUG: MinIO Init - Internal: %s (SSL: %v), External: %s (SSL: %v)\n", internalEndpoint, internalUseSSL, externalEndpoint, externalUseSSL)
-	fmt.Printf("DEBUG: ak: %s sk: %s \n", ak, sk)
+	slog.Debug("MinIO Init",
+		slog.String("internal_endpoint", internalEndpoint),
+		slog.Bool("internal_use_ssl", internalUseSSL),
+		slog.String("external_endpoint", externalEndpoint),
+		slog.Bool("external_use_ssl", externalUseSSL),
+	)
+	slog.Debug("MinIO Credentials",
+		slog.String("access_key", ak),
+		slog.String("secret_key", sk),
+	)
 
 	// 默认 Region，MinIO 默认通常是 "us-east-1"，除非你在启动 MinIO 时设置了 MINIO_REGION
 	const defaultRegion = "us-east-1"
@@ -83,7 +92,9 @@ func (c *Client) GenPresignedURL(ctx context.Context, objectKey string, expire t
 		return "", nil, fmt.Errorf("failed to generate presigned URL: %w", err)
 	}
 
-	fmt.Printf("DEBUG: Generated URL: %s\n", url.String()) // 打印出来看域名对不对
+	slog.Debug("Generated Presigned URL",
+		slog.String("url", url.String()),
+	)
 
 	headers := map[string]string{
 		"Content-Type": "application/octet-stream",
@@ -135,7 +146,10 @@ func (c *Client) UploadFile(ctx context.Context, objectKey, localPath string, co
 		return fmt.Errorf("failed to upload file: %w", err)
 	}
 
-	fmt.Printf("Successfully uploaded %s, size: %d bytes\n", objectKey, info.Size)
+	slog.InfoContext(ctx, "Successfully uploaded file",
+		slog.String("object_key", objectKey),
+		slog.Int64("size_bytes", info.Size),
+	)
 	return nil
 }
 

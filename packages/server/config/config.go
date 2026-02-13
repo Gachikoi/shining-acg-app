@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -110,12 +111,12 @@ func LoadConfig(configPath string) (*Config, error) {
 	// 2. 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Println("提示: 未找到 config.yaml 配置文件，将尝试从环境变量或默认值读取")
+			slog.Info("未找到 config.yaml 配置文件，将尝试从环境变量或默认值读取")
 		} else {
 			return nil, fmt.Errorf("读取配置文件失败: %w", err)
 		}
 	} else {
-		fmt.Printf("成功加载配置文件: %s\n", viper.ConfigFileUsed())
+		slog.Info("成功加载配置文件", slog.String("config_file", viper.ConfigFileUsed()))
 	}
 
 	// 3. 环境变量配置
