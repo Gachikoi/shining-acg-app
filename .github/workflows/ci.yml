@@ -202,32 +202,20 @@ jobs:
 
       - name: Deploy to Development Environment
         run: |
-          # 使用 -p 指定端口，StrictHostKeyChecking=no 跳过指纹验证
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.DEV_SERVER_IP }} << 'EOF'
-            set -e # 遇到错误立即停止
-
-            # 1. 进入预设的开发环境目录
+          # 增加 -tt 参数强制伪终端，增加 -v 方便出错调试
+          ssh -tt -v -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.DEV_SERVER_IP }} << 'EOF'
+            set -e
             cd /opt/shiningacg_dev
-
-            # 2. 登录 GHCR (使用环境变量传递密码，更安全)
+          
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-
-            # 3. 拉取最新镜像 (CI阶段构建的 develop 标签)
-            # 注意：这里对应 CI 中的镜像命名 ghcr.io/owner/shining-acg-server
             docker compose pull api-dev
-
-            # 4. 更新服务
-            # -d: 后台运行
-            # --no-deps: 不重启依赖服务 (如 postgres/redis)
-            # api-dev: 仅更新 docker-compose.yml 中名为 'api-dev' 的服务
             docker compose up -d --no-deps api-dev
-
-            # 5. 清理悬空的旧镜像 (节约磁盘空间)
             docker image prune -f
-
-            # 6. 简单的健康检查 (查看最近几行日志)
+          
+            # 注意：使用 -tt 后 sleep 可能需要确保输出缓冲区刷新
             sleep 3
             docker compose logs --tail=20 api-dev
+            exit 0
           EOF
 
   # ------------------------------------------------------------------
@@ -236,8 +224,9 @@ jobs:
   deploy-prod:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
-    needs: [backend-build]
-    if: (github.event_name == 'push' && (github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v')))
+    needs: [ backend-build ]
+    # 触发条件：推送了 v* 格式的标签
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
 
     steps:
       - name: Checkout code
@@ -250,8 +239,11 @@ jobs:
 
       - name: Deploy to Production Environment
         run: |
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.PROD_SERVER_IP }} << 'EOF'
-            set -e
+          # 关键修改：
+          # -tt : 强制分配伪终端，解决 "Pseudo-terminal will not be allocated"
+          # -v  : 输出调试信息，万一出错方便排查
+          ssh -tt -v -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no root@${{ secrets.PROD_SERVER_IP }} << 'EOF'
+            set -e # 任何命令出错立即退出
 
             # 1. 进入生产环境目录
             cd /opt/shiningacg_prod
@@ -259,24 +251,33 @@ jobs:
             # 2. 登录 GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-            # 3. 拉取最新镜像 (CI阶段构建的 latest 标签)
+            # 3. 拉取最新镜像
+            # 注意：你的 docker-compose.yml 里的 image 必须是 ghcr.io/...:latest
+            # 或者是 CI 构建时生成的对应 Tag (CI 步骤里 v* tag 会生成 :latest)
             docker compose pull api-prod
 
-            # 4. 更新服务 (Prod 尽量无感知)
-            # Docker Compose V2 会自动处理：创建新容器 -> 停止旧容器 -> 启动新容器
-            # 对于 Go 单体应用，这通常只有 1-2 秒的服务中断
+            # 4. 更新服务 (无感重启)
             docker compose up -d --no-deps api-prod
 
-            # 5. 清理旧镜像
+            # 5. 清理未使用的旧镜像
             docker image prune -f
 
-            # 6. 检查状态
+            # 6. 健康检查
+            echo "Waiting for service to start..."
             sleep 5
+
+            # 检查容器是否在运行
             if [ $(docker compose ps -q api-prod | wc -l) -eq 0 ]; then
-              echo "Error: Server container is not running!"
+              echo "❌ Error: Production container is not running!"
+              docker compose logs --tail=50 api-prod
               exit 1
             fi
+
+            echo "✅ Deployment Successful!"
             docker compose logs --tail=20 api-prod
+
+            # 显式退出，确保 SSH 会话正确关闭
+            exit 0
           EOF
 
   android:
