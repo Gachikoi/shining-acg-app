@@ -49,6 +49,11 @@ type Config struct {
 		QueueSize  int `mapstructure:"queue_size" yaml:"queue_size"`
 	} `mapstructure:"ffmpeg"`
 
+	// Log 日志配置
+	Log struct {
+		Level string `mapstructure:"level" yaml:"level"` // debug, info, warn, error
+	} `mapstructure:"log"`
+
 	// MediaConfig 媒体处理配置
 	Media struct {
 		Image struct {
@@ -161,6 +166,9 @@ func setDefaultValues() {
 	viper.SetDefault("snowflake.node_id", 1)
 	viper.SetDefault("ffmpeg.max_workers", 4)
 	viper.SetDefault("ffmpeg.queue_size", 100)
+
+	// 日志配置默认值
+	viper.SetDefault("log.level", "info")
 
 	// 图片处理默认配置
 	viper.SetDefault("media.image.avatar.max_width", 256)
