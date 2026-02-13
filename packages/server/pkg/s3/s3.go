@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -14,81 +12,78 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// Client 是 MinIO 客户端的封装
+// Client 是 MinIO 客户端的封装，使用双客户端模式
 type Client struct {
-	client   *minio.Client
-	Bucket   string // 改为导出字段
-	BaseHost string // 新增：用于生成签名的外网域名
+	coreClient   *minio.Client // 内网客户端：用于上传、下载、管理 Bucket
+	signerClient *minio.Client // 外网客户端：仅用于生成供前端使用的签名 URL
+	Bucket       string        // 存储桶名称
 }
 
-// NewClient 初始化 MinIO 客户端
-func NewClient(endpoint, baseHost, ak, sk, bucket string, useSSL bool) (*Client, error) {
-	fmt.Printf("DEBUG: MinIO Init - Endpoint: %s, AK: %s, SK: %s\n", endpoint, ak, sk)
+// NewClient 初始化 MinIO 客户端（双客户端模式）
+// internalEndpoint: 内网地址 (如 minio-dev:9000)
+// internalUseSSL: 内网是否使用 HTTPS
+// externalEndpoint: 外网域名 (如 test.api.shiningacg.club:61080)
+// externalUseSSL: 外网是否使用 HTTPS
+func NewClient(internalEndpoint string, internalUseSSL bool, externalEndpoint string, externalUseSSL bool, ak, sk, bucket string) (*Client, error) {
+	fmt.Printf("DEBUG: MinIO Init - Internal: %s (SSL: %v), External: %s (SSL: %v)\n", internalEndpoint, internalUseSSL, externalEndpoint, externalUseSSL)
+	fmt.Printf("DEBUG: ak: %s sk: %s \n", ak, sk)
 
-	var finalEndpoint string
-	var options *minio.Options
+	// 默认 Region，MinIO 默认通常是 "us-east-1"，除非你在启动 MinIO 时设置了 MINIO_REGION
+	const defaultRegion = "us-east-1"
 
-	if baseHost != "" {
-		// [核心逻辑]：
-		// 1. 让 SDK 认为 Endpoint 是外网域名（这样签名里的 Host 才是对的）
-		finalEndpoint = baseHost
-
-		// 2. 通过自定义 Transport，强行将该域名的请求转发到内网 endpoint
-		options = &minio.Options{
-			Creds:  credentials.NewStaticV4(ak, sk, ""),
-			Secure: useSSL,
-			Transport: &http.Transport{
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					// 无论 SDK 想连接什么地址，都拨号到内网真实的 endpoint
-					return (&net.Dialer{}).DialContext(ctx, network, endpoint)
-				},
-			},
-		}
-	} else {
-		finalEndpoint = endpoint
-		options = &minio.Options{
-			Creds:  credentials.NewStaticV4(ak, sk, ""),
-			Secure: useSSL,
-		}
+	// 1. 初始化内网核心客户端 (用于上传、下载、管理 Bucket)
+	coreOptions := &minio.Options{
+		Creds:  credentials.NewStaticV4(ak, sk, ""),
+		Secure: internalUseSSL,
+		Region: defaultRegion, // 显式设置 Region
 	}
-
-	fmt.Println(finalEndpoint)
-	client, err := minio.New(finalEndpoint, options)
-	fmt.Println("DEBUG: Client Endpoint Scheme:", client.EndpointURL().Scheme)
-
+	coreClient, err := minio.New(internalEndpoint, coreOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create minio client: %w", err)
+		return nil, fmt.Errorf("failed to create internal minio client: %w", err)
 	}
 
-	// 检查存储桶是否存在，不存在则创建
+	// 2. 初始化外网签名客户端 (仅用于生成签名 URL)
+	signerOptions := &minio.Options{
+		Creds:  credentials.NewStaticV4(ak, sk, ""),
+		Secure: externalUseSSL,
+		Region: defaultRegion, // 显式设置 Region
+	}
+	signerClient, err := minio.New(externalEndpoint, signerOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signer minio client: %w", err)
+	}
+
+	// 3. 使用核心客户端检查存储桶
 	ctx := context.Background()
-	exists, err := client.BucketExists(ctx, bucket)
+	exists, err := coreClient.BucketExists(ctx, bucket)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check bucket exists: %w", err)
 	}
 	if !exists {
-		err = client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
+		err = coreClient.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bucket: %w", err)
 		}
 	}
 
 	return &Client{
-		client:   client,
-		Bucket:   bucket,
-		BaseHost: baseHost,
+		coreClient:   coreClient,
+		signerClient: signerClient,
+		Bucket:       bucket,
 	}, nil
 }
 
-// GenPresignedURL 生成预签名的 PUT 上传链接
+// GenPresignedURL 生成预签名的 PUT 上传链接（使用外网客户端）
 func (c *Client) GenPresignedURL(ctx context.Context, objectKey string, expire time.Duration) (string, map[string]string, error) {
 	reqParams := make(map[string]string)
 	reqParams["Content-Type"] = "application/octet-stream"
 
-	url, err := c.client.PresignedPutObject(ctx, c.Bucket, objectKey, expire)
+	url, err := c.signerClient.PresignedPutObject(ctx, c.Bucket, objectKey, expire)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to generate presigned URL: %w", err)
 	}
+
+	fmt.Printf("DEBUG: Generated URL: %s\n", url.String()) // 打印出来看域名对不对
 
 	headers := map[string]string{
 		"Content-Type": "application/octet-stream",
@@ -97,7 +92,7 @@ func (c *Client) GenPresignedURL(ctx context.Context, objectKey string, expire t
 	return url.String(), headers, nil
 }
 
-// DownloadFile 从 MinIO 下载文件到本地
+// DownloadFile 从 MinIO 下载文件到本地（使用内网客户端）
 func (c *Client) DownloadFile(ctx context.Context, objectKey, localPath string) error {
 	// 确保目录存在
 	dir := filepath.Dir(localPath)
@@ -110,7 +105,7 @@ func (c *Client) DownloadFile(ctx context.Context, objectKey, localPath string) 
 		return fmt.Errorf("failed to create local file: %w", err)
 	}
 
-	object, err := c.client.GetObject(ctx, c.Bucket, objectKey, minio.GetObjectOptions{})
+	object, err := c.coreClient.GetObject(ctx, c.Bucket, objectKey, minio.GetObjectOptions{})
 	if err != nil {
 		file.Close()
 		os.Remove(localPath) // 清理临时文件
@@ -131,9 +126,9 @@ func (c *Client) DownloadFile(ctx context.Context, objectKey, localPath string) 
 	return nil
 }
 
-// UploadFile 上传本地文件到 MinIO
+// UploadFile 上传本地文件到 MinIO（使用内网客户端）
 func (c *Client) UploadFile(ctx context.Context, objectKey, localPath string, contentType string) error {
-	info, err := c.client.FPutObject(ctx, c.Bucket, objectKey, localPath, minio.PutObjectOptions{
+	info, err := c.coreClient.FPutObject(ctx, c.Bucket, objectKey, localPath, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
@@ -193,8 +188,11 @@ func (c *Client) UploadDirectory(ctx context.Context, localDir, remoteDir string
 	return nil
 }
 
-// GetObjectURL 获取文件的公开访问 URL
+// GetObjectURL 获取文件的公开访问 URL（使用外网配置）
 func (c *Client) GetObjectURL(objectKey string) string {
-	// 这里返回 MinIO 的公开访问 URL，实际项目中可能需要配置 CDN 域名
-	return fmt.Sprintf("http://%s/%s/%s", c.client.EndpointURL().Host, c.Bucket, objectKey)
+	scheme := "http"
+	if c.signerClient.EndpointURL().Scheme == "https" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, c.signerClient.EndpointURL().Host, c.Bucket, objectKey)
 }
