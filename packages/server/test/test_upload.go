@@ -163,7 +163,12 @@ func main() {
 		return
 	}
 	token := tokenResp.Tokens[0]
+
 	fmt.Println(token)
+	_, err = fmt.Scanln()
+	if err != nil {
+		return
+	}
 
 	// --- 步骤 2: 上传文件 ---
 	fmt.Printf("\n[步骤 2] 正在上传至 MinIO (%s)...\n", fileInfo.Name())

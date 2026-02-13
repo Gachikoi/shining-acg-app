@@ -67,12 +67,13 @@ func NewSnowflakeNode(cfg *config.Config) (*snowflake.Node, error) {
 // S3ClientProvider S3 客户端提供者
 func NewS3Client(cfg *config.Config) (*s3.Client, error) {
 	return s3.NewClient(
-		cfg.OSS.Endpoint,
-		cfg.OSS.BaseHost,
+		cfg.OSS.Internal.Endpoint,
+		cfg.OSS.Internal.UseSSL,
+		cfg.OSS.External.Endpoint,
+		cfg.OSS.External.UseSSL,
 		cfg.OSS.AccessKey,
 		cfg.OSS.SecretKey,
 		cfg.OSS.Bucket,
-		cfg.OSS.UseSSL,
 	)
 }
 

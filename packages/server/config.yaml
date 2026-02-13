@@ -12,12 +12,19 @@ db:
 
 # OSS 对象存储配置（与 docker-compose 保持一致）
 oss:
-  endpoint: localhost:9000
-  base_host: localhost:9000
+  # 内网配置：用于后端数据传输（上传、下载、管理 Bucket）
+  internal:
+    endpoint: minio-dev:9000
+    use_ssl: false
+
+  # 外网配置：用于生成给前端使用的签名 URL
+  external:
+    endpoint: test.api.shiningacg.club:61080
+    use_ssl: true
+
   access_key: shining
   secret_key: shiningoss
   bucket: shining-bucket
-  use_ssl: true
 
 # Snowflake 雪花算法配置
 snowflake:

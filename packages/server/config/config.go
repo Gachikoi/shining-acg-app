@@ -23,12 +23,21 @@ type Config struct {
 	} `mapstructure:"db"`
 
 	OSS struct {
-		Endpoint  string `mapstructure:"endpoint" yaml:"endpoint"`
-		BaseHost  string `mapstructure:"base_host" yaml:"base_host"` // 外部可访问的基础 URL，用于返回给客户端
+		// 内网配置：用于后端数据传输（上传、下载、管理 Bucket）
+		Internal struct {
+			Endpoint string `mapstructure:"endpoint" yaml:"endpoint"`
+			UseSSL   bool   `mapstructure:"use_ssl" yaml:"use_ssl"`
+		} `mapstructure:"internal" yaml:"internal"`
+
+		// 外网配置：用于生成给前端使用的签名 URL
+		External struct {
+			Endpoint string `mapstructure:"endpoint" yaml:"endpoint"`
+			UseSSL   bool   `mapstructure:"use_ssl" yaml:"use_ssl"`
+		} `mapstructure:"external" yaml:"external"`
+
 		AccessKey string `mapstructure:"access_key" yaml:"access_key"`
 		SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
 		Bucket    string `mapstructure:"bucket" yaml:"bucket"`
-		UseSSL    bool   `mapstructure:"use_ssl" yaml:"use_ssl"`
 	} `mapstructure:"oss"`
 
 	Snowflake struct {
@@ -139,12 +148,16 @@ func setDefaultValues() {
 	viper.SetDefault("db.user", "postgres")
 	viper.SetDefault("db.password", "password")
 	viper.SetDefault("db.name", "shining_db")
-	viper.SetDefault("oss.endpoint", "localhost:9000")
-	viper.SetDefault("oss.base_url", "") // 默认空，表示使用 endpoint 作为 base_url
+	// 内网配置默认值
+	viper.SetDefault("oss.internal.endpoint", "localhost:9000")
+	viper.SetDefault("oss.internal.use_ssl", false)
+	// 外网配置默认值
+	viper.SetDefault("oss.external.endpoint", "test.api.shiningacg.club:61080")
+	viper.SetDefault("oss.external.use_ssl", true)
+	// 通用配置
 	viper.SetDefault("oss.access_key", "shining")
 	viper.SetDefault("oss.secret_key", "shiningoss")
 	viper.SetDefault("oss.bucket", "shining-bucket")
-	viper.SetDefault("oss.use_ssl", false)
 	viper.SetDefault("snowflake.node_id", 1)
 	viper.SetDefault("ffmpeg.max_workers", 4)
 	viper.SetDefault("ffmpeg.queue_size", 100)
