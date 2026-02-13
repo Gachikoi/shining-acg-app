@@ -24,6 +24,13 @@ services:
       - OSS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-shiningoss}
       - OSS_BUCKET=shining-bucket
 
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"   # 单个文件超过 50MB 就切分
+        max-file: "3"     # 最多保留 3 个历史文件（共 150MB）
+
     # 网络配置：同时加入网关网络和内部网络
     networks:
       - dev_internal     # 用于连接数据库
@@ -96,6 +103,53 @@ services:
       timeout: 5s
       retries: 5
 
+  # 1. Loki: 日志存储
+  loki-dev:
+    image: grafana/loki:3.0.0
+    container_name: loki-dev
+    user: root
+    ports:
+      - "3100:3100"
+    volumes:
+      # 映射配置文件
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      # 关键：持久化日志数据
+      - loki_data_dev:/tmp/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - dev_internal
+
+  # 2. Promtail: 采集 Docker 原始日志并发送给 Loki
+  promtail-dev:
+    image: grafana/promtail:3.0.0
+    container_name: promtail-dev
+    volumes:
+      # 必须映射宿主机的 Docker 日志目录（只读）
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # 映射 Promtail 的配置文件
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - dev_internal
+    depends_on:
+      - loki-dev
+
+  # 3. Grafana: 界面展示
+  grafana-dev:
+    image: grafana/grafana:latest
+    container_name: grafana-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data_dev:/var/lib/grafana # 持久化配置、插件和仪表盘
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - dev_internal
+    depends_on:
+      - loki-dev
+
 # --------------------------------------------------------------------------------
 # 网络定义
 # --------------------------------------------------------------------------------
@@ -113,3 +167,7 @@ volumes:
     name: postgres_data_dev
   minio_data_dev:
     name: minio_data_dev
+  loki_data_dev: # 新增 Loki 的持久化卷
+    name: loki_data_dev
+  grafana_data_dev: # 新增 Loki 的持久化卷
+    name: grafana_data_dev
