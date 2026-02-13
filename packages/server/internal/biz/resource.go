@@ -3,11 +3,13 @@ package biz
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"app.shiningacg.club/gen/proto/api/common/v1"
 	"app.shiningacg.club/internal/repo"
 	"app.shiningacg.club/pkg/ffmpeg"
+	"app.shiningacg.club/pkg/logger"
 	"app.shiningacg.club/pkg/pathutil"
 	"app.shiningacg.club/pkg/s3"
 	"github.com/bwmarrin/snowflake"
@@ -121,13 +123,22 @@ func (uc *ResourceUseCase) CompleteUpload(ctx context.Context, req *commonv1.Com
 		}, nil
 	} else {
 		// 视频处理（异步）
+		// 使用 context.Background() 避免请求上下文取消导致异步处理失败
+		// 但我们需要保留原始上下文的 trace_id 以便追踪
+		traceID := logger.FromContext(ctx)
 		go func() {
-			asyncCtx := context.Background()
+			asyncCtx := logger.WithTraceID(context.Background(), traceID)
 			err := uc.processVideo(asyncCtx, mediaID, req.ObjectKey)
 			if err != nil {
-				fmt.Printf("failed to process video %d: %v\n", mediaID, err)
+				slog.ErrorContext(asyncCtx, "failed to process video",
+					slog.Int64("media_id", mediaID),
+					slog.Any("error", err),
+				)
 				if updateErr := uc.repo.UpdateStatus(asyncCtx, mediaID, int32(MediaStatusFailed)); updateErr != nil {
-					fmt.Printf("failed to update video status %d: %v\n", mediaID, updateErr)
+					slog.ErrorContext(asyncCtx, "failed to update video status",
+						slog.Int64("media_id", mediaID),
+						slog.Any("error", updateErr),
+					)
 				}
 			}
 		}()

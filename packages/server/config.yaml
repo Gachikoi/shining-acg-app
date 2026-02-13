@@ -19,8 +19,8 @@ oss:
 
   # 外网配置：用于生成给前端使用的签名 URL
   external:
-    endpoint: test.api.shiningacg.club:61080
-    use_ssl: true
+    endpoint: localhost:9000
+    use_ssl: false
 
   access_key: shining
   secret_key: shiningoss
@@ -55,3 +55,6 @@ media:
   video:
     hls:
       enabled: true
+
+log:
+  level: debug
