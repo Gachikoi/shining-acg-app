@@ -1,15 +1,30 @@
 package interceptor
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
+
+	"app.shiningacg.club/pkg/logger"
+	"github.com/google/uuid"
 )
 
-// LoggerInterceptor 日志拦截器
-func LoggerInterceptor(next http.Handler) http.Handler {
+// TracingInterceptor 全链路追踪拦截器，替代原来的 LoggerInterceptor
+func TracingInterceptor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
+		// 从请求头中获取或生成 Trace ID
+		traceID := r.Header.Get("X-Trace-ID")
+		if traceID == "" {
+			traceID = uuid.New().String()
+		}
+
+		// 创建带 Trace ID 的上下文
+		ctx := logger.WithTraceID(r.Context(), traceID)
+
+		// 设置响应头回写 Trace ID
+		w.Header().Set("X-Trace-ID", traceID)
 
 		// 使用支持更多接口（如 Flusher）的包装器
 		lrw := &loggingResponseWriter{
@@ -17,15 +32,16 @@ func LoggerInterceptor(next http.Handler) http.Handler {
 			statusCode:     http.StatusOK,
 		}
 
-		next.ServeHTTP(lrw, r)
+		// 处理请求
+		next.ServeHTTP(lrw, r.WithContext(ctx))
 
-		log.Printf(
-			"%s %s %d %s %s",
-			r.Method,
-			r.URL.Path,
-			lrw.statusCode,
-			time.Since(start),
-			r.RemoteAddr,
+		// 记录访问日志，使用 slog 并携带上下文
+		slog.InfoContext(ctx, "HTTP request completed",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", lrw.statusCode),
+			slog.Duration("latency", time.Since(start)),
+			slog.String("remote_addr", r.RemoteAddr),
 		)
 	})
 }

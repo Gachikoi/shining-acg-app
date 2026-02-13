@@ -5,15 +5,31 @@ import (
 
 	"app.shiningacg.club/config"
 	"app.shiningacg.club/internal/model"
+	"app.shiningacg.club/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // NewDB 创建数据库连接
 func NewDB(cfg *config.Config) (*gorm.DB, error) {
+	// 根据配置设置 GORM 日志级别
+	var logLevel gormlogger.LogLevel
+	switch cfg.Log.Level {
+	case "debug":
+		logLevel = gormlogger.Info
+	case "info":
+		logLevel = gormlogger.Info
+	case "warn":
+		logLevel = gormlogger.Warn
+	case "error":
+		logLevel = gormlogger.Error
+	default:
+		logLevel = gormlogger.Info
+	}
+
 	db, err := gorm.Open(postgres.Open(cfg.GetDBConnectionString()), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.NewGormLogger(logLevel),
 	})
 	if err != nil {
 		return nil, err
