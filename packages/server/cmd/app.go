@@ -47,7 +47,7 @@ func NewApp(
 
 	// 构建中间件链
 	var handler http.Handler = transcoder
-	handler = interceptor.LoggerInterceptor(handler)
+	handler = interceptor.TracingInterceptor(handler)
 	handler = interceptor.ErrorInterceptor(handler)
 	handler = h2c.NewHandler(handler, &http2.Server{}) // 支持 h2c
 
