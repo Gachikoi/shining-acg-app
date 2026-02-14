@@ -144,9 +144,7 @@ shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库
 
 > 酌情实现
 
-1. 每个请求前检测用户网络状况，如 offline 则 toast 提示用户并拒绝请求。
-
-2. 用户的每个变更状态操作，都要在成功及失败时给予 toast 提示。
+1. 用户的每个变更状态操作，都要在成功及失败时给予 toast 提示。
 
 # CI/CD
 
