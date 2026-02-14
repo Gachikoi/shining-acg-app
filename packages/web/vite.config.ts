@@ -5,6 +5,14 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
+		allowedHosts: [
+			'app.shiningacg.club',
+			'www.shiningacg.club',
+			'shiningacg.club',
+			'test.app.shiningacg.club',
+			'test.www.shiningacg.club',
+			'test.shiningacg.club'
+		],
 		proxy: {
 			'/api': {
 				target: 'https://test.api.shiningacg.club:61080',
