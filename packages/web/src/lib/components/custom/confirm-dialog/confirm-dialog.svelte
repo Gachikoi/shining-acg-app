@@ -30,6 +30,11 @@
 
 	/** 控制对话框的显示/隐藏状态 */
 	let isResetDialogOpen = $state(false);
+
+	const handleConfirm = () => {
+		onConfirm();
+		isResetDialogOpen = false;
+	};
 </script>
 
 <AlertDialog.Root bind:open={isResetDialogOpen}>
@@ -51,7 +56,7 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>{cancelText}</AlertDialog.Cancel>
-			<AlertDialog.Action onclick={onConfirm}>{confirmText}</AlertDialog.Action>
+			<AlertDialog.Action onclick={handleConfirm}>{confirmText}</AlertDialog.Action>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
