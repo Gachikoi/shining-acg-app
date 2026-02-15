@@ -1,4 +1,4 @@
-<script module>
+<script module lang="ts">
 	// 常量定义
 	import { linear } from 'svelte/easing';
 
@@ -14,6 +14,9 @@
 		'4:3': 'w-52 h-39',
 		'3:4': 'w-39 h-52'
 	} as const;
+	const defaultCoverRatio: CoverRatio = '3:4';
+
+	const titleWordLimit = 20; // 标题字数限制
 
 	// 出现然后淡出，用于封面比例标签提示
 	const appearThenFade = (_: Element, { delay = 500, duration = 400, easing = linear } = {}) => {
@@ -27,10 +30,12 @@
 </script>
 
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { cn } from '$lib/utils';
 	import { PlusIcon } from 'lucide-svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
 
 	let lastSaved = $state('11:33');
 	// 考虑将 exampleImageDataURLs 改为从 IndexedDB 中获取图片
@@ -38,7 +43,16 @@
 
 	let selectedImageURL = $state<string | null>(null);
 
-	let coverRatio = $state<CoverRatio>('4:3');
+	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
+
+	let titleContent = $state('');
+
+	function handleReset() {
+		titleContent = '';
+		coverRatio = defaultCoverRatio;
+		cachedImagesDataURLs = [];
+		selectedImageURL = null;
+	}
 
 	// 封面比例轮换
 	function rotateCoverRatio() {
@@ -85,6 +99,7 @@
 				/>
 				<!-- 目前实现了封面比例切换，但未真正实现裁剪功能 -->
 				<!-- TODO: 点击封面预览图片，可以进行编辑 -->
+				<!-- TODO: 用户选择封面后强制弹出图片视频预览编辑器裁切；未设置时自动兜底逻辑 -->
 			{:else}
 				<span class="text-xs text-muted-foreground">比例1:1 / 4:3 / 3:4</span>
 			{/if}
@@ -114,13 +129,42 @@
 				<PlusIcon class="size-4 text-muted-foreground" />
 			</div>
 		</div>
-		<!-- TODO: 实现正文内容编辑 -->
+		<!-- TODO: 实现正文内容编辑，依赖于富文本编辑器组件 -->
+		<p class="mt-6 text-lg font-bold">正文内容</p>
+		<div class="relative mt-2">
+			<Input
+				bind:value={titleContent}
+				maxlength={titleWordLimit}
+				placeholder="填写标题"
+				class="pr-16"
+			></Input>
+			<div
+				class="pointer-events-none absolute right-3 bottom-1/2 translate-y-1/2 text-muted-foreground"
+			>
+				{titleContent.length}/{titleWordLimit}
+			</div>
+		</div>
 	</div>
 	<!-- 底部按钮 -->
 	<!-- TODO: 实现重置按钮功能，需要弹窗让用户二次确认 -->
 	<!-- TODO: 实现保存按钮功能 -->
 	<div class="flex gap-2 border-t border-zinc-100 p-4 font-medium">
-		<Button variant="tertiary" class="cursor-pointer text-muted-foreground">重置</Button>
+		<ConfirmDialog
+			onConfirm={handleReset}
+			triggerText="重置"
+			triggerClass={cn(
+				buttonVariants({ variant: 'tertiary' }),
+				'cursor-pointer text-muted-foreground'
+			)}
+		>
+			{#snippet description()}
+				<p>
+					确定要重置吗？
+					<br />
+					编辑的内容将会丢失
+				</p>
+			{/snippet}
+		</ConfirmDialog>
 		<Button variant="tertiary" class="cursor-pointer text-muted-foreground">保存</Button>
 		<Button variant="default" class="flex-1 cursor-pointer transition-none lg:flex-none"
 			>发布帖子</Button
