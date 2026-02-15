@@ -27,7 +27,7 @@
 		<SettingPopover></SettingPopover>
 	</aside>
 
-	<section class="grow px-6">
+	<section class="min-h-0 grow overflow-hidden px-6">
 		{@render children()}
 	</section>
 
