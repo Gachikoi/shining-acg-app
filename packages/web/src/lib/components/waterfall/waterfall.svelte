@@ -1,6 +1,5 @@
 <script lang="ts" module>
 	// TODO:
-	// - [ ] Skeleton Screen
 	// - [ ] Restore the scroll position
 
 	import type { Snippet } from 'svelte';
@@ -43,11 +42,16 @@
 		overscan?: number;
 		// 卡片底部的内容的高度
 		cardContentHeight?: number;
+		// 是否正在首次加载
+		initialLoading?: boolean;
+		// 骨架屏数量
+		skeletonCount?: number;
 	}
 </script>
 
 <script lang="ts">
 	import Card from '$lib/components/ui/card/card.svelte';
+	import SkeletonCard from '$lib/components/ui/card/skeleton-card.svelte';
 	import { LoaderCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -62,6 +66,8 @@
 		class: className,
 		overscan = 3,
 		cardContentHeight = 76,
+		initialLoading = false,
+		skeletonCount = 12,
 		...restProps
 	}: WaterfallProps = $props();
 
@@ -192,6 +198,8 @@
 		loadMore();
 	}
 
+	const skeletonRatios = [0.75, 1, 1, 1.25, 1.5];
+
 	$effect(() => {
 		if (items.length > 0) {
 			calculateLayout();
@@ -247,7 +255,19 @@
 	onscroll={handleScroll}
 	{...restProps}
 >
-	{#if items.length === 0 && !isLoading}
+	{#if initialLoading && items.length === 0}
+		<div
+			bind:this={contentRef}
+			class="w-full"
+			style="columns: {columnWidth}px; column-gap: {gap}px;"
+		>
+			{#each Array(skeletonCount) as i (`SkeletonCard-${i}`)}
+				<div style="break-inside: avoid; margin-bottom: {gap}px;">
+					<SkeletonCard aspectRatio={skeletonRatios[i % skeletonRatios.length]} />
+				</div>
+			{/each}
+		</div>
+	{:else if items.length === 0 && !isLoading}
 		<div
 			class="flex h-full min-h-[300px] flex-col items-center justify-center text-muted-foreground"
 		>

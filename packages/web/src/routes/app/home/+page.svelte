@@ -74,6 +74,14 @@
 	</div>
 
 	<div class="min-h-0 grow">
-		<Waterfall {items} columnWidth={280} gap={16} {hasMore} onLoadMore={handleLoadMore} />
+		<!-- Set props initialLoading={true} to enable skeleton card -->
+		<Waterfall
+			{items}
+			columnWidth={280}
+			gap={16}
+			{hasMore}
+			onLoadMore={handleLoadMore}
+			initialLoading={false}
+		/>
 	</div>
 </div>
