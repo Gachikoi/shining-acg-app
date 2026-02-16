@@ -24,7 +24,7 @@
 			thumbnail: `https://picsum.photos/seed/${id}/${width}/${height}`,
 			isVideo: Math.random() > 0.8,
 			title: titles[index],
-			userAvatar: `https://i.pravatar.cc/100?u=${id}`,
+			userAvatar: `https://gravatar.loli.net/avatar`,
 			userName: userNames[index],
 			likeCount: Math.floor(Math.random() * 50000) + 100,
 			aspectRatio
@@ -66,53 +66,14 @@
 	<title>首页 - Shining ACG</title>
 </svelte:head>
 
-<div class="home-container">
-	<div class="home-header">
-		<h1 class="home-title">发现</h1>
+<div class="flex h-full w-full flex-col bg-background">
+	<div
+		class="flex shrink-0 items-center justify-between border-b border-border px-6 py-4 max-sm:px-4 max-sm:py-3 sm:px-6 sm:py-4"
+	>
+		<h1 class="m-0 text-2xl font-semibold text-foreground max-sm:text-xl">发现</h1>
 	</div>
 
-	<div class="waterfall-wrapper">
+	<div class="min-h-0 grow">
 		<Waterfall {items} columnWidth={280} gap={16} {hasMore} onLoadMore={handleLoadMore} />
 	</div>
 </div>
-
-<style>
-	.home-container {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		width: 100%;
-		background-color: var(--background);
-	}
-
-	.home-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 16px 24px;
-		border-bottom: 1px solid var(--border);
-		flex-shrink: 0;
-	}
-
-	.home-title {
-		font-size: 24px;
-		font-weight: 600;
-		color: var(--foreground);
-		margin: 0;
-	}
-
-	.waterfall-wrapper {
-		flex: 1;
-		min-height: 0;
-	}
-
-	@media (max-width: 640px) {
-		.home-header {
-			padding: 12px 16px;
-		}
-
-		.home-title {
-			font-size: 20px;
-		}
-	}
-</style>
