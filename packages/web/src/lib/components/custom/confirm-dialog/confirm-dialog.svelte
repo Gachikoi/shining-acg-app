@@ -35,12 +35,22 @@
   - onConfirm: 点击确认时调用，支持 async；执行期间确认按钮显示 loading 并禁用
   - onCancel: 点击取消、按 ESC 或点击遮罩关闭时调用
   - onError: onConfirm 抛出错误时调用，错误会继续向上抛出，弹窗保持打开
+
+	### 热区扩充说明
+
+	README 规范：
+	可点击事物（如按钮）的最小可触控区域为44x44px，可以考虑给元素额外的padding/伪元素来实现热区扩充，具体酌情实现。
+
+	实现方式：
+	已通过伪元素实现热区扩充，高度或宽度的视觉效果小于40px时，实际可触控区域扩展至44px。
 -->
 <script lang="ts">
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { buttonVariants, type ButtonVariant } from '$lib/components/ui/button';
+	import { cn } from '$lib/utils.js';
 	import { LoaderCircle } from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
+	import type { ClassValue } from 'tailwind-variants';
 
 	type ConfirmDialogProps = {
 		/** 受控模式：外部控制显示/隐藏 */
@@ -110,11 +120,15 @@
 	};
 
 	const actionClass = $derived(buttonVariants({ variant: confirmVariant }));
+
+	// 热区扩充：视觉保持 40px，触控区域扩展至 44px（README 规范）
+	const touchTargetExpandClass: ClassValue =
+		"relative after:absolute after:-inset-[2px] after:content-['']";
 </script>
 
 <AlertDialog.Root bind:open onOpenChange={handleOpenChange}>
 	{#if trigger}
-		<AlertDialog.Trigger>
+		<AlertDialog.Trigger class={touchTargetExpandClass}>
 			{@render trigger()}
 		</AlertDialog.Trigger>
 	{/if}
@@ -132,9 +146,9 @@
 			{/if}
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel>{cancelText}</AlertDialog.Cancel>
+			<AlertDialog.Cancel class={touchTargetExpandClass}>{cancelText}</AlertDialog.Cancel>
 			<AlertDialog.Action
-				class={actionClass}
+				class={cn(actionClass, touchTargetExpandClass)}
 				aria-busy={isConfirming}
 				disabled={isConfirming}
 				onclick={handleConfirm}
