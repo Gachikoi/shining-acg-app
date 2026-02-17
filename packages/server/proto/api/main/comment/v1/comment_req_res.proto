@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package api.main.comment.v1;
+
+import "api/main/comment/v1/comment_models.proto";
+import "api/main/common/v1/common.proto";
+
+// ---------------------------------------------------------
+// CreateComment - 创建评论
+// ---------------------------------------------------------
+message CreateCommentRequest {
+  string target_id = 1;                           // 被评论对象的ID（如帖子ID）
+  CommentTargetType target_type = 2;              // 被评论对象类型
+  string content = 3;                             // 评论内容（最多 300 字）
+  repeated api.main.common.v1.Media media = 4;     // 评论附带的媒体（图片，最多 6 张）
+
+  // 如果是第二层评论（回复），需要填写以下字段
+  optional ReplyContext reply_context = 5;       // 回复上下文（仅第二层评论有意义）
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;                            // 创建的评论
+}
+
+// ---------------------------------------------------------
+// DeleteComment - 删除评论
+// ---------------------------------------------------------
+message DeleteCommentRequest {
+  string comment_id = 1;                          // 评论ID
+}
+
+message DeleteCommentResponse {
+  // 空响应
+}
+
+// ---------------------------------------------------------
+// SetCommentLike - 点赞/取消点赞评论（幂等操作）
+// ---------------------------------------------------------
+message SetCommentLikeRequest {
+  string comment_id = 1;                          // 评论ID
+  bool is_liked = 2;                              // true=点赞, false=取消点赞
+}
+
+message SetCommentLikeResponse {
+}
+
+// ---------------------------------------------------------
+// ListPostComments - 获取帖子的评论列表（第一层）
+// 说明：
+//   - 返回第一层评论列表
+//   - 每条第一层评论自动包含第二层的第一条回复（如果存在）
+//   - 如果第二层回复数量 > 1，客户端显示"查看更多回复"按钮
+// ---------------------------------------------------------
+message ListPostCommentsRequest {
+  string post_id = 1;                             // 帖子ID
+  optional CommentOrderType order_type = 2;       // 排序方式（默认：点赞数最多）
+  api.main.common.v1.CursorPagination pagination = 3; // 分页参数（用于第一层评论翻页）
+}
+
+message ListPostCommentsResponse {
+  repeated CommentWithFirstReply comments = 1;    // 第一层评论列表（每条自动包含第一条回复）
+  optional string cursor = 2;                // 下一页游标（用于加载更多第一层评论），为空则说明没有更多评论了
+}
+
+// ---------------------------------------------------------
+// ListCommentReplies - 获取某条评论的更多回复（第二层）
+// 说明：
+//   - 用于"展示更多"功能
+//   - 每次返回 5 条（通过 pagination.limit 控制）
+//   - 默认跳过第一条（因为已在 ListPostComments 中返回）
+// ---------------------------------------------------------
+message ListCommentRepliesRequest {
+  string comment_id = 1;                          // 第一层评论ID
+  optional CommentOrderType order_type = 2;       // 排序方式（默认：最早）
+  // 注意：首次调用时，客户端应该传入 cursor（跳过已显示的第一条）；在此业务中，前端将 need_num 固定为 5。
+  api.main.common.v1.CursorPagination pagination = 3; // 分页参数
+}
+
+message ListCommentRepliesResponse {
+  repeated Comment replies = 1;                   // 第二层回复列表（打平显示）
+  optional string cursor = 2;                // 下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了
+  int64 total_count = 3;                          // 总回复数（方便客户端显示"还有 X 条回复"）
+}
+

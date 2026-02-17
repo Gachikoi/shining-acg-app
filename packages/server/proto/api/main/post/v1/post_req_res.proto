@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package api.main.post.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+// 假设 api.common.v1 在这里引用，实际使用请确保路径正确
+import "api/main/post/v1/post_models.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+
+// ---------------------------------------------------------
+// 获取帖子详情
+message GetPostRequest {
+  string post_id = 1;
+}
+
+message GetPostResponse {
+  Post post = 1;
+}
+
+// ---------------------------------------------------------
+// 发布帖子
+message CreatePostRequest {
+  api.main.common.v1.Media cover = 1;
+  repeated api.main.common.v1.Media media = 2;
+  optional string title = 3;
+  optional string content = 4;
+  string partition_id = 5;
+}
+
+message CreatePostResponse {}
+
+// ---------------------------------------------------------
+// 编辑帖子
+message EditPostRequest {
+  string post_id = 1;
+  // 要更新的字段值
+  api.main.common.v1.Media cover = 2;
+  repeated api.main.common.v1.Media media = 3;
+  optional string title = 4;
+  optional string content = 5;
+  string partition_id = 6;
+
+  // 字段掩码，用于指定本次请求需要更新哪些字段
+  // 例如：paths: ["title", "content"]
+  google.protobuf.FieldMask update_mask = 7;
+}
+
+message EditPostResponse {}
+
+// ---------------------------------------------------------
+// 删除帖子
+message DeletePostRequest {
+  string post_id = 1;
+}
+
+message DeletePostResponse {}
+
+// ---------------------------------------------------------
+// 点赞/取消点赞
+message SetPostLikeRequest {
+  string post_id = 1;
+  bool is_liked = 2; // true=点赞, false=取消点赞
+}
+
+message SetPostLikeResponse {}
+
+// ---------------------------------------------------------
+// 收藏/取消收藏
+message SetPostCollectRequest {
+  string post_id = 1;
+  bool is_collected = 2; // true=收藏, false=取消收藏
+}
+
+message SetPostCollectResponse {}

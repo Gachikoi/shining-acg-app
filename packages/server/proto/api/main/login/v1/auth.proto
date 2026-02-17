@@ -1,0 +1,188 @@
+//syntax = "proto3";
+//
+//package api.main.login.v1;
+//
+//import "api/main/common/v1/common.proto";
+//import "api/main/common/v1/user.proto";
+//import "google/api/annotations.proto";
+//
+//service AuthService {
+//  // 统一登录接口 (支持 QQ, 微信, 手机号等)
+//  rpc Login(LoginRequest) returns (LoginResponse) {
+//    option (google.api.http) = {
+//      post: "/v1/auth/login"
+//      body: "*"
+//    };
+//  }
+//
+//  // 退出登录
+//  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+//    option (google.api.http) = {delete: "/v1/auth/logout"};
+//  }
+//
+//  // 刷新 Token (换取新的 AccessToken)
+//  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+//    option (google.api.http) = {
+//      post: "/v1/auth/refresh"
+//      body: "*"
+//    };
+//  }
+//
+//  // 更新推送 Token (FCM/APNS 等)
+//  rpc UpdatePushToken(UpdatePushTokenRequest) returns (UpdatePushTokenResponse) {
+//    option (google.api.http) = {
+//      patch: "/v1/auth/push-token"
+//      body: "*"
+//    };
+//  }
+//
+//  // 获取当前会话信息
+//  rpc GetCurrentSession(GetCurrentSessionRequest) returns (GetCurrentSessionResponse) {
+//    option (google.api.http) = {get: "/v1/auth/session"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 获取已登录设备列表
+//  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse) {
+//    option (google.api.http) = {get: "/v1/auth/devices"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 踢出指定设备（撤销设备的登录会话）
+//  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse) {
+//    option (google.api.http) = {delete: "/v1/auth/devices/{device_id}"};
+//  }
+//
+//  // 踢出所有其他设备（仅保留当前设备）
+//  rpc RevokeAllOtherDevices(RevokeAllOtherDevicesRequest) returns (RevokeAllOtherDevicesResponse) {
+//    option (google.api.http) = {delete: "/v1/auth/devices"};
+//  }
+//
+//  // 验证 Token 有效性（内部服务调用，不对外暴露 HTTP）
+//  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {}
+//}
+//
+//// ---------------------------------------------------------
+//// 数据模型
+//// ---------------------------------------------------------
+//
+//enum DevicePlatform {
+//  DEVICE_PLATFORM_UNSPECIFIED = 0;
+//  DEVICE_PLATFORM_IOS = 1;
+//  DEVICE_PLATFORM_ANDROID = 2;
+//  DEVICE_PLATFORM_WEB = 3;
+//}
+//
+//message DeviceInfo {
+//  string device_id = 1; // 唯一设备 ID (如 UUID 或 厂商自生成 ID)
+//  string device_name = 2; // 设备名 (e.g. "iPhone 14 Pro")
+//  DevicePlatform platform = 3; // 平台类型
+//  string os_version = 4; // 系统版本 (e.g. "iOS 16.0")
+//  string client_version = 5; // App/前端版本号
+//  string push_token = 6; // 推送 Token (FCM/APNS/MiPush)
+//}
+//
+//// ---------------------------------------------------------
+//// 请求与响应
+//// ---------------------------------------------------------
+//
+//message LoginRequest {
+//  // 凭证载荷：QQ 传 AccessToken
+//  string credential = 1;
+//  DeviceInfo device = 2;
+//}
+//
+//message LoginResponse {
+//  string access_token = 1; // 短期令牌 (如 2小时)，过期绝对时间戳及user_id放在payload中
+//  string refresh_token = 2; // 长期令牌 (如 30天)，过期绝对时间戳放在payload中
+//
+//  api.main.common.v1.UserSummary user = 5; // 用户基本信息
+//}
+//
+//message LogoutRequest {
+//  // 是否踢掉所有设备 (修改密码后通常为 true)
+//  // bool logout_all_devices = 1;
+//}
+//
+//message LogoutResponse {}
+//
+//message RefreshTokenRequest {
+//  string refresh_token = 1;
+//}
+//
+//message RefreshTokenResponse {
+//  string access_token = 1;
+//  string refresh_token = 2; // 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
+//}
+//message UpdatePushTokenRequest {
+//  string push_token = 1;
+//  string device_id = 2; // 标识是哪个设备变更了 token
+//}
+//
+//message UpdatePushTokenResponse {}
+//
+//// ---------------------------------------------------------
+//// 会话管理
+//// ---------------------------------------------------------
+//
+//message GetCurrentSessionRequest {}
+//
+//message GetCurrentSessionResponse {
+//  string session_id = 1; // 会话 ID
+//  string user_id = 2; // 用户 ID
+//  string device_id = 3; // 设备 ID
+//  int64 login_at = 4; // 登录时间戳
+//  int64 expires_at = 5; // Token 过期时间
+//  int64 last_active_at = 6; // 最后活跃时间
+//}
+//
+//// ---------------------------------------------------------
+//// 设备管理
+//// ---------------------------------------------------------
+//
+//message DeviceSession {
+//  string device_id = 1; // 设备 ID
+//  string device_name = 2; // 设备名称
+//  DevicePlatform platform = 3; // 平台类型
+//  string os_version = 4; // 系统版本
+//  int64 login_at = 5; // 登录时间
+//  int64 last_active_at = 6; // 最后活跃时间
+//  bool is_current = 7; // 是否为当前请求设备
+//  string location = 8; // 登录地点（可选）
+//  string ip_address = 9; // IP 地址（可选）
+//}
+//
+//message ListDevicesRequest {}
+//
+//message ListDevicesResponse {
+//  repeated DeviceSession devices = 1;
+//}
+//
+//message RevokeDeviceRequest {
+//  string device_id = 1;
+//}
+//
+//message RevokeDeviceResponse {
+//  bool success = 1;
+//}
+//
+//message RevokeAllOtherDevicesRequest {}
+//
+//message RevokeAllOtherDevicesResponse {
+//  int32 revoked_count = 1; // 被撤销的设备数量
+//}
+//
+//// ---------------------------------------------------------
+//// Token 验证（内部使用）
+//// ---------------------------------------------------------
+//
+//message ValidateTokenRequest {
+//  string access_token = 1;
+//}
+//
+//message ValidateTokenResponse {
+//  bool valid = 1; // Token 是否有效
+//  string user_id = 2; // 用户 ID
+//  int64 expires_at = 3; // 过期时间
+//  string device_id = 4; // 设备 ID
+//}

@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package api.main.user.v1;
+
+import "api/main/user/v1/user_req_res.proto";
+import "google/api/annotations.proto";
+
+// 用户服务
+service UserService {
+  // --- 个人信息 ---
+  // 获取当前登录用户的完整信息（包含设置）
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {
+    option (google.api.http) = {get: "/v1/users/me"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取他人详细用户信息
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  //  获取用户相关的用户列表（关注/粉丝/互相关注）
+  rpc ListUserFollowings(ListUserRelatedRequest) returns (ListUserRelatedResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/followings"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc ListUserFollowers(ListUserRelatedRequest) returns (ListUserRelatedResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/followers"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc ListUserMutualFollowers(ListUserRelatedRequest) returns (ListUserRelatedResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/mutual_followers"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)。实际应该使用 websocket 进行设置更新的双向通信，先提供一个简单的 HTTP 接口作为范本
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
+    option (google.api.http) = {
+      patch: "/v1/users/me/settings"
+      body: "*"
+    };
+  }
+
+  // 关注/取消关注
+  rpc SetFollow(SetFollowRequest) returns (SetFollowResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/me/{user_id}/follow"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 申请身份认证
+  rpc ApplyVerification(ApplyVerificationRequest) returns (ApplyVerificationResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/me/verification"
+      body: "*"
+    };
+  }
+
+  // 查看我的认证申请状态
+  rpc GetMyVerification(GetMyVerificationRequest) returns (GetMyVerificationResponse) {
+    option (google.api.http) = {
+      get: "/v1/users/me/verification" // 简化URL
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 修改所属部门
+  rpc ModifyDepartments(ModifyDepartmentsRequest) returns (ModifyDepartmentsResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/me/departments"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  rpc EditLinks(EditLinksRequest) returns (EditLinksResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/me/links"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 修改头像
+  rpc ChangeAvatar(ChangeAvatarRequest) returns (ChangeAvatarResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/me/avatar"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 修改昵称（不超过 12 个字符）
+  rpc ChangeName(ChangeNameRequest) returns (ChangeNameResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/me/name"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 修改备注（不超过 12 个字符）
+  rpc ChangeRemark(ChangeRemarkRequest) returns (ChangeRemarkResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/{user_id}/remark"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // --- 个人资料页内容 ---
+  // 获取用户相关的帖子列表（发布/点赞/收藏）
+  rpc ListUserPosts(ListUserPostsRequest) returns (ListUserPostsResponse) {
+    option (google.api.http) = {
+      // 默认：用户发布的帖子
+      get: "/v1/users/{user_id}/posts"
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc ListUserLikedPosts(ListUserPostsRequest) returns (ListUserPostsResponse) {
+    option (google.api.http) = {
+      // 默认：用户发布的帖子
+      get: "/v1/users/{user_id}/liked_posts"
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc ListUserCollectedPosts(ListUserPostsRequest) returns (ListUserPostsResponse) {
+    option (google.api.http) = {
+      // 默认：用户发布的帖子
+      get: "/v1/users/{user_id}/collected_posts"
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+//  根据 QQ 号查询用户 id（用于官网）
+  rpc GetUserIdByQQ(GetUserIdByQQRequest) returns (GetUserIdByQQResponse) {
+    option (google.api.http) = {
+      get: "/v1/users/id_by_qq"
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

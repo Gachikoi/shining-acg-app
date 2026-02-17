@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package api.main.auth.v1;
+
+enum DevicePlatform {
+  DEVICE_PLATFORM_UNSPECIFIED = 0;
+  DEVICE_PLATFORM_IOS = 1;
+  DEVICE_PLATFORM_ANDROID = 2;
+  DEVICE_PLATFORM_WEB = 3;
+}
+
+message DeviceInfo {
+  string device_id = 1; // 唯一设备 ID (如 UUID 或 厂商自生成 ID)
+  string device_name = 2; // 设备名 (e.g. "iPhone 14 Pro")
+  DevicePlatform platform = 3; // 平台类型
+  string os_version = 4; // 系统版本 (e.g. "iOS 16.0")
+  string client_version = 5; // App/前端版本号
+  string push_token = 6; // 推送 Token (FCM/APNS/MiPush)
+}

@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package api.main.post.v1;
+
+// 假设 api.common.v1 在这里引用，实际使用请确保路径正确
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+
+// ---------------------------------------------------------
+// 帖子相关
+message Post {
+  string post_id = 1;
+  api.main.common.v1.UserSummary author = 2;
+  optional string title = 3; // 帖子标题
+  optional string content = 4; // 帖子正文描述
+  repeated api.main.common.v1.Media media = 5;
+  PostStats stats = 6;
+  PostRelationStatus relation_status = 7; // 当前用户与帖子的关系状态
+
+  // 秒级时间戳
+  int64 publish_time = 14;
+  int64 update_time = 15;
+}
+
+// 帖子预览（卡片视图数据）
+message PostPreview {
+  string post_id = 1;
+  optional string display_title = 2; // 如果用户输入了标题，则这里显示标题；如果没有输入标题，则将正文描述的前30个字作为标题传输过来；如果都没有，不传输此字段。
+  // 封面：专门用于列表展示的媒体对象。
+  api.main.common.v1.Media cover = 3;
+  // 作者信息 (包含头像 avatar, 用户名 name, id 等)
+  api.main.common.v1.UserBrief author = 4;
+  PostStats stats = 5; // 帖子统计数据
+  PostRelationStatus relation_status = 6; // 当前用户与帖子的关系状态
+
+  bool is_only_video = 7; // UI上是否显示一个“播放”的小图标
+
+  // 秒级时间戳
+  int64 publish_time = 9;
+  int64 update_time = 10;
+}
+
+// 帖子统计数据
+message PostStats {
+  int64 like_count = 8;
+  int64 collect_count = 9;
+  int64 comment_count = 10;
+  int64 view_count = 11;
+}
+
+// 当前用户与帖子的关系状态
+message PostRelationStatus {
+  bool is_liked = 12;
+  bool is_collected = 13;
+}
+
+// ---------------------------------------------------------
+// 推荐关注作者列表
+message FollowingAuthor {
+  api.main.common.v1.UserBrief author = 1;
+  bool has_unread = 2; // 有未读更新
+}

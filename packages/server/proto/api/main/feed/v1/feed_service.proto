@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package api.main.feed.v1;
+
+import "api/main/feed/v1/feed_req_res.proto";
+import "google/api/annotations.proto";
+
+// Feed服务 - 统一的内容流服务
+// 用于首页的button group切换，支持帖子流和用户流
+service FeedService {
+  // 获取内容流（统一接口，支持帖子流和用户流）
+  rpc GetFeed(GetFeedRequest) returns (GetFeedResponse) {
+    option (google.api.http) = {get: "/v1/feed"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取可用的内容分类列表（动态配置，包含分区信息）
+  rpc ListFeedCategories(ListFeedCategoriesRequest) returns (ListFeedCategoriesResponse) {
+    option (google.api.http) = {get: "/v1/feed/categories"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

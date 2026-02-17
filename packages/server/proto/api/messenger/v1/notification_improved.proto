@@ -1,0 +1,326 @@
+//syntax = "proto3";
+//
+//package api.messenger.v1;
+//
+//import "api/common/v1/common.proto";
+//import "api/common/v1/user.proto";
+//import "google/api/annotations.proto";
+//
+//// 🔄 增强后的消息与通知服务
+//// 用于处理所有"用户+内容"场景：评论、赞、收藏、关注等
+//service MessageService {
+//  // -------------------------------------------------------
+//  // 通知 (Notification) 服务
+//  // -------------------------------------------------------
+//
+//  // 获取通知列表
+//  // 🎯 这个 API 完全可以替代原 ListUsers 中的以下场景：
+//  //   - 评论和@ → CATEGORY_COMMENT
+//  //   - 赞和收藏 → CATEGORY_INTERACTION
+//  //   - 新增关注 → CATEGORY_FOLLOW
+//  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
+//    option (google.api.http) = {get: "/v1/notifications"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 获取未读计数
+//  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse) {
+//    option (google.api.http) = {get: "/v1/notifications/unread-count"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 标记已读
+//  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {
+//    option (google.api.http) = {
+//      put: "/v1/notifications/read"
+//      body: "*"
+//    };
+//  }
+//}
+//
+//// ==========================================
+//// 通知模型 (Notification Models)
+//// ==========================================
+//
+//// 通知大类 (用于列表筛选和角标统计)
+//enum NotificationCategory {
+//  CATEGORY_UNSPECIFIED = 0;
+//  CATEGORY_INTERACTION = 1; // 赞、收藏 (通常合并展示)
+//  CATEGORY_COMMENT = 2; // 评论、@提到 (通常合并展示)
+//  CATEGORY_FOLLOW = 3; // 新增关注
+//  CATEGORY_SYSTEM = 4; // 系统通知 (活动、公告、举报反馈)
+//}
+//
+//// 通知具体类型 (用于前端渲染不同的 UI 模板)
+//enum NotificationType {
+//  TYPE_UNSPECIFIED = 0;
+//
+//  // 互动类
+//  TYPE_LIKE_POST = 1; // 赞了帖子
+//  TYPE_LIKE_COMMENT = 2; // 赞了评论
+//  TYPE_COLLECT_POST = 3; // 收藏了帖子
+//
+//  // 内容类
+//  TYPE_COMMENT_POST = 4; // 评论了帖子
+//  TYPE_REPLY_COMMENT = 5; // 回复了评论
+//  TYPE_MENTION = 6; // @了你
+//
+//  // 关系类
+//  TYPE_FOLLOW = 7; // 关注了你
+//
+//  // 系统类
+//  TYPE_SYSTEM_ANNOUNCEMENT = 8; // 官方公告 (晒你宣传视频等)
+//  TYPE_REPORT_RESULT = 9; // 举报处理结果
+//}
+//
+//// 🔄 增强后的通知消息
+//// 包含了所有需要的信息：用户、内容、目标、上下文
+//message Notification {
+//  string notification_id = 1;
+//  NotificationType type = 2; // 具体类型
+//  NotificationCategory category = 3; // 所属大类
+//
+//  // ========================================
+//  // 🎯 核心字段：触发者信息（解决"谁"的问题）
+//  // ========================================
+//  // 支持聚合展示：
+//  //   - 单人："张三 赞了你的帖子"
+//  //   - 多人："张三、李四 等 5 人赞了你的帖子"
+//  repeated api.common.v1.UserSummary actors = 4; // 最近的 1-3 个触发者（包含头像、昵称、认证等）
+//  int32 actor_count = 5; // 总参与人数
+//
+//  // ========================================
+//  // 🎯 核心字段：通知内容（解决"做了什么"的问题）
+//  // ========================================
+//  string title = 6; // 标题（如："评论了你"、"赞了你的帖子"）
+//  optional string content = 7; // 内容（评论的具体文本、系统通知详情）
+//
+//  // ========================================
+//  // 🎯 核心字段：目标快照（解决"对什么内容操作"的问题）
+//  // ========================================
+//  // 关键优化：让前端在列表页能直接渲染出"被操作的内容"
+//  // 避免二次请求
+//  optional ContentSnapshot target = 8;
+//
+//  // ========================================
+//  // 辅助字段
+//  // ========================================
+//  optional string redirect_url = 9; // 跳转链接（用于系统通知）
+//  bool is_read = 10; // 是否已读
+//  int64 created_at = 11; // 创建时间
+//  int64 updated_at = 12; // 更新时间（用于聚合通知的最后更新时间）
+//}
+//
+//// 🆕 内容快照（包含被操作内容的关键信息）
+//message ContentSnapshot {
+//  string content_id = 1; // 内容 ID（帖子ID或评论ID）
+//  ContentType content_type = 2; // 内容类型
+//
+//  // 预览信息（让前端无需二次请求即可展示）
+//  optional string preview_image = 3; // 封面图/缩略图
+//  optional string summary = 4; // 文本摘要（截取前 20-50 字）
+//  optional api.common.v1.Media media = 5; // 媒体信息（视频、图片等）
+//
+//  // 上下文信息（用于嵌套场景）
+//  // 例如："赞了你在【帖子A】下的评论"
+//  optional ContentSnapshot parent = 6;
+//}
+//
+//enum ContentType {
+//  CONTENT_TYPE_UNSPECIFIED = 0;
+//  CONTENT_TYPE_POST = 1; // 帖子
+//  CONTENT_TYPE_COMMENT = 2; // 评论
+//  CONTENT_TYPE_USER = 3; // 用户（关注场景）
+//  CONTENT_TYPE_ANNOUNCEMENT = 4; // 公告
+//}
+//
+//// ==========================================
+//// 通知请求与响应
+//// ==========================================
+//
+//message ListNotificationsRequest {
+//  NotificationCategory category = 1; // 必填：按大类拉取
+//  api.common.v1.CursorPagination pagination = 2;
+//
+//  // 🆕 可选：高级筛选
+//  optional NotificationFilter filter = 3;
+//}
+//
+//message ListNotificationsResponse {
+//  repeated Notification notifications = 1;
+//  string cursor = 2;
+//
+//  // 🆕 可选：返回统计信息
+//  optional NotificationStats stats = 3;
+//}
+//
+//// 🆕 通知筛选器
+//message NotificationFilter {
+//  optional NotificationType type = 1; // 精确到具体类型
+//  optional bool unread_only = 2; // 只看未读
+//  optional int64 after_timestamp = 3; // 时间范围筛选
+//}
+//
+//// 🆕 通知统计
+//message NotificationStats {
+//  int32 total_count = 1; // 总数
+//  int32 unread_count = 2; // 未读数
+//  int64 latest_timestamp = 3; // 最新通知时间
+//}
+//
+//message GetUnreadCountRequest {
+//  // 空请求代表获取所有分类的计数
+//}
+//
+//message GetUnreadCountResponse {
+//  int32 total = 1;
+//  // 各分类未读数，方便前端渲染 Tab 上的红点
+//  int32 category_interaction = 2;
+//  int32 category_comment = 3;
+//  int32 category_follow = 4;
+//  int32 category_system = 5;
+//}
+//
+//message MarkReadRequest {
+//  // 范围：全部已读 | 指定分类已读 | 指定单条已读
+//  enum Scope {
+//    SCOPE_ALL = 0;
+//    SCOPE_CATEGORY = 1;
+//    SCOPE_ID = 2;
+//  }
+//  Scope scope = 1;
+//
+//  // 配合 Scope 使用
+//  optional NotificationCategory category = 2; // 当 scope=CATEGORY 时必填
+//  repeated string notification_ids = 3; // 当 scope=ID 时必填 (支持批量)
+//}
+//
+//message MarkReadResponse {
+//  int32 marked_count = 1; // 标记的数量
+//}
+//
+//// ==========================================
+//// 使用示例说明
+//// ==========================================
+//
+//// 场景 1：查看"谁赞了我" (CATEGORY_INTERACTION)
+//// ────────────────────────────────────────────────────
+//// 请求：
+////   category = CATEGORY_INTERACTION
+////
+//// 响应示例：
+////   {
+////     "notification_id": "notif_123",
+////     "type": "TYPE_LIKE_POST",
+////     "category": "CATEGORY_INTERACTION",
+////     "actors": [
+////       {"user_id": "user_1", "name": "张三", "avatar": "xxx", "verified_title": "23届部长"},
+////       {"user_id": "user_2", "name": "李四", "avatar": "yyy"}
+////     ],
+////     "actor_count": 5,  // 张三、李四等5人
+////     "title": "赞了你的帖子",
+////     "content": null,
+////     "target": {
+////       "content_id": "post_456",
+////       "content_type": "CONTENT_TYPE_POST",
+////       "preview_image": "https://example.com/post_cover.jpg",
+////       "summary": "这是帖子的前20字摘要..."
+////     },
+////     "is_read": false,
+////     "created_at": 1676377200
+////   }
+////
+//// 前端渲染：
+////   [张三头像] [李四头像] 等5人  赞了你的帖子  [帖子封面图]
+////                                            这是帖子的前20字摘要...
+//
+//// 场景 2：查看"谁评论了我" (CATEGORY_COMMENT)
+//// ────────────────────────────────────────────────────
+//// 请求：
+////   category = CATEGORY_COMMENT
+////
+//// 响应示例：
+////   {
+////     "notification_id": "notif_124",
+////     "type": "TYPE_COMMENT_POST",
+////     "category": "CATEGORY_COMMENT",
+////     "actors": [
+////       {"user_id": "user_3", "name": "王五", "avatar": "zzz"}
+////     ],
+////     "actor_count": 1,
+////     "title": "评论了你的帖子",
+////     "content": "这个真的好看！想知道在哪里拍的？", // 🎯 评论的具体内容
+////     "target": {
+////       "content_id": "post_789",
+////       "content_type": "CONTENT_TYPE_POST",
+////       "preview_image": "https://example.com/post_cover2.jpg",
+////       "summary": "今天的风景真美..."
+////     },
+////     "is_read": false,
+////     "created_at": 1676377300
+////   }
+////
+//// 前端渲染：
+////   [王五头像] 王五  评论了你的帖子  [帖子封面图]
+////                   这个真的好看！想知道在哪里拍的？
+//
+//// 场景 3：查看"谁关注了我" (CATEGORY_FOLLOW)
+//// ────────────────────────────────────────────────────
+//// 请求：
+////   category = CATEGORY_FOLLOW
+////
+//// 响应示例：
+////   {
+////     "notification_id": "notif_125",
+////     "type": "TYPE_FOLLOW",
+////     "category": "CATEGORY_FOLLOW",
+////     "actors": [
+////       {"user_id": "user_4", "name": "赵六", "avatar": "aaa", "verified_title": "设计部"}
+////     ],
+////     "actor_count": 1,
+////     "title": "关注了你",
+////     "content": null,
+////     "target": {
+////       "content_id": "user_4",
+////       "content_type": "CONTENT_TYPE_USER"
+////     },
+////     "is_read": false,
+////     "created_at": 1676377400
+////   }
+////
+//// 前端渲染：
+////   [赵六头像] 赵六  关注了你  [关注按钮]
+////              设计部
+//
+//// 场景 4：查看"回复了我的评论" (嵌套场景)
+//// ────────────────────────────────────────────────────
+//// 响应示例：
+////   {
+////     "notification_id": "notif_126",
+////     "type": "TYPE_REPLY_COMMENT",
+////     "category": "CATEGORY_COMMENT",
+////     "actors": [
+////       {"user_id": "user_5", "name": "孙七", "avatar": "bbb"}
+////     ],
+////     "actor_count": 1,
+////     "title": "回复了你的评论",
+////     "content": "在学校操场拍的！", // 🎯 回复的内容
+////     "target": {
+////       "content_id": "comment_999",
+////       "content_type": "CONTENT_TYPE_COMMENT",
+////       "summary": "这个地方在哪里？", // 你的评论
+////       "parent": { // 🎯 上下文：在哪个帖子下
+////         "content_id": "post_789",
+////         "content_type": "CONTENT_TYPE_POST",
+////         "preview_image": "https://example.com/post_cover2.jpg",
+////         "summary": "今天的风景真美..."
+////       }
+////     },
+////     "is_read": false,
+////     "created_at": 1676377500
+////   }
+////
+//// 前端渲染：
+////   [孙七头像] 孙七  回复了你的评论  [帖子封面图]
+////                   在学校操场拍的！
+////                   你的评论：这个地方在哪里？

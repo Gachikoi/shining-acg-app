@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package api.main.auth.v1;
+
+import "api/main/auth/v1/auth_req_res.proto";
+import "google/api/annotations.proto";
+
+service AuthService {
+  // 统一登录接口 (支持 QQ, 微信, 手机号等)
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth/auth"
+      body: "*"
+    };
+  }
+
+  // 退出登录
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = {delete: "/v1/auth/logout"};
+  }
+
+  // 刷新 Token (换取新的 AccessToken)
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth/refresh"
+      body: "*"
+    };
+  }
+
+  // 更新推送 Token (FCM/APNS 等)
+  rpc UpdatePushToken(UpdatePushTokenRequest) returns (UpdatePushTokenResponse) {
+    option (google.api.http) = {
+      patch: "/v1/auth/push-token"
+      body: "*"
+    };
+  }
+}

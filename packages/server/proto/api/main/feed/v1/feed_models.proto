@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package api.main.feed.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+import "api/main/post/v1/post_models.proto";
+
+// Feed内容类型
+enum FeedContentType {
+  FEED_CONTENT_TYPE_UNSPECIFIED = 0;
+  FEED_CONTENT_TYPE_POST = 1; // 帖子流
+  FEED_CONTENT_TYPE_USER = 2; // 用户流
+  FEED_CONTENT_TYPE_FOLLOWING_AUTHOR = 3; // 关注的作者列表（带更新状态）
+}
+
+// Feed分类（用于button group）
+message FeedCategory {
+  string category_id = 1; // 分类ID，可以是："general", "following", "user_tab", 或分区ID
+  string display_name = 2; // 显示名称："综合"、"关注"、"用户"、或分区名称
+  FeedContentType content_type = 3; // 内容类型：帖子或用户
+  int32 sort_order = 4; // 排序权重（用户可自定义）
+  bool is_system = 5; // 是否为系统内置分类（如"综合"、"关注"、"用户"）
+  optional string icon = 6; // 可选的图标URL或名称
+}
+
+// Feed过滤器（整合post和user的filter）
+message FeedFilter {
+  // 关键词搜索
+  optional string keyword = 1;
+
+  // 时间范围筛选（仅帖子流）
+  optional api.main.common.v1.TimeRange time_range = 2;
+
+  // 排序方式（根据content_type自动选择合适的排序）
+  optional FeedOrderType order_type = 3;
+
+  // 作者ID筛选（仅帖子流，配合"following"场景使用）
+  optional string author_id = 4;
+}
+
+// Feed排序类型（统一的排序枚举）
+enum FeedOrderType {
+  FEED_ORDER_TYPE_UNSPECIFIED = 0;
+  FEED_ORDER_TYPE_RECOMMENDED = 1; // 推荐排序（帖子/用户通用）
+  FEED_ORDER_TYPE_LATEST = 2; // 最新排序（仅帖子）
+  FEED_ORDER_TYPE_HOT = 3; // 热门排序（仅帖子）
+  FEED_ORDER_TYPE_MOST_FOLLOWERS = 4; // 最多粉丝（仅用户）
+  FEED_ORDER_TYPE_LEAST_FOLLOWER = 5; // 最少粉丝（仅用户）
+  FEED_ORDER_TYPE_MOST_INTERACTIONS = 6; // 最多互动（仅用户）
+  FEED_ORDER_TYPE_LEAST_INTERACTIONS = 7; // 最少互动（仅用户）
+}
+
+// 帖子流内容
+message PostFeedContent {
+  repeated api.main.post.v1.PostPreview items = 1;
+}
+
+// 用户流内容
+message UserFeedContent {
+  repeated api.main.common.v1.UserSummary items = 1;
+  // 当前用户与列表中用户的关系状态（如果适用）
+  optional api.main.common.v1.UserRelationStatus relation_status = 2;
+}
+
+// 关注的作者流内容（用于关注页顶部的横向滚动列表）
+message FollowingAuthorFeedContent {
+  repeated api.main.post.v1.FollowingAuthor items = 1;
+}

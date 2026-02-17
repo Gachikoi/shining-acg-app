@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package api.main.post.v1;
+
+import "api/main/post/v1/post_req_res.proto";
+import "google/api/annotations.proto";
+
+service PostService {
+  // 发布帖子
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse) {
+    option (google.api.http) = {
+      post: "/v1/posts"
+      body: "*"
+    };
+  }
+
+  // 编辑帖子
+  rpc EditPost(EditPostRequest) returns (EditPostResponse) {
+    option (google.api.http) = {
+      patch: "/v1/posts/{post_id}"
+      body: "*"
+    };
+  }
+
+  // 删除帖子
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse) {
+    option (google.api.http) = {delete: "/v1/posts/{post_id}"};
+  }
+
+  // 帖子详情
+  rpc GetPost(GetPostRequest) returns (GetPostResponse) {
+    option (google.api.http) = {get: "/v1/posts/{post_id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 点赞/取消点赞
+  rpc SetPostLike(SetPostLikeRequest) returns (SetPostLikeResponse) {
+    option (google.api.http) = {
+      put: "/v1/posts/{post_id}/like"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 收藏/取消收藏
+  rpc SetPostCollect(SetPostCollectRequest) returns (SetPostCollectResponse) {
+    option (google.api.http) = {
+      put: "/v1/posts/{post_id}/collection"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+}

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package api.main.auth.v1;
+
+import "api/main/auth/v1/auth_models.proto";
+import "api/main/common/v1/user.proto";
+
+// ---------------------------------------------------------
+// 登录请求
+message LoginRequest {
+  // 凭证载荷：QQ 传 AccessToken
+  string credential = 1;
+  DeviceInfo device = 2;
+}
+
+message LoginResponse {
+  string access_token = 1; // 短期令牌 (如 2小时)，过期绝对时间戳及user_id放在payload中
+  string refresh_token = 2; // 长期令牌 (如 30天)，过期绝对时间戳放在payload中
+
+  api.main.common.v1.UserSummary user = 5; // 用户基本信息
+}
+
+// ---------------------------------------------------------
+// 登出请求
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+// ---------------------------------------------------------
+// 刷新 token
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2; // 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
+}
+
+// ---------------------------------------------------------
+// 更新 push_token
+message UpdatePushTokenRequest {
+  string device_id = 2; // 标识是哪个设备变更了 token
+  string push_token = 1;
+}
+
+message UpdatePushTokenResponse {}

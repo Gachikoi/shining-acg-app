@@ -1,239 +1,223 @@
-syntax = "proto3";
-
-// 建议改为 portal (门户) 或 cms
-package api.cms.v1;
-
-import "api/common/v1/common.proto"; // 假设这里有分页等定义
-import "google/api/annotations.proto";
-
-// 门户/官网服务
-// 特点：除了 Trending 外，其他接口数据变化频率极低，建议服务端做强缓存
-service PortalService {
-  // --- 静态展示类 ---
-
-  // 1. 获取首页聚合信息 (可选，一次性拉取所有首屏需要的配置，减少请求数)
-  // 包含：Logo, 宣传视频, 基础SiteInfo
-  rpc GetSiteConfig(GetSiteConfigRequest) returns (GetSiteConfigResponse) {
-    option (google.api.http) = {
-      get: "/v1/site/config"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 2. 部门列表 (支持按优先级排序)
-  rpc ListDepartments(ListDepartmentsRequest) returns (ListDepartmentsResponse) {
-    option (google.api.http) = {
-      get: "/v1/departments"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 3. 活动列表
-  rpc ListActivities(ListActivitiesRequest) returns (ListActivitiesResponse) {
-    option (google.api.http) = {
-      get: "/v1/activities"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 4. 发展历程 (大事记)
-  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse) {
-    option (google.api.http) = {
-      get: "/v1/history"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 5. 部长/历代领导 (按年份/届数查询)
-  rpc ListMinisters(ListMinistersRequest) returns (ListMinistersResponse) {
-    option (google.api.http) = {
-      get: "/v1/ministers"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 6. Staff 名单 (按分组返回)
-  rpc ListStaff(ListStaffRequest) returns (ListStaffResponse) {
-    option (google.api.http) = {
-      get: "/v1/staff"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 7. 赞助商/鸣谢名单
-  rpc ListSponsors(ListSponsorsRequest) returns (ListSponsorsResponse) {
-    option (google.api.http) = {
-      get: "/v1/sponsors"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // --- 动态聚合类 ---
-
-  // 8. 热门动态 (对应需求：同步社区动态，无Token访问)
-  rpc ListHomeTrending(ListHomeTrendingRequest) returns (ListHomeTrendingResponse) {
-    option (google.api.http) = {
-      get: "/v1/trending"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-}
-
-// ==========================================
-// 数据模型
-// ==========================================
-
-// 部门信息
-message DepartmentInfo {
-  api.common.v1.DepartmentBase department_base = 1;
-  string logo = 2;
-  string cover_image = 3;
-  string intro_video_url = 4; // 需求提到的部门视频
-  string description = 5;
-  repeated api.common.v1.Link links = 6;    // 使用 repeated 保证顺序
-  int32 sort_order = 7;       // 排序权重，越大越靠前
-}
-
-// 活动
-message Activity {
-  string id = 1;
-  string name = 2;
-  string name_en = 3;
-  string cover_image = 4;
-  string intro_video_url = 5; // B站或红书视频链接
-  string description = 6;
-  int64 start_time = 7;       // 建议用 int64 时间戳
-  int64 end_time = 8;
-  repeated api.common.v1.Link links = 9;
-  int32 sort_order = 10;
-}
-
-// 历史事件
-message HistoryEvent {
-  string id = 1;
-  int32 year = 2;             // 单独拆分年份，方便前端做时间轴分组
-  string date_str = 3;        // 显示用日期字符串 "2023.10.01"
-  string title = 4;
-  string description = 5;
-  repeated string images = 6; // 可能有多张图
-}
-
-// 部长
-message Minister {
-  string id = 1;
-  string name = 2;            // CN (需求中的 name)
-  string avatar = 3;
-  string signature = 4;       // 签名
-  string description = 5;     // 简介
-  string department_name = 6; // 所属部门名称
-
-  // 届数/年份信息
-  int32 session_number = 7;   // 第几届 (需求提到的按年代/代目划分)
-  int32 year = 8;             // 任职年份
-
-  repeated api.common.v1.Link links = 9;
-}
-
-// Staff 成员
-message StaffMember {
-  string name = 1;            // CN
-  string avatar = 2;
-  string role = 3;            // 职责 (e.g. "后端开发")
-  string description = 4;     // 简介/寄语
-  string donation_amount = 5; // (可选) 赞助金额，对应需求
-  repeated api.common.v1.Link links = 6;
-}
-
-// Staff 分组 (如：开发组、设计组、甚至 赞助组 也可以复用这个结构)
-message StaffGroup {
-  string group_name = 1;
-  repeated StaffMember members = 2;
-}
-
-// 赞助者 (如果和Staff页面分开展示)
-message Sponsor {
-  string name = 1;
-  string avatar = 2;
-  string intro = 3;
-  string amount_display = 4; // 显示金额，如 "￥50.00"
-//  repeated api.common.v1.Link links = 5;
-}
-
-// 首页热门动态 (聚合自社区)
-message HomeTrendingItem {
-  string id = 1;             // 原始帖子ID
-  string title = 2;
-  string cover_image = 3;    // 封面
-  string summary = 4;        // 摘要
-  string author_name = 5;
-  string author_avatar = 6;
-  string jump_url = 7;       // 点击跳转地址 (App内链或H5链接)
-
-  // 来源标记
-  enum Source {
-    SOURCE_COMMUNITY = 0; // 社区帖子
-    SOURCE_OFFICIAL = 1;  // 官方公告
-    SOURCE_EXTERNAL = 2;  // 外部爬取的红书/B站动态
-  }
-  Source source = 8;
-
-  // 统计
-  int32 like_count = 9;
-}
-
-// ==========================================
-// 请求与响应
-// ==========================================
-
-message GetSiteConfigRequest {}
-message GetSiteConfigResponse {
-  string site_name = 1;
-  string promo_video_url = 2; // 首页背景宣传视频
-  // ... 其他全局配置
-}
-
-message ListDepartmentsRequest {}
-message ListDepartmentsResponse {
-  repeated DepartmentInfo list = 1;
-}
-
-message ListActivitiesRequest {}
-message ListActivitiesResponse {
-  repeated Activity list = 1;
-}
-
-message ListHistoryRequest {}
-message ListHistoryResponse {
-  repeated HistoryEvent list = 1;
-}
-
-message ListMinistersRequest {
-  // 如果为 0，返回所有届部长的聚合列表？或者需要新的聚合结构
-  // 建议：可以不传参数，直接返回按届分组好的数据
-  int32 year = 1;
-}
-message ListMinistersResponse {
-  message YearGroup {
-    int32 year = 1;
-    int32 session_number = 2; // 第几届
-    repeated Minister ministers = 3;
-  }
-  repeated YearGroup list = 1; // 按年份分组返回，方便前端渲染侧边栏年份选择
-}
-
-message ListStaffRequest {}
-message ListStaffResponse {
-  repeated StaffGroup list = 1;
-}
-
-message ListSponsorsRequest {}
-message ListSponsorsResponse {
-  repeated Sponsor list = 1;
-}
-
-message ListHomeTrendingRequest {
-  int32 limit = 1; // 限制数量，如 6 条
-}
-message ListHomeTrendingResponse {
-  repeated HomeTrendingItem list = 1;
-}
+//syntax = "proto3";
+//
+//// 建议改为 portal (门户) 或 cms
+//package api.cms.v1;
+//
+//import "api/common/v1/common.proto"; // 假设这里有分页等定义
+//import "google/api/annotations.proto";
+//
+//// 门户/官网服务
+//// 特点：除了 Trending 外，其他接口数据变化频率极低，建议服务端做强缓存
+//service PortalService {
+//  // --- 静态展示类 ---
+//
+//  // 1. 获取首页聚合信息 (可选，一次性拉取所有首屏需要的配置，减少请求数)
+//  // 包含：Logo, 宣传视频, 基础SiteInfo
+//  rpc GetSiteConfig(GetSiteConfigRequest) returns (GetSiteConfigResponse) {
+//    option (google.api.http) = {get: "/v1/site/config"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 2. 部门列表 (支持按优先级排序)
+//  rpc ListDepartments(ListDepartmentsRequest) returns (ListDepartmentsResponse) {
+//    option (google.api.http) = {get: "/v1/departments"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 3. 活动列表
+//  rpc ListActivities(ListActivitiesRequest) returns (ListActivitiesResponse) {
+//    option (google.api.http) = {get: "/v1/activities"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 4. 发展历程 (大事记)
+//  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse) {
+//    option (google.api.http) = {get: "/v1/history"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 5. 部长/历代领导 (按年份/届数查询)
+//  rpc ListMinisters(ListMinistersRequest) returns (ListMinistersResponse) {
+//    option (google.api.http) = {get: "/v1/ministers"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 6. Staff 名单 (按分组返回)
+//  rpc ListStaff(ListStaffRequest) returns (ListStaffResponse) {
+//    option (google.api.http) = {get: "/v1/staff"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 7. 赞助商/鸣谢名单
+//  rpc ListSponsors(ListSponsorsRequest) returns (ListSponsorsResponse) {
+//    option (google.api.http) = {get: "/v1/sponsors"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // --- 动态聚合类 ---
+//
+//  // 8. 热门动态 (对应需求：同步社区动态，无Token访问)
+//  rpc ListHomeTrending(ListHomeTrendingRequest) returns (ListHomeTrendingResponse) {
+//    option (google.api.http) = {get: "/v1/trending"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//}
+//
+//// ==========================================
+//// 数据模型
+//// ==========================================
+//
+//// 部门信息
+//message DepartmentInfo {
+//  api.common.v1.DepartmentBase department_base = 1;
+//  string logo = 2;
+//  string cover_image = 3;
+//  string intro_video_url = 4; // 需求提到的部门视频
+//  string description = 5;
+//  repeated api.common.v1.Link links = 6; // 使用 repeated 保证顺序
+//  int32 sort_order = 7; // 排序权重，越大越靠前
+//}
+//
+//// 活动
+//message Activity {
+//  string id = 1;
+//  string name = 2;
+//  string name_en = 3;
+//  string cover_image = 4;
+//  string intro_video_url = 5; // B站或红书视频链接
+//  string description = 6;
+//  int64 start_time = 7; // 建议用 int64 时间戳
+//  int64 end_time = 8;
+//  repeated api.common.v1.Link links = 9;
+//  int32 sort_order = 10;
+//}
+//
+//// 历史事件
+//message HistoryEvent {
+//  string id = 1;
+//  int32 year = 2; // 单独拆分年份，方便前端做时间轴分组
+//  string date_str = 3; // 显示用日期字符串 "2023.10.01"
+//  string title = 4;
+//  string description = 5;
+//  repeated string images = 6; // 可能有多张图
+//}
+//
+//// 部长
+//message Minister {
+//  string id = 1;
+//  string name = 2; // CN (需求中的 name)
+//  string avatar = 3;
+//  string signature = 4; // 签名
+//  string description = 5; // 简介
+//  string department_name = 6; // 所属部门名称
+//
+//  // 届数/年份信息
+//  int32 session_number = 7; // 第几届 (需求提到的按年代/代目划分)
+//  int32 year = 8; // 任职年份
+//
+//  repeated api.common.v1.Link links = 9;
+//}
+//
+//// Staff 成员
+//message StaffMember {
+//  string name = 1; // CN
+//  string avatar = 2;
+//  string role = 3; // 职责 (e.g. "后端开发")
+//  string description = 4; // 简介/寄语
+//  string donation_amount = 5; // (可选) 赞助金额，对应需求
+//  repeated api.common.v1.Link links = 6;
+//}
+//
+//// Staff 分组 (如：开发组、设计组、甚至 赞助组 也可以复用这个结构)
+//message StaffGroup {
+//  string group_name = 1;
+//  repeated StaffMember members = 2;
+//}
+//
+//// 赞助者 (如果和Staff页面分开展示)
+//message Sponsor {
+//  string name = 1;
+//  string avatar = 2;
+//  string intro = 3;
+//  string amount_display = 4; // 显示金额，如 "￥50.00"
+//  //  repeated api.common.v1.Link links = 5;
+//}
+//
+//// 首页热门动态 (聚合自社区)
+//message HomeTrendingItem {
+//  string id = 1; // 原始帖子ID
+//  string title = 2;
+//  string cover_image = 3; // 封面
+//  string summary = 4; // 摘要
+//  string author_name = 5;
+//  string author_avatar = 6;
+//  string jump_url = 7; // 点击跳转地址 (App内链或H5链接)
+//
+//  // 来源标记
+//  enum Source {
+//    SOURCE_COMMUNITY = 0; // 社区帖子
+//    SOURCE_OFFICIAL = 1; // 官方公告
+//    SOURCE_EXTERNAL = 2; // 外部爬取的红书/B站动态
+//  }
+//  Source source = 8;
+//
+//  // 统计
+//  int32 like_count = 9;
+//}
+//
+//// ==========================================
+//// 请求与响应
+//// ==========================================
+//
+//message GetSiteConfigRequest {}
+//message GetSiteConfigResponse {
+//  string site_name = 1;
+//  string promo_video_url = 2; // 首页背景宣传视频
+//  // ... 其他全局配置
+//}
+//
+//message ListDepartmentsRequest {}
+//message ListDepartmentsResponse {
+//  repeated DepartmentInfo list = 1;
+//}
+//
+//message ListActivitiesRequest {}
+//message ListActivitiesResponse {
+//  repeated Activity list = 1;
+//}
+//
+//message ListHistoryRequest {}
+//message ListHistoryResponse {
+//  repeated HistoryEvent list = 1;
+//}
+//
+//message ListMinistersRequest {
+//  // 如果为 0，返回所有届部长的聚合列表？或者需要新的聚合结构
+//  // 建议：可以不传参数，直接返回按届分组好的数据
+//  int32 year = 1;
+//}
+//message ListMinistersResponse {
+//  message YearGroup {
+//    int32 year = 1;
+//    int32 session_number = 2; // 第几届
+//    repeated Minister ministers = 3;
+//  }
+//  repeated YearGroup list = 1; // 按年份分组返回，方便前端渲染侧边栏年份选择
+//}
+//
+//message ListStaffRequest {}
+//message ListStaffResponse {
+//  repeated StaffGroup list = 1;
+//}
+//
+//message ListSponsorsRequest {}
+//message ListSponsorsResponse {
+//  repeated Sponsor list = 1;
+//}
+//
+//message ListHomeTrendingRequest {
+//  int32 limit = 1; // 限制数量，如 6 条
+//}
+//message ListHomeTrendingResponse {
+//  repeated HomeTrendingItem list = 1;
+//}

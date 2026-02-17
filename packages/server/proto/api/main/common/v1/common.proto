@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package api.main.common.v1;
+
+//--------------------
+// 分页模型
+// 基于游标的分页模型
+message CursorPagination {
+  int32 need_num = 1; // 需要返回的帖子数量
+  // 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+  // 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+  // 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+  optional string cursor = 2; // 为空则说明是首次请求第一页数据
+}
+
+//--------------------
+// 刷新类型枚举
+enum RefreshType {
+  REFRESH_TYPE_UNSPECIFIED = 0;
+  REFRESH_TYPE_PULL_DOWN = 1; // 下拉刷新，获取最新数据
+  REFRESH_TYPE_PULL_UP = 2; // 上拉加载，获取历史数据
+}
+
+//--------------------
+// 时间范围结构（秒级时间戳）
+message TimeRange {
+  int64 start_timestamp = 1; // 开始时间
+  int64 end_timestamp = 2; // 结束时间
+}
+
+//--------------------
+// 部门数据，用于：用户徽章渲染
+message DepartmentBase {
+  string id = 1; // ID
+  string name = 2; // 全称 (如 "轻音部")
+}
+
+//--------------------
+// 媒体资源
+message Media {
+  string id = 1; // 雪花 ID
+  MediaType type = 2; // 使用枚举代替字符串
+
+  // 核心存储标识
+  string bucket = 3; // 存储桶：shining-vod
+  string object_key = 4; // 对象路径：videos/2024/01/v001.m3u8
+
+  // 元数据 (用 sub-message 保持整洁)
+  MediaMeta meta = 5;
+
+  // 状态与权限
+  int32 status = 6; // 0:处理中, 1:就绪, 2:违规屏蔽
+}
+
+enum MediaType {
+  MEDIA_TYPE_UNSPECIFIED = 0;
+  MEDIA_TYPE_IMAGE = 1;
+  MEDIA_TYPE_VIDEO = 2;
+}
+
+message MediaMeta {
+  int32 width = 1;
+  int32 height = 2;
+  int32 duration = 3; // 视频时长（秒）
+  int64 size = 4; // 文件大小（字节）
+  string mime_type = 5; // video/mp4, image/webp
+}
+
+//--------------------
+// 外部链接结构
+message Link {
+  string label = 1; // 链接显示文字
+  string url = 2; // 实际跳转地址
+}
