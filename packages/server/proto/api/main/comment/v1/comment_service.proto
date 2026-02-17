@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package api.main.comment.v1;
+
+import "api/main/comment/v1/comment_models.proto";
+import "api/main/comment/v1/comment_req_res.proto";
+import "google/api/annotations.proto";
+
+service CommentService {
+  // --- 用户评论操作 ---
+
+  // 创建评论（可以是对帖子的评论，也可以是对评论的回复）
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse) {
+    option (google.api.http) = {
+      post: "/v1/comments"
+      body: "*"
+    };
+  }
+
+  // 删除评论
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse) {
+    option (google.api.http) = {delete: "/v1/comments/{comment_id}"};
+  }
+
+  // 点赞/取消点赞评论（幂等操作）
+  rpc SetCommentLike(SetCommentLikeRequest) returns (SetCommentLikeResponse) {
+    option (google.api.http) = {
+      put: "/v1/comments/{comment_id}/like"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // --- 查询评论 ---
+
+  // 获取帖子的评论列表（第一层评论，包含部分回复预览）
+  rpc ListPostComments(ListPostCommentsRequest) returns (ListPostCommentsResponse) {
+    option (google.api.http) = {get: "/v1/posts/{post_id}/comments"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取某条评论的所有回复（第二层评论，打平显示）
+  rpc ListCommentReplies(ListCommentRepliesRequest) returns (ListCommentRepliesResponse) {
+    option (google.api.http) = {get: "/v1/comments/{comment_id}/replies"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+

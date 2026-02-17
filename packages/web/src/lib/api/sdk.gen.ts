@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthServiceLoginData, AuthServiceLoginErrors, AuthServiceLoginResponses, AuthServiceLogoutData, AuthServiceLogoutErrors, AuthServiceLogoutResponses, AuthServiceRefreshTokenData, AuthServiceRefreshTokenErrors, AuthServiceRefreshTokenResponses, AuthServiceUpdatePushTokenData, AuthServiceUpdatePushTokenErrors, AuthServiceUpdatePushTokenResponses, CommentServiceCreateCommentData, CommentServiceCreateCommentErrors, CommentServiceCreateCommentResponses, CommentServiceDeleteCommentData, CommentServiceDeleteCommentErrors, CommentServiceDeleteCommentResponses, CommentServiceListCommentsData, CommentServiceListCommentsErrors, CommentServiceListCommentsResponses, ContentAdminServiceApprovePostData, ContentAdminServiceApprovePostErrors, ContentAdminServiceApprovePostResponses, ContentAdminServiceDeletePartitionData, ContentAdminServiceDeletePartitionErrors, ContentAdminServiceDeletePartitionResponses, ContentAdminServiceDeletePostData, ContentAdminServiceDeletePostErrors, ContentAdminServiceDeletePostResponses, ContentAdminServiceListPartitionsData, ContentAdminServiceListPartitionsErrors, ContentAdminServiceListPartitionsResponses, ContentAdminServiceListPostsData, ContentAdminServiceListPostsErrors, ContentAdminServiceListPostsResponses, ContentAdminServiceUpsertPartitionData, ContentAdminServiceUpsertPartitionErrors, ContentAdminServiceUpsertPartitionResponses, ContentServiceCreatePostData, ContentServiceCreatePostErrors, ContentServiceCreatePostResponses, ContentServiceDeletePostData, ContentServiceDeletePostErrors, ContentServiceDeletePostResponses, ContentServiceGetPostData, ContentServiceGetPostErrors, ContentServiceGetPostResponses, ContentServiceListPostsData, ContentServiceListPostsErrors, ContentServiceListPostsResponses, GovernanceServiceListReportsData, GovernanceServiceListReportsErrors, GovernanceServiceListReportsResponses, GovernanceServiceResolveReport2Data, GovernanceServiceResolveReport2Errors, GovernanceServiceResolveReport2Responses, GovernanceServiceResolveReportData, GovernanceServiceResolveReportErrors, GovernanceServiceResolveReportResponses, InteractionServiceSetCollectData, InteractionServiceSetCollectErrors, InteractionServiceSetCollectResponses, InteractionServiceSetLikeData, InteractionServiceSetLikeErrors, InteractionServiceSetLikeResponses, MessageServiceGetUnreadCountData, MessageServiceGetUnreadCountErrors, MessageServiceGetUnreadCountResponses, MessageServiceListNotificationsData, MessageServiceListNotificationsErrors, MessageServiceListNotificationsResponses, MessageServiceMarkReadData, MessageServiceMarkReadErrors, MessageServiceMarkReadResponses, PortalServiceGetSiteConfigData, PortalServiceGetSiteConfigErrors, PortalServiceGetSiteConfigResponses, PortalServiceListActivitiesData, PortalServiceListActivitiesErrors, PortalServiceListActivitiesResponses, PortalServiceListDepartmentsData, PortalServiceListDepartmentsErrors, PortalServiceListDepartmentsResponses, PortalServiceListHistoryData, PortalServiceListHistoryErrors, PortalServiceListHistoryResponses, PortalServiceListHomeTrendingData, PortalServiceListHomeTrendingErrors, PortalServiceListHomeTrendingResponses, PortalServiceListMinistersData, PortalServiceListMinistersErrors, PortalServiceListMinistersResponses, PortalServiceListSponsorsData, PortalServiceListSponsorsErrors, PortalServiceListSponsorsResponses, PortalServiceListStaffData, PortalServiceListStaffErrors, PortalServiceListStaffResponses, ResourceServiceCompleteUploadData, ResourceServiceCompleteUploadErrors, ResourceServiceCompleteUploadResponses, ResourceServiceGetUploadStatusData, ResourceServiceGetUploadStatusErrors, ResourceServiceGetUploadStatusResponses, ResourceServiceGetUploadTokensData, ResourceServiceGetUploadTokensErrors, ResourceServiceGetUploadTokensResponses, SiteAdminServiceDeleteActivityData, SiteAdminServiceDeleteActivityErrors, SiteAdminServiceDeleteActivityResponses, SiteAdminServiceDeleteDepartmentData, SiteAdminServiceDeleteDepartmentErrors, SiteAdminServiceDeleteDepartmentResponses, SiteAdminServiceDeleteHistoryEventData, SiteAdminServiceDeleteHistoryEventErrors, SiteAdminServiceDeleteHistoryEventResponses, SiteAdminServiceDeleteMinisterData, SiteAdminServiceDeleteMinisterErrors, SiteAdminServiceDeleteMinisterResponses, SiteAdminServiceDeleteSponsorData, SiteAdminServiceDeleteSponsorErrors, SiteAdminServiceDeleteSponsorResponses, SiteAdminServiceDeleteStaffGroupData, SiteAdminServiceDeleteStaffGroupErrors, SiteAdminServiceDeleteStaffGroupResponses, SiteAdminServiceUpsertActivityData, SiteAdminServiceUpsertActivityErrors, SiteAdminServiceUpsertActivityResponses, SiteAdminServiceUpsertDepartmentData, SiteAdminServiceUpsertDepartmentErrors, SiteAdminServiceUpsertDepartmentResponses, SiteAdminServiceUpsertHistoryEventData, SiteAdminServiceUpsertHistoryEventErrors, SiteAdminServiceUpsertHistoryEventResponses, SiteAdminServiceUpsertMinisterData, SiteAdminServiceUpsertMinisterErrors, SiteAdminServiceUpsertMinisterResponses, SiteAdminServiceUpsertSponsorData, SiteAdminServiceUpsertSponsorErrors, SiteAdminServiceUpsertSponsorResponses, SiteAdminServiceUpsertStaffGroupData, SiteAdminServiceUpsertStaffGroupErrors, SiteAdminServiceUpsertStaffGroupResponses, SystemAdminServiceClearSystemCacheData, SystemAdminServiceClearSystemCacheErrors, SystemAdminServiceClearSystemCacheResponses, SystemAdminServiceGetSystemConfigData, SystemAdminServiceGetSystemConfigErrors, SystemAdminServiceGetSystemConfigResponses, SystemAdminServiceGetSystemStatsData, SystemAdminServiceGetSystemStatsErrors, SystemAdminServiceGetSystemStatsResponses, SystemAdminServiceListSystemLogsData, SystemAdminServiceListSystemLogsErrors, SystemAdminServiceListSystemLogsResponses, SystemAdminServiceUpdateSystemConfigData, SystemAdminServiceUpdateSystemConfigErrors, SystemAdminServiceUpdateSystemConfigResponses, UserAdminServiceAdminSearchUsersData, UserAdminServiceAdminSearchUsersErrors, UserAdminServiceAdminSearchUsersResponses, UserAdminServiceApproveVerificationData, UserAdminServiceApproveVerificationErrors, UserAdminServiceApproveVerificationResponses, UserAdminServiceBanData, UserAdminServiceBanErrors, UserAdminServiceBanResponses, UserAdminServiceListVerificationApplicationsData, UserAdminServiceListVerificationApplicationsErrors, UserAdminServiceListVerificationApplicationsResponses, UserAdminServiceUpdateUsersRoleData, UserAdminServiceUpdateUsersRoleErrors, UserAdminServiceUpdateUsersRoleResponses, UserServiceApplyVerificationData, UserServiceApplyVerificationErrors, UserServiceApplyVerificationResponses, UserServiceGetMeData, UserServiceGetMeErrors, UserServiceGetMeResponses, UserServiceGetUsersData, UserServiceGetUsersErrors, UserServiceGetUsersResponses, UserServiceListRelationshipsData, UserServiceListRelationshipsErrors, UserServiceListRelationshipsResponses, UserServiceModifyDepartmentsData, UserServiceModifyDepartmentsErrors, UserServiceModifyDepartmentsResponses, UserServiceSetFollowData, UserServiceSetFollowErrors, UserServiceSetFollowResponses, UserServiceUpdateProfileData, UserServiceUpdateProfileErrors, UserServiceUpdateProfileResponses, UserServiceUpdateSettingsData, UserServiceUpdateSettingsErrors, UserServiceUpdateSettingsResponses } from './types.gen';
+import type { AuthServiceLoginData, AuthServiceLoginErrors, AuthServiceLoginResponses, AuthServiceLogoutData, AuthServiceLogoutErrors, AuthServiceLogoutResponses, AuthServiceRefreshTokenData, AuthServiceRefreshTokenErrors, AuthServiceRefreshTokenResponses, AuthServiceUpdatePushTokenData, AuthServiceUpdatePushTokenErrors, AuthServiceUpdatePushTokenResponses, CommentServiceCreateCommentData, CommentServiceCreateCommentErrors, CommentServiceCreateCommentResponses, CommentServiceDeleteCommentData, CommentServiceDeleteCommentErrors, CommentServiceDeleteCommentResponses, CommentServiceListCommentRepliesData, CommentServiceListCommentRepliesErrors, CommentServiceListCommentRepliesResponses, CommentServiceListPostCommentsData, CommentServiceListPostCommentsErrors, CommentServiceListPostCommentsResponses, CommentServiceSetCommentLikeData, CommentServiceSetCommentLikeErrors, CommentServiceSetCommentLikeResponses, FeedServiceGetFeedData, FeedServiceGetFeedErrors, FeedServiceGetFeedResponses, FeedServiceListFeedCategoriesData, FeedServiceListFeedCategoriesErrors, FeedServiceListFeedCategoriesResponses, PostServiceCreatePostData, PostServiceCreatePostErrors, PostServiceCreatePostResponses, PostServiceDeletePostData, PostServiceDeletePostErrors, PostServiceDeletePostResponses, PostServiceEditPostData, PostServiceEditPostErrors, PostServiceEditPostResponses, PostServiceGetPostData, PostServiceGetPostErrors, PostServiceGetPostResponses, PostServiceSetPostCollectData, PostServiceSetPostCollectErrors, PostServiceSetPostCollectResponses, PostServiceSetPostLikeData, PostServiceSetPostLikeErrors, PostServiceSetPostLikeResponses, ReportServiceApprovalReportData, ReportServiceApprovalReportErrors, ReportServiceApprovalReportResponses, ReportServiceListReportEvidenceData, ReportServiceListReportEvidenceErrors, ReportServiceListReportEvidenceResponses, ReportServiceListReportsData, ReportServiceListReportsErrors, ReportServiceListReportsResponses, ReportServiceRejectReportData, ReportServiceRejectReportErrors, ReportServiceRejectReportResponses, ReportServiceReportCommentData, ReportServiceReportCommentErrors, ReportServiceReportCommentResponses, ReportServiceReportPostData, ReportServiceReportPostErrors, ReportServiceReportPostResponses, ReportServiceReportUserData, ReportServiceReportUserErrors, ReportServiceReportUserResponses, SyncServiceDisconnectDeviceData, SyncServiceDisconnectDeviceErrors, SyncServiceDisconnectDeviceResponses, SyncServiceForceSyncData, SyncServiceForceSyncErrors, SyncServiceForceSyncResponses, SyncServiceGetActiveDevicesData, SyncServiceGetActiveDevicesErrors, SyncServiceGetActiveDevicesResponses, SyncServiceGetSyncStatusData, SyncServiceGetSyncStatusErrors, SyncServiceGetSyncStatusResponses, UserServiceApplyVerificationData, UserServiceApplyVerificationErrors, UserServiceApplyVerificationResponses, UserServiceChangeAvatarData, UserServiceChangeAvatarErrors, UserServiceChangeAvatarResponses, UserServiceChangeNameData, UserServiceChangeNameErrors, UserServiceChangeNameResponses, UserServiceChangeRemarkData, UserServiceChangeRemarkErrors, UserServiceChangeRemarkResponses, UserServiceEditLinksData, UserServiceEditLinksErrors, UserServiceEditLinksResponses, UserServiceGetMeData, UserServiceGetMeErrors, UserServiceGetMeResponses, UserServiceGetMyVerificationData, UserServiceGetMyVerificationErrors, UserServiceGetMyVerificationResponses, UserServiceGetUserData, UserServiceGetUserErrors, UserServiceGetUserIdByQqData, UserServiceGetUserIdByQqErrors, UserServiceGetUserIdByQqResponses, UserServiceGetUserResponses, UserServiceListUserCollectedPostsData, UserServiceListUserCollectedPostsErrors, UserServiceListUserCollectedPostsResponses, UserServiceListUserFollowersData, UserServiceListUserFollowersErrors, UserServiceListUserFollowersResponses, UserServiceListUserFollowingsData, UserServiceListUserFollowingsErrors, UserServiceListUserFollowingsResponses, UserServiceListUserLikedPostsData, UserServiceListUserLikedPostsErrors, UserServiceListUserLikedPostsResponses, UserServiceListUserMutualFollowersData, UserServiceListUserMutualFollowersErrors, UserServiceListUserMutualFollowersResponses, UserServiceListUserPostsData, UserServiceListUserPostsErrors, UserServiceListUserPostsResponses, UserServiceModifyDepartmentsData, UserServiceModifyDepartmentsErrors, UserServiceModifyDepartmentsResponses, UserServiceSetFollowData, UserServiceSetFollowErrors, UserServiceSetFollowResponses, UserServiceUpdateSettingsData, UserServiceUpdateSettingsErrors, UserServiceUpdateSettingsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -19,377 +19,11 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
- * 3. 活动列表
- */
-export const portalServiceListActivities = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListActivitiesData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListActivitiesResponses, PortalServiceListActivitiesErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/activities',
-    ...options
-});
-
-/**
- * 活动管理 - 新增或更新活动信息
- * 支持创建新活动或修改已有活动的信息
- */
-export const siteAdminServiceUpsertActivity = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertActivityData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertActivityResponses, SiteAdminServiceUpsertActivityErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/activities',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除活动 - 删除指定的活动
- */
-export const siteAdminServiceDeleteActivity = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteActivityData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteActivityResponses, SiteAdminServiceDeleteActivityErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/activities/{id}',
-    ...options
-});
-
-/**
- * 封禁/解封操作 - 对违规用户、帖子或评论进行封禁/解封操作
- * 支持批量操作，支持临时封禁和永久封禁
- */
-export const userAdminServiceBan = <ThrowOnError extends boolean = false>(options: Options<UserAdminServiceBanData, ThrowOnError>) => (options.client ?? client).put<UserAdminServiceBanResponses, UserAdminServiceBanErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/ban',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 清理系统缓存 - 清理系统缓存
- */
-export const systemAdminServiceClearSystemCache = <ThrowOnError extends boolean = false>(options: Options<SystemAdminServiceClearSystemCacheData, ThrowOnError>) => (options.client ?? client).post<SystemAdminServiceClearSystemCacheResponses, SystemAdminServiceClearSystemCacheErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/cache/clear',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 获取系统配置 - 获取所有系统配置项
- */
-export const systemAdminServiceGetSystemConfig = <ThrowOnError extends boolean = false>(options?: Options<SystemAdminServiceGetSystemConfigData, ThrowOnError>) => (options?.client ?? client).get<SystemAdminServiceGetSystemConfigResponses, SystemAdminServiceGetSystemConfigErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/config',
-    ...options
-});
-
-/**
- * 更新系统配置 - 更新系统配置项
- */
-export const systemAdminServiceUpdateSystemConfig = <ThrowOnError extends boolean = false>(options: Options<SystemAdminServiceUpdateSystemConfigData, ThrowOnError>) => (options.client ?? client).put<SystemAdminServiceUpdateSystemConfigResponses, SystemAdminServiceUpdateSystemConfigErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/config',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 部门管理 - 新增或更新部门信息
- * 支持创建新部门或修改已有部门的信息
- */
-export const siteAdminServiceUpsertDepartment = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertDepartmentData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertDepartmentResponses, SiteAdminServiceUpsertDepartmentErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/departments',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除部门 - 删除指定的部门
- * 注意：删除部门前需要确保该部门下没有关联的用户或内容
- */
-export const siteAdminServiceDeleteDepartment = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteDepartmentData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteDepartmentResponses, SiteAdminServiceDeleteDepartmentErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/departments/{id}',
-    ...options
-});
-
-/**
- * 历史事件管理 - 新增或更新历史事件信息
- * 支持创建新历史事件或修改已有历史事件的信息
- */
-export const siteAdminServiceUpsertHistoryEvent = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertHistoryEventData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertHistoryEventResponses, SiteAdminServiceUpsertHistoryEventErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/history-events',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除历史事件 - 删除指定的历史事件
- */
-export const siteAdminServiceDeleteHistoryEvent = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteHistoryEventData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteHistoryEventResponses, SiteAdminServiceDeleteHistoryEventErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/history-events/{id}',
-    ...options
-});
-
-/**
- * 获取系统日志 - 分页获取系统操作日志
- */
-export const systemAdminServiceListSystemLogs = <ThrowOnError extends boolean = false>(options?: Options<SystemAdminServiceListSystemLogsData, ThrowOnError>) => (options?.client ?? client).get<SystemAdminServiceListSystemLogsResponses, SystemAdminServiceListSystemLogsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/logs',
-    ...options
-});
-
-/**
- * 部长管理 - 新增或更新部长信息
- * 支持创建新部长或修改已有部长的信息
- */
-export const siteAdminServiceUpsertMinister = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertMinisterData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertMinisterResponses, SiteAdminServiceUpsertMinisterErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/ministers',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除部长 - 删除指定的部长
- */
-export const siteAdminServiceDeleteMinister = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteMinisterData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteMinisterResponses, SiteAdminServiceDeleteMinisterErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/ministers/{id}',
-    ...options
-});
-
-/**
- * 获取分区列表 - 获取所有分区信息
- */
-export const contentAdminServiceListPartitions = <ThrowOnError extends boolean = false>(options?: Options<ContentAdminServiceListPartitionsData, ThrowOnError>) => (options?.client ?? client).get<ContentAdminServiceListPartitionsResponses, ContentAdminServiceListPartitionsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/partitions',
-    ...options
-});
-
-/**
- * 分区管理 - 新增或更新分区信息
- * 支持创建新分区或修改已有分区的信息
- */
-export const contentAdminServiceUpsertPartition = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceUpsertPartitionData, ThrowOnError>) => (options.client ?? client).put<ContentAdminServiceUpsertPartitionResponses, ContentAdminServiceUpsertPartitionErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/partitions',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除分区 - 删除指定的分区
- * 注意：删除分区前需要确保该分区下没有关联的帖子
- */
-export const contentAdminServiceDeletePartition = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceDeletePartitionData, ThrowOnError>) => (options.client ?? client).delete<ContentAdminServiceDeletePartitionResponses, ContentAdminServiceDeletePartitionErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/partitions/{id}',
-    ...options
-});
-
-/**
- * 获取帖子列表 - 分页获取所有帖子信息
- * 支持按状态、分区、作者等筛选
- */
-export const contentAdminServiceListPosts = <ThrowOnError extends boolean = false>(options?: Options<ContentAdminServiceListPostsData, ThrowOnError>) => (options?.client ?? client).get<ContentAdminServiceListPostsResponses, ContentAdminServiceListPostsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/posts',
-    ...options
-});
-
-/**
- * 删除帖子 - 删除指定的帖子
- * 支持批量删除，删除后不可恢复
- */
-export const contentAdminServiceDeletePost = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceDeletePostData, ThrowOnError>) => (options.client ?? client).delete<ContentAdminServiceDeletePostResponses, ContentAdminServiceDeletePostErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/posts/{post_id}',
-    ...options
-});
-
-/**
- * 审核帖子 - 对帖子进行审核，支持通过或驳回
- * 驳回时需要填写驳回原因
- */
-export const contentAdminServiceApprovePost = <ThrowOnError extends boolean = false>(options: Options<ContentAdminServiceApprovePostData, ThrowOnError>) => (options.client ?? client).put<ContentAdminServiceApprovePostResponses, ContentAdminServiceApprovePostErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/posts/{post_id}/approve',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 举报列表
- */
-export const governanceServiceListReports = <ThrowOnError extends boolean = false>(options?: Options<GovernanceServiceListReportsData, ThrowOnError>) => (options?.client ?? client).get<GovernanceServiceListReportsResponses, GovernanceServiceListReportsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/reports',
-    ...options
-});
-
-/**
- * 裁决举报 (封禁、删除、忽略)
- */
-export const governanceServiceResolveReport = <ThrowOnError extends boolean = false>(options: Options<GovernanceServiceResolveReportData, ThrowOnError>) => (options.client ?? client).put<GovernanceServiceResolveReportResponses, GovernanceServiceResolveReportErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/reports/{report_id_1}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 处理举报 - 对举报进行处理，支持忽略、删除内容或封禁用户
- * 处理结果会记录到系统日志中
- */
-export const governanceServiceResolveReport2 = <ThrowOnError extends boolean = false>(options: Options<GovernanceServiceResolveReport2Data, ThrowOnError>) => (options.client ?? client).put<GovernanceServiceResolveReport2Responses, GovernanceServiceResolveReport2Errors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/reports/{report_id}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 赞助者管理 - 新增或更新赞助者信息
- * 支持创建新赞助者或修改已有赞助者的信息
- */
-export const siteAdminServiceUpsertSponsor = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertSponsorData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertSponsorResponses, SiteAdminServiceUpsertSponsorErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/sponsors',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除赞助者 - 删除指定的赞助者
- */
-export const siteAdminServiceDeleteSponsor = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteSponsorData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteSponsorResponses, SiteAdminServiceDeleteSponsorErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/sponsors/{id}',
-    ...options
-});
-
-/**
- * Staff 管理 - 新增或更新 Staff 团队信息
- * 支持创建新的 Staff 团队或修改已有团队的信息
- */
-export const siteAdminServiceUpsertStaffGroup = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceUpsertStaffGroupData, ThrowOnError>) => (options.client ?? client).put<SiteAdminServiceUpsertStaffGroupResponses, SiteAdminServiceUpsertStaffGroupErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/staff-groups',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 删除 Staff 团队 - 删除指定的 Staff 团队
- */
-export const siteAdminServiceDeleteStaffGroup = <ThrowOnError extends boolean = false>(options: Options<SiteAdminServiceDeleteStaffGroupData, ThrowOnError>) => (options.client ?? client).delete<SiteAdminServiceDeleteStaffGroupResponses, SiteAdminServiceDeleteStaffGroupErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/staff-groups/{id}',
-    ...options
-});
-
-/**
- * 获取系统统计 - 获取系统整体统计信息
- */
-export const systemAdminServiceGetSystemStats = <ThrowOnError extends boolean = false>(options?: Options<SystemAdminServiceGetSystemStatsData, ThrowOnError>) => (options?.client ?? client).get<SystemAdminServiceGetSystemStatsResponses, SystemAdminServiceGetSystemStatsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/stats',
-    ...options
-});
-
-/**
- * 修改用户角色 - 用于提拔或降级用户角色（如普通用户→管理员）
- * 支持批量操作，仅超级管理员可使用此接口
- */
-export const userAdminServiceUpdateUsersRole = <ThrowOnError extends boolean = false>(options: Options<UserAdminServiceUpdateUsersRoleData, ThrowOnError>) => (options.client ?? client).put<UserAdminServiceUpdateUsersRoleResponses, UserAdminServiceUpdateUsersRoleErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/users/role',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 后台搜索用户 - 提供比前台搜索更强大的搜索能力
- * 可搜索包括封禁用户在内的所有用户，支持按关键词搜索
- */
-export const userAdminServiceAdminSearchUsers = <ThrowOnError extends boolean = false>(options?: Options<UserAdminServiceAdminSearchUsersData, ThrowOnError>) => (options?.client ?? client).get<UserAdminServiceAdminSearchUsersResponses, UserAdminServiceAdminSearchUsersErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/users/search',
-    ...options
-});
-
-/**
- * 获取待审核的认证申请列表 - 分页获取所有待审核的用户认证申请
- * 支持按状态筛选（待审核、已通过、已驳回）
- */
-export const userAdminServiceListVerificationApplications = <ThrowOnError extends boolean = false>(options?: Options<UserAdminServiceListVerificationApplicationsData, ThrowOnError>) => (options?.client ?? client).get<UserAdminServiceListVerificationApplicationsResponses, UserAdminServiceListVerificationApplicationsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/verifications',
-    ...options
-});
-
-/**
- * 审核认证申请 - 处理用户的认证申请，支持通过或驳回
- * 驳回时需要填写驳回原因，审核结果会通知用户
- */
-export const userAdminServiceApproveVerification = <ThrowOnError extends boolean = false>(options: Options<UserAdminServiceApproveVerificationData, ThrowOnError>) => (options.client ?? client).put<UserAdminServiceApproveVerificationResponses, UserAdminServiceApproveVerificationErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/admin/verifications/{application_id}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
  * 统一登录接口 (支持 QQ, 微信, 手机号等)
  */
 export const authServiceLogin = <ThrowOnError extends boolean = false>(options: Options<AuthServiceLoginData, ThrowOnError>) => (options.client ?? client).post<AuthServiceLoginResponses, AuthServiceLoginErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/auth/login',
+    url: '/v1/auth/auth',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -433,11 +67,11 @@ export const authServiceRefreshToken = <ThrowOnError extends boolean = false>(op
 });
 
 /**
- * 收藏/取消收藏 (通常仅针对帖子)
+ * 创建评论（可以是对帖子的评论，也可以是对评论的回复）
  */
-export const interactionServiceSetCollect = <ThrowOnError extends boolean = false>(options: Options<InteractionServiceSetCollectData, ThrowOnError>) => (options.client ?? client).put<InteractionServiceSetCollectResponses, InteractionServiceSetCollectErrors, ThrowOnError>({
+export const commentServiceCreateComment = <ThrowOnError extends boolean = false>(options: Options<CommentServiceCreateCommentData, ThrowOnError>) => (options.client ?? client).post<CommentServiceCreateCommentResponses, CommentServiceCreateCommentErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/collections/{post_id}',
+    url: '/v1/comments',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -455,169 +89,49 @@ export const commentServiceDeleteComment = <ThrowOnError extends boolean = false
 });
 
 /**
- * 2. 部门列表 (支持按优先级排序)
+ * 点赞/取消点赞评论（幂等操作）
  */
-export const portalServiceListDepartments = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListDepartmentsData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListDepartmentsResponses, PortalServiceListDepartmentsErrors, ThrowOnError>({
+export const commentServiceSetCommentLike = <ThrowOnError extends boolean = false>(options: Options<CommentServiceSetCommentLikeData, ThrowOnError>) => (options.client ?? client).put<CommentServiceSetCommentLikeResponses, CommentServiceSetCommentLikeErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/departments',
+    url: '/v1/comments/{comment_id}/like',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取某条评论的所有回复（第二层评论，打平显示）
+ */
+export const commentServiceListCommentReplies = <ThrowOnError extends boolean = false>(options: Options<CommentServiceListCommentRepliesData, ThrowOnError>) => (options.client ?? client).get<CommentServiceListCommentRepliesResponses, CommentServiceListCommentRepliesErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/comments/{comment_id}/replies',
     ...options
 });
 
 /**
- * 4. 发展历程 (大事记)
+ * 获取内容流（统一接口，支持帖子流和用户流）
  */
-export const portalServiceListHistory = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListHistoryData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListHistoryResponses, PortalServiceListHistoryErrors, ThrowOnError>({
+export const feedServiceGetFeed = <ThrowOnError extends boolean = false>(options?: Options<FeedServiceGetFeedData, ThrowOnError>) => (options?.client ?? client).get<FeedServiceGetFeedResponses, FeedServiceGetFeedErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/history',
+    url: '/v1/feed',
     ...options
 });
 
 /**
- * 点赞/取消赞 (支持帖子、评论)
- * 响应中包含最新点赞数，方便前端直接更新 UI
+ * 获取可用的内容分类列表（动态配置，包含分区信息）
  */
-export const interactionServiceSetLike = <ThrowOnError extends boolean = false>(options: Options<InteractionServiceSetLikeData, ThrowOnError>) => (options.client ?? client).put<InteractionServiceSetLikeResponses, InteractionServiceSetLikeErrors, ThrowOnError>({
+export const feedServiceListFeedCategories = <ThrowOnError extends boolean = false>(options?: Options<FeedServiceListFeedCategoriesData, ThrowOnError>) => (options?.client ?? client).get<FeedServiceListFeedCategoriesResponses, FeedServiceListFeedCategoriesErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/likes/{target_id}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * --- 个人信息 ---
- * 获取当前登录用户的完整信息（包含敏感设置）
- */
-export const userServiceGetMe = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetMeData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetMeResponses, UserServiceGetMeErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/me',
-    ...options
-});
-
-/**
- * 修改所属部门
- */
-export const userServiceModifyDepartments = <ThrowOnError extends boolean = false>(options: Options<UserServiceModifyDepartmentsData, ThrowOnError>) => (options.client ?? client).put<UserServiceModifyDepartmentsResponses, UserServiceModifyDepartmentsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/me/departments',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 关注/取消关注
- */
-export const userServiceSetFollow = <ThrowOnError extends boolean = false>(options: Options<UserServiceSetFollowData, ThrowOnError>) => (options.client ?? client).put<UserServiceSetFollowResponses, UserServiceSetFollowErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/me/following/{target_user_id}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 更新个人资料 (支持部分更新)
- */
-export const userServiceUpdateProfile = <ThrowOnError extends boolean = false>(options: Options<UserServiceUpdateProfileData, ThrowOnError>) => (options.client ?? client).patch<UserServiceUpdateProfileResponses, UserServiceUpdateProfileErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/me/profile',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)
- */
-export const userServiceUpdateSettings = <ThrowOnError extends boolean = false>(options: Options<UserServiceUpdateSettingsData, ThrowOnError>) => (options.client ?? client).patch<UserServiceUpdateSettingsResponses, UserServiceUpdateSettingsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/me/settings',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 申请身份认证
- */
-export const userServiceApplyVerification = <ThrowOnError extends boolean = false>(options: Options<UserServiceApplyVerificationData, ThrowOnError>) => (options.client ?? client).put<UserServiceApplyVerificationResponses, UserServiceApplyVerificationErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/me/verification',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 5. 部长/历代领导 (按年份/届数查询)
- */
-export const portalServiceListMinisters = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListMinistersData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListMinistersResponses, PortalServiceListMinistersErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/ministers',
-    ...options
-});
-
-/**
- * 获取通知列表
- * 支持按“大类”筛选（如：只看赞和收藏、只看系统通知）
- */
-export const messageServiceListNotifications = <ThrowOnError extends boolean = false>(options?: Options<MessageServiceListNotificationsData, ThrowOnError>) => (options?.client ?? client).get<MessageServiceListNotificationsResponses, MessageServiceListNotificationsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/notifications',
-    ...options
-});
-
-/**
- * 标记已读
- * 支持：点开某个Tab一键已读、点击某条通知已读、全部已读
- */
-export const messageServiceMarkRead = <ThrowOnError extends boolean = false>(options: Options<MessageServiceMarkReadData, ThrowOnError>) => (options.client ?? client).put<MessageServiceMarkReadResponses, MessageServiceMarkReadErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/notifications/read',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 获取未读计数
- * 用于在 App 消息页面的顶部 Tab 显示红点数字 (e.g., 赞:5, 评论:2, 系统:0)
- */
-export const messageServiceGetUnreadCount = <ThrowOnError extends boolean = false>(options?: Options<MessageServiceGetUnreadCountData, ThrowOnError>) => (options?.client ?? client).get<MessageServiceGetUnreadCountResponses, MessageServiceGetUnreadCountErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/notifications/unread-count',
-    ...options
-});
-
-/**
- * 统一帖子列表接口
- * 涵盖：首页推荐、最新、热门、关注、部门分区、个人页作品、关键词搜索、高级筛选
- */
-export const contentServiceListPosts = <ThrowOnError extends boolean = false>(options?: Options<ContentServiceListPostsData, ThrowOnError>) => (options?.client ?? client).get<ContentServiceListPostsResponses, ContentServiceListPostsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/posts',
+    url: '/v1/feed/categories',
     ...options
 });
 
 /**
  * 发布帖子
  */
-export const contentServiceCreatePost = <ThrowOnError extends boolean = false>(options: Options<ContentServiceCreatePostData, ThrowOnError>) => (options.client ?? client).post<ContentServiceCreatePostResponses, ContentServiceCreatePostErrors, ThrowOnError>({
+export const postServiceCreatePost = <ThrowOnError extends boolean = false>(options: Options<PostServiceCreatePostData, ThrowOnError>) => (options.client ?? client).post<PostServiceCreatePostResponses, PostServiceCreatePostErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/posts',
     ...options,
@@ -630,7 +144,7 @@ export const contentServiceCreatePost = <ThrowOnError extends boolean = false>(o
 /**
  * 删除帖子
  */
-export const contentServiceDeletePost = <ThrowOnError extends boolean = false>(options: Options<ContentServiceDeletePostData, ThrowOnError>) => (options.client ?? client).delete<ContentServiceDeletePostResponses, ContentServiceDeletePostErrors, ThrowOnError>({
+export const postServiceDeletePost = <ThrowOnError extends boolean = false>(options: Options<PostServiceDeletePostData, ThrowOnError>) => (options.client ?? client).delete<PostServiceDeletePostResponses, PostServiceDeletePostErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/posts/{post_id}',
     ...options
@@ -639,29 +153,53 @@ export const contentServiceDeletePost = <ThrowOnError extends boolean = false>(o
 /**
  * 帖子详情
  */
-export const contentServiceGetPost = <ThrowOnError extends boolean = false>(options: Options<ContentServiceGetPostData, ThrowOnError>) => (options.client ?? client).get<ContentServiceGetPostResponses, ContentServiceGetPostErrors, ThrowOnError>({
+export const postServiceGetPost = <ThrowOnError extends boolean = false>(options: Options<PostServiceGetPostData, ThrowOnError>) => (options.client ?? client).get<PostServiceGetPostResponses, PostServiceGetPostErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/posts/{post_id}',
     ...options
 });
 
 /**
- * 获取评论列表
- * 场景1：获取帖子的主评论列表 (Post下的 Level-1 评论)
- * 场景2：获取某条评论的子评论列表 (Comment下的 Level-2 评论)
+ * 编辑帖子
  */
-export const commentServiceListComments = <ThrowOnError extends boolean = false>(options: Options<CommentServiceListCommentsData, ThrowOnError>) => (options.client ?? client).get<CommentServiceListCommentsResponses, CommentServiceListCommentsErrors, ThrowOnError>({
+export const postServiceEditPost = <ThrowOnError extends boolean = false>(options: Options<PostServiceEditPostData, ThrowOnError>) => (options.client ?? client).patch<PostServiceEditPostResponses, PostServiceEditPostErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/posts/{post_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 收藏/取消收藏
+ */
+export const postServiceSetPostCollect = <ThrowOnError extends boolean = false>(options: Options<PostServiceSetPostCollectData, ThrowOnError>) => (options.client ?? client).put<PostServiceSetPostCollectResponses, PostServiceSetPostCollectErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/posts/{post_id}/collection',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取帖子的评论列表（第一层评论，包含部分回复预览）
+ */
+export const commentServiceListPostComments = <ThrowOnError extends boolean = false>(options: Options<CommentServiceListPostCommentsData, ThrowOnError>) => (options.client ?? client).get<CommentServiceListPostCommentsResponses, CommentServiceListPostCommentsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/posts/{post_id}/comments',
     ...options
 });
 
 /**
- * 发送评论 (支持一级评论和子评论)
+ * 点赞/取消点赞
  */
-export const commentServiceCreateComment = <ThrowOnError extends boolean = false>(options: Options<CommentServiceCreateCommentData, ThrowOnError>) => (options.client ?? client).post<CommentServiceCreateCommentResponses, CommentServiceCreateCommentErrors, ThrowOnError>({
+export const postServiceSetPostLike = <ThrowOnError extends boolean = false>(options: Options<PostServiceSetPostLikeData, ThrowOnError>) => (options.client ?? client).put<PostServiceSetPostLikeResponses, PostServiceSetPostLikeErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}/comments',
+    url: '/v1/posts/{post_id}/like',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -670,13 +208,20 @@ export const commentServiceCreateComment = <ThrowOnError extends boolean = false
 });
 
 /**
- * 2. [新增] 完成上传并触发处理 (非常重要！)
- * 前端上传到 MinIO 成功后，调用此接口。
- * 后端接收到后，记录数据库，并开启异步转码任务。
+ * 获取举报列表（管理员）
  */
-export const resourceServiceCompleteUpload = <ThrowOnError extends boolean = false>(options: Options<ResourceServiceCompleteUploadData, ThrowOnError>) => (options.client ?? client).post<ResourceServiceCompleteUploadResponses, ResourceServiceCompleteUploadErrors, ThrowOnError>({
+export const reportServiceListReports = <ThrowOnError extends boolean = false>(options?: Options<ReportServiceListReportsData, ThrowOnError>) => (options?.client ?? client).get<ReportServiceListReportsResponses, ReportServiceListReportsErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/resources/complete-upload',
+    url: '/v1/reports',
+    ...options
+});
+
+/**
+ * 举报评论
+ */
+export const reportServiceReportComment = <ThrowOnError extends boolean = false>(options: Options<ReportServiceReportCommentData, ThrowOnError>) => (options.client ?? client).post<ReportServiceReportCommentResponses, ReportServiceReportCommentErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/reports/comments',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -685,22 +230,11 @@ export const resourceServiceCompleteUpload = <ThrowOnError extends boolean = fal
 });
 
 /**
- * 3. [新增] 查询上传状态
- * 前端可以通过此接口轮询上传状态，获取最终的资源地址
+ * 举报帖子
  */
-export const resourceServiceGetUploadStatus = <ThrowOnError extends boolean = false>(options: Options<ResourceServiceGetUploadStatusData, ThrowOnError>) => (options.client ?? client).get<ResourceServiceGetUploadStatusResponses, ResourceServiceGetUploadStatusErrors, ThrowOnError>({
+export const reportServiceReportPost = <ThrowOnError extends boolean = false>(options: Options<ReportServiceReportPostData, ThrowOnError>) => (options.client ?? client).post<ReportServiceReportPostResponses, ReportServiceReportPostErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/resources/upload-status/{task_id}',
-    ...options
-});
-
-/**
- * 获取上传凭证 (支持批量)
- * 包含：文件类型检查、大小限制检查、生成预签名URL (Presigned URL)
- */
-export const resourceServiceGetUploadTokens = <ThrowOnError extends boolean = false>(options: Options<ResourceServiceGetUploadTokensData, ThrowOnError>) => (options.client ?? client).post<ResourceServiceGetUploadTokensResponses, ResourceServiceGetUploadTokensErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/resources/upload-tokens',
+    url: '/v1/reports/posts',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -709,56 +243,274 @@ export const resourceServiceGetUploadTokens = <ThrowOnError extends boolean = fa
 });
 
 /**
- * 1. 获取首页聚合信息 (可选，一次性拉取所有首屏需要的配置，减少请求数)
- * 包含：Logo, 宣传视频, 基础SiteInfo
+ * 举报用户
  */
-export const portalServiceGetSiteConfig = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceGetSiteConfigData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceGetSiteConfigResponses, PortalServiceGetSiteConfigErrors, ThrowOnError>({
+export const reportServiceReportUser = <ThrowOnError extends boolean = false>(options: Options<ReportServiceReportUserData, ThrowOnError>) => (options.client ?? client).post<ReportServiceReportUserResponses, ReportServiceReportUserErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/site/config',
+    url: '/v1/reports/users',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 封禁用户/删除评论/帖子（管理员）
+ */
+export const reportServiceApprovalReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceApprovalReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceApprovalReportResponses, ReportServiceApprovalReportErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/reports/{report_id}/approval',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）
+ */
+export const reportServiceListReportEvidence = <ThrowOnError extends boolean = false>(options: Options<ReportServiceListReportEvidenceData, ThrowOnError>) => (options.client ?? client).get<ReportServiceListReportEvidenceResponses, ReportServiceListReportEvidenceErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/reports/{report_id}/evidence',
     ...options
 });
 
 /**
- * 7. 赞助商/鸣谢名单
+ * 驳回举报（管理员）
  */
-export const portalServiceListSponsors = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListSponsorsData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListSponsorsResponses, PortalServiceListSponsorsErrors, ThrowOnError>({
+export const reportServiceRejectReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceRejectReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceRejectReportResponses, ReportServiceRejectReportErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/sponsors',
+    url: '/v1/reports/{report_id}/rejection',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取活跃设备列表
+ * 查询当前通过 WebSocket 连接的所有设备
+ */
+export const syncServiceGetActiveDevices = <ThrowOnError extends boolean = false>(options?: Options<SyncServiceGetActiveDevicesData, ThrowOnError>) => (options?.client ?? client).get<SyncServiceGetActiveDevicesResponses, SyncServiceGetActiveDevicesErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/sync/devices',
     ...options
 });
 
 /**
- * 6. Staff 名单 (按分组返回)
+ * 断开指定设备连接
+ * 强制断开指定设备的 WebSocket 连接
  */
-export const portalServiceListStaff = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListStaffData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListStaffResponses, PortalServiceListStaffErrors, ThrowOnError>({
+export const syncServiceDisconnectDevice = <ThrowOnError extends boolean = false>(options: Options<SyncServiceDisconnectDeviceData, ThrowOnError>) => (options.client ?? client).delete<SyncServiceDisconnectDeviceResponses, SyncServiceDisconnectDeviceErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/staff',
+    url: '/v1/sync/devices/{device_id}',
     ...options
 });
 
 /**
- * 8. 热门动态 (对应需求：同步社区动态，无Token访问)
+ * 强制同步
+ * 主动触发全量同步，将当前设置推送到所有已连接设备
  */
-export const portalServiceListHomeTrending = <ThrowOnError extends boolean = false>(options?: Options<PortalServiceListHomeTrendingData, ThrowOnError>) => (options?.client ?? client).get<PortalServiceListHomeTrendingResponses, PortalServiceListHomeTrendingErrors, ThrowOnError>({
+export const syncServiceForceSync = <ThrowOnError extends boolean = false>(options: Options<SyncServiceForceSyncData, ThrowOnError>) => (options.client ?? client).post<SyncServiceForceSyncResponses, SyncServiceForceSyncErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/trending',
+    url: '/v1/sync/force',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取同步状态
+ * 查询当前用户的同步状态，包括活跃设备、最后同步时间等
+ */
+export const syncServiceGetSyncStatus = <ThrowOnError extends boolean = false>(options?: Options<SyncServiceGetSyncStatusData, ThrowOnError>) => (options?.client ?? client).get<SyncServiceGetSyncStatusResponses, SyncServiceGetSyncStatusErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/sync/status',
     ...options
 });
 
 /**
- * 获取他人公开信息 (经过隐私计算)
+ * 根据 QQ 号查询用户 id（用于官网）
  */
-export const userServiceGetUsers = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetUsersData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetUsersResponses, UserServiceGetUsersErrors, ThrowOnError>({
+export const userServiceGetUserIdByQq = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetUserIdByQqData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetUserIdByQqResponses, UserServiceGetUserIdByQqErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users',
+    url: '/v1/users/id_by_qq',
     ...options
 });
 
 /**
- * 关系列表 (粉丝/关注/Ta 也关注了)
+ * --- 个人信息 ---
+ * 获取当前登录用户的完整信息（包含设置）
  */
-export const userServiceListRelationships = <ThrowOnError extends boolean = false>(options: Options<UserServiceListRelationshipsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListRelationshipsResponses, UserServiceListRelationshipsErrors, ThrowOnError>({
+export const userServiceGetMe = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetMeData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetMeResponses, UserServiceGetMeErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/relationships',
+    url: '/v1/users/me',
     ...options
+});
+
+/**
+ * 修改头像
+ */
+export const userServiceChangeAvatar = <ThrowOnError extends boolean = false>(options: Options<UserServiceChangeAvatarData, ThrowOnError>) => (options.client ?? client).put<UserServiceChangeAvatarResponses, UserServiceChangeAvatarErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/avatar',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 修改所属部门
+ */
+export const userServiceModifyDepartments = <ThrowOnError extends boolean = false>(options: Options<UserServiceModifyDepartmentsData, ThrowOnError>) => (options.client ?? client).put<UserServiceModifyDepartmentsResponses, UserServiceModifyDepartmentsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/departments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const userServiceEditLinks = <ThrowOnError extends boolean = false>(options: Options<UserServiceEditLinksData, ThrowOnError>) => (options.client ?? client).put<UserServiceEditLinksResponses, UserServiceEditLinksErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/links',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 修改昵称（不超过 12 个字符）
+ */
+export const userServiceChangeName = <ThrowOnError extends boolean = false>(options: Options<UserServiceChangeNameData, ThrowOnError>) => (options.client ?? client).put<UserServiceChangeNameResponses, UserServiceChangeNameErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/name',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 更新设置 (合并了通用设置和隐私设置，通过 Mask 控制)。实际应该使用 websocket 进行设置更新的双向通信，先提供一个简单的 HTTP 接口作为范本
+ */
+export const userServiceUpdateSettings = <ThrowOnError extends boolean = false>(options: Options<UserServiceUpdateSettingsData, ThrowOnError>) => (options.client ?? client).patch<UserServiceUpdateSettingsResponses, UserServiceUpdateSettingsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 查看我的认证申请状态
+ */
+export const userServiceGetMyVerification = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetMyVerificationData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetMyVerificationResponses, UserServiceGetMyVerificationErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/verification',
+    ...options
+});
+
+/**
+ * 申请身份认证
+ */
+export const userServiceApplyVerification = <ThrowOnError extends boolean = false>(options: Options<UserServiceApplyVerificationData, ThrowOnError>) => (options.client ?? client).post<UserServiceApplyVerificationResponses, UserServiceApplyVerificationErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/verification',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 关注/取消关注
+ */
+export const userServiceSetFollow = <ThrowOnError extends boolean = false>(options: Options<UserServiceSetFollowData, ThrowOnError>) => (options.client ?? client).put<UserServiceSetFollowResponses, UserServiceSetFollowErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/me/{user_id}/follow',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取他人详细用户信息
+ */
+export const userServiceGetUser = <ThrowOnError extends boolean = false>(options: Options<UserServiceGetUserData, ThrowOnError>) => (options.client ?? client).get<UserServiceGetUserResponses, UserServiceGetUserErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}',
+    ...options
+});
+
+export const userServiceListUserCollectedPosts = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserCollectedPostsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserCollectedPostsResponses, UserServiceListUserCollectedPostsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/collected_posts',
+    ...options
+});
+
+export const userServiceListUserFollowers = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserFollowersData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserFollowersResponses, UserServiceListUserFollowersErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/followers',
+    ...options
+});
+
+/**
+ * 获取用户相关的用户列表（关注/粉丝/互相关注）
+ */
+export const userServiceListUserFollowings = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserFollowingsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserFollowingsResponses, UserServiceListUserFollowingsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/followings',
+    ...options
+});
+
+export const userServiceListUserLikedPosts = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserLikedPostsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserLikedPostsResponses, UserServiceListUserLikedPostsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/liked_posts',
+    ...options
+});
+
+export const userServiceListUserMutualFollowers = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserMutualFollowersData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserMutualFollowersResponses, UserServiceListUserMutualFollowersErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/mutual_followers',
+    ...options
+});
+
+/**
+ * --- 个人资料页内容 ---
+ * 获取用户相关的帖子列表（发布/点赞/收藏）
+ */
+export const userServiceListUserPosts = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserPostsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserPostsResponses, UserServiceListUserPostsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/posts',
+    ...options
+});
+
+/**
+ * 修改备注（不超过 12 个字符）
+ */
+export const userServiceChangeRemark = <ThrowOnError extends boolean = false>(options: Options<UserServiceChangeRemarkData, ThrowOnError>) => (options.client ?? client).put<UserServiceChangeRemarkResponses, UserServiceChangeRemarkErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/users/{user_id}/remark',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });

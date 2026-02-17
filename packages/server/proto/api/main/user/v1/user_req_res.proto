@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package api.main.user.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+import "api/main/post/v1/post_models.proto";
+import "api/main/user/v1/user_models.proto";
+import "google/protobuf/field_mask.proto";
+
+// ---------------------------------------------------------
+// 获取“我”的信息（包含设置）
+message GetMeRequest {}
+
+message GetMeResponse {
+  api.main.common.v1.UserProfile profile = 1;
+  SyncedUserSettings settings = 2;
+}
+
+// ---------------------------------------------------------
+// 获取其他用户信息
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  api.main.common.v1.UserProfile user = 1;
+  api.main.common.v1.UserRelationStatus relation_status = 2; // 当前用户与目标用户的关系状态
+  api.main.common.v1.UserViewCapabilities view_capabilities = 3; // 当前用户对目标用户的操作权限
+}
+
+// ---------------------------------------------------------
+// 获取用户列表
+message ListUserRelatedRequest {
+  string user_id = 1; // 目标用户ID
+  api.main.common.v1.RefreshType refresh_type = 2; // 刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）
+  optional UserFilter filter = 3; // 过滤标签：用于高级筛选功能，支持多选
+  api.main.common.v1.CursorPagination pagination = 4; // 分页参数，基于游标的分页模型
+}
+
+message ListUserRelatedResponse {
+  repeated UserListItem users = 1;
+  optional string cursor = 2; // 分页游标，如果为空则表示没有更多数据
+}
+
+// ---------------------------------------------------------
+// 更新我的设置
+message UpdateSettingsRequest {
+  // 可选：将 Privacy 和 UserSettings 分开传，或者合并
+  SyncedUserSettings settings = 1;
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateSettingsResponse {
+  SyncedUserSettings settings = 1;
+}
+
+// ---------------------------------------------------------
+// 监听我的设置更新 (SSE)
+message WatchSettingsRequest {}
+
+message WatchSettingsResponse {
+  SyncedUserSettings settings = 1;
+}
+
+// ---------------------------------------------------------
+// 关注/取关
+message SetFollowRequest {
+  string user_id = 1;
+  bool is_following = 2; // true=关注, false=取关
+}
+
+message SetFollowResponse {}
+
+// ---------------------------------------------------------
+// 查看我的认证申请
+message GetMyVerificationRequest {}
+
+message GetMyVerificationResponse {
+  // 如果用户有申请则返回，没有则为null
+  optional VerificationApplication application = 1;
+}
+
+// ---------------------------------------------------------
+// 取消认证申请
+message CancelVerificationRequest {}
+
+message CancelVerificationResponse {}
+
+// ---------------------------------------------------------
+// 申请身份认证
+message ApplyVerificationRequest {
+  string verified_title = 1; // 申请的认证头衔 (如: 23届部长, 社团负责人)
+  string verification_description = 2; // 申请说明 (如: 申请理由、相关经历等)
+  repeated api.main.common.v1.Media media = 3; // 证明材料
+}
+
+message ApplyVerificationResponse {}
+
+// ---------------------------------------------------------
+// 修改所属部门
+message ModifyDepartmentsRequest {
+  repeated string department_ids = 1; // 选择的部门 ID 列表
+}
+
+message ModifyDepartmentsResponse {}
+
+// ---------------------------------------------------------
+// 编辑个人链接
+message EditLinksRequest {
+  repeated api.main.common.v1.Link links = 1; // 个人链接
+}
+
+message EditLinksResponse {}
+
+// ---------------------------------------------------------
+// 修改头像
+message ChangeAvatarRequest {
+  string avatar_url = 1; // 新的头像URL
+}
+
+message ChangeAvatarResponse {}
+
+// ---------------------------------------------------------
+// 修改昵称
+message ChangeNameRequest {
+  string name = 1; // 新的昵称
+}
+
+message ChangeNameResponse {}
+
+// ---------------------------------------------------------
+// 修改备注
+message ChangeRemarkRequest {
+  string user_id = 1; // 目标用户ID
+  string remark = 2; // 新的备注
+}
+
+message ChangeRemarkResponse {}
+
+// ---------------------------------------------------------
+// 获取用户相关的帖子列表（发布/点赞/收藏）
+message ListUserPostsRequest {
+  string user_id = 1; // 目标用户ID
+  api.main.common.v1.RefreshType refresh_type = 2; // 刷新类型
+  optional PostFilter filter = 3; // 过滤条件（可选）
+  api.main.common.v1.CursorPagination pagination = 4; // 分页参数
+}
+
+message ListUserPostsResponse {
+  repeated api.main.post.v1.PostPreview posts = 1; // 帖子列表
+  optional string cursor = 2; // 分页游标，如果为空则表示没有更多数据
+}
+
+// ---------------------------------------------------------
+// 通过 QQ 号获取用户ID
+message GetUserIdByQQRequest {
+  string qq_number = 1; // QQ 号
+}
+
+message GetUserIdByQQResponse {
+  string user_id = 1; // 用户ID
+}

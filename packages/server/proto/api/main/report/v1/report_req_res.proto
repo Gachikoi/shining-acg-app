@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package api.main.report.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/report/v1/report_models.proto";
+
+// ---------------------------------------------------------
+// 举报用户
+message ReportUserRequest {
+  string user_id = 1; // 被举报的用户ID
+  string reason = 2; // 举报说明（必填）
+  repeated api.main.common.v1.Media media = 3; // 证明材料图片ID（最多3张）
+}
+
+message ReportUserResponse {
+  string report_id = 1; // 举报记录ID
+}
+
+// ---------------------------------------------------------
+// 举报帖子
+message ReportPostRequest {
+  string post_id = 1; // 被举报的帖子ID
+}
+
+message ReportPostResponse {
+  string report_id = 1; // 举报记录ID
+}
+
+// ---------------------------------------------------------
+// 举报评论
+message ReportCommentRequest {
+  string comment_id = 1; // 被举报的评论ID
+  string post_id = 2; // 评论所属的帖子ID
+}
+
+message ReportCommentResponse {
+  string report_id = 1; // 举报记录ID
+}
+
+// ---------------------------------------------------------
+// 获取举报列表（管理员）
+message ListReportsRequest {
+  optional ReportType type = 1; // 举报类型筛选（可选，不传则返回全部）
+  optional ReportStatus status = 2; // 举报状态筛选（可选，不传则返回全部）
+  api.main.common.v1.CursorPagination pagination = 3; // 分页参数
+}
+
+message ListReportsResponse {
+  repeated ReportItem reports = 1; // 举报列表
+  optional string cursor = 2; // 下一页游标，如果没有下一页则为空
+}
+
+// ---------------------------------------------------------
+// 查看举报证据（管理员）
+message ListReportEvidenceRequest {
+  string report_id = 1; // 举报记录ID
+  api.main.common.v1.CursorPagination pagination = 2; // 分页参数
+}
+
+message ListReportEvidenceResponse {
+  repeated ReportEvidenceItem report_evidence = 1; // 举报详情
+  optional string cursor = 2; // 下一页游标，如果没有下一页则为空
+}
+
+// ---------------------------------------------------------
+// 驳回举报（管理员）
+message RejectReportRequest {
+  string report_id = 1; // 举报记录ID
+}
+
+message RejectReportResponse {}
+
+// ---------------------------------------------------------
+// 封禁内容（管理员）
+message ApprovalReportRequest {
+  string report_id = 1; // 举报记录ID
+  string approval_reason = 2; // 封禁/删除原因
+  optional BanDurationType ban_duration = 3; // 封禁时长（仅对用户封禁有效，帖子/评论删除后不再展示）
+}
+
+message ApprovalReportResponse {}
+

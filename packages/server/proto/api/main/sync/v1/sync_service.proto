@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package api.main.sync.v1;
+
+import "api/main/sync/v1/sync_req_res.proto";
+import "google/api/annotations.proto";
+
+// WebSocket 用户设置同步服务
+//
+// 功能说明：
+// 1. 提供同步状态查询接口
+// 2. 提供设备管理接口
+// 3. 实际的 WebSocket 连接由单独的 WebSocket 端点处理（非 gRPC）
+//
+// WebSocket 连接流程：
+// 1. 用户登录获取 access_token
+// 2. 客户端直接使用 access_token 连接 WebSocket：
+//    - ws://host/v1/sync/ws?token={access_token}
+//    - 或使用 Header: Authorization: Bearer {access_token}
+// 3. 连接成功后，服务端推送 ConnectedMessage
+// 4. 客户端发送 SubscribeMessage 订阅需要的数据类型
+// 5. 服务端推送初始的 SettingsSyncMessage
+// 6. 之后任何设置变更都会通过 WebSocket 实时推送到所有已连接设备
+//
+// 心跳机制：
+// - 客户端每 30 秒发送 PingMessage
+// - 服务端响应 PongMessage
+// - 超过 90 秒无心跳则服务端主动断开连接
+//
+// 注意：
+// - 复用登录的 access_token，无需额外获取连接令牌
+// - Token 过期后 WebSocket 会自动断开，客户端需刷新 token 后重连
+service SyncService {
+  // 获取同步状态
+  // 查询当前用户的同步状态，包括活跃设备、最后同步时间等
+  rpc GetSyncStatus(GetSyncStatusRequest) returns (GetSyncStatusResponse) {
+    option (google.api.http) = {get: "/v1/sync/status"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取活跃设备列表
+  // 查询当前通过 WebSocket 连接的所有设备
+  rpc GetActiveDevices(GetActiveDevicesRequest) returns (GetActiveDevicesResponse) {
+    option (google.api.http) = {get: "/v1/sync/devices"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 强制同步
+  // 主动触发全量同步，将当前设置推送到所有已连接设备
+  rpc ForceSync(ForceSyncRequest) returns (ForceSyncResponse) {
+    option (google.api.http) = {
+      post: "/v1/sync/force"
+      body: "*"
+    };
+  }
+
+  // 断开指定设备连接
+  // 强制断开指定设备的 WebSocket 连接
+  rpc DisconnectDevice(DisconnectDeviceRequest) returns (DisconnectDeviceResponse) {
+    option (google.api.http) = {delete: "/v1/sync/devices/{device_id}"};
+  }
+}

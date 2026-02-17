@@ -20,20 +20,6 @@ if (bufResult.code !== 0) {
   console.error("生成 swagger.json 失败：", bufResult.stderr, bufResult.stdout);
   Deno.exit(1);
 }
-
-// 1.5. 移除 v1/v2 等文件前缀
-console.log("处理 Swagger JSON...");
-
-const processResult = runCommand(
-  "deno",
-  ["run", "-A", resolve(__dirname, "process-swagger.ts")],
-  __dirname,
-);
-if (processResult.code !== 0) {
-  console.error("处理 Swagger JSON 失败");
-  Deno.exit(processResult.code);
-}
-
 // 2. 生成 TypeScript Client
 console.log("从 Swagger JSON 生成 TypeScript 客户端...");
 

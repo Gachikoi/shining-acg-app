@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package api.main.report.v1;
+
+import "api/main/comment/v1/comment_models.proto";
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+import "api/main/post/v1/post_models.proto";
+
+// ---------------------------------------------------------
+// 举报类型枚举
+enum ReportType {
+  REPORT_TYPE_UNSPECIFIED = 0; // 未指定
+  REPORT_TYPE_USER = 1; // 举报用户
+  REPORT_TYPE_POST = 2; // 举报帖子
+  REPORT_TYPE_COMMENT = 3; // 举报评论
+  REPORT_TYPE_REPLY = 4; // 举报回复
+}
+
+// ---------------------------------------------------------
+// 举报状态枚举
+enum ReportStatus {
+  REPORT_STATUS_UNSPECIFIED = 0; // 未指定
+  REPORT_STATUS_PENDING = 1; // 待处理
+  REPORT_STATUS_PROCESSING = 2; // 处理中
+  REPORT_STATUS_RESOLVED = 3; // 已处理（已采纳）
+  REPORT_STATUS_REJECTED = 4; // 已驳回
+}
+
+// ---------------------------------------------------------
+// 封禁用户时间枚举
+enum BanDurationType {
+  BAN_DURATION_TYPE_UNSPECIFIED = 0; // 未指定
+  BAN_DURATION_TYPE_ONE_DAY = 1; // 一天
+  BAN_DURATION_TYPE_ONE_WEEK = 2; // 一周
+  BAN_DURATION_TYPE_ONE_MONTH = 3; // 一月
+  BAN_DURATION_TYPE_PERMANENT = 4; // 永久封禁
+}
+
+// ---------------------------------------------------------
+// 举报列表项（用于列表展示）
+message ReportItem {
+  string report_id = 1; // 举报记录ID
+  ReportType type = 2; // 举报类型
+  ReportStatus status = 3; // 举报状态
+
+  // 被举报对象详细信息
+  oneof target {
+    api.main.common.v1.UserBrief reported_user = 4; // 被举报的用户
+    api.main.post.v1.PostPreview reported_post = 5; // 被举报的帖子
+    api.main.comment.v1.Comment reported_comment = 6; // 被举报的评论/回复
+    Reply reported_reply = 7; // 被举报的回复（回显示评论内容和回复摘要）
+  }
+
+  int64 report_count = 8; // 举报次数（同一对象被多次举报时的计数）
+
+  // 处理信息（如果已处理）
+  optional HandleReportAdmin admin = 9;
+}
+
+message HandleReportAdmin {
+  string admin_id = 1; // 处理管理员ID
+  string admin_name = 2; // 处理管理员名称
+}
+
+message Reply{
+  api.main.comment.v1.Comment comment = 1; // 评论本体
+  string reply_to_summary = 2; // 回复的评论摘要（截取 100 字符）
+}
+
+// ---------------------------------------------------------
+// 举报证据（当 ReportType 为用户时，可以展示举报者提供的举报证据）
+message ReportEvidenceItem {
+  string report_evidence_id = 1; // 举报证据ID
+  string report_id = 2; // 举报证据所属举报记录ID
+  api.main.common.v1.UserBrief reporter = 3; // 举报者信息
+  string reason = 4; // 举报说明
+  repeated api.main.common.v1.Media media = 5; // 举报证据图片
+}

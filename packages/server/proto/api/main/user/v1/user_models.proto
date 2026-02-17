@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package api.main.user.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+
+// ---------------------------------------------------------
+// 身份认证相关数据模型设计
+
+// 认证状态枚举
+enum VerificationStatus {
+  VERIFICATION_STATUS_UNSPECIFIED = 0;
+  VERIFICATION_STATUS_PENDING = 1; // 待处理
+  VERIFICATION_STATUS_APPROVED = 2; // 已通过
+  VERIFICATION_STATUS_REJECTED = 3; // 已拒绝
+}
+
+// 认证申请详情
+message VerificationApplication {
+  string application_id = 1; // 申请 ID
+  string verified_title = 2; // 申请的认证头衔
+  string verification_description = 3; // 申请说明
+  repeated api.main.common.v1.Media media = 4; // 证明材料
+  int64 applied_time = 5; // 申请时间
+  VerificationStatus status = 6; // 当前状态
+}
+
+// ---------------------------------------------------------
+// 用户通用设置 (仅自己可见的需要多端同步的设置选项)
+message SyncedUserSettings {
+  SyncedNotificationSettings notification = 1;
+  SyncedPrivacySettings privacy = 2;
+  SyncedContentCategoryOrder content_category_order = 3; // 内容排序偏好
+}
+
+// 通知设置 (仅自己可见)
+message SyncedNotificationSettings {
+  bool app_push_enabled = 2; // APP 内推送总开关
+  bool push_my_message = 3; // 我的消息推送
+  bool push_comment_at = 4; // 评论与 @ 推送
+  bool push_like_collect = 5; // 点赞与收藏推送
+  bool push_new_follower = 6; // 新粉丝推送
+  bool push_shining_notification = 7; // 晒你通知
+  bool push_post_update = 8; // 关注动态推送
+  bool push_report = 9; // 举报反馈推送
+  bool push_verification_request = 10; // 新增身份认证申请推送
+}
+
+// 隐私设置 (仅自己可见)
+message SyncedPrivacySettings {
+  ChatPrivacyLevel chat_permission = 1; // 谁可以私信我
+  BasePrivacyLevel liked_posts_visibility = 2; // 谁可以看我的点赞帖子
+  BasePrivacyLevel collected_posts_visibility = 3; // 谁可以看我的收藏帖子
+}
+
+message SyncedContentCategoryOrder {
+  repeated string category_ids = 1; // 按用户偏好排序的内容分类ID列表
+}
+
+enum BasePrivacyLevel {
+  BASE_PRIVACY_LEVEL_PUBLIC = 0;
+  BASE_PRIVACY_LEVEL_PRIVATE = 1;
+}
+
+enum ChatPrivacyLevel {
+  CHAT_PRIVACY_LEVEL_PUBLIC = 0;
+  CHAT_PRIVACY_LEVEL_FOLLOWERS = 1;
+  CHAT_PRIVACY_LEVEL_MUTUAL = 2;
+  CHAT_PRIVACY_LEVEL_PRIVATE = 3;
+}
+
+// ---------------------------------------------------------
+// 用户列表
+
+// 用户筛选器设计
+message UserFilter {
+  // 关键词搜索
+  optional string keyword = 1;
+}
+
+// 用户列表数据模型设计（用于批量接口返回）
+message UserListItem {
+  api.main.common.v1.UserBrief info = 1;
+  optional api.main.common.v1.UserRelationStatus relation_status = 2; // 可选，当前用户与列表中用户的关系状态
+}
+
+// ---------------------------------------------------------
+// 个人资料页帖子瀑布流
+
+// ---------------------------------------------------------
+// 帖子过滤器（用于个人资料页的帖子列表）
+message PostFilter {
+  optional string keyword = 1; // 关键词搜索
+}

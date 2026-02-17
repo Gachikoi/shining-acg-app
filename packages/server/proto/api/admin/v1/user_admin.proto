@@ -1,149 +1,145 @@
-syntax = "proto3";
-
-package api.admin.v1;
-
-import "api/common/v1/common.proto";
-import "google/api/annotations.proto";
-
-// 用户管理服务 - 负责用户账户的后台管理功能
-// 包含用户角色管理、封禁管理、认证审核等功能
-service UserAdminService {
-  // 修改用户角色 - 用于提拔或降级用户角色（如普通用户→管理员）
-  // 支持批量操作，仅超级管理员可使用此接口
-  rpc UpdateUsersRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse) {
-    option (google.api.http) = {
-      put: "/v1/admin/users/role"
-      body: "*"
-    };
-  }
-
-  // 封禁/解封操作 - 对违规用户、帖子或评论进行封禁/解封操作
-  // 支持批量操作，支持临时封禁和永久封禁
-  rpc Ban(BanRequest) returns (BanResponse) {
-    option (google.api.http) = {
-      put: "/v1/admin/ban"
-      body: "*"
-    };
-  }
-
-  // 后台搜索用户 - 提供比前台搜索更强大的搜索能力
-  // 可搜索包括封禁用户在内的所有用户，支持按关键词搜索
-  rpc AdminSearchUsers(AdminSearchUsersRequest) returns (AdminSearchUsersResponse) {
-    option (google.api.http) = {
-      get: "/v1/admin/users/search"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 获取待审核的认证申请列表 - 分页获取所有待审核的用户认证申请
-  // 支持按状态筛选（待审核、已通过、已驳回）
-  rpc ListVerificationApplications(ListVerificationApplicationsRequest) returns (ListVerificationApplicationsResponse) {
-    option (google.api.http) = {
-      get: "/v1/admin/verifications"
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  // 审核认证申请 - 处理用户的认证申请，支持通过或驳回
-  // 驳回时需要填写驳回原因，审核结果会通知用户
-  rpc ApproveVerification(ApproveVerificationRequest) returns (ApproveVerificationResponse) {
-    option (google.api.http) = {
-      put: "/v1/admin/verifications/{application_id}"
-      body: "*"
-    };
-  }
-}
-
-// 修改用户角色请求
-message UpdateUserRoleRequest {
-  repeated string user_ids = 1;       // 用户ID列表（支持批量操作）
-  api.common.v1.Role role = 2;        // 目标角色
-}
-
-// 修改用户角色响应
-message UpdateUserRoleResponse {}
-
-// 封禁类型枚举
-enum BanType {
-  BAN_TYPE_UNSPECIFIED = 0;
-  BAN_TYPE_USER = 1;         // 封禁用户
-  BAN_TYPE_POST = 2;         // 删除帖子
-  BAN_TYPE_COMMENT = 3;      // 删除评论
-}
-
-// 封禁状态枚举
-enum BanStatus {
-  BAN_STATUS_UNSPECIFIED = 0;
-  BAN_STATUS_BAN = 1;        // 封禁/删除
-  BAN_STATUS_UNBAN = 2;      // 解封/恢复
-}
-
-// 封禁项
-message BanItem {
-  string report_id = 1;      // 相关的举报 ID
-  BanStatus status = 3;      // 封禁状态
-}
-
-// 封禁请求
-message BanRequest {
-  repeated BanItem ban_items = 1;     // 封禁项列表（支持批量操作）
-}
-
-// 封禁响应
-message BanResponse {}
-
-// 后台搜索用户请求
-message AdminSearchUsersRequest {
-  string keyword = 1;               // 搜索关键词（支持用户名、昵称、邮箱等）
-  api.common.v1.Pagination pagination = 2; // 分页参数
-}
-
-// 后台搜索用户响应
-message AdminSearchUsersResponse {
-  repeated api.common.v1.UserSummary users = 1; // 用户列表
-}
-
-// 认证申请状态枚举
-enum VerificationStatus {
-  VERIFICATION_STATUS_PENDING = 0;    // 待审核
-  VERIFICATION_STATUS_APPROVED = 1;   // 已通过
-  VERIFICATION_STATUS_REJECTED = 2;   // 已驳回
-}
-
-// 认证申请信息
-message VerificationApplication {
-  string application_id = 1;         // 申请ID
-  string user_id = 2;                // 申请人ID
-  api.common.v1.UserSummary user = 3; // 申请人信息
-  string verified_title = 4;         // 申请的认证头衔
-  VerificationStatus status = 5;     // 审核状态
-  string reject_reason = 6;          // 驳回原因（仅当 status 为 REJECTED 时有效）
-  int64 created_at = 7;              // 申请时间戳
-  int64 processed_at = 8;            // 处理时间戳
-  string processed_by = 9;           // 处理人ID
-}
-
-// 获取认证申请列表请求
-message ListVerificationApplicationsRequest {
-  VerificationStatus status = 1;     // 筛选状态（可选，默认 PENDING）
-  api.common.v1.Pagination pagination = 2; // 分页参数
-}
-
-// 获取认证申请列表响应
-message ListVerificationApplicationsResponse {
-  repeated VerificationApplication applications = 1; // 申请列表
-  string next_page_token = 2;                        // 下一页令牌
-}
-
-// 审核认证申请请求
-message ApproveVerificationRequest {
-  string application_id = 1;         // 申请ID
-  bool approve = 2;                  // true=通过, false=驳回
-  string reject_reason = 3;          // 驳回原因（仅当 approve 为 false 时需要）
-}
-
-// 审核认证申请响应
-message ApproveVerificationResponse {
-  bool succeed = 1;                  // 是否成功
-  string message = 2;                // 响应信息
-}
+//syntax = "proto3";
+//
+//package api.admin.v1;
+//
+//import "api/common/v1/common.proto";
+//import "google/api/annotations.proto";
+//
+//// 用户管理服务 - 负责用户账户的后台管理功能
+//// 包含用户角色管理、封禁管理、认证审核等功能
+//service UserAdminService {
+//  // 修改用户角色 - 用于提拔或降级用户角色（如普通用户→管理员）
+//  // 支持批量操作，仅超级管理员可使用此接口
+//  rpc UpdateUsersRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse) {
+//    option (google.api.http) = {
+//      put: "/v1/admin/users/role"
+//      body: "*"
+//    };
+//  }
+//
+//  // 封禁/解封操作 - 对违规用户、帖子或评论进行封禁/解封操作
+//  // 支持批量操作，支持临时封禁和永久封禁
+//  rpc Ban(BanRequest) returns (BanResponse) {
+//    option (google.api.http) = {
+//      put: "/v1/admin/ban"
+//      body: "*"
+//    };
+//  }
+//
+//  // 后台搜索用户 - 提供比前台搜索更强大的搜索能力
+//  // 可搜索包括封禁用户在内的所有用户，支持按关键词搜索
+//  rpc AdminSearchUsers(AdminSearchUsersRequest) returns (AdminSearchUsersResponse) {
+//    option (google.api.http) = {get: "/v1/admin/users/search"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 获取待审核的认证申请列表 - 分页获取所有待审核的用户认证申请
+//  // 支持按状态筛选（待审核、已通过、已驳回）
+//  rpc ListVerificationApplications(ListVerificationApplicationsRequest) returns (ListVerificationApplicationsResponse) {
+//    option (google.api.http) = {get: "/v1/admin/verifications"};
+//    option idempotency_level = NO_SIDE_EFFECTS;
+//  }
+//
+//  // 审核认证申请 - 处理用户的认证申请，支持通过或驳回
+//  // 驳回时需要填写驳回原因，审核结果会通知用户
+//  rpc ApproveVerification(ApproveVerificationRequest) returns (ApproveVerificationResponse) {
+//    option (google.api.http) = {
+//      put: "/v1/admin/verifications/{application_id}"
+//      body: "*"
+//    };
+//  }
+//}
+//
+//// 修改用户角色请求
+//message UpdateUserRoleRequest {
+//  repeated string user_ids = 1; // 用户ID列表（支持批量操作）
+//  api.common.v1.Role role = 2; // 目标角色
+//}
+//
+//// 修改用户角色响应
+//message UpdateUserRoleResponse {}
+//
+//// 封禁类型枚举
+//enum BanType {
+//  BAN_TYPE_UNSPECIFIED = 0;
+//  BAN_TYPE_USER = 1; // 封禁用户
+//  BAN_TYPE_POST = 2; // 删除帖子
+//  BAN_TYPE_COMMENT = 3; // 删除评论
+//}
+//
+//// 封禁状态枚举
+//enum BanStatus {
+//  BAN_STATUS_UNSPECIFIED = 0;
+//  BAN_STATUS_BAN = 1; // 封禁/删除
+//  BAN_STATUS_UNBAN = 2; // 解封/恢复
+//}
+//
+//// 封禁项
+//message BanItem {
+//  string report_id = 1; // 相关的举报 ID
+//  BanStatus status = 3; // 封禁状态
+//}
+//
+//// 封禁请求
+//message BanRequest {
+//  repeated BanItem ban_items = 1; // 封禁项列表（支持批量操作）
+//}
+//
+//// 封禁响应
+//message BanResponse {}
+//
+//// 后台搜索用户请求
+//message AdminSearchUsersRequest {
+//  string keyword = 1; // 搜索关键词（支持用户名、昵称、邮箱等）
+//  api.common.v1.Pagination pagination = 2; // 分页参数
+//}
+//
+//// 后台搜索用户响应
+//message AdminSearchUsersResponse {
+//  repeated api.common.v1.UserSummary users = 1; // 用户列表
+//}
+//
+//// 认证申请状态枚举
+//enum VerificationStatus {
+//  VERIFICATION_STATUS_PENDING = 0; // 待审核
+//  VERIFICATION_STATUS_APPROVED = 1; // 已通过
+//  VERIFICATION_STATUS_REJECTED = 2; // 已驳回
+//}
+//
+//// 认证申请信息
+//message VerificationApplication {
+//  string application_id = 1; // 申请ID
+//  string user_id = 2; // 申请人ID
+//  api.common.v1.UserSummary user = 3; // 申请人信息
+//  string verified_title = 4; // 申请的认证头衔
+//  VerificationStatus status = 5; // 审核状态
+//  string reject_reason = 6; // 驳回原因（仅当 status 为 REJECTED 时有效）
+//  int64 created_at = 7; // 申请时间戳
+//  int64 processed_at = 8; // 处理时间戳
+//  string processed_by = 9; // 处理人ID
+//}
+//
+//// 获取认证申请列表请求
+//message ListVerificationApplicationsRequest {
+//  VerificationStatus status = 1; // 筛选状态（可选，默认 PENDING）
+//  api.common.v1.Pagination pagination = 2; // 分页参数
+//}
+//
+//// 获取认证申请列表响应
+//message ListVerificationApplicationsResponse {
+//  repeated VerificationApplication applications = 1; // 申请列表
+//  string next_page_token = 2; // 下一页令牌
+//}
+//
+//// 审核认证申请请求
+//message ApproveVerificationRequest {
+//  string application_id = 1; // 申请ID
+//  bool approve = 2; // true=通过, false=驳回
+//  string reject_reason = 3; // 驳回原因（仅当 approve 为 false 时需要）
+//}
+//
+//// 审核认证申请响应
+//message ApproveVerificationResponse {
+//  bool succeed = 1; // 是否成功
+//  string message = 2; // 响应信息
+//}

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package api.main.sync.v1;
+
+import "api/main/sync/v1/sync_models.proto";
+
+// ---------------------------------------------------------
+// 同步状态查询
+// ---------------------------------------------------------
+
+// 获取同步状态请求
+message GetSyncStatusRequest {}
+
+// 获取同步状态响应
+message GetSyncStatusResponse {
+  SyncStatus status = 1; // 同步状态
+}
+
+// 获取活跃设备列表请求
+message GetActiveDevicesRequest {}
+
+// 获取活跃设备列表响应
+message GetActiveDevicesResponse {
+  repeated ActiveDevice devices = 1; // 活跃设备列表
+}
+
+// 强制同步请求（主动触发全量同步）
+message ForceSyncRequest {
+  repeated SyncDataType sync_types = 1; // 要同步的数据类型，空表示全部
+}
+
+// 强制同步响应
+message ForceSyncResponse {
+  bool success = 1; // 是否成功
+  string message = 2; // 消息
+}
+
+// 断开指定设备连接请求
+message DisconnectDeviceRequest {
+  string device_id = 1; // 设备 ID
+}
+
+// 断开指定设备连接响应
+message DisconnectDeviceResponse {
+  bool success = 1; // 是否成功
+}

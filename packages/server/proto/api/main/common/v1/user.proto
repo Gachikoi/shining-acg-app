@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package api.main.common.v1;
+
+import "api/main/common/v1/common.proto";
+
+// 用户角色枚举
+enum Role {
+  ROLE_VISITOR = 0; // 游客
+  ROLE_USER = 1; // 用户
+  ROLE_ADMIN = 2; // 内容管理员
+  ROLE_SUPER_ADMIN = 3; // 超级管理员
+}
+
+// 用户数据模型
+message UserBrief {
+  string user_id = 1; // 用户ID
+  string name = 2; // 用户名
+  optional string remark = 3; // 用户备注
+  string avatar = 4; // 头像URL
+  string qq_number = 5; // QQ 号
+  Role role = 6; // 用户角色
+}
+
+message UserSummary {
+  string user_id = 1; // 用户ID
+  string name = 2; // 用户名
+  optional string remark = 3; // 用户备注
+  string avatar = 4; // 头像URL
+  string qq_number = 5; // QQ 号
+  Role role = 6; // 用户角色
+  string verified_title = 7; // 认证头衔（如：23届部长）
+  repeated DepartmentBase departments = 8; // 所所属部门
+  UserStats stats = 9;
+}
+
+message UserProfile {
+  string user_id = 1;
+  string name = 2;
+  optional string remark = 3; // 用户备注
+  string avatar = 4;
+  string qq_number = 5;
+  Role role = 6; // 用户角色
+  string verified_title = 7; // 认证头衔（如：23届部长）
+  repeated DepartmentBase departments = 8; // 所所属部门
+  UserStats stats = 9;
+  repeated Link links = 10; // 外部链接
+}
+
+// 统计数据
+message UserStats {
+  int64 follower_count = 1; // 粉丝数
+  int64 following_count = 2; // 关注数
+  int64 like_count_received = 3; // 获得的赞
+  int64 collect_count_received = 4; // 获得的收藏
+  int64 view_count_received = 5; // 获得浏览
+}
+
+// 关系状态 (仅关注关系)
+message UserRelationStatus {
+  bool is_following = 1; // 当前用户是否关注了目标用户
+  bool is_followed_by = 2; // 目标用户是否关注了当前用户
+}
+
+// 隐私能力 (当前用户对目标用户的操作权限)
+// Critical: 不要返回 PrivacySettings，返回计算后的 Capability
+message UserViewCapabilities {
+  bool can_chat = 1; // 是否可以发送私信
+  bool can_view_liked_posts = 2; // 是否可以查看点赞列表
+  bool can_view_collected_posts = 3; // 是否可以查看收藏列表
+}

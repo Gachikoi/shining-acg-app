@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package api.main.feed.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/feed/v1/feed_models.proto";
+
+// ---------------------------------------------------------
+// 获取内容流
+// ---------------------------------------------------------
+
+message GetFeedRequest {
+  // 分类ID（来自ListFeedCategories返回的category_id）
+  string category_id = 1;
+
+  // 刷新类型：下拉刷新/上拉加载
+  api.main.common.v1.RefreshType refresh_type = 2;
+
+  // 过滤条件（可选）
+  optional FeedFilter filter = 3;
+
+  // 分页参数
+  api.main.common.v1.CursorPagination pagination = 4;
+}
+
+message GetFeedResponse {
+  // 内容类型（告诉前端如何渲染）
+  FeedContentType content_type = 1;
+
+  // 使用oneof返回不同类型的内容
+  oneof content {
+    PostFeedContent posts = 2;
+    UserFeedContent users = 3;
+    FollowingAuthorFeedContent following_authors = 4;
+  }
+
+  // 分页游标
+  string cursor = 5;
+}
+
+// ---------------------------------------------------------
+// 获取分类列表（用于构建button group）
+// ---------------------------------------------------------
+
+message ListFeedCategoriesRequest {
+  // 可选：只获取特定类型的分类
+  optional FeedContentType filter_type = 1;
+}
+
+message ListFeedCategoriesResponse {
+  repeated FeedCategory categories = 1;
+}

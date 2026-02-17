@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package api.main.comment.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/main/common/v1/user.proto";
+
+// ---------------------------------------------------------
+// 评论完整信息（用于评论详情）
+// 说明：Comment 统一表示评论和回复，通过 parent_comment_id 区分：
+//   - parent_comment_id == null  → 第一层评论（对帖子的直接评论）
+//   - parent_comment_id != null  → 第二层回复（对评论的回复）
+message Comment {
+  string comment_id = 1; // 评论ID
+  string target_id = 2; // 被评论对象的ID（如帖子ID）
+  CommentTargetType target_type = 3; // 被评论对象类型
+  api.main.common.v1.UserBrief author = 4; // 评论作者
+  string content = 5; // 评论内容（最多 300 字）
+  repeated api.main.common.v1.Media media = 6; // 评论附带的媒体（图片，最多 6 张）
+  CommentStats stats = 7; // 评论统计数据
+  CommentRelationStatus relation_status = 8; // 当前用户与评论的关系状态
+
+  optional ReplyContext reply_context = 9; // 回复上下文（仅第二层评论有意义）
+
+  int64 create_time = 10; // 创建时间（秒级时间戳）
+}
+
+// ---------------------------------------------------------
+// 评论统计数据
+message CommentStats {
+  int64 like_count = 1; // 点赞数
+  optional int64 reply_count = 2; // 回复数（仅第一层评论有意义）
+}
+
+// ---------------------------------------------------------
+// 当前用户与评论的关系状态
+message CommentRelationStatus {
+  bool is_liked = 1; // 是否已点赞
+}
+
+// ---------------------------------------------------------
+// 评论目标类型枚举（为未来扩展预留）
+enum CommentTargetType {
+  COMMENT_TARGET_TYPE_UNSPECIFIED = 0; // 未指定
+  COMMENT_TARGET_TYPE_POST = 1; // 帖子
+}
+
+// ---------------------------------------------------------
+// 评论排序方式
+enum CommentOrderType {
+  COMMENT_ORDER_TYPE_UNSPECIFIED = 0; // 未指定（默认使用 LATEST）
+
+  // --- 按时间排序 ---
+  COMMENT_ORDER_TYPE_LATEST = 1;      // 最新评论（按创建时间降序）
+  COMMENT_ORDER_TYPE_EARLIEST = 2;    // 最早评论（按创建时间升序）
+
+  // --- 按点赞数排序 ---
+  COMMENT_ORDER_TYPE_MOST_LIKED = 3;  // 最多点赞（按点赞数降序）
+  COMMENT_ORDER_TYPE_LEAST_LIKED = 4; // 最少点赞（按点赞数升序）
+
+  // --- 按回复数排序（仅第一层评论有效） ---
+  COMMENT_ORDER_TYPE_MOST_REPLIES = 5;  // 最多回复（按回复数降序）
+  COMMENT_ORDER_TYPE_LEAST_REPLIES = 6; // 最少回复（按回复数升序）
+}
+
+// ---------------------------------------------------------
+// 第一层评论 + 第一条回复的组合结构
+message CommentWithFirstReply {
+  Comment comment = 1;                            // 第一层评论本体
+  optional Comment first_reply = 2;               // 第一条第二层回复（如果存在）
+  optional string first_reply_cursor = 3;         // 第一条回复的分页游标（如果存在，用于获取更多回复；如果不存在，则表示没有更多回复）
+}
+
+// ---------------------------------------------------------
+// 回复上下文（仅第二层评论有意义）
+message ReplyContext {
+  // 层级信息（仅第二层回复时有值）
+  string parent_comment_id = 1; // 父评论ID（第二层回复必填，第一层评论为null）
+  string reply_to_comment_id = 2; // 回复的评论ID（第二层回复必填，指向被回复的评论）
+  string reply_to_user_id = 3; // 回复的用户ID（第二层回复必填，用于UI显示"回复了@xxx"）
+  string reply_to_user_name = 4; // 回复的用户名（第二层回复必填，冗余字段避免额外查询）
+}
