@@ -30,7 +30,7 @@
 </script>
 
 <script lang="ts">
-	import { Button, buttonVariants } from '$lib/components/ui/button';
+	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { cn } from '$lib/utils';
 	import { PlusIcon } from 'lucide-svelte';
@@ -149,14 +149,10 @@
 	<!-- TODO: 实现重置按钮功能，需要弹窗让用户二次确认 -->
 	<!-- TODO: 实现保存按钮功能 -->
 	<div class="flex gap-2 border-t border-zinc-100 p-4 font-medium">
-		<ConfirmDialog
-			onConfirm={handleReset}
-			triggerText="重置"
-			triggerClass={cn(
-				buttonVariants({ variant: 'tertiary' }),
-				'cursor-pointer text-muted-foreground'
-			)}
-		>
+		<ConfirmDialog onConfirm={handleReset} confirmText="重置">
+			{#snippet trigger()}
+				<Button variant="tertiary" class="cursor-pointer text-muted-foreground">重置</Button>
+			{/snippet}
 			{#snippet description()}
 				<p>
 					确定要重置吗？
