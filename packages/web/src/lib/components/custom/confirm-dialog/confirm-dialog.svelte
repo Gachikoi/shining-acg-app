@@ -132,7 +132,7 @@
 			{@render trigger()}
 		</AlertDialog.Trigger>
 	{/if}
-	<AlertDialog.Content>
+	<AlertDialog.Content interactOutsideBehavior="close" escapeKeydownBehavior="close">
 		<AlertDialog.Header>
 			{#if title}
 				<AlertDialog.Title>
