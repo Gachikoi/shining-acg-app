@@ -232,6 +232,25 @@
 			}
 		}
 	});
+
+	import { PostDetail } from '$lib/components/custom/post-detail';
+	import { getMockPost, getMockPostComments } from '$lib/mock/post-detail';
+
+	// 开发时可通过 env 快速切换不同 mock 场景
+	// 例如：VITE_POST_DETAIL_MOCK_SCENARIO=comments-many
+	const scenario = import.meta.env?.VITE_POST_DETAIL_MOCK_SCENARIO ?? 'default';
+
+	const mockPost = getMockPost('mock-post-1', scenario);
+	const mockComments = getMockPostComments('mock-post-1', scenario);
+	let showMockDetail = false;
+
+	function openMockDetail() {
+		showMockDetail = true;
+	}
+
+	function closeMockDetail() {
+		showMockDetail = false;
+	}
 </script>
 
 <div class="flex h-full w-full flex-col">
@@ -305,3 +324,7 @@
 		<LucideRefreshCw class="h-6 w-6" />
 	</Button>
 </div>
+<Button variant="default" onclick={openMockDetail}>打开 Mock 帖子详情（Stack）</Button>
+{#if showMockDetail}
+	<PostDetail post={mockPost} useMockComments={true} {mockComments} onClose={closeMockDetail} />
+{/if}
