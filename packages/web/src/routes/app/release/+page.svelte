@@ -36,6 +36,7 @@
 	import { PlusIcon } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
+	import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
 
 	let lastSaved = $state('11:33');
 	// 考虑将 exampleImageDataURLs 改为从 IndexedDB 中获取图片
@@ -72,7 +73,7 @@
 <main
 	class="flex h-full flex-col rounded-2xl border-zinc-100 lg:mx-4 lg:h-[calc(100%-1rem)] lg:border"
 >
-	<div class="flex flex-1 flex-col overflow-y-auto p-6">
+	<div class="min-h-0 grow overflow-y-auto p-6">
 		<!-- 封面设置文字 -->
 		<p class="text-lg font-bold">
 			封面设置
@@ -144,6 +145,7 @@
 				{titleContent.length}/{titleWordLimit}
 			</div>
 		</div>
+		<ShinRichTextarea placeholder="添加帖子描述" class="mt-5" />
 	</div>
 	<!-- 底部按钮 -->
 	<!-- TODO: 实现重置按钮功能，需要弹窗让用户二次确认 -->
