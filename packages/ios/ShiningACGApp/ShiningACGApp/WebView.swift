@@ -5,6 +5,7 @@
 //  Created by 落殇 on 2026/1/4.
 //
 import SwiftUI
+import UIKit
 import WebKit
 
 struct WebView: UIViewRepresentable {
@@ -23,6 +24,9 @@ struct WebView: UIViewRepresentable {
       source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true)
     let userContentController = WKUserContentController()
     userContentController.addUserScript(script)
+
+    // 注入 JSBridge 消息处理器
+    userContentController.add(context.coordinator, name: "ShiningBridge")
 
     let configuration = WKWebViewConfiguration()
     configuration.userContentController = userContentController
@@ -66,11 +70,81 @@ struct WebView: UIViewRepresentable {
 
   }
 
-  class Coordinator: NSObject, WKNavigationDelegate {
+  class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     var parent: WebView
 
     init(_ parent: WebView) {
       self.parent = parent
+    }
+
+    func userContentController(
+      _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
+    ) {
+      if message.name == "ShiningBridge",
+        let body = message.body as? [String: Any],
+        let action = body["action"] as? String
+      {
+        if action == "vibrate" {
+          // Prepare location (iOS 17.5+)
+          var location: CGPoint? = nil
+          if let x = body["x"] as? Int, let y = body["y"] as? Int {
+            location = CGPoint(x: x, y: y)
+          }
+
+          let type = body["type"] as? String
+          let styleString = body["style"] as? String
+
+          switch type {
+          case "impact":
+            let style: UIImpactFeedbackGenerator.FeedbackStyle
+            switch styleString {
+            case "light": style = .light
+            case "medium": style = .medium
+            case "heavy": style = .heavy
+            case "soft": style = .soft
+            case "rigid": style = .rigid
+            default: style = .medium
+            }
+            let generator = UIImpactFeedbackGenerator(style: style)
+            generator.prepare()
+            if #available(iOS 17.5, *), let loc = location {
+              generator.impactOccurred(at: loc)
+            } else {
+              generator.impactOccurred()
+            }
+
+          case "notification":
+            let feedbackType: UINotificationFeedbackGenerator.FeedbackType
+            switch styleString {
+            case "success": feedbackType = .success
+            case "warning": feedbackType = .warning
+            case "error": feedbackType = .error
+            default: feedbackType = .success
+            }
+            let generator = UINotificationFeedbackGenerator()
+            generator.prepare()
+            generator.notificationOccurred(feedbackType)
+
+          case "selection":
+            let generator = UISelectionFeedbackGenerator()
+            generator.prepare()
+            if #available(iOS 17.5, *), let loc = location {
+              generator.selectionChanged(at: loc)
+            } else {
+              generator.selectionChanged()
+            }
+
+          default:
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.prepare()
+            if #available(iOS 17.5, *), let loc = location {
+              generator.impactOccurred(at: loc)
+            } else {
+              generator.impactOccurred()
+            }
+          }
+        }
+      }
     }
 
     func webView(
