@@ -21,6 +21,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
+import android.webkit.JavascriptInterface
+import org.json.JSONObject
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 
 /**
  * 使用 Chrome Custom Tabs 打开 URL（类似 iOS 的 SFSafariViewController）
@@ -124,6 +130,8 @@ fun WebViewScreen(
                         userAgentString = "$userAgentString ShiningACGApp/Android"
                     }
 
+                    addJavascriptInterface(WebAppInterface(ctx), "AndroidBridge")
+
                     // 禁用滚动条
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
@@ -167,5 +175,33 @@ fun WebViewScreen(
                 }
             },
         )
+    }
+}
+private class WebAppInterface(private val context: android.content.Context) {
+    @JavascriptInterface
+    fun postMessage(message: String) {
+        try {
+            val json = JSONObject(message)
+            val action = json.optString("action")
+
+            if (action == "vibrate") {
+                val duration = json.optLong("duration", 200)
+                vibrate(duration)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun vibrate(duration: Long) {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibManager = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
+        vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
     }
 }
