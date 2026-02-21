@@ -153,11 +153,7 @@ struct WebView: UIViewRepresentable {
     ) {
       if let url = navigationAction.request.url {
         // 拦截 www.shiningacg.club 的访问
-        #if DEBUG
-          let targetHost = "test.www.shiningacg.club"
-        #else
-          let targetHost = "www.shiningacg.club"
-        #endif
+        let targetHost = AppConfig.siteHost
         if url.host == targetHost {
           parent.onOpenUrlInSheet?(url)
           decisionHandler(.cancel)
