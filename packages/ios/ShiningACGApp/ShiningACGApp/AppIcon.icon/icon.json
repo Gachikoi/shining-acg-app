@@ -1,75 +1,42 @@
 {
-  "fill": {
-    "solid": "srgb:0.93725,0.26667,0.26667,1.00000"
+  "fill" : {
+    "solid" : "srgb:0.93725,0.26667,0.26667,1.00000"
   },
-  "groups": [
+  "groups" : [
     {
-      "blend-mode-specializations": [
+      "blend-mode" : "normal",
+      "blur-material" : 0.5,
+      "layers" : [
         {
-          "appearance": "dark",
-          "value": "normal"
-        }
-      ],
-      "blur-material": null,
-      "hidden": false,
-      "layers": [
-        {
-          "blend-mode-specializations": [
-            {
-              "value": "lighten"
-            },
-            {
-              "appearance": "dark",
-              "value": "normal"
-            }
-          ],
-          "fill-specializations": [
-            {
-              "value": {
-                "solid": "extended-gray:1.00000,1.00000"
-              }
-            },
-            {
-              "appearance": "dark",
-              "value": {
-                "solid": "srgb:0.93725,0.26667,0.26667,1.00000"
-              }
-            },
-            {
-              "appearance": "tinted",
-              "value": {
-                "solid": "srgb:0.93725,0.26667,0.26667,1.00000"
-              }
-            }
-          ],
-          "glass": true,
-          "hidden": false,
-          "image-name": "Shining!.svg",
-          "name": "Shining!",
-          "position": {
-            "scale": 5.3,
-            "translation-in-points": [
-              2.2519987216124946,
-              11.202260013587534
+          "blend-mode" : "normal",
+          "glass" : true,
+          "image-name" : "rectangle-white-logo 3.svg",
+          "name" : "rectangle-white-logo 3",
+          "position" : {
+            "scale" : 5.1,
+            "translation-in-points" : [
+              0,
+              12
             ]
           }
         }
       ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.5
+      "lighting" : "individual",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
       },
-      "specular": true,
-      "translucency": {
-        "enabled": true,
-        "value": 0.3
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
       }
     }
   ],
-  "supported-platforms": {
-    "circles": [
+  "supported-platforms" : {
+    "circles" : [
       "watchOS"
     ],
-    "squares": "shared"
+    "squares" : "shared"
   }
 }
