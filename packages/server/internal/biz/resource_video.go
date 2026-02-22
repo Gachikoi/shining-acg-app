@@ -16,7 +16,7 @@ import (
 func (uc *ResourceUseCase) downloadAndGetVideoMeta(ctx context.Context, mediaID int64, objectKey string) (string, *ffmpeg.VideoMeta, error) {
 	tempDir := os.TempDir()
 	localPath := filepath.Join(tempDir, fmt.Sprintf("video_%d_temp", mediaID))
-	err := uc.s3.DownloadFile(ctx, objectKey, localPath)
+	err := uc.s3.downloadFile(ctx, objectKey, localPath)
 	if err != nil {
 		err = fmt.Errorf("failed to download video: %w", err)
 		uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusFailed))
@@ -77,7 +77,7 @@ func (uc *ResourceUseCase) generateAndUploadVideoCover(ctx context.Context, medi
 
 	// 上传封面
 	coverObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageCover, "cover.webp")
-	err = uc.s3.UploadFile(ctx, coverObjectKey, coverPath, "image/webp")
+	err = uc.s3.uploadFile(ctx, coverObjectKey, coverPath, "image/webp")
 	if err != nil {
 		err = fmt.Errorf("failed to upload cover: %w", err)
 		uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusFailed))
@@ -112,7 +112,7 @@ func (uc *ResourceUseCase) transcodeVideoToHLS(ctx context.Context, mediaID int6
 
 		// 上传转码后的文件
 		vodDir := pathutil.GetVodDirectory(mediaID)
-		err = uc.s3.UploadDirectory(ctx, outputDir, vodDir)
+		err = uc.s3.uploadDirectory(ctx, outputDir, vodDir)
 		if err != nil {
 			err = fmt.Errorf("failed to upload video slices: %w", err)
 			uc.repo.UpdateStatus(ctx, mediaID, int32(MediaStatusFailed))
@@ -156,7 +156,7 @@ func (uc *ResourceUseCase) getCoverMeta(ctx context.Context, mediaID int64, cove
 	// 下载封面文件以获取元数据
 	tempDir := os.TempDir()
 	coverLocalPath := filepath.Join(tempDir, fmt.Sprintf("video_%d_cover_meta.webp", mediaID))
-	err := uc.s3.DownloadFile(ctx, coverObjectKey, coverLocalPath)
+	err := uc.s3.downloadFile(ctx, coverObjectKey, coverLocalPath)
 	if err != nil {
 		return nil, err
 	}

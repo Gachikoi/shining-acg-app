@@ -15,7 +15,7 @@ import (
 // downloadAndGetImageMeta 下载图片并获取元数据
 func (uc *ResourceUseCase) downloadAndGetImageMeta(ctx context.Context, objectKey string, tempDir string, mediaID int64) (string, *ffmpeg.ImageMeta, error) {
 	localPath := filepath.Join(tempDir, fmt.Sprintf("image_%d_temp", mediaID))
-	err := uc.s3.DownloadFile(ctx, objectKey, localPath)
+	err := uc.s3.downloadFile(ctx, objectKey, localPath)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to download image: %w", err)
 	}
@@ -57,7 +57,7 @@ func (uc *ResourceUseCase) processPostImage(ctx context.Context, mediaID int64, 
 	defer os.Remove(compressedPath)
 
 	compressedObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageCommon, "image.webp")
-	err = uc.s3.UploadFile(ctx, compressedObjectKey, compressedPath, "image/webp")
+	err = uc.s3.uploadFile(ctx, compressedObjectKey, compressedPath, "image/webp")
 	if err != nil {
 		return fmt.Errorf("failed to upload compressed image: %w", err)
 	}
@@ -88,7 +88,7 @@ func (uc *ResourceUseCase) processCommentImage(ctx context.Context, mediaID int6
 	defer os.Remove(compressedPath)
 
 	compressedObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageCommon, "image.webp")
-	err = uc.s3.UploadFile(ctx, compressedObjectKey, compressedPath, "image/webp")
+	err = uc.s3.uploadFile(ctx, compressedObjectKey, compressedPath, "image/webp")
 	if err != nil {
 		return fmt.Errorf("failed to upload compressed image: %w", err)
 	}
@@ -119,7 +119,7 @@ func (uc *ResourceUseCase) processUserAvatar(ctx context.Context, mediaID int64,
 	defer os.Remove(compressedPath)
 
 	avatarObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageAvatar, "avatar.webp")
-	err = uc.s3.UploadFile(ctx, avatarObjectKey, compressedPath, "image/webp")
+	err = uc.s3.uploadFile(ctx, avatarObjectKey, compressedPath, "image/webp")
 	if err != nil {
 		return fmt.Errorf("failed to upload avatar: %w", err)
 	}
@@ -163,7 +163,7 @@ func (uc *ResourceUseCase) processPostCover(ctx context.Context, mediaID int64, 
 	defer os.Remove(compressedPath)
 
 	coverObjectKey := pathutil.GenerateObjectKey(mediaID, pathutil.TypeImageCover, "cover.webp")
-	err := uc.s3.UploadFile(ctx, coverObjectKey, compressedPath, "image/webp")
+	err := uc.s3.uploadFile(ctx, coverObjectKey, compressedPath, "image/webp")
 	if err != nil {
 		return fmt.Errorf("failed to upload cover: %w", err)
 	}
@@ -237,7 +237,7 @@ func (uc *ResourceUseCase) convertImageToCover(ctx context.Context, sourceMediaI
 	// 下载源媒体文件
 	tempDir := os.TempDir()
 	sourceLocalPath := filepath.Join(tempDir, fmt.Sprintf("convert_%d_source.jpg", sourceMediaID))
-	err = uc.s3.DownloadFile(ctx, sourceMedia.ObjectKey, sourceLocalPath)
+	err = uc.s3.downloadFile(ctx, sourceMedia.ObjectKey, sourceLocalPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to download source media: %w", err)
 	}
@@ -294,7 +294,7 @@ func (uc *ResourceUseCase) convertImageToCover(ctx context.Context, sourceMediaI
 
 	// 上传处理后的封面
 	coverObjectKey := pathutil.GenerateObjectKey(coverMediaID, pathutil.TypeImageCover, "cover.webp")
-	err = uc.s3.UploadFile(ctx, coverObjectKey, destPath, "image/webp")
+	err = uc.s3.uploadFile(ctx, coverObjectKey, destPath, "image/webp")
 	if err != nil {
 		uc.repo.UpdateStatus(ctx, coverMediaID, int32(MediaStatusFailed))
 		os.Remove(destPath)

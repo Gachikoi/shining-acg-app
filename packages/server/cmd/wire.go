@@ -9,7 +9,6 @@ import (
 	"app.shiningacg.club/internal/repo"
 	"app.shiningacg.club/internal/service"
 	"app.shiningacg.club/pkg/ffmpeg"
-	"app.shiningacg.club/pkg/s3"
 	"github.com/bwmarrin/snowflake"
 	"github.com/google/wire"
 )
@@ -37,8 +36,8 @@ func NewSnowflakeNode(cfg *config.Config) (*snowflake.Node, error) {
 }
 
 // S3ClientProvider S3 客户端提供者
-func NewS3Client(cfg *config.Config) (*s3.Client, error) {
-	return s3.NewClient(
+func NewS3Client(cfg *config.Config) (*biz.S3Client, error) {
+	return biz.NewS3Client(
 		cfg.OSS.Internal.Endpoint,
 		cfg.OSS.Internal.UseSSL,
 		cfg.OSS.External.Endpoint,

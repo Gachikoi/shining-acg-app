@@ -11,7 +11,6 @@ import (
 	"app.shiningacg.club/pkg/ffmpeg"
 	"app.shiningacg.club/pkg/logger"
 	"app.shiningacg.club/pkg/pathutil"
-	"app.shiningacg.club/pkg/s3"
 	"github.com/bwmarrin/snowflake"
 )
 
@@ -26,13 +25,13 @@ const (
 // ResourceUseCase 资源用例
 type ResourceUseCase struct {
 	repo repo.ResourceRepo
-	s3   *s3.Client
+	s3   *S3Client
 	node *snowflake.Node
 	pool *ffmpeg.WorkerPool
 }
 
 // NewResourceUseCase 创建资源用例实例
-func NewResourceUseCase(repo repo.ResourceRepo, s3 *s3.Client, node *snowflake.Node, pool *ffmpeg.WorkerPool) *ResourceUseCase {
+func NewResourceUseCase(repo repo.ResourceRepo, s3 *S3Client, node *snowflake.Node, pool *ffmpeg.WorkerPool) *ResourceUseCase {
 	return &ResourceUseCase{
 		repo: repo,
 		s3:   s3,
@@ -56,7 +55,7 @@ func (uc *ResourceUseCase) CreateUploadTask(ctx context.Context, scene commonv1.
 
 	// 生成预签名 URL
 	expire := time.Hour * 24 // 24小时过期
-	uploadURL, headers, err := uc.s3.GenPresignedURL(ctx, objectKey, expire)
+	uploadURL, headers, err := uc.s3.genPresignedURL(ctx, objectKey, expire)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate presigned URL: %w", err)
 	}
@@ -65,7 +64,7 @@ func (uc *ResourceUseCase) CreateUploadTask(ctx context.Context, scene commonv1.
 	return &commonv1.UploadToken{
 		TaskId:          fmt.Sprintf("%d", mediaID),
 		UploadUrl:       uploadURL,
-		PublicUrl:       uc.s3.GetObjectURL(objectKey),
+		PublicUrl:       uc.s3.getObjectURL(objectKey),
 		RequiredHeaders: headers,
 		SkipUpload:      false, // 暂时不实现秒传
 	}, nil
@@ -97,7 +96,7 @@ func (uc *ResourceUseCase) CompleteUpload(ctx context.Context, req *commonv1.Com
 	media := &commonv1.Media{
 		Id:        fmt.Sprintf("%d", mediaID),
 		Type:      mediaType,
-		Bucket:    uc.s3.Bucket, // 使用导出字段
+		Bucket:    uc.s3.bucket,
 		ObjectKey: req.ObjectKey,
 		Status:    int32(MediaStatusProcessing),
 	}
