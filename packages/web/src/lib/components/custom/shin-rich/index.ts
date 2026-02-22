@@ -1,2 +1,3 @@
 export { default as ShinRichTextarea } from './shin-rich-textarea.svelte';
-export { default as ShinRichPopover, type MentionUser } from './shin-rich-popover.svelte';
+export type { MentionUser } from './shin-rich-popover.svelte';
+export { default as ShinRichMention } from './shin-rich-mention.svelte';
