@@ -12,6 +12,7 @@
 	- class: 容器样式类名
 	- placeholder: 占位文案
 	- maxLength: 最大字数，默认 10000
+	- onMentionClick: 点击 mention 时的回调，用于跳转个人资料页等
 -->
 
 <script lang="ts">
@@ -30,6 +31,8 @@
 		class?: string;
 		placeholder?: string;
 		maxLength?: number;
+		/** 点击 mention 时的回调，用于跳转个人资料页等 */
+		onMentionClick?: (userId: string) => void;
 	};
 
 	let {
@@ -37,6 +40,7 @@
 		class: className,
 		placeholder = '请输入内容',
 		maxLength = 10000,
+		onMentionClick,
 		...restProps
 	}: Props = $props();
 
@@ -75,6 +79,7 @@
 		getSearchQuery: () => searchQuery,
 		getFilteredUserList: () => filteredUserList,
 		getMaxLength: () => maxLength,
+		getOnMentionClick: () => onMentionClick,
 		setMentionTemplateUser: (v) => (mentionTemplateUser = v),
 		setEmpty: (v) => (isEmpty = v),
 		setWordCount: (v) => (wordCount = v),
