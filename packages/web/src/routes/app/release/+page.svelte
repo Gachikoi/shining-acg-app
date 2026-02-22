@@ -27,6 +27,12 @@
 			css: (t: number) => `opacity: ${1 - t};`
 		};
 	};
+
+	const MOCK_SECTIONS = [
+		{ value: 'cosplay', label: 'Cosplay' },
+		{ value: 'dance', label: '宅舞' },
+		{ value: 'ranobe', label: '轻文' }
+	];
 </script>
 
 <script lang="ts">
@@ -37,6 +43,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
 	import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
+	import * as Select from '$lib/components/ui/select';
 
 	let lastSaved = $state('11:33');
 	// 考虑将 exampleImageDataURLs 改为从 IndexedDB 中获取图片
@@ -48,11 +55,19 @@
 
 	let titleContent = $state('');
 
+	// TODO: 实现分区选择，目前仅支持 mock 数据
+	let selectedSection = $state<string>();
+
+	let selectedSectionLabel = $derived(
+		MOCK_SECTIONS.find((section) => section.value === selectedSection)?.label
+	);
+
 	function handleReset() {
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
 		cachedImagesDataURLs = [];
 		selectedImageURL = null;
+		selectedSection = MOCK_SECTIONS[0].value;
 	}
 
 	// 封面比例轮换
@@ -66,6 +81,9 @@
 	$effect(() => {
 		if (selectedImageURL === null && cachedImagesDataURLs.length > 0) {
 			selectedImageURL = cachedImagesDataURLs[0];
+		}
+		if (!selectedSection) {
+			selectedSection = MOCK_SECTIONS[0].value;
 		}
 	});
 </script>
@@ -146,6 +164,22 @@
 			</div>
 		</div>
 		<ShinRichTextarea placeholder="添加帖子描述" class="mt-5" />
+
+		<p class="mt-6 text-lg font-bold">分区选择<span class="text-red-500">*</span></p>
+		<div class="mt-2">
+			<Select.Root type="single" name="section" bind:value={selectedSection}>
+				<Select.Trigger class="min-w-31.5 text-sm">
+					{selectedSectionLabel}
+				</Select.Trigger>
+				<Select.Content>
+					<Select.Group>
+						{#each MOCK_SECTIONS as section (section.value)}
+							<Select.Item value={section.value}>{section.label}</Select.Item>
+						{/each}
+					</Select.Group>
+				</Select.Content>
+			</Select.Root>
+		</div>
 	</div>
 	<!-- 底部按钮 -->
 	<!-- TODO: 实现重置按钮功能，需要弹窗让用户二次确认 -->
