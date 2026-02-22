@@ -7,6 +7,8 @@
  * - @ 提及：按钮点击、输入 @ 触发，选择用户后插入 mention 节点
  *
  * 通过依赖注入（Deps）与 Svelte 组件解耦，避免直接依赖 $state/$props。
+ *
+ * 这块的边界处理真是有点恐怖了，一直在进行各种边界判断，但是暂无优化思路。
  */
 
 import { tick } from 'svelte';
@@ -46,6 +48,8 @@ export interface RichTextareaControllerDeps {
 	getFilteredUserList: () => MentionUser[];
 	/** 获取最大字数限制 */
 	getMaxLength: () => number;
+	/** 获取点击 mention 时的回调 */
+	getOnMentionClick: () => ((userId: string) => void) | undefined;
 	/** 设置模板当前渲染的用户（用于 Svelte 渲染 mention 后 clone） */
 	setMentionTemplateUser: (user: MentionUser | null) => void;
 	/** 设置内容是否为空 */
@@ -480,7 +484,7 @@ export class RichTextareaController {
 
 	/**
 	 * 处理编辑器容器点击
-	 * - 点击 mention：阻止默认（TODO：跳转个人资料页）
+	 * - 点击 mention：阻止默认，若注入 onMentionClick 则调用
 	 * - 点击容器非 contenteditable 区域：将光标移到 contenteditable 末尾并聚焦
 	 */
 	handleContainerClick(e: MouseEvent): void {
@@ -489,6 +493,8 @@ export class RichTextareaController {
 		if (mentionEl) {
 			e.preventDefault();
 			e.stopPropagation();
+			const userId = mentionEl.getAttribute('data-mention-user-id');
+			if (userId) this.deps.getOnMentionClick?.()?.(userId);
 			return;
 		}
 		const contentEditableRef = this.target;
