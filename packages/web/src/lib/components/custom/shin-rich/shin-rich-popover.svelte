@@ -1,15 +1,35 @@
 <!--
-	@component
-	## ShinRichPopover - @ 用户选择弹层
+	@component ShinRichPopover
+	@description @ 用户选择弹层（内部组件，由 ShinRichTextarea 使用）
+	@internal 不对外导出，请勿直接使用
 
-	为富文本 textarea 服务的 @ 用户选择弹层，支持键盘导航与点击选择。
-	使用自定义定位，不抢夺 contenteditable 焦点。
+	## 概述
+	为 ShinRichTextarea 提供 @ 用户选择能力。固定定位在光标或按钮附近，不抢夺 contenteditable 焦点。
+	支持点击选择、上下键切换、Enter 确认、Escape 关闭。
+
+	## Props
+	- open: 是否显示
+	- userList: 可选用户列表（MentionUser[]）
+	- position: 定位坐标 { left, top }
+	- selectedIndex: 当前选中索引（可绑定）
+	- onSelect: 选择用户回调
+	- onClose / onClickOutside: 关闭回调
+	- ignoreClickRef: 点击不关闭的容器（如 contenteditable）
+
+	## MentionUser 类型
+	{ id, qq, name, avatar?, remark? }
 -->
 
 <script lang="ts">
 	import { cn } from '$lib/utils';
 
-	export type MentionUser = { id: string; qq: string; name: string; avatar?: string };
+	export type MentionUser = {
+		id: string;
+		qq: string;
+		name: string;
+		avatar?: string;
+		remark?: string;
+	};
 
 	type Props = {
 		open?: boolean;
@@ -93,9 +113,8 @@
 				<button
 					type="button"
 					role="option"
-					class="flex items-center gap-2 px-4 py-2 text-left hover:bg-muted {i === selectedIndex
-						? 'bg-muted'
-						: ''}"
+					class="flex items-center gap-2 px-4 py-2 text-left hover:bg-muted"
+					class:bg-muted={i === selectedIndex}
 					data-selected={i === selectedIndex}
 					aria-selected={i === selectedIndex}
 					onclick={() => onSelect?.(user)}
@@ -111,7 +130,7 @@
 						</div>
 					{/if}
 					<div class="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-						{user.name}
+						{user.remark ?? user.name}
 					</div>
 				</button>
 			{/each}
