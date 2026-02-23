@@ -84,21 +84,25 @@ export function getNodeOffsetAtCharIndex(
 }
 
 /**
- * 获取光标前的文本，与 DOM 结构一致：<br> 视为 \n，ZWSP 不计入
+ * 一次遍历得到光标前文本 + 各 charIndex 的 DOM 位置，保证一致
  * @param skipMentionContent 为 true 时跳过 mention 内的文本
  */
-export function getTextBeforeCaret(
+export function getTextBeforeCaretWithPositions(
 	target: HTMLElement,
 	opts?: { skipMentionContent?: boolean }
-): string {
+): {
+	text: string;
+	getPositionAt: (charIndex: number) => { node: Node; offset: number } | null;
+} | null {
 	const skipMention = opts?.skipMentionContent ?? false;
 	const sel = window.getSelection();
-	if (!sel || sel.rangeCount === 0) return '';
+	if (!sel || sel.rangeCount === 0) return null;
 	const range = sel.getRangeAt(0);
-	if (!target.contains(range.commonAncestorContainer)) return '';
+	if (!target.contains(range.commonAncestorContainer)) return null;
 	const endContainer = range.startContainer;
 	const endOffset = range.startOffset;
 	let result = '';
+	const positions: { node: Node; offset: number }[] = [];
 	const walker = document.createTreeWalker(
 		target,
 		NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
@@ -112,7 +116,11 @@ export function getTextBeforeCaret(
 					break;
 				}
 				const text = (node.textContent ?? '').replace(/\u200B/g, '');
-				result += text.slice(0, Math.min(endOffset, text.length));
+				const slice = text.slice(0, Math.min(endOffset, text.length));
+				for (let i = 0; i < slice.length; i++) {
+					positions[result.length + i] = { node, offset: i };
+				}
+				result += slice;
 			}
 			break;
 		}
@@ -121,15 +129,39 @@ export function getTextBeforeCaret(
 				node = walker.nextNode();
 				continue;
 			}
-			result += (node.textContent ?? '').replace(/\u200B/g, '');
+			const text = (node.textContent ?? '').replace(/\u200B/g, '');
+			for (let i = 0; i < text.length; i++) {
+				positions[result.length + i] = { node, offset: i };
+			}
+			result += text;
 		} else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === 'BR') {
 			if (!skipMention || !(node as Element).closest?.('[data-mention-user-id]')) {
+				const r = document.createRange();
+				r.setStartBefore(node);
+				r.collapse(true);
+				positions[result.length] = { node: r.startContainer, offset: r.startOffset };
 				result += '\n';
 			}
 		}
 		node = walker.nextNode();
 	}
-	return result;
+	return {
+		text: result,
+		getPositionAt: (charIndex: number) =>
+			charIndex >= 0 && charIndex < positions.length ? (positions[charIndex] ?? null) : null
+	};
+}
+
+/**
+ * 获取光标前的文本，与 DOM 结构一致：<br> 视为 \n，ZWSP 不计入
+ * @param skipMentionContent 为 true 时跳过 mention 内的文本
+ */
+export function getTextBeforeCaret(
+	target: HTMLElement,
+	opts?: { skipMentionContent?: boolean }
+): string {
+	const r = getTextBeforeCaretWithPositions(target, opts);
+	return r?.text ?? '';
 }
 
 /** 移除所有 <br> 和零宽空格后若为空，则视为空 */

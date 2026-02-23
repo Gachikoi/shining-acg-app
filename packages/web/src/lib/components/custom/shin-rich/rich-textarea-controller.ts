@@ -17,7 +17,7 @@ import {
 	ZWSP,
 	getRangeInTarget,
 	getTextBeforeCaret,
-	getNodeOffsetAtCharIndex,
+	getTextBeforeCaretWithPositions,
 	isEffectivelyEmpty,
 	getTextLengthWithNewlines,
 	insertTextAtCaret,
@@ -176,10 +176,10 @@ export class RichTextareaController {
 		if (!sel || sel.rangeCount === 0) return;
 		const range = sel.getRangeAt(0);
 		if (!target.contains(range.commonAncestorContainer)) return;
-		const textBefore = getTextBeforeCaret(target);
-		const atIdx = textBefore.lastIndexOf('@');
-		if (atIdx >= 0) {
-			const startPos = getNodeOffsetAtCharIndex(target, atIdx);
+		const caretResult = getTextBeforeCaretWithPositions(target);
+		const atIdx = caretResult ? caretResult.text.lastIndexOf('@') : -1;
+		if (atIdx >= 0 && caretResult) {
+			const startPos = caretResult.getPositionAt(atIdx);
 			if (startPos) {
 				// 删除 @ 到光标之间的内容
 				const deleteRange = document.createRange();
