@@ -9,6 +9,8 @@ import SwiftUI
 
 @main
 struct ShiningACGApp: App {
+  @Environment(\.colorScheme) private var colorScheme
+
   var body: some Scene {
     WindowGroup {
       ContentView()
