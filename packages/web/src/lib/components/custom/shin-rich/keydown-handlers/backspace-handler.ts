@@ -135,11 +135,34 @@ function closePopoverWhenDeletingAt(ctx: BackspaceContext): boolean {
 	return false; // 不消费事件，让浏览器执行默认退格
 }
 
+/** 4. 兜底：用 LeftArrow + Delete 等效逻辑替代默认 Backspace（mention 等场景下更稳定） */
+function fallbackLeftArrowDelete(ctx: BackspaceContext): boolean {
+	const { range, selection, target, updateStats } = ctx;
+	const rangeBefore = range.cloneRange();
+	selection.modify('move', 'left', 'character');
+	const currentRange = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+	const moved =
+		currentRange &&
+		(currentRange.startContainer !== rangeBefore.startContainer ||
+			currentRange.startOffset !== rangeBefore.startOffset);
+	if (!moved) {
+		selection.removeAllRanges();
+		selection.addRange(rangeBefore);
+		return false;
+	}
+	selection.modify('extend', 'right', 'character');
+	selection.deleteFromDocument();
+	target.dispatchEvent(new InputEvent('input', { bubbles: true }));
+	requestAnimationFrame(() => updateStats(target));
+	return true;
+}
+
 const backspaceCases: ((ctx: BackspaceContext) => boolean)[] = [
 	deleteSpaceAndMentionBeforeCursor,
 	deleteMentionBeforeCursor,
 	deleteBrZwspLine,
-	closePopoverWhenDeletingAt
+	closePopoverWhenDeletingAt,
+	fallbackLeftArrowDelete
 ];
 
 /** Backspace：处理 mention 删除、br+ZWSP 整行删除、@ 删除时关闭 popover */
@@ -171,8 +194,6 @@ export const backspaceHandler: KeydownHandler = {
 				return true;
 			}
 		}
-
-		// closePopoverWhenDeletingAt 可能已执行，但不 preventDefault
 		return false;
 	}
 };
