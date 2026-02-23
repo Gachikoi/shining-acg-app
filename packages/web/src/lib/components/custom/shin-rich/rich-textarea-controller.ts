@@ -24,6 +24,7 @@ import {
 	insertAtEnd,
 	tryGetCaretPosition
 } from './contenteditable-utils';
+import { createKeydownHandlerChain, type KeydownContext } from './keydown-handlers';
 
 /**
  * 控制器依赖注入接口
@@ -67,6 +68,8 @@ export interface RichTextareaControllerDeps {
 }
 
 export class RichTextareaController {
+	private readonly keydownHandlers = createKeydownHandlerChain();
+
 	constructor(private deps: RichTextareaControllerDeps) {}
 
 	/** contenteditable 根元素快捷访问 */
@@ -244,166 +247,29 @@ export class RichTextareaController {
 	}
 
 	/**
-	 * 处理键盘按下
+	 * 处理键盘按下（责任链模式）
 	 * - ArrowUp/Down/Enter/Escape：popover 打开时由 popover 消费
 	 * - @：在 contenteditable 内输入 @ 时打开 popover
 	 * - Enter：插入 br+ZWSP 换行
-	 * - Backspace：
-	 *   1. 光标前为 mention：删除该 mention
-	 *   2. 光标前为空格且其前为 mention：同时删除空格和 mention
-	 *   3. 光标在 br+ZWSP 之后：一次退格删除整行换行
-	 *   4. 删除纯文本 @ 时关闭 popover
+	 * - Backspace：mention 删除、br+ZWSP 整行删除、@ 删除时关闭 popover
 	 */
 	handleKeydown(e: KeyboardEvent): void {
 		const target = e.target as HTMLElement;
 		const selection = window.getSelection();
 		if (!selection) return;
 
-		// popover 打开时，方向键、Enter、Escape 交给 popover 处理
-		if (this.deps.getPopoverOpen() && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
-			e.preventDefault();
-			return;
-		}
+		const ctx: KeydownContext = {
+			target,
+			selection,
+			deps: this.deps,
+			updateStats: (t) => this.updateStats(t),
+			openPopoverFromTypedAt: (t) => this.openPopoverFromTypedAt(t),
+			handlePopoverClose: () => this.handlePopoverClose()
+		};
 
-		// 输入 @ 时打开 popover
-		if (e.key === '@' && !e.ctrlKey && !e.metaKey && !e.altKey && this.target?.contains(target)) {
-			e.preventDefault();
-			this.openPopoverFromTypedAt(target);
-			return;
-		}
-
-		// Enter：插入 br+ZWSP 换行
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			selection.deleteFromDocument();
-
-			const range = getRangeInTarget(target);
-			if (!range) return;
-
-			const fragment = document.createDocumentFragment();
-			const zwsp = document.createTextNode(ZWSP);
-			fragment.appendChild(document.createElement('br'));
-			fragment.appendChild(zwsp);
-			range.insertNode(fragment);
-			range.setStartAfter(zwsp);
-			range.collapse(true);
-			selection.removeAllRanges();
-			selection.addRange(range);
-
-			target.dispatchEvent(new InputEvent('input', { bubbles: true }));
-			return;
-		}
-
-		// Backspace：处理 mention 删除、br+ZWSP 整行删除、@ 删除时关闭 popover
-		if (e.key === 'Backspace' && selection.isCollapsed) {
-			const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-			if (!range || !target.contains(range.commonAncestorContainer)) return;
-
-			const { startContainer, startOffset } = range;
-
-			/** 光标紧前的节点（用于判断是否在 mention、ZWSP 之后） */
-			const nodeBeforeCursor =
-				startOffset > 0
-					? startContainer.nodeType === Node.TEXT_NODE
-						? null // 在文本节点内，退格删除字符，不在此处理 mention
-						: startContainer.childNodes[startOffset - 1]
-					: startContainer.previousSibling;
-
-			// 1. 光标前为 mention：删除该 mention
-			// 1b. 光标前为仅空格的文本且其前为 mention：一次退格同时删除空格和 mention
-			let mentionEl: Element | null =
-				nodeBeforeCursor?.nodeType === Node.ELEMENT_NODE &&
-				(nodeBeforeCursor as Element).hasAttribute?.('data-mention-user-id')
-					? (nodeBeforeCursor as Element)
-					: null;
-			if (!mentionEl && nodeBeforeCursor?.nodeType === Node.TEXT_NODE) {
-				const text = (nodeBeforeCursor.textContent ?? '').replace(/\u200B/g, '');
-				if (/^\s*$/.test(text) && text.length > 0) {
-					const prev = nodeBeforeCursor.previousSibling;
-					if (
-						prev?.nodeType === Node.ELEMENT_NODE &&
-						(prev as Element).hasAttribute?.('data-mention-user-id')
-					) {
-						mentionEl = prev as Element;
-						e.preventDefault();
-						range.setStartBefore(mentionEl);
-						range.setEndAfter(nodeBeforeCursor);
-						range.deleteContents();
-						range.collapse(true);
-						selection.removeAllRanges();
-						selection.addRange(range);
-						target.dispatchEvent(new InputEvent('input', { bubbles: true }));
-						requestAnimationFrame(() => this.updateStats(target));
-						return;
-					}
-				}
-			}
-			if (mentionEl) {
-				e.preventDefault();
-				range.setStartBefore(mentionEl);
-				range.setEndAfter(mentionEl);
-				range.deleteContents();
-				range.collapse(true);
-				selection.removeAllRanges();
-				selection.addRange(range);
-				target.dispatchEvent(new InputEvent('input', { bubbles: true }));
-				requestAnimationFrame(() => this.updateStats(target));
+		for (const handler of this.keydownHandlers) {
+			if (handler.canHandle(e, ctx) && handler.handle(e, ctx)) {
 				return;
-			}
-
-			// 2. 光标在 br+ZWSP 之后：一次退格删除整行换行
-			let zwspNode: Node | null = null;
-			let br: Element | null = null;
-			if (startOffset > 0 && startContainer.nodeType === Node.TEXT_NODE) {
-				const charBefore = startContainer.textContent?.charAt(startOffset - 1) ?? '';
-				if (charBefore === ZWSP) {
-					zwspNode = startContainer;
-					br = startContainer.previousSibling as Element | null;
-				}
-			} else if (startOffset === 0) {
-				const prev = startContainer.previousSibling;
-				if (prev?.nodeType === Node.TEXT_NODE) {
-					const text = prev.textContent ?? '';
-					if (text.charAt(text.length - 1) === ZWSP) {
-						zwspNode = prev;
-						br = prev.previousSibling as Element | null;
-					}
-				}
-			} else if (nodeBeforeCursor?.nodeType === Node.TEXT_NODE) {
-				// 光标在父元素末尾（Enter 后常见），nodeBeforeCursor 为 ZWSP 文本节点
-				const text = nodeBeforeCursor.textContent ?? '';
-				if (text.replace(/\u200B/g, '') === '' && text.length > 0) {
-					zwspNode = nodeBeforeCursor;
-					br = nodeBeforeCursor.previousSibling as Element | null;
-				}
-			}
-
-			if (br?.nodeName === 'BR' && zwspNode) {
-				e.preventDefault();
-				range.setStartBefore(br);
-				range.setEnd(
-					zwspNode === startContainer ? startContainer : zwspNode,
-					zwspNode === startContainer ? startOffset : (zwspNode.textContent ?? '').length
-				);
-				range.deleteContents();
-				range.collapse(true);
-				selection.removeAllRanges();
-				selection.addRange(range);
-
-				target.dispatchEvent(new InputEvent('input', { bubbles: true }));
-				requestAnimationFrame(() => this.updateStats(target));
-				return;
-			}
-
-			// 3. 即将删除纯文本 @ 时关闭 popover（避免删除后因其他 @ 仍显示「无匹配用户」）
-			if (this.deps.getPopoverOpen() && nodeBeforeCursor?.nodeType === Node.TEXT_NODE) {
-				const text = (nodeBeforeCursor.textContent ?? '').replace(/\u200B/g, '');
-				const isPlainAt =
-					text === '@' ||
-					(text.length > 0 && text.charAt(text.length - 1) === '@' && startOffset === 0);
-				if (isPlainAt && !nodeBeforeCursor.parentElement?.closest?.('[data-mention-user-id]')) {
-					this.handlePopoverClose();
-				}
 			}
 		}
 	}
