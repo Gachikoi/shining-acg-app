@@ -6,7 +6,7 @@
 	import { ChevronRight, ExternalLink, Menu } from 'lucide-svelte';
 	import { setMode, userPrefersMode } from 'mode-watcher';
 	import TabButton from './tab-button.svelte';
-	import { useSiteMetadata } from './use-site.svelte';
+	import { DOMAIN_CONFIG } from '$lib/constants';
 
 	let darkMode = $state(
 		userPrefersMode.current === 'light'
@@ -16,8 +16,6 @@
 				: '跟随系统'
 	);
 	const darkModeOptions = ['跟随系统', '浅色', '深色'];
-
-	const { officialSiteUrl } = useSiteMetadata();
 </script>
 
 <Popover.Root>
@@ -32,7 +30,7 @@
 		<a
 			class="lg:hidden"
 			title="晒你官网"
-			href={officialSiteUrl}
+			href={`https://${DOMAIN_CONFIG.site}`}
 			target="_blank"
 			data-sveltekit-reload
 			data-sveltekit-preload-code="eager"
