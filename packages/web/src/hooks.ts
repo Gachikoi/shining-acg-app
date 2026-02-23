@@ -7,9 +7,9 @@ export const reroute: Reroute = ({ url }) => {
 	let newPath = pathname;
 
 	// 使用 includes 而非 === 是为了兼容测试环境的域名
-	if (hostname.includes(DOMAIN_CONFIG.app)) {
+	if (hostname.includes(DOMAIN_CONFIG.appSuffix)) {
 		newPath = `/app${pathname}`;
-	} else if (hostname.includes(DOMAIN_CONFIG.root) || hostname.includes(DOMAIN_CONFIG.site)) {
+	} else if (hostname.includes(DOMAIN_CONFIG.rootSuffix)) {
 		newPath = `/site${pathname}`;
 	}
 
