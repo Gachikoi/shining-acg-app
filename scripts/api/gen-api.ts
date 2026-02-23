@@ -30,7 +30,7 @@ try {
     plugins: [
       {
         name: "@hey-api/client-axios",
-        runtimeConfigPath: resolve(webDir, "src/hey-api.ts"),
+        runtimeConfigPath: "../../hey-api.svelte.ts",
       },
     ],
   });

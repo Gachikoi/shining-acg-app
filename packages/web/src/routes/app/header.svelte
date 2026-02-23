@@ -3,12 +3,10 @@
 	import rectangleLogo from '$lib/assets/rectangle-logo.png';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { DOMAIN_CONFIG } from '$lib/constants';
 	import SettingPopover from './setting-popover.svelte';
-	import { useSiteMetadata } from './use-site.svelte';
 
 	let isRemoveLogo = $state(false);
-
-	const { officialSiteUrl } = useSiteMetadata();
 
 	$effect(() => {
 		const mql = window.matchMedia('(min-width: 40rem)');
@@ -36,7 +34,7 @@
 		<!-- eslint-disable -->
 		<a
 			title="晒你官网"
-			href={officialSiteUrl}
+			href={`https://${DOMAIN_CONFIG.site}`}
 			target="_blank"
 			data-sveltekit-reload
 			data-sveltekit-preload-code="eager"

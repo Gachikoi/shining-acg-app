@@ -17,12 +17,48 @@ export type CommentServiceSetCommentLikeBody = {
 };
 
 /**
+ * ==========================================
+ * 重命名部门
+ * ==========================================
+ */
+export type DepartmentServiceRenameDepartmentBody = {
+    /**
+     * 新名称，最多12个字符
+     */
+    new_name?: string;
+};
+
+/**
+ * ==========================================
+ * 删除分区
+ * ==========================================
+ */
+export type PartitionServiceDeletePartitionBody = {
+    /**
+     * 目标分区ID，将删除分区下的内容迁移到此分区
+     */
+    target_partition_id?: string;
+};
+
+/**
+ * ==========================================
+ * 重命名分区
+ * ==========================================
+ */
+export type PartitionServiceRenamePartitionBody = {
+    /**
+     * 新名称，最多12个字符
+     */
+    new_name?: string;
+};
+
+/**
  * ---------------------------------------------------------
  * 编辑帖子
  */
 export type PostServiceEditPostBody = {
-    cover?: V1Media;
-    media?: Array<V1Media>;
+    cover?: V1MediaAsset;
+    media?: Array<V1MediaAsset>;
     title?: string;
     content?: string;
     partition_id?: string;
@@ -97,6 +133,18 @@ export type UserServiceSetFollowBody = {
     is_following?: boolean;
 };
 
+/**
+ * ---------------------------------------------------------
+ * 审批认证申请（管理员）
+ */
+export type VerificationServiceReviewVerificationBody = {
+    action?: V1ReviewAction;
+    /**
+     * 审批原因/意见（批准或拒绝的理由）
+     */
+    reason?: string;
+};
+
 export type ProtobufAny = {
     '@type'?: string;
     [key: string]: unknown | string | undefined;
@@ -108,35 +156,78 @@ export type RpcStatus = {
     details?: Array<ProtobufAny>;
 };
 
+/**
+ * ------------------------------------------------------------------------------
+ * AbortMultipartUploadRequest 用于取消并清理未完成 multipart 会话。
+ */
+export type V1AbortMultipartUploadRequest = {
+    /**
+     * 文件任务 ID。
+     */
+    task_id?: string;
+    /**
+     * multipart upload_id。
+     */
+    upload_id?: string;
+};
+
+/**
+ * AbortMultipartUploadResponse 返回中断结果。
+ */
+export type V1AbortMultipartUploadResponse = {
+    /**
+     * true 表示已成功中断（或目标会话已不可用）。
+     */
+    success?: boolean;
+};
+
 export type V1ActiveDevice = {
-    /**
-     * 设备 ID
-     */
     device_id?: string;
-    /**
-     * 设备名称
-     */
     device_name?: string;
-    /**
-     * 平台
-     */
     platform?: string;
-    /**
-     * 连接时间
-     */
     connected_at?: string;
-    /**
-     * 最后活跃时间
-     */
     last_active_at?: string;
-    /**
-     * 是否为当前设备
-     */
     is_current?: boolean;
 };
 
 /**
- * ---------------------------------------------------------
+ * 管理员信息（用于列表展示）
+ */
+export type V1AdminInfo = {
+    /**
+     * 用户ID
+     */
+    user_id?: string;
+    /**
+     * 头像URL
+     */
+    avatar?: string;
+    /**
+     * 昵称（优先显示备注）
+     */
+    nickname?: string;
+    /**
+     * QQ号
+     */
+    qq_number?: string;
+    role?: V1Role;
+};
+
+/**
+ * 管理员分类列表
+ */
+export type V1AdminsByRole = {
+    /**
+     * 超级管理员列表
+     */
+    super_admins?: Array<V1AdminInfo>;
+    /**
+     * 管理员列表
+     */
+    admins?: Array<V1AdminInfo>;
+};
+
+/**
  * 申请身份认证
  */
 export type V1ApplyVerificationRequest = {
@@ -151,7 +242,7 @@ export type V1ApplyVerificationRequest = {
     /**
      * 证明材料
      */
-    media?: Array<V1Media>;
+    media?: Array<V1MediaAsset>;
 };
 
 export type V1ApplyVerificationResponse = {
@@ -175,6 +266,33 @@ export type V1ApprovalReportResponse = {
 export type V1BanDurationType = 'BAN_DURATION_TYPE_UNSPECIFIED' | 'BAN_DURATION_TYPE_ONE_DAY' | 'BAN_DURATION_TYPE_ONE_WEEK' | 'BAN_DURATION_TYPE_ONE_MONTH' | 'BAN_DURATION_TYPE_PERMANENT';
 
 export type V1BasePrivacyLevel = 'BASE_PRIVACY_LEVEL_PUBLIC' | 'BASE_PRIVACY_LEVEL_PRIVATE';
+
+/**
+ * BatchProgress 表示批次级处理进度（服务端通过 WS 推送）。
+ */
+export type V1BatchProgress = {
+    /**
+     * 批次 ID。
+     */
+    batch_id?: string;
+    stage?: V1ProgressStage;
+    /**
+     * 当前批次已完成处理的文件数。
+     */
+    processed_count?: number;
+    /**
+     * 批次总文件数。
+     */
+    total_count?: number;
+    /**
+     * 转码/压缩阶段的百分比（0-100）；上传阶段由前端 Uppy 负责。
+     */
+    transcode_percent?: number;
+    /**
+     * 人类可读的阶段说明。
+     */
+    message?: string;
+};
 
 /**
  * ---------------------------------------------------------
@@ -237,7 +355,7 @@ export type V1Comment = {
     /**
      * 评论附带的媒体（图片，最多 6 张）
      */
-    media?: Array<V1Media>;
+    media?: Array<V1MediaAsset>;
     stats?: V1CommentStats;
     relation_status?: V1CommentRelationStatus;
     reply_context?: V1ReplyContext;
@@ -246,6 +364,49 @@ export type V1Comment = {
      */
     create_time?: string;
 };
+
+/**
+ * 评论和@通知
+ */
+export type V1CommentMentionNotification = {
+    /**
+     * 通知 ID
+     */
+    notification_id?: string;
+    type?: V1CommentMentionType;
+    user?: V1UserBrief;
+    /**
+     * 通知产生时间戳（秒）
+     */
+    created_at?: string;
+    post?: V1PostBrief;
+    /**
+     * 评论内容（带@高亮的富文本）
+     */
+    comment_content?: string;
+    /**
+     * 被回复的目标评论内容（如果是回复）
+     */
+    target_comment_content?: string;
+    /**
+     * 当前评论ID（用于定位跳转，当类型不是 MENTION_IN_POST 时存在）
+     */
+    comment_id?: string;
+    /**
+     * 是否已读
+     */
+    is_read?: boolean;
+};
+
+/**
+ * 评论和@类型
+ *
+ * - COMMENT_MENTION_TYPE_REPLY_COMMENT: 回复了你的评论
+ * - COMMENT_MENTION_TYPE_COMMENT_POST: 评论了你的帖子
+ * - COMMENT_MENTION_TYPE_MENTION_IN_COMMENT: 在评论中@了你
+ * - COMMENT_MENTION_TYPE_MENTION_IN_POST: 在帖子中@了你
+ */
+export type V1CommentMentionType = 'COMMENT_MENTION_TYPE_UNSPECIFIED' | 'COMMENT_MENTION_TYPE_REPLY_COMMENT' | 'COMMENT_MENTION_TYPE_COMMENT_POST' | 'COMMENT_MENTION_TYPE_MENTION_IN_COMMENT' | 'COMMENT_MENTION_TYPE_MENTION_IN_POST';
 
 /**
  * ---------------------------------------------------------
@@ -304,15 +465,44 @@ export type V1CommentTargetType = 'COMMENT_TARGET_TYPE_UNSPECIFIED' | 'COMMENT_T
 
 /**
  * ---------------------------------------------------------
- * 第一层评论 + 第一条回复的组合结构
+ * 第一层评论 + 若干条回复的组合结构
  */
-export type V1CommentWithFirstReply = {
+export type V1CommentWithReplies = {
     comment?: V1Comment;
-    first_reply?: V1Comment;
     /**
-     * 第一条回复的分页游标（如果存在，用于获取更多回复；如果不存在，则表示没有更多回复）
+     * 第一条第二层回复（如果存在），返回数量取决于 ListPostCommentsRequest.need_reply_count 参数
      */
-    first_reply_cursor?: string;
+    replies?: Array<V1Comment>;
+    /**
+     * 第二层回复的下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了
+     */
+    cursor?: string;
+};
+
+/**
+ * ------------------------------------------------------------------------------
+ * CompleteMultipartUploadRequest 通知后端合并分片并进入处理流程。
+ */
+export type V1CompleteMultipartUploadRequest = {
+    /**
+     * 文件任务 ID。
+     */
+    task_id?: string;
+    /**
+     * multipart upload_id。
+     */
+    upload_id?: string;
+    /**
+     * 客户端确认分片清单（建议按 part_number 升序）。
+     */
+    parts?: Array<V1UploadedPart>;
+};
+
+/**
+ * CompleteMultipartUploadResponse 返回处理任务对应媒体信息。
+ */
+export type V1CompleteMultipartUploadResponse = {
+    media?: V1MediaInfo;
 };
 
 /**
@@ -333,7 +523,7 @@ export type V1CreateCommentRequest = {
     /**
      * 评论附带的媒体（图片，最多 6 张）
      */
-    media?: Array<V1Media>;
+    media?: Array<V1MediaAsset>;
     reply_context?: V1ReplyContext;
 };
 
@@ -342,15 +532,100 @@ export type V1CreateCommentResponse = {
 };
 
 /**
+ * ==========================================
+ * 批量新增部门
+ * ==========================================
+ */
+export type V1CreateDepartmentsRequest = {
+    /**
+     * 部门名称列表，每个名称最多12个字符
+     */
+    names?: Array<string>;
+};
+
+export type V1CreateDepartmentsResponse = {
+    /**
+     * 更新后的部门列表
+     */
+    departments?: Array<V1Department>;
+};
+
+/**
+ * ------------------------------------------------------------------------------
+ * CreateMultipartUploadRequest 为指定文件任务创建 S3 multipart 上传会话。
+ */
+export type V1CreateMultipartUploadRequest = {
+    /**
+     * PrepareUploadBatch 返回的文件 task_id。
+     */
+    task_id?: string;
+};
+
+/**
+ * CreateMultipartUploadResponse 返回 multipart 会话关键参数。
+ */
+export type V1CreateMultipartUploadResponse = {
+    /**
+     * 文件任务 ID（回显）。
+     */
+    task_id?: string;
+    /**
+     * multipart upload_id（S3 原生概念）。
+     */
+    upload_id?: string;
+    /**
+     * 上传对象键（Object Key）。
+     */
+    object_key?: string;
+    /**
+     * 建议分片大小（字节），前端应按该大小切片上传。
+     */
+    part_size_bytes?: string;
+    /**
+     * 预估总分片数（按文件大小与分片大小计算）。
+     */
+    total_parts?: number;
+    /**
+     * 分片上传时必须携带的公共请求头。
+     */
+    required_headers?: {
+        [key: string]: string;
+    };
+};
+
+/**
+ * ==========================================
+ * 批量新增分区
+ * ==========================================
+ */
+export type V1CreatePartitionsRequest = {
+    /**
+     * 分区名称列表，每个名称最多12个字符
+     */
+    names?: Array<string>;
+};
+
+export type V1CreatePartitionsResponse = {
+    /**
+     * 更新后的所有分区列表
+     */
+    partitions?: Array<V1Partition>;
+};
+
+/**
  * ---------------------------------------------------------
  * 发布帖子
  */
 export type V1CreatePostRequest = {
-    cover?: V1Media;
-    media?: Array<V1Media>;
+    batch_id?: string;
     title?: string;
     content?: string;
     partition_id?: string;
+    /**
+     * 已完成上传与处理的媒体资产列表。
+     * 后端会严格按数组顺序保存，不进行重排。
+     */
+    media_assets?: Array<V1MediaAsset>;
 };
 
 export type V1CreatePostResponse = {
@@ -384,8 +659,45 @@ export type V1DeleteCommentResponse = {
     [key: string]: unknown;
 };
 
+/**
+ * ==========================================
+ * 批量删除部门
+ * ==========================================
+ */
+export type V1DeleteDepartmentsRequest = {
+    /**
+     * 要删除的部门ID列表
+     */
+    department_ids?: Array<string>;
+};
+
+export type V1DeleteDepartmentsResponse = {
+    /**
+     * 更新后的部门列表
+     */
+    departments?: Array<V1Department>;
+};
+
+export type V1DeletePartitionResponse = {
+    [key: string]: unknown;
+};
+
 export type V1DeletePostResponse = {
     [key: string]: unknown;
+};
+
+/**
+ * 部门详细信息
+ */
+export type V1Department = {
+    /**
+     * 部门ID
+     */
+    id?: string;
+    /**
+     * 部门名称，最多12个字符
+     */
+    name?: string;
 };
 
 /**
@@ -437,6 +749,18 @@ export type V1DisconnectDeviceResponse = {
      * 是否成功
      */
     success?: boolean;
+};
+
+export type V1EditAdminsRequest = {
+    /**
+     * 要变更角色的用户ID列表
+     */
+    user_ids?: Array<string>;
+    role?: V1Role;
+};
+
+export type V1EditAdminsResponse = {
+    [key: string]: unknown;
 };
 
 /**
@@ -524,6 +848,26 @@ export type V1FeedFilter = {
 export type V1FeedOrderType = 'FEED_ORDER_TYPE_UNSPECIFIED' | 'FEED_ORDER_TYPE_RECOMMENDED' | 'FEED_ORDER_TYPE_LATEST' | 'FEED_ORDER_TYPE_HOT' | 'FEED_ORDER_TYPE_MOST_FOLLOWERS' | 'FEED_ORDER_TYPE_LEAST_FOLLOWER' | 'FEED_ORDER_TYPE_MOST_INTERACTIONS' | 'FEED_ORDER_TYPE_LEAST_INTERACTIONS';
 
 /**
+ * 新增关注通知
+ */
+export type V1FollowNotification = {
+    /**
+     * 通知 ID
+     */
+    notification_id?: string;
+    user?: V1UserSummary;
+    /**
+     * 通知产生时间戳（秒）
+     */
+    created_at?: string;
+    relation?: V1UserRelationStatus;
+    /**
+     * 是否已读
+     */
+    is_read?: boolean;
+};
+
+/**
  * ---------------------------------------------------------
  * 推荐关注作者列表
  */
@@ -576,6 +920,16 @@ export type V1GetActiveDevicesResponse = {
     devices?: Array<V1ActiveDevice>;
 };
 
+/**
+ * GetBatchMediaResponse 返回批次媒体资产（按服务端固化顺序排序）。
+ */
+export type V1GetBatchMediaResponse = {
+    /**
+     * 批次中的媒体元素列表。
+     */
+    media_assets?: Array<V1MediaAsset>;
+};
+
 export type V1GetFeedResponse = {
     content_type?: V1FeedContentType;
     posts?: V1PostFeedContent;
@@ -594,6 +948,10 @@ export type V1GetMeResponse = {
 
 export type V1GetMyVerificationResponse = {
     application?: V1VerificationApplication;
+};
+
+export type V1GetNotificationStatsResponse = {
+    stats?: V1NotificationStats;
 };
 
 export type V1GetPostResponse = {
@@ -620,6 +978,10 @@ export type V1GetUserResponse = {
     view_capabilities?: V1UserViewCapabilities;
 };
 
+export type V1GetWsEnvelopeSchemaResponse = {
+    envelope?: V1WsEnvelope;
+};
+
 export type V1HandleReportAdmin = {
     /**
      * 处理管理员ID
@@ -630,6 +992,48 @@ export type V1HandleReportAdmin = {
      */
     admin_name?: string;
 };
+
+/**
+ * 赞和收藏通知
+ */
+export type V1LikeCollectNotification = {
+    /**
+     * 通知 ID
+     */
+    notification_id?: string;
+    type?: V1LikeCollectType;
+    user?: V1UserBrief;
+    /**
+     * 通知产生时间戳（秒）
+     */
+    created_at?: string;
+    post?: V1PostBrief;
+    /**
+     * 评论内容（当类型为 LIKE_COMMENT 时，带@高亮）
+     */
+    comment_content?: string;
+    /**
+     * 被回复的目标评论内容（如果评论是回复）
+     */
+    target_comment_content?: string;
+    /**
+     * 评论ID（用于定位跳转，当类型为 LIKE_COMMENT 时存在）
+     */
+    comment_id?: string;
+    /**
+     * 是否已读
+     */
+    is_read?: boolean;
+};
+
+/**
+ * 赞和收藏类型
+ *
+ * - LIKE_COLLECT_TYPE_LIKE_POST: 赞了你的帖子
+ * - LIKE_COLLECT_TYPE_COLLECT_POST: 收藏了你的帖子
+ * - LIKE_COLLECT_TYPE_LIKE_COMMENT: 赞了你的评论
+ */
+export type V1LikeCollectType = 'LIKE_COLLECT_TYPE_UNSPECIFIED' | 'LIKE_COLLECT_TYPE_LIKE_POST' | 'LIKE_COLLECT_TYPE_COLLECT_POST' | 'LIKE_COLLECT_TYPE_LIKE_COMMENT';
 
 /**
  * --------------------
@@ -644,6 +1048,21 @@ export type V1Link = {
      * 实际跳转地址
      */
     url?: string;
+};
+
+export type V1ListAdminsResponse = {
+    admins_by_role?: V1AdminsByRole;
+};
+
+export type V1ListCommentMentionNotificationsResponse = {
+    /**
+     * 通知列表
+     */
+    notifications?: Array<V1CommentMentionNotification>;
+    /**
+     * 下一页游标（为空表示没有更多数据）
+     */
+    cursor?: string;
 };
 
 export type V1ListCommentRepliesResponse = {
@@ -661,15 +1080,51 @@ export type V1ListCommentRepliesResponse = {
     total_count?: string;
 };
 
+export type V1ListDepartmentsResponse = {
+    /**
+     * 部门列表
+     */
+    departments?: Array<V1Department>;
+};
+
 export type V1ListFeedCategoriesResponse = {
     categories?: Array<V1FeedCategory>;
+};
+
+export type V1ListFollowNotificationsResponse = {
+    /**
+     * 通知列表
+     */
+    notifications?: Array<V1FollowNotification>;
+    /**
+     * 下一页游标（为空表示没有更多数据）
+     */
+    next_cursor?: string;
+};
+
+export type V1ListLikeCollectNotificationsResponse = {
+    /**
+     * 通知列表
+     */
+    notifications?: Array<V1LikeCollectNotification>;
+    /**
+     * 下一页游标（为空表示没有更多数据）
+     */
+    cursor?: string;
+};
+
+export type V1ListPartitionsResponse = {
+    /**
+     * 分区列表
+     */
+    partitions?: Array<V1Partition>;
 };
 
 export type V1ListPostCommentsResponse = {
     /**
      * 第一层评论列表（每条自动包含第一条回复）
      */
-    comments?: Array<V1CommentWithFirstReply>;
+    comments?: Array<V1CommentWithReplies>;
     /**
      * 下一页游标（用于加载更多第一层评论），为空则说明没有更多评论了
      */
@@ -698,6 +1153,27 @@ export type V1ListReportsResponse = {
     cursor?: string;
 };
 
+export type V1ListSystemNotificationsResponse = {
+    /**
+     * 通知列表
+     */
+    notifications?: Array<V1SystemNotification>;
+    /**
+     * 下一页游标（为空表示没有更多数据）
+     */
+    cursor?: string;
+};
+
+/**
+ * ListUploadedPartsResponse 返回已上传分片列表（用于断点续传恢复）。
+ */
+export type V1ListUploadedPartsResponse = {
+    /**
+     * 已上传分片明细。
+     */
+    parts?: Array<V1UploadedPart>;
+};
+
 export type V1ListUserPostsResponse = {
     /**
      * 帖子列表
@@ -715,6 +1191,30 @@ export type V1ListUserRelatedResponse = {
      * 分页游标，如果为空则表示没有更多数据
      */
     cursor?: string;
+};
+
+export type V1ListVerificationsResponse = {
+    applications?: Array<V1VerificationApplication>;
+    /**
+     * 分页游标，如果为空则表示没有更多数据
+     */
+    cursor?: string;
+};
+
+/**
+ * LivePhotoAsset 表示 Live Photo 的图片与视频组合。
+ */
+export type V1LivePhotoAsset = {
+    image?: V1MediaFileAsset;
+    video?: V1MediaFileAsset;
+};
+
+/**
+ * LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。
+ */
+export type V1LivePhotoUploadPair = {
+    image_file?: V1UploadFile;
+    video_file?: V1UploadFile;
 };
 
 /**
@@ -745,53 +1245,142 @@ export type V1LogoutResponse = {
     [key: string]: unknown;
 };
 
-/**
- * --------------------
- * 媒体资源
- */
-export type V1Media = {
+export type V1MarkAllNotificationsReadRequest = {
+    category?: V1NotificationCategory;
+};
+
+export type V1MarkAllNotificationsReadResponse = {
+    [key: string]: unknown;
+};
+
+export type V1MarkNotificationReadRequest = {
     /**
-     * 雪花 ID
+     * 要标记为已读的通知 ID 列表
+     */
+    notification_ids?: Array<string>;
+};
+
+export type V1MarkNotificationReadResponse = {
+    [key: string]: unknown;
+};
+
+/**
+ * MediaAsset 是业务层对“一个媒体数组元素”的统一表达。
+ */
+export type V1MediaAsset = {
+    /**
+     * 媒体元素 ID（数组元素级别 ID）。
+     */
+    item_id?: string;
+    type?: V1MediaType;
+    scene?: V1MediaScene;
+    status?: V1MediaStatus;
+    single?: V1MediaFileAsset;
+    live_photo?: V1LivePhotoAsset;
+};
+
+/**
+ * MediaFileAsset 表示单个物理文件资产（图片或视频）。
+ */
+export type V1MediaFileAsset = {
+    /**
+     * 文件媒体主键 ID（雪花 ID 字符串形式）。
      */
     id?: string;
     type?: V1MediaType;
     /**
-     * 核心存储标识
-     *
-     * 存储桶：shining-vod
+     * 存储桶名称。
      */
     bucket?: string;
     /**
-     * 对象路径：videos/2024/01/v001.m3u8
+     * 对象键（Object Key），用于后端精确定位对象。
      */
     object_key?: string;
-    meta?: V1MediaMeta;
     /**
-     * 状态与权限
-     *
-     * 0:处理中, 1:就绪, 2:违规屏蔽
+     * 对外可访问 URL（CDN 或对象存储网关地址）。
      */
-    status?: number;
+    url?: string;
+    /**
+     * 缩略图 URL（图片可选，视频建议提供）。
+     */
+    thumbnail_url?: string;
+    meta?: V1MediaMeta;
+    status?: V1MediaStatus;
 };
 
+/**
+ * MediaInfo 是面向单文件 complete 响应的媒体包装。
+ */
+export type V1MediaInfo = {
+    /**
+     * 文件任务 ID，用于前后端对账。
+     */
+    task_id?: string;
+    asset?: V1MediaFileAsset;
+    /**
+     * 所属媒体元素 ID。
+     */
+    item_id?: string;
+    scene?: V1MediaScene;
+};
+
+/**
+ * MediaMeta 描述媒体基础元信息。
+ */
 export type V1MediaMeta = {
+    /**
+     * 媒体宽度（像素）。
+     */
     width?: number;
+    /**
+     * 媒体高度（像素）。
+     */
     height?: number;
     /**
-     * 视频时长（秒）
+     * 媒体时长（毫秒），图片通常为 0。
      */
-    duration?: number;
+    duration_ms?: string;
     /**
-     * 文件大小（字节）
+     * 文件体积（字节）。
      */
-    size?: string;
+    size_bytes?: string;
     /**
-     * video/mp4, image/webp
+     * 媒体 MIME 类型，如 image/webp、application/x-mpegURL。
      */
     mime_type?: string;
 };
 
-export type V1MediaType = 'MEDIA_TYPE_UNSPECIFIED' | 'MEDIA_TYPE_IMAGE' | 'MEDIA_TYPE_VIDEO';
+/**
+ * MediaScene 描述业务上传场景（不再区分图片/视频）。
+ *
+ * - MEDIA_SCENE_UNSPECIFIED: 默认值，表示未指定场景。
+ * - MEDIA_SCENE_USER_AVATAR: 用户头像场景。
+ * - MEDIA_SCENE_POST_MEDIA: 帖子媒体场景（图片/视频/Live Photo）。
+ * - MEDIA_SCENE_COMMENT_MEDIA: 评论媒体场景（图片/视频/Live Photo）。
+ * - MEDIA_SCENE_POST_COVER: 帖子封面场景（仅图片）。
+ */
+export type V1MediaScene = 'MEDIA_SCENE_UNSPECIFIED' | 'MEDIA_SCENE_USER_AVATAR' | 'MEDIA_SCENE_POST_MEDIA' | 'MEDIA_SCENE_COMMENT_MEDIA' | 'MEDIA_SCENE_POST_COVER';
+
+/**
+ * MediaStatus 表示媒体处理状态。
+ *
+ * - MEDIA_STATUS_UNSPECIFIED: 默认值，状态未知。
+ * - MEDIA_STATUS_PROCESSING: 处理中，可能处于上传完成待处理或转码中。
+ * - MEDIA_STATUS_COMPLETED: 处理完成，可供业务引用。
+ * - MEDIA_STATUS_FAILED: 处理失败，需要前端重试或提示用户。
+ * - MEDIA_STATUS_BLOCKED: 已屏蔽，不可对外展示。
+ */
+export type V1MediaStatus = 'MEDIA_STATUS_UNSPECIFIED' | 'MEDIA_STATUS_PROCESSING' | 'MEDIA_STATUS_COMPLETED' | 'MEDIA_STATUS_FAILED' | 'MEDIA_STATUS_BLOCKED';
+
+/**
+ * MediaType 描述媒体资源的主类型。
+ *
+ * - MEDIA_TYPE_UNSPECIFIED: 默认值，表示未设置媒体类型。
+ * - MEDIA_TYPE_IMAGE: 图片媒体（JPG/PNG/WebP/HEIC 等转码后的图片资产）。
+ * - MEDIA_TYPE_VIDEO: 视频媒体（MP4/MOV/WebM 等转码后的流媒体资产）。
+ * - MEDIA_TYPE_LIVE_PHOTO: Live Photo 复合媒体（由一张图片和一个视频组成）。
+ */
+export type V1MediaType = 'MEDIA_TYPE_UNSPECIFIED' | 'MEDIA_TYPE_IMAGE' | 'MEDIA_TYPE_VIDEO' | 'MEDIA_TYPE_LIVE_PHOTO';
 
 /**
  * ---------------------------------------------------------
@@ -809,6 +1398,52 @@ export type V1ModifyDepartmentsResponse = {
 };
 
 /**
+ * 通知类别枚举
+ *
+ * - NOTIFICATION_CATEGORY_COMMENT_MENTION: 评论和@
+ * - NOTIFICATION_CATEGORY_LIKE_COLLECT: 赞和收藏
+ * - NOTIFICATION_CATEGORY_FOLLOW: 新增关注
+ * - NOTIFICATION_CATEGORY_SYSTEM: 晒你（系统）通知
+ */
+export type V1NotificationCategory = 'NOTIFICATION_CATEGORY_UNSPECIFIED' | 'NOTIFICATION_CATEGORY_COMMENT_MENTION' | 'NOTIFICATION_CATEGORY_LIKE_COLLECT' | 'NOTIFICATION_CATEGORY_FOLLOW' | 'NOTIFICATION_CATEGORY_SYSTEM';
+
+/**
+ * 通知统计信息
+ */
+export type V1NotificationStats = {
+    /**
+     * 未读评论和@数量
+     */
+    unread_comment_mention_count?: number;
+    /**
+     * 未读赞和收藏数量
+     */
+    unread_like_collect_count?: number;
+    /**
+     * 未读新增关注数量
+     */
+    unread_follow_count?: number;
+    /**
+     * 未读系统通知数量
+     */
+    unread_system_count?: number;
+};
+
+/**
+ * 分区详细信息
+ */
+export type V1Partition = {
+    /**
+     * 分区ID
+     */
+    id?: string;
+    /**
+     * 分区名称，最多12个字符
+     */
+    name?: string;
+};
+
+/**
  * ---------------------------------------------------------
  * 帖子相关
  */
@@ -823,7 +1458,7 @@ export type V1Post = {
      * 帖子正文描述
      */
     content?: string;
-    media?: Array<V1Media>;
+    media?: Array<V1MediaAsset>;
     stats?: V1PostStats;
     relation_status?: V1PostRelationStatus;
     /**
@@ -831,6 +1466,20 @@ export type V1Post = {
      */
     publish_time?: string;
     update_time?: string;
+};
+
+/**
+ * 帖子简要信息
+ */
+export type V1PostBrief = {
+    /**
+     * 帖子 ID
+     */
+    post_id?: string;
+    /**
+     * 封面缩略图 URL
+     */
+    cover_url?: string;
 };
 
 /**
@@ -860,7 +1509,7 @@ export type V1PostPreview = {
      * 如果用户输入了标题，则这里显示标题；如果没有输入标题，则将正文描述的前30个字作为标题传输过来；如果都没有，不传输此字段。
      */
     display_title?: string;
-    cover?: V1Media;
+    cover?: V1MediaAsset;
     author?: V1UserBrief;
     stats?: V1PostStats;
     relation_status?: V1PostRelationStatus;
@@ -894,6 +1543,82 @@ export type V1PostStats = {
 };
 
 /**
+ * ------------------------------------------------------------------------------
+ * PrepareUploadBatchRequest 在真正开始 multipart 之前批量准备上传任务。
+ *
+ * 该接口只做控制面编排，不做任何分片 URL 下发。
+ * 服务端会校验格式/大小/场景，固化顺序并分配 task_id。
+ */
+export type V1PrepareUploadBatchRequest = {
+    /**
+     * 业务侧生成的批次 ID（同一帖子/评论一次提交流程应稳定不变）。
+     */
+    batch_id?: string;
+    /**
+     * 本次批量准备的媒体元素，数组顺序即最终返回顺序来源。
+     */
+    items?: Array<V1UploadItem>;
+};
+
+/**
+ * PrepareUploadBatchResponse 返回本批次媒体元素映射。
+ */
+export type V1PrepareUploadBatchResponse = {
+    /**
+     * 与请求 items 一一对应的映射结果。
+     */
+    items?: Array<V1PreparedUploadItem>;
+};
+
+/**
+ * PreparedUploadItem 描述 PrepareUploadBatch 后单个媒体元素的映射结果。
+ */
+export type V1PreparedUploadItem = {
+    /**
+     * 媒体元素 ID。
+     */
+    item_id?: string;
+    scene?: V1MediaScene;
+    type?: V1MediaType;
+    /**
+     * 该元素下的文件任务列表（1 个或 2 个）。
+     */
+    tasks?: Array<V1PreparedUploadTask>;
+};
+
+/**
+ * PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。
+ */
+export type V1PreparedUploadTask = {
+    /**
+     * 前端文件 ID（用于与 Uppy file.id 对账）。
+     */
+    client_file_id?: string;
+    /**
+     * 服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。
+     */
+    task_id?: string;
+    /**
+     * 所属媒体元素 ID。
+     */
+    item_id?: string;
+    scene?: V1MediaScene;
+    type?: V1MediaType;
+};
+
+/**
+ * ProgressStage 表示批次处理阶段。
+ *
+ * - PROGRESS_STAGE_UNSPECIFIED: 默认值，阶段未知。
+ * - PROGRESS_STAGE_UPLOADING: 上传阶段（由前端 Uppy 监听，本枚举用于阶段占位）。
+ * - PROGRESS_STAGE_TRANSCODING: 视频转码阶段。
+ * - PROGRESS_STAGE_COMPRESSING: 图片压缩/裁剪阶段。
+ * - PROGRESS_STAGE_COMPLETED: 批次处理完成阶段。
+ * - PROGRESS_STAGE_FAILED: 批次处理失败阶段。
+ */
+export type V1ProgressStage = 'PROGRESS_STAGE_UNSPECIFIED' | 'PROGRESS_STAGE_UPLOADING' | 'PROGRESS_STAGE_TRANSCODING' | 'PROGRESS_STAGE_COMPRESSING' | 'PROGRESS_STAGE_COMPLETED' | 'PROGRESS_STAGE_FAILED';
+
+/**
  * ---------------------------------------------------------
  * 刷新 token
  */
@@ -920,6 +1645,14 @@ export type V1RefreshType = 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN
 
 export type V1RejectReportResponse = {
     [key: string]: unknown;
+};
+
+export type V1RenameDepartmentResponse = {
+    department?: V1Department;
+};
+
+export type V1RenamePartitionResponse = {
+    partition?: V1Partition;
 };
 
 export type V1Reply = {
@@ -998,7 +1731,7 @@ export type V1ReportEvidenceItem = {
     /**
      * 举报证据图片
      */
-    media?: Array<V1Media>;
+    media?: Array<V1MediaAsset>;
 };
 
 /**
@@ -1021,6 +1754,21 @@ export type V1ReportItem = {
      */
     report_count?: string;
     admin?: V1HandleReportAdmin;
+};
+
+/**
+ * 举报通知详情
+ */
+export type V1ReportNotificationDetail = {
+    target_type?: V1ReportTargetType;
+    /**
+     * 目标摘要（用户名/帖子摘要/评论摘要）
+     */
+    target_summary?: string;
+    /**
+     * 管理员处理原因
+     */
+    reason?: string;
 };
 
 /**
@@ -1054,6 +1802,15 @@ export type V1ReportPostResponse = {
 export type V1ReportStatus = 'REPORT_STATUS_UNSPECIFIED' | 'REPORT_STATUS_PENDING' | 'REPORT_STATUS_PROCESSING' | 'REPORT_STATUS_RESOLVED' | 'REPORT_STATUS_REJECTED';
 
 /**
+ * 举报目标类型
+ *
+ * - REPORT_TARGET_TYPE_USER: 用户
+ * - REPORT_TARGET_TYPE_POST: 帖子
+ * - REPORT_TARGET_TYPE_COMMENT: 评论
+ */
+export type V1ReportTargetType = 'REPORT_TARGET_TYPE_UNSPECIFIED' | 'REPORT_TARGET_TYPE_USER' | 'REPORT_TARGET_TYPE_POST' | 'REPORT_TARGET_TYPE_COMMENT';
+
+/**
  * ---------------------------------------------------------
  * 举报类型枚举
  *
@@ -1081,7 +1838,7 @@ export type V1ReportUserRequest = {
     /**
      * 证明材料图片ID（最多3张）
      */
-    media?: Array<V1Media>;
+    media?: Array<V1MediaAsset>;
 };
 
 export type V1ReportUserResponse = {
@@ -1089,6 +1846,19 @@ export type V1ReportUserResponse = {
      * 举报记录ID
      */
     report_id?: string;
+};
+
+/**
+ * ---------------------------------------------------------
+ * 审批动作
+ *
+ * - REVIEW_ACTION_APPROVE: 批准
+ * - REVIEW_ACTION_REJECT: 拒绝
+ */
+export type V1ReviewAction = 'REVIEW_ACTION_UNSPECIFIED' | 'REVIEW_ACTION_APPROVE' | 'REVIEW_ACTION_REJECT';
+
+export type V1ReviewVerificationResponse = {
+    application?: V1VerificationApplication;
 };
 
 /**
@@ -1118,29 +1888,52 @@ export type V1SetPostLikeResponse = {
 };
 
 /**
- * - SYNC_DATA_TYPE_USER_SETTINGS: 用户设置
- * - SYNC_DATA_TYPE_NOTIFICATION_SETTINGS: 通知设置
- * - SYNC_DATA_TYPE_PRIVACY_SETTINGS: 隐私设置
- * - SYNC_DATA_TYPE_CONTENT_CATEGORY_ORDER: 内容分类排序
+ * ------------------------------------------------------------------------------
+ * SignMultipartPartRequest 请求服务端为单个分片生成预签名 URL。
+ */
+export type V1SignMultipartPartRequest = {
+    /**
+     * 文件任务 ID。
+     */
+    task_id?: string;
+    /**
+     * multipart upload_id。
+     */
+    upload_id?: string;
+    /**
+     * 分片号（从 1 开始）。
+     */
+    part_number?: number;
+};
+
+/**
+ * SignMultipartPartResponse 返回可直接 PUT 分片的签名 URL。
+ */
+export type V1SignMultipartPartResponse = {
+    /**
+     * 分片上传预签名 URL。
+     */
+    upload_url?: string;
+    /**
+     * 该分片上传需要携带的额外头信息。
+     */
+    required_headers?: {
+        [key: string]: string;
+    };
+};
+
+/**
+ * SyncDataType 定义可订阅的同步数据类型。
  */
 export type V1SyncDataType = 'SYNC_DATA_TYPE_UNSPECIFIED' | 'SYNC_DATA_TYPE_USER_SETTINGS' | 'SYNC_DATA_TYPE_NOTIFICATION_SETTINGS' | 'SYNC_DATA_TYPE_PRIVACY_SETTINGS' | 'SYNC_DATA_TYPE_CONTENT_CATEGORY_ORDER';
 
+/**
+ * SyncStatus 描述当前用户的同步状态。
+ */
 export type V1SyncStatus = {
-    /**
-     * 用户 ID
-     */
     user_id?: string;
-    /**
-     * 活跃设备列表
-     */
     active_devices?: Array<V1ActiveDevice>;
-    /**
-     * 最后同步时间
-     */
     last_sync_at?: string;
-    /**
-     * 各数据类型的版本号（key: SyncDataType的字符串值）
-     */
     data_versions?: {
         [key: string]: string;
     };
@@ -1215,6 +2008,37 @@ export type V1SyncedUserSettings = {
 };
 
 /**
+ * 系统通知
+ */
+export type V1SystemNotification = {
+    /**
+     * 通知 ID
+     */
+    notification_id?: string;
+    type?: V1SystemNotificationType;
+    /**
+     * 通知产生时间戳（秒）
+     */
+    created_at?: string;
+    report_detail?: V1ReportNotificationDetail;
+    verification_detail?: V1VerificationNotificationDetail;
+    /**
+     * 是否已读
+     */
+    is_read?: boolean;
+};
+
+/**
+ * 系统通知类型
+ *
+ * - SYSTEM_NOTIFICATION_TYPE_REPORT_REJECTED: 举报被驳回
+ * - SYSTEM_NOTIFICATION_TYPE_REPORT_APPROVED: 举报已处理
+ * - SYSTEM_NOTIFICATION_TYPE_VERIFICATION_APPROVED: 身份认证通过
+ * - SYSTEM_NOTIFICATION_TYPE_VERIFICATION_REJECTED: 身份认证被拒绝
+ */
+export type V1SystemNotificationType = 'SYSTEM_NOTIFICATION_TYPE_UNSPECIFIED' | 'SYSTEM_NOTIFICATION_TYPE_REPORT_REJECTED' | 'SYSTEM_NOTIFICATION_TYPE_REPORT_APPROVED' | 'SYSTEM_NOTIFICATION_TYPE_VERIFICATION_APPROVED' | 'SYSTEM_NOTIFICATION_TYPE_VERIFICATION_REJECTED';
+
+/**
  * --------------------
  * 时间范围结构（秒级时间戳）
  */
@@ -1256,6 +2080,63 @@ export type V1UpdateSettingsRequest = {
 
 export type V1UpdateSettingsResponse = {
     settings?: V1SyncedUserSettings;
+};
+
+/**
+ * UploadFile 描述单个文件上传任务。
+ */
+export type V1UploadFile = {
+    /**
+     * 前端文件 ID（如 Uppy file.id），用于请求响应映射。
+     */
+    client_file_id?: string;
+    /**
+     * 原始文件名。
+     */
+    filename?: string;
+    /**
+     * 文件大小（字节）。
+     */
+    size_bytes?: string;
+    /**
+     * 文件 MIME 类型，由前端探测上送，后端会二次校验。
+     */
+    mime_type?: string;
+    /**
+     * 可选文件哈希，便于去重或幂等检查。
+     */
+    file_hash?: string;
+    /**
+     * 帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。
+     */
+    crop_cover?: boolean;
+};
+
+/**
+ * UploadItem 描述前端发起批量上传时的单个“媒体元素”。
+ */
+export type V1UploadItem = {
+    scene?: V1MediaScene;
+    single_file?: V1UploadFile;
+    live_photo_pair?: V1LivePhotoUploadPair;
+};
+
+/**
+ * UploadedPart 描述客户端已上传分片（用于 complete 请求）。
+ */
+export type V1UploadedPart = {
+    /**
+     * 分片号。
+     */
+    part_number?: number;
+    /**
+     * 分片 ETag。
+     */
+    etag?: string;
+    /**
+     * 分片大小（字节）。
+     */
+    size_bytes?: string;
 };
 
 /**
@@ -1429,14 +2310,18 @@ export type V1UserViewCapabilities = {
 };
 
 /**
- * 认证申请详情
+ * ---------------------------------------------------------
+ * 认证申请详情（管理员详情视角）
  */
 export type V1VerificationApplication = {
     /**
      * 申请 ID
      */
     application_id?: string;
+    user?: V1UserBrief;
     /**
+     * 申请内容
+     *
      * 申请的认证头衔
      */
     verified_title?: string;
@@ -1447,22 +2332,653 @@ export type V1VerificationApplication = {
     /**
      * 证明材料
      */
-    media?: Array<V1Media>;
-    /**
-     * 申请时间
-     */
-    applied_time?: string;
+    media?: Array<V1MediaAsset>;
     status?: V1VerificationStatus;
+    /**
+     * 创建时间
+     */
+    created_at?: string;
+    /**
+     * 更新时间
+     */
+    updated_at?: string;
+    /**
+     * 审批信息（如果已审批）
+     *
+     * 审批人 ID
+     */
+    reviewed_by_user_id?: string;
+    /**
+     * 审批人名称
+     */
+    reviewed_by_username?: string;
+    /**
+     * 审批时间
+     */
+    reviewed_at?: string;
+    /**
+     * 审批意见
+     */
+    review_comment?: string;
 };
 
 /**
+ * 身份认证通知详情
+ */
+export type V1VerificationNotificationDetail = {
+    /**
+     * 认证头衔（如：社长）
+     */
+    verified_title?: string;
+    /**
+     * 拒绝原因（仅当认证被拒绝时）
+     */
+    reason?: string;
+};
+
+/**
+ * ---------------------------------------------------------
  * 认证状态枚举
  *
  * - VERIFICATION_STATUS_PENDING: 待处理
  * - VERIFICATION_STATUS_APPROVED: 已通过
  * - VERIFICATION_STATUS_REJECTED: 已拒绝
+ * - VERIFICATION_STATUS_CANCELLED: 已取消（暂不投入使用）
  */
-export type V1VerificationStatus = 'VERIFICATION_STATUS_UNSPECIFIED' | 'VERIFICATION_STATUS_PENDING' | 'VERIFICATION_STATUS_APPROVED' | 'VERIFICATION_STATUS_REJECTED';
+export type V1VerificationStatus = 'VERIFICATION_STATUS_UNSPECIFIED' | 'VERIFICATION_STATUS_PENDING' | 'VERIFICATION_STATUS_APPROVED' | 'VERIFICATION_STATUS_REJECTED' | 'VERIFICATION_STATUS_CANCELLED';
+
+export type V1WsAck = {
+    ref_message_id?: string;
+    success?: boolean;
+    message?: string;
+};
+
+/**
+ * WsChatEvent 是实时聊天 WS 的占位事件模型。
+ */
+export type V1WsChatEvent = {
+    event_type?: string;
+    message?: string;
+};
+
+export type V1WsConnected = {
+    session_id?: string;
+    user_id?: string;
+    device_id?: string;
+    available_sync_types?: Array<V1SyncDataType>;
+};
+
+/**
+ * WsEnvelope 是统一 WebSocket 消息封装。
+ */
+export type V1WsEnvelope = {
+    message_id?: string;
+    type?: V1WsMessageType;
+    timestamp_ms?: string;
+    connected?: V1WsConnected;
+    subscribe?: V1WsSubscribe;
+    unsubscribe?: V1WsUnsubscribe;
+    settings_sync?: V1WsSettingsSync;
+    settings_update?: V1WsSettingsUpdate;
+    media_progress?: V1WsMediaProgress;
+    notification_event?: V1WsNotificationEvent;
+    chat_event?: V1WsChatEvent;
+    error?: V1WsError;
+    ack?: V1WsAck;
+};
+
+export type V1WsError = {
+    code?: string;
+    message?: string;
+    details?: {
+        [key: string]: string;
+    };
+};
+
+export type V1WsMediaProgress = {
+    progress?: V1BatchProgress;
+};
+
+/**
+ * WsMessageType 定义统一 WebSocket 消息类型。
+ *
+ * - WS_MESSAGE_TYPE_SUBSCRIBE: 客户端 -> 服务端
+ * - WS_MESSAGE_TYPE_CONNECTED: 服务端 -> 客户端
+ */
+export type V1WsMessageType = 'WS_MESSAGE_TYPE_UNSPECIFIED' | 'WS_MESSAGE_TYPE_SUBSCRIBE' | 'WS_MESSAGE_TYPE_UNSUBSCRIBE' | 'WS_MESSAGE_TYPE_SETTINGS_UPDATE' | 'WS_MESSAGE_TYPE_CONNECTED' | 'WS_MESSAGE_TYPE_SETTINGS_SYNC' | 'WS_MESSAGE_TYPE_MEDIA_PROGRESS' | 'WS_MESSAGE_TYPE_NOTIFICATION_EVENT' | 'WS_MESSAGE_TYPE_CHAT_EVENT' | 'WS_MESSAGE_TYPE_ERROR' | 'WS_MESSAGE_TYPE_ACK';
+
+/**
+ * WsNotificationEvent 是通知 WS 的占位事件模型。
+ */
+export type V1WsNotificationEvent = {
+    event_type?: string;
+    message?: string;
+};
+
+export type V1WsSettingsSync = {
+    data_type?: V1SyncDataType;
+    version?: string;
+    source_device_id?: string;
+    user_settings?: V1SyncedUserSettings;
+    notification_settings?: V1SyncedNotificationSettings;
+    privacy_settings?: V1SyncedPrivacySettings;
+    content_category_order?: V1SyncedContentCategoryOrder;
+};
+
+export type V1WsSettingsUpdate = {
+    data_type?: V1SyncDataType;
+    device_id?: string;
+    user_settings?: V1SyncedUserSettings;
+    notification_settings?: V1SyncedNotificationSettings;
+    privacy_settings?: V1SyncedPrivacySettings;
+    content_category_order?: V1SyncedContentCategoryOrder;
+};
+
+export type V1WsSubscribe = {
+    sync_types?: Array<V1SyncDataType>;
+};
+
+export type V1WsUnsubscribe = {
+    sync_types?: Array<V1SyncDataType>;
+};
+
+export type DepartmentServiceDeleteDepartmentsData = {
+    body: V1DeleteDepartmentsRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/departments';
+};
+
+export type DepartmentServiceDeleteDepartmentsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type DepartmentServiceDeleteDepartmentsError = DepartmentServiceDeleteDepartmentsErrors[keyof DepartmentServiceDeleteDepartmentsErrors];
+
+export type DepartmentServiceDeleteDepartmentsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1DeleteDepartmentsResponse;
+};
+
+export type DepartmentServiceDeleteDepartmentsResponse = DepartmentServiceDeleteDepartmentsResponses[keyof DepartmentServiceDeleteDepartmentsResponses];
+
+export type DepartmentServiceListDepartmentsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/departments';
+};
+
+export type DepartmentServiceListDepartmentsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type DepartmentServiceListDepartmentsError = DepartmentServiceListDepartmentsErrors[keyof DepartmentServiceListDepartmentsErrors];
+
+export type DepartmentServiceListDepartmentsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListDepartmentsResponse;
+};
+
+export type DepartmentServiceListDepartmentsResponse = DepartmentServiceListDepartmentsResponses[keyof DepartmentServiceListDepartmentsResponses];
+
+export type DepartmentServiceCreateDepartmentsData = {
+    body: V1CreateDepartmentsRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/departments';
+};
+
+export type DepartmentServiceCreateDepartmentsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type DepartmentServiceCreateDepartmentsError = DepartmentServiceCreateDepartmentsErrors[keyof DepartmentServiceCreateDepartmentsErrors];
+
+export type DepartmentServiceCreateDepartmentsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1CreateDepartmentsResponse;
+};
+
+export type DepartmentServiceCreateDepartmentsResponse = DepartmentServiceCreateDepartmentsResponses[keyof DepartmentServiceCreateDepartmentsResponses];
+
+export type DepartmentServiceRenameDepartmentData = {
+    body: DepartmentServiceRenameDepartmentBody;
+    path: {
+        /**
+         * 部门ID
+         */
+        department_id: string;
+    };
+    query?: never;
+    url: '/v1/admin/departments/{department_id}/name';
+};
+
+export type DepartmentServiceRenameDepartmentErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type DepartmentServiceRenameDepartmentError = DepartmentServiceRenameDepartmentErrors[keyof DepartmentServiceRenameDepartmentErrors];
+
+export type DepartmentServiceRenameDepartmentResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1RenameDepartmentResponse;
+};
+
+export type DepartmentServiceRenameDepartmentResponse = DepartmentServiceRenameDepartmentResponses[keyof DepartmentServiceRenameDepartmentResponses];
+
+export type PartitionServiceListPartitionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/partitions';
+};
+
+export type PartitionServiceListPartitionsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type PartitionServiceListPartitionsError = PartitionServiceListPartitionsErrors[keyof PartitionServiceListPartitionsErrors];
+
+export type PartitionServiceListPartitionsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListPartitionsResponse;
+};
+
+export type PartitionServiceListPartitionsResponse = PartitionServiceListPartitionsResponses[keyof PartitionServiceListPartitionsResponses];
+
+export type PartitionServiceCreatePartitionsData = {
+    body: V1CreatePartitionsRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/partitions';
+};
+
+export type PartitionServiceCreatePartitionsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type PartitionServiceCreatePartitionsError = PartitionServiceCreatePartitionsErrors[keyof PartitionServiceCreatePartitionsErrors];
+
+export type PartitionServiceCreatePartitionsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1CreatePartitionsResponse;
+};
+
+export type PartitionServiceCreatePartitionsResponse = PartitionServiceCreatePartitionsResponses[keyof PartitionServiceCreatePartitionsResponses];
+
+export type PartitionServiceDeletePartitionData = {
+    body: PartitionServiceDeletePartitionBody;
+    path: {
+        /**
+         * 要删除的分区ID
+         */
+        partition_id: string;
+    };
+    query?: never;
+    url: '/v1/admin/partitions/{partition_id}';
+};
+
+export type PartitionServiceDeletePartitionErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type PartitionServiceDeletePartitionError = PartitionServiceDeletePartitionErrors[keyof PartitionServiceDeletePartitionErrors];
+
+export type PartitionServiceDeletePartitionResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1DeletePartitionResponse;
+};
+
+export type PartitionServiceDeletePartitionResponse = PartitionServiceDeletePartitionResponses[keyof PartitionServiceDeletePartitionResponses];
+
+export type PartitionServiceRenamePartitionData = {
+    body: PartitionServiceRenamePartitionBody;
+    path: {
+        /**
+         * 分区ID
+         */
+        partition_id: string;
+    };
+    query?: never;
+    url: '/v1/admin/partitions/{partition_id}/name';
+};
+
+export type PartitionServiceRenamePartitionErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type PartitionServiceRenamePartitionError = PartitionServiceRenamePartitionErrors[keyof PartitionServiceRenamePartitionErrors];
+
+export type PartitionServiceRenamePartitionResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1RenamePartitionResponse;
+};
+
+export type PartitionServiceRenamePartitionResponse = PartitionServiceRenamePartitionResponses[keyof PartitionServiceRenamePartitionResponses];
+
+export type AdminServiceListAdminsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/permissions/admins';
+};
+
+export type AdminServiceListAdminsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type AdminServiceListAdminsError = AdminServiceListAdminsErrors[keyof AdminServiceListAdminsErrors];
+
+export type AdminServiceListAdminsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListAdminsResponse;
+};
+
+export type AdminServiceListAdminsResponse = AdminServiceListAdminsResponses[keyof AdminServiceListAdminsResponses];
+
+export type AdminServiceEditAdminsData = {
+    body: V1EditAdminsRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/admin/permissions/admins';
+};
+
+export type AdminServiceEditAdminsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type AdminServiceEditAdminsError = AdminServiceEditAdminsErrors[keyof AdminServiceEditAdminsErrors];
+
+export type AdminServiceEditAdminsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1EditAdminsResponse;
+};
+
+export type AdminServiceEditAdminsResponse = AdminServiceEditAdminsResponses[keyof AdminServiceEditAdminsResponses];
+
+export type ReportServiceListReportsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 举报类型筛选（可选，不传则返回全部）
+         *
+         * - REPORT_TYPE_UNSPECIFIED: 未指定
+         * - REPORT_TYPE_USER: 举报用户
+         * - REPORT_TYPE_POST: 举报帖子
+         * - REPORT_TYPE_COMMENT: 举报评论
+         * - REPORT_TYPE_REPLY: 举报回复
+         */
+        type?: 'REPORT_TYPE_UNSPECIFIED' | 'REPORT_TYPE_USER' | 'REPORT_TYPE_POST' | 'REPORT_TYPE_COMMENT' | 'REPORT_TYPE_REPLY';
+        /**
+         * 举报状态筛选（可选，不传则返回全部）
+         *
+         * - REPORT_STATUS_UNSPECIFIED: 未指定
+         * - REPORT_STATUS_PENDING: 待处理
+         * - REPORT_STATUS_PROCESSING: 处理中
+         * - REPORT_STATUS_RESOLVED: 已处理（已采纳）
+         * - REPORT_STATUS_REJECTED: 已驳回
+         */
+        status?: 'REPORT_STATUS_UNSPECIFIED' | 'REPORT_STATUS_PENDING' | 'REPORT_STATUS_PROCESSING' | 'REPORT_STATUS_RESOLVED' | 'REPORT_STATUS_REJECTED';
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/admin/reports';
+};
+
+export type ReportServiceListReportsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type ReportServiceListReportsError = ReportServiceListReportsErrors[keyof ReportServiceListReportsErrors];
+
+export type ReportServiceListReportsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListReportsResponse;
+};
+
+export type ReportServiceListReportsResponse = ReportServiceListReportsResponses[keyof ReportServiceListReportsResponses];
+
+export type ReportServiceApprovalReportData = {
+    body: ReportServiceApprovalReportBody;
+    path: {
+        /**
+         * 举报记录ID
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/v1/admin/reports/{report_id}/approval';
+};
+
+export type ReportServiceApprovalReportErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type ReportServiceApprovalReportError = ReportServiceApprovalReportErrors[keyof ReportServiceApprovalReportErrors];
+
+export type ReportServiceApprovalReportResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ApprovalReportResponse;
+};
+
+export type ReportServiceApprovalReportResponse = ReportServiceApprovalReportResponses[keyof ReportServiceApprovalReportResponses];
+
+export type ReportServiceListReportEvidenceData = {
+    body?: never;
+    path: {
+        /**
+         * 举报记录ID
+         */
+        report_id: string;
+    };
+    query?: {
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/admin/reports/{report_id}/evidence';
+};
+
+export type ReportServiceListReportEvidenceErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type ReportServiceListReportEvidenceError = ReportServiceListReportEvidenceErrors[keyof ReportServiceListReportEvidenceErrors];
+
+export type ReportServiceListReportEvidenceResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListReportEvidenceResponse;
+};
+
+export type ReportServiceListReportEvidenceResponse = ReportServiceListReportEvidenceResponses[keyof ReportServiceListReportEvidenceResponses];
+
+export type ReportServiceRejectReportData = {
+    body: ReportServiceRejectReportBody;
+    path: {
+        /**
+         * 举报记录ID
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/v1/admin/reports/{report_id}/rejection';
+};
+
+export type ReportServiceRejectReportErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type ReportServiceRejectReportError = ReportServiceRejectReportErrors[keyof ReportServiceRejectReportErrors];
+
+export type ReportServiceRejectReportResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1RejectReportResponse;
+};
+
+export type ReportServiceRejectReportResponse = ReportServiceRejectReportResponses[keyof ReportServiceRejectReportResponses];
+
+export type VerificationServiceListVerificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 刷新类型
+         *
+         * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
+         * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
+         */
+        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/admin/verifications';
+};
+
+export type VerificationServiceListVerificationsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type VerificationServiceListVerificationsError = VerificationServiceListVerificationsErrors[keyof VerificationServiceListVerificationsErrors];
+
+export type VerificationServiceListVerificationsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListVerificationsResponse;
+};
+
+export type VerificationServiceListVerificationsResponse = VerificationServiceListVerificationsResponses[keyof VerificationServiceListVerificationsResponses];
+
+export type VerificationServiceReviewVerificationData = {
+    body: VerificationServiceReviewVerificationBody;
+    path: {
+        application_id: string;
+    };
+    query?: never;
+    url: '/v1/admin/verifications/{application_id}/review';
+};
+
+export type VerificationServiceReviewVerificationErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type VerificationServiceReviewVerificationError = VerificationServiceReviewVerificationErrors[keyof VerificationServiceReviewVerificationErrors];
+
+export type VerificationServiceReviewVerificationResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ReviewVerificationResponse;
+};
+
+export type VerificationServiceReviewVerificationResponse = VerificationServiceReviewVerificationResponses[keyof VerificationServiceReviewVerificationResponses];
 
 export type AuthServiceLoginData = {
     body: V1LoginRequest;
@@ -1821,6 +3337,454 @@ export type FeedServiceListFeedCategoriesResponses = {
 
 export type FeedServiceListFeedCategoriesResponse = FeedServiceListFeedCategoriesResponses[keyof FeedServiceListFeedCategoriesResponses];
 
+export type MediaServiceGetBatchMediaData = {
+    body?: never;
+    path: {
+        /**
+         * 批次 ID。
+         */
+        batch_id: string;
+    };
+    query?: never;
+    url: '/v1/media/batches/{batch_id}/media';
+};
+
+export type MediaServiceGetBatchMediaErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServiceGetBatchMediaError = MediaServiceGetBatchMediaErrors[keyof MediaServiceGetBatchMediaErrors];
+
+export type MediaServiceGetBatchMediaResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1GetBatchMediaResponse;
+};
+
+export type MediaServiceGetBatchMediaResponse = MediaServiceGetBatchMediaResponses[keyof MediaServiceGetBatchMediaResponses];
+
+export type MediaServiceAbortMultipartUploadData = {
+    body: V1AbortMultipartUploadRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/media/multipart/abort';
+};
+
+export type MediaServiceAbortMultipartUploadErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServiceAbortMultipartUploadError = MediaServiceAbortMultipartUploadErrors[keyof MediaServiceAbortMultipartUploadErrors];
+
+export type MediaServiceAbortMultipartUploadResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1AbortMultipartUploadResponse;
+};
+
+export type MediaServiceAbortMultipartUploadResponse = MediaServiceAbortMultipartUploadResponses[keyof MediaServiceAbortMultipartUploadResponses];
+
+export type MediaServicePrepareUploadBatchData = {
+    /**
+     * 该接口只做控制面编排，不做任何分片 URL 下发。
+     * 服务端会校验格式/大小/场景，固化顺序并分配 task_id。
+     */
+    body: V1PrepareUploadBatchRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/media/multipart/batch/prepare';
+};
+
+export type MediaServicePrepareUploadBatchErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServicePrepareUploadBatchError = MediaServicePrepareUploadBatchErrors[keyof MediaServicePrepareUploadBatchErrors];
+
+export type MediaServicePrepareUploadBatchResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1PrepareUploadBatchResponse;
+};
+
+export type MediaServicePrepareUploadBatchResponse = MediaServicePrepareUploadBatchResponses[keyof MediaServicePrepareUploadBatchResponses];
+
+export type MediaServiceCompleteMultipartUploadData = {
+    body: V1CompleteMultipartUploadRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/media/multipart/complete';
+};
+
+export type MediaServiceCompleteMultipartUploadErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServiceCompleteMultipartUploadError = MediaServiceCompleteMultipartUploadErrors[keyof MediaServiceCompleteMultipartUploadErrors];
+
+export type MediaServiceCompleteMultipartUploadResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1CompleteMultipartUploadResponse;
+};
+
+export type MediaServiceCompleteMultipartUploadResponse = MediaServiceCompleteMultipartUploadResponses[keyof MediaServiceCompleteMultipartUploadResponses];
+
+export type MediaServiceCreateMultipartUploadData = {
+    body: V1CreateMultipartUploadRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/media/multipart/create';
+};
+
+export type MediaServiceCreateMultipartUploadErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServiceCreateMultipartUploadError = MediaServiceCreateMultipartUploadErrors[keyof MediaServiceCreateMultipartUploadErrors];
+
+export type MediaServiceCreateMultipartUploadResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1CreateMultipartUploadResponse;
+};
+
+export type MediaServiceCreateMultipartUploadResponse = MediaServiceCreateMultipartUploadResponses[keyof MediaServiceCreateMultipartUploadResponses];
+
+export type MediaServiceSignMultipartPartData = {
+    body: V1SignMultipartPartRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/media/multipart/part/sign';
+};
+
+export type MediaServiceSignMultipartPartErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServiceSignMultipartPartError = MediaServiceSignMultipartPartErrors[keyof MediaServiceSignMultipartPartErrors];
+
+export type MediaServiceSignMultipartPartResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1SignMultipartPartResponse;
+};
+
+export type MediaServiceSignMultipartPartResponse = MediaServiceSignMultipartPartResponses[keyof MediaServiceSignMultipartPartResponses];
+
+export type MediaServiceListUploadedPartsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 文件任务 ID。
+         */
+        task_id?: string;
+        /**
+         * multipart upload_id。
+         */
+        upload_id?: string;
+    };
+    url: '/v1/media/multipart/parts';
+};
+
+export type MediaServiceListUploadedPartsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type MediaServiceListUploadedPartsError = MediaServiceListUploadedPartsErrors[keyof MediaServiceListUploadedPartsErrors];
+
+export type MediaServiceListUploadedPartsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListUploadedPartsResponse;
+};
+
+export type MediaServiceListUploadedPartsResponse = MediaServiceListUploadedPartsResponses[keyof MediaServiceListUploadedPartsResponses];
+
+export type NotificationServiceListCommentMentionNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 刷新类型（下拉/上拉）
+         *
+         * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
+         * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
+         */
+        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/notifications/comment-mentions';
+};
+
+export type NotificationServiceListCommentMentionNotificationsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceListCommentMentionNotificationsError = NotificationServiceListCommentMentionNotificationsErrors[keyof NotificationServiceListCommentMentionNotificationsErrors];
+
+export type NotificationServiceListCommentMentionNotificationsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListCommentMentionNotificationsResponse;
+};
+
+export type NotificationServiceListCommentMentionNotificationsResponse = NotificationServiceListCommentMentionNotificationsResponses[keyof NotificationServiceListCommentMentionNotificationsResponses];
+
+export type NotificationServiceListFollowNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 刷新类型（下拉/上拉）
+         *
+         * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
+         * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
+         */
+        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/notifications/follows';
+};
+
+export type NotificationServiceListFollowNotificationsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceListFollowNotificationsError = NotificationServiceListFollowNotificationsErrors[keyof NotificationServiceListFollowNotificationsErrors];
+
+export type NotificationServiceListFollowNotificationsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListFollowNotificationsResponse;
+};
+
+export type NotificationServiceListFollowNotificationsResponse = NotificationServiceListFollowNotificationsResponses[keyof NotificationServiceListFollowNotificationsResponses];
+
+export type NotificationServiceListLikeCollectNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 刷新类型（下拉/上拉）
+         *
+         * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
+         * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
+         */
+        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/notifications/like-collects';
+};
+
+export type NotificationServiceListLikeCollectNotificationsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceListLikeCollectNotificationsError = NotificationServiceListLikeCollectNotificationsErrors[keyof NotificationServiceListLikeCollectNotificationsErrors];
+
+export type NotificationServiceListLikeCollectNotificationsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListLikeCollectNotificationsResponse;
+};
+
+export type NotificationServiceListLikeCollectNotificationsResponse = NotificationServiceListLikeCollectNotificationsResponses[keyof NotificationServiceListLikeCollectNotificationsResponses];
+
+export type NotificationServiceMarkAllNotificationsReadData = {
+    body: V1MarkAllNotificationsReadRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/notifications/mark-all-read';
+};
+
+export type NotificationServiceMarkAllNotificationsReadErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceMarkAllNotificationsReadError = NotificationServiceMarkAllNotificationsReadErrors[keyof NotificationServiceMarkAllNotificationsReadErrors];
+
+export type NotificationServiceMarkAllNotificationsReadResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1MarkAllNotificationsReadResponse;
+};
+
+export type NotificationServiceMarkAllNotificationsReadResponse = NotificationServiceMarkAllNotificationsReadResponses[keyof NotificationServiceMarkAllNotificationsReadResponses];
+
+export type NotificationServiceMarkNotificationReadData = {
+    body: V1MarkNotificationReadRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/notifications/mark-read';
+};
+
+export type NotificationServiceMarkNotificationReadErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceMarkNotificationReadError = NotificationServiceMarkNotificationReadErrors[keyof NotificationServiceMarkNotificationReadErrors];
+
+export type NotificationServiceMarkNotificationReadResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1MarkNotificationReadResponse;
+};
+
+export type NotificationServiceMarkNotificationReadResponse = NotificationServiceMarkNotificationReadResponses[keyof NotificationServiceMarkNotificationReadResponses];
+
+export type NotificationServiceGetNotificationStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/notifications/stats';
+};
+
+export type NotificationServiceGetNotificationStatsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceGetNotificationStatsError = NotificationServiceGetNotificationStatsErrors[keyof NotificationServiceGetNotificationStatsErrors];
+
+export type NotificationServiceGetNotificationStatsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1GetNotificationStatsResponse;
+};
+
+export type NotificationServiceGetNotificationStatsResponse = NotificationServiceGetNotificationStatsResponses[keyof NotificationServiceGetNotificationStatsResponses];
+
+export type NotificationServiceListSystemNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * 刷新类型（下拉/上拉）
+         *
+         * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
+         * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
+         */
+        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        /**
+         * 需要返回的帖子数量
+         */
+        'pagination.need_num'?: number;
+        /**
+         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
+         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
+         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
+         *
+         * 为空则说明是首次请求第一页数据
+         */
+        'pagination.cursor'?: string;
+    };
+    url: '/v1/notifications/system';
+};
+
+export type NotificationServiceListSystemNotificationsErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type NotificationServiceListSystemNotificationsError = NotificationServiceListSystemNotificationsErrors[keyof NotificationServiceListSystemNotificationsErrors];
+
+export type NotificationServiceListSystemNotificationsResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ListSystemNotificationsResponse;
+};
+
+export type NotificationServiceListSystemNotificationsResponse = NotificationServiceListSystemNotificationsResponses[keyof NotificationServiceListSystemNotificationsResponses];
+
 export type PostServiceCreatePostData = {
     body: V1CreatePostRequest;
     path?: never;
@@ -1964,7 +3928,7 @@ export type CommentServiceListPostCommentsData = {
     };
     query?: {
         /**
-         * 排序方式（默认：点赞数最多）
+         * 排序方式（默认：最新）
          *
          * - COMMENT_ORDER_TYPE_UNSPECIFIED: 未指定（默认使用 LATEST）
          * - COMMENT_ORDER_TYPE_LATEST: --- 按时间排序 ---
@@ -1993,6 +3957,14 @@ export type CommentServiceListPostCommentsData = {
          * 为空则说明是首次请求第一页数据
          */
         'pagination.cursor'?: string;
+        /**
+         * 每条第一层评论需要返回的第二层回复数量（默认1条）
+         */
+        need_reply_count?: number;
+        /**
+         * 从“评论和 @”、“赞和收藏”通知进入时，传入目标评论 ID 以在评论列表中第一个展示目标评论。并且后续列表中不再展示该评论。
+         */
+        target_comment_id?: string;
     };
     url: '/v1/posts/{post_id}/comments';
 };
@@ -2041,64 +4013,6 @@ export type PostServiceSetPostLikeResponses = {
 };
 
 export type PostServiceSetPostLikeResponse = PostServiceSetPostLikeResponses[keyof PostServiceSetPostLikeResponses];
-
-export type ReportServiceListReportsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * 举报类型筛选（可选，不传则返回全部）
-         *
-         * - REPORT_TYPE_UNSPECIFIED: 未指定
-         * - REPORT_TYPE_USER: 举报用户
-         * - REPORT_TYPE_POST: 举报帖子
-         * - REPORT_TYPE_COMMENT: 举报评论
-         * - REPORT_TYPE_REPLY: 举报回复
-         */
-        type?: 'REPORT_TYPE_UNSPECIFIED' | 'REPORT_TYPE_USER' | 'REPORT_TYPE_POST' | 'REPORT_TYPE_COMMENT' | 'REPORT_TYPE_REPLY';
-        /**
-         * 举报状态筛选（可选，不传则返回全部）
-         *
-         * - REPORT_STATUS_UNSPECIFIED: 未指定
-         * - REPORT_STATUS_PENDING: 待处理
-         * - REPORT_STATUS_PROCESSING: 处理中
-         * - REPORT_STATUS_RESOLVED: 已处理（已采纳）
-         * - REPORT_STATUS_REJECTED: 已驳回
-         */
-        status?: 'REPORT_STATUS_UNSPECIFIED' | 'REPORT_STATUS_PENDING' | 'REPORT_STATUS_PROCESSING' | 'REPORT_STATUS_RESOLVED' | 'REPORT_STATUS_REJECTED';
-        /**
-         * 需要返回的帖子数量
-         */
-        'pagination.need_num'?: number;
-        /**
-         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
-         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
-         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
-         *
-         * 为空则说明是首次请求第一页数据
-         */
-        'pagination.cursor'?: string;
-    };
-    url: '/v1/reports';
-};
-
-export type ReportServiceListReportsErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type ReportServiceListReportsError = ReportServiceListReportsErrors[keyof ReportServiceListReportsErrors];
-
-export type ReportServiceListReportsResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1ListReportsResponse;
-};
-
-export type ReportServiceListReportsResponse = ReportServiceListReportsResponses[keyof ReportServiceListReportsResponses];
 
 export type ReportServiceReportCommentData = {
     body: V1ReportCommentRequest;
@@ -2174,109 +4088,6 @@ export type ReportServiceReportUserResponses = {
 };
 
 export type ReportServiceReportUserResponse = ReportServiceReportUserResponses[keyof ReportServiceReportUserResponses];
-
-export type ReportServiceApprovalReportData = {
-    body: ReportServiceApprovalReportBody;
-    path: {
-        /**
-         * 举报记录ID
-         */
-        report_id: string;
-    };
-    query?: never;
-    url: '/v1/reports/{report_id}/approval';
-};
-
-export type ReportServiceApprovalReportErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type ReportServiceApprovalReportError = ReportServiceApprovalReportErrors[keyof ReportServiceApprovalReportErrors];
-
-export type ReportServiceApprovalReportResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1ApprovalReportResponse;
-};
-
-export type ReportServiceApprovalReportResponse = ReportServiceApprovalReportResponses[keyof ReportServiceApprovalReportResponses];
-
-export type ReportServiceListReportEvidenceData = {
-    body?: never;
-    path: {
-        /**
-         * 举报记录ID
-         */
-        report_id: string;
-    };
-    query?: {
-        /**
-         * 需要返回的帖子数量
-         */
-        'pagination.need_num'?: number;
-        /**
-         * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
-         * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
-         * 游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间
-         *
-         * 为空则说明是首次请求第一页数据
-         */
-        'pagination.cursor'?: string;
-    };
-    url: '/v1/reports/{report_id}/evidence';
-};
-
-export type ReportServiceListReportEvidenceErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type ReportServiceListReportEvidenceError = ReportServiceListReportEvidenceErrors[keyof ReportServiceListReportEvidenceErrors];
-
-export type ReportServiceListReportEvidenceResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1ListReportEvidenceResponse;
-};
-
-export type ReportServiceListReportEvidenceResponse = ReportServiceListReportEvidenceResponses[keyof ReportServiceListReportEvidenceResponses];
-
-export type ReportServiceRejectReportData = {
-    body: ReportServiceRejectReportBody;
-    path: {
-        /**
-         * 举报记录ID
-         */
-        report_id: string;
-    };
-    query?: never;
-    url: '/v1/reports/{report_id}/rejection';
-};
-
-export type ReportServiceRejectReportErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type ReportServiceRejectReportError = ReportServiceRejectReportErrors[keyof ReportServiceRejectReportErrors];
-
-export type ReportServiceRejectReportResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1RejectReportResponse;
-};
-
-export type ReportServiceRejectReportResponse = ReportServiceRejectReportResponses[keyof ReportServiceRejectReportResponses];
 
 export type SyncServiceGetActiveDevicesData = {
     body?: never;
@@ -2562,56 +4373,6 @@ export type UserServiceUpdateSettingsResponses = {
 };
 
 export type UserServiceUpdateSettingsResponse = UserServiceUpdateSettingsResponses[keyof UserServiceUpdateSettingsResponses];
-
-export type UserServiceGetMyVerificationData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/v1/users/me/verification';
-};
-
-export type UserServiceGetMyVerificationErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type UserServiceGetMyVerificationError = UserServiceGetMyVerificationErrors[keyof UserServiceGetMyVerificationErrors];
-
-export type UserServiceGetMyVerificationResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1GetMyVerificationResponse;
-};
-
-export type UserServiceGetMyVerificationResponse = UserServiceGetMyVerificationResponses[keyof UserServiceGetMyVerificationResponses];
-
-export type UserServiceApplyVerificationData = {
-    body: V1ApplyVerificationRequest;
-    path?: never;
-    query?: never;
-    url: '/v1/users/me/verification';
-};
-
-export type UserServiceApplyVerificationErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type UserServiceApplyVerificationError = UserServiceApplyVerificationErrors[keyof UserServiceApplyVerificationErrors];
-
-export type UserServiceApplyVerificationResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1ApplyVerificationResponse;
-};
-
-export type UserServiceApplyVerificationResponse = UserServiceApplyVerificationResponses[keyof UserServiceApplyVerificationResponses];
 
 export type UserServiceSetFollowData = {
     body: UserServiceSetFollowBody;
@@ -3020,3 +4781,78 @@ export type UserServiceChangeRemarkResponses = {
 };
 
 export type UserServiceChangeRemarkResponse = UserServiceChangeRemarkResponses[keyof UserServiceChangeRemarkResponses];
+
+export type VerificationServiceGetMyVerificationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/verifications/me';
+};
+
+export type VerificationServiceGetMyVerificationErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type VerificationServiceGetMyVerificationError = VerificationServiceGetMyVerificationErrors[keyof VerificationServiceGetMyVerificationErrors];
+
+export type VerificationServiceGetMyVerificationResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1GetMyVerificationResponse;
+};
+
+export type VerificationServiceGetMyVerificationResponse = VerificationServiceGetMyVerificationResponses[keyof VerificationServiceGetMyVerificationResponses];
+
+export type VerificationServiceApplyVerificationData = {
+    body: V1ApplyVerificationRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/verifications/me';
+};
+
+export type VerificationServiceApplyVerificationErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type VerificationServiceApplyVerificationError = VerificationServiceApplyVerificationErrors[keyof VerificationServiceApplyVerificationErrors];
+
+export type VerificationServiceApplyVerificationResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1ApplyVerificationResponse;
+};
+
+export type VerificationServiceApplyVerificationResponse = VerificationServiceApplyVerificationResponses[keyof VerificationServiceApplyVerificationResponses];
+
+export type WsServiceGetWsEnvelopeSchemaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/ws/schema';
+};
+
+export type WsServiceGetWsEnvelopeSchemaErrors = {
+    /**
+     * An unexpected error response.
+     */
+    default: RpcStatus;
+};
+
+export type WsServiceGetWsEnvelopeSchemaError = WsServiceGetWsEnvelopeSchemaErrors[keyof WsServiceGetWsEnvelopeSchemaErrors];
+
+export type WsServiceGetWsEnvelopeSchemaResponses = {
+    /**
+     * A successful response.
+     */
+    200: V1GetWsEnvelopeSchemaResponse;
+};
+
+export type WsServiceGetWsEnvelopeSchemaResponse = WsServiceGetWsEnvelopeSchemaResponses[keyof WsServiceGetWsEnvelopeSchemaResponses];

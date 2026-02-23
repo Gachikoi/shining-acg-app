@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthServiceLoginData, AuthServiceLoginErrors, AuthServiceLoginResponses, AuthServiceLogoutData, AuthServiceLogoutErrors, AuthServiceLogoutResponses, AuthServiceRefreshTokenData, AuthServiceRefreshTokenErrors, AuthServiceRefreshTokenResponses, AuthServiceUpdatePushTokenData, AuthServiceUpdatePushTokenErrors, AuthServiceUpdatePushTokenResponses, CommentServiceCreateCommentData, CommentServiceCreateCommentErrors, CommentServiceCreateCommentResponses, CommentServiceDeleteCommentData, CommentServiceDeleteCommentErrors, CommentServiceDeleteCommentResponses, CommentServiceListCommentRepliesData, CommentServiceListCommentRepliesErrors, CommentServiceListCommentRepliesResponses, CommentServiceListPostCommentsData, CommentServiceListPostCommentsErrors, CommentServiceListPostCommentsResponses, CommentServiceSetCommentLikeData, CommentServiceSetCommentLikeErrors, CommentServiceSetCommentLikeResponses, FeedServiceGetFeedData, FeedServiceGetFeedErrors, FeedServiceGetFeedResponses, FeedServiceListFeedCategoriesData, FeedServiceListFeedCategoriesErrors, FeedServiceListFeedCategoriesResponses, PostServiceCreatePostData, PostServiceCreatePostErrors, PostServiceCreatePostResponses, PostServiceDeletePostData, PostServiceDeletePostErrors, PostServiceDeletePostResponses, PostServiceEditPostData, PostServiceEditPostErrors, PostServiceEditPostResponses, PostServiceGetPostData, PostServiceGetPostErrors, PostServiceGetPostResponses, PostServiceSetPostCollectData, PostServiceSetPostCollectErrors, PostServiceSetPostCollectResponses, PostServiceSetPostLikeData, PostServiceSetPostLikeErrors, PostServiceSetPostLikeResponses, ReportServiceApprovalReportData, ReportServiceApprovalReportErrors, ReportServiceApprovalReportResponses, ReportServiceListReportEvidenceData, ReportServiceListReportEvidenceErrors, ReportServiceListReportEvidenceResponses, ReportServiceListReportsData, ReportServiceListReportsErrors, ReportServiceListReportsResponses, ReportServiceRejectReportData, ReportServiceRejectReportErrors, ReportServiceRejectReportResponses, ReportServiceReportCommentData, ReportServiceReportCommentErrors, ReportServiceReportCommentResponses, ReportServiceReportPostData, ReportServiceReportPostErrors, ReportServiceReportPostResponses, ReportServiceReportUserData, ReportServiceReportUserErrors, ReportServiceReportUserResponses, SyncServiceDisconnectDeviceData, SyncServiceDisconnectDeviceErrors, SyncServiceDisconnectDeviceResponses, SyncServiceForceSyncData, SyncServiceForceSyncErrors, SyncServiceForceSyncResponses, SyncServiceGetActiveDevicesData, SyncServiceGetActiveDevicesErrors, SyncServiceGetActiveDevicesResponses, SyncServiceGetSyncStatusData, SyncServiceGetSyncStatusErrors, SyncServiceGetSyncStatusResponses, UserServiceApplyVerificationData, UserServiceApplyVerificationErrors, UserServiceApplyVerificationResponses, UserServiceChangeAvatarData, UserServiceChangeAvatarErrors, UserServiceChangeAvatarResponses, UserServiceChangeNameData, UserServiceChangeNameErrors, UserServiceChangeNameResponses, UserServiceChangeRemarkData, UserServiceChangeRemarkErrors, UserServiceChangeRemarkResponses, UserServiceEditLinksData, UserServiceEditLinksErrors, UserServiceEditLinksResponses, UserServiceGetMeData, UserServiceGetMeErrors, UserServiceGetMeResponses, UserServiceGetMyVerificationData, UserServiceGetMyVerificationErrors, UserServiceGetMyVerificationResponses, UserServiceGetUserData, UserServiceGetUserErrors, UserServiceGetUserIdByQqData, UserServiceGetUserIdByQqErrors, UserServiceGetUserIdByQqResponses, UserServiceGetUserResponses, UserServiceListUserCollectedPostsData, UserServiceListUserCollectedPostsErrors, UserServiceListUserCollectedPostsResponses, UserServiceListUserFollowersData, UserServiceListUserFollowersErrors, UserServiceListUserFollowersResponses, UserServiceListUserFollowingsData, UserServiceListUserFollowingsErrors, UserServiceListUserFollowingsResponses, UserServiceListUserLikedPostsData, UserServiceListUserLikedPostsErrors, UserServiceListUserLikedPostsResponses, UserServiceListUserMutualFollowersData, UserServiceListUserMutualFollowersErrors, UserServiceListUserMutualFollowersResponses, UserServiceListUserPostsData, UserServiceListUserPostsErrors, UserServiceListUserPostsResponses, UserServiceModifyDepartmentsData, UserServiceModifyDepartmentsErrors, UserServiceModifyDepartmentsResponses, UserServiceSetFollowData, UserServiceSetFollowErrors, UserServiceSetFollowResponses, UserServiceUpdateSettingsData, UserServiceUpdateSettingsErrors, UserServiceUpdateSettingsResponses } from './types.gen';
+import type { AdminServiceEditAdminsData, AdminServiceEditAdminsErrors, AdminServiceEditAdminsResponses, AdminServiceListAdminsData, AdminServiceListAdminsErrors, AdminServiceListAdminsResponses, AuthServiceLoginData, AuthServiceLoginErrors, AuthServiceLoginResponses, AuthServiceLogoutData, AuthServiceLogoutErrors, AuthServiceLogoutResponses, AuthServiceRefreshTokenData, AuthServiceRefreshTokenErrors, AuthServiceRefreshTokenResponses, AuthServiceUpdatePushTokenData, AuthServiceUpdatePushTokenErrors, AuthServiceUpdatePushTokenResponses, CommentServiceCreateCommentData, CommentServiceCreateCommentErrors, CommentServiceCreateCommentResponses, CommentServiceDeleteCommentData, CommentServiceDeleteCommentErrors, CommentServiceDeleteCommentResponses, CommentServiceListCommentRepliesData, CommentServiceListCommentRepliesErrors, CommentServiceListCommentRepliesResponses, CommentServiceListPostCommentsData, CommentServiceListPostCommentsErrors, CommentServiceListPostCommentsResponses, CommentServiceSetCommentLikeData, CommentServiceSetCommentLikeErrors, CommentServiceSetCommentLikeResponses, DepartmentServiceCreateDepartmentsData, DepartmentServiceCreateDepartmentsErrors, DepartmentServiceCreateDepartmentsResponses, DepartmentServiceDeleteDepartmentsData, DepartmentServiceDeleteDepartmentsErrors, DepartmentServiceDeleteDepartmentsResponses, DepartmentServiceListDepartmentsData, DepartmentServiceListDepartmentsErrors, DepartmentServiceListDepartmentsResponses, DepartmentServiceRenameDepartmentData, DepartmentServiceRenameDepartmentErrors, DepartmentServiceRenameDepartmentResponses, FeedServiceGetFeedData, FeedServiceGetFeedErrors, FeedServiceGetFeedResponses, FeedServiceListFeedCategoriesData, FeedServiceListFeedCategoriesErrors, FeedServiceListFeedCategoriesResponses, MediaServiceAbortMultipartUploadData, MediaServiceAbortMultipartUploadErrors, MediaServiceAbortMultipartUploadResponses, MediaServiceCompleteMultipartUploadData, MediaServiceCompleteMultipartUploadErrors, MediaServiceCompleteMultipartUploadResponses, MediaServiceCreateMultipartUploadData, MediaServiceCreateMultipartUploadErrors, MediaServiceCreateMultipartUploadResponses, MediaServiceGetBatchMediaData, MediaServiceGetBatchMediaErrors, MediaServiceGetBatchMediaResponses, MediaServiceListUploadedPartsData, MediaServiceListUploadedPartsErrors, MediaServiceListUploadedPartsResponses, MediaServicePrepareUploadBatchData, MediaServicePrepareUploadBatchErrors, MediaServicePrepareUploadBatchResponses, MediaServiceSignMultipartPartData, MediaServiceSignMultipartPartErrors, MediaServiceSignMultipartPartResponses, NotificationServiceGetNotificationStatsData, NotificationServiceGetNotificationStatsErrors, NotificationServiceGetNotificationStatsResponses, NotificationServiceListCommentMentionNotificationsData, NotificationServiceListCommentMentionNotificationsErrors, NotificationServiceListCommentMentionNotificationsResponses, NotificationServiceListFollowNotificationsData, NotificationServiceListFollowNotificationsErrors, NotificationServiceListFollowNotificationsResponses, NotificationServiceListLikeCollectNotificationsData, NotificationServiceListLikeCollectNotificationsErrors, NotificationServiceListLikeCollectNotificationsResponses, NotificationServiceListSystemNotificationsData, NotificationServiceListSystemNotificationsErrors, NotificationServiceListSystemNotificationsResponses, NotificationServiceMarkAllNotificationsReadData, NotificationServiceMarkAllNotificationsReadErrors, NotificationServiceMarkAllNotificationsReadResponses, NotificationServiceMarkNotificationReadData, NotificationServiceMarkNotificationReadErrors, NotificationServiceMarkNotificationReadResponses, PartitionServiceCreatePartitionsData, PartitionServiceCreatePartitionsErrors, PartitionServiceCreatePartitionsResponses, PartitionServiceDeletePartitionData, PartitionServiceDeletePartitionErrors, PartitionServiceDeletePartitionResponses, PartitionServiceListPartitionsData, PartitionServiceListPartitionsErrors, PartitionServiceListPartitionsResponses, PartitionServiceRenamePartitionData, PartitionServiceRenamePartitionErrors, PartitionServiceRenamePartitionResponses, PostServiceCreatePostData, PostServiceCreatePostErrors, PostServiceCreatePostResponses, PostServiceDeletePostData, PostServiceDeletePostErrors, PostServiceDeletePostResponses, PostServiceEditPostData, PostServiceEditPostErrors, PostServiceEditPostResponses, PostServiceGetPostData, PostServiceGetPostErrors, PostServiceGetPostResponses, PostServiceSetPostCollectData, PostServiceSetPostCollectErrors, PostServiceSetPostCollectResponses, PostServiceSetPostLikeData, PostServiceSetPostLikeErrors, PostServiceSetPostLikeResponses, ReportServiceApprovalReportData, ReportServiceApprovalReportErrors, ReportServiceApprovalReportResponses, ReportServiceListReportEvidenceData, ReportServiceListReportEvidenceErrors, ReportServiceListReportEvidenceResponses, ReportServiceListReportsData, ReportServiceListReportsErrors, ReportServiceListReportsResponses, ReportServiceRejectReportData, ReportServiceRejectReportErrors, ReportServiceRejectReportResponses, ReportServiceReportCommentData, ReportServiceReportCommentErrors, ReportServiceReportCommentResponses, ReportServiceReportPostData, ReportServiceReportPostErrors, ReportServiceReportPostResponses, ReportServiceReportUserData, ReportServiceReportUserErrors, ReportServiceReportUserResponses, SyncServiceDisconnectDeviceData, SyncServiceDisconnectDeviceErrors, SyncServiceDisconnectDeviceResponses, SyncServiceForceSyncData, SyncServiceForceSyncErrors, SyncServiceForceSyncResponses, SyncServiceGetActiveDevicesData, SyncServiceGetActiveDevicesErrors, SyncServiceGetActiveDevicesResponses, SyncServiceGetSyncStatusData, SyncServiceGetSyncStatusErrors, SyncServiceGetSyncStatusResponses, UserServiceChangeAvatarData, UserServiceChangeAvatarErrors, UserServiceChangeAvatarResponses, UserServiceChangeNameData, UserServiceChangeNameErrors, UserServiceChangeNameResponses, UserServiceChangeRemarkData, UserServiceChangeRemarkErrors, UserServiceChangeRemarkResponses, UserServiceEditLinksData, UserServiceEditLinksErrors, UserServiceEditLinksResponses, UserServiceGetMeData, UserServiceGetMeErrors, UserServiceGetMeResponses, UserServiceGetUserData, UserServiceGetUserErrors, UserServiceGetUserIdByQqData, UserServiceGetUserIdByQqErrors, UserServiceGetUserIdByQqResponses, UserServiceGetUserResponses, UserServiceListUserCollectedPostsData, UserServiceListUserCollectedPostsErrors, UserServiceListUserCollectedPostsResponses, UserServiceListUserFollowersData, UserServiceListUserFollowersErrors, UserServiceListUserFollowersResponses, UserServiceListUserFollowingsData, UserServiceListUserFollowingsErrors, UserServiceListUserFollowingsResponses, UserServiceListUserLikedPostsData, UserServiceListUserLikedPostsErrors, UserServiceListUserLikedPostsResponses, UserServiceListUserMutualFollowersData, UserServiceListUserMutualFollowersErrors, UserServiceListUserMutualFollowersResponses, UserServiceListUserPostsData, UserServiceListUserPostsErrors, UserServiceListUserPostsResponses, UserServiceModifyDepartmentsData, UserServiceModifyDepartmentsErrors, UserServiceModifyDepartmentsResponses, UserServiceSetFollowData, UserServiceSetFollowErrors, UserServiceSetFollowResponses, UserServiceUpdateSettingsData, UserServiceUpdateSettingsErrors, UserServiceUpdateSettingsResponses, VerificationServiceApplyVerificationData, VerificationServiceApplyVerificationErrors, VerificationServiceApplyVerificationResponses, VerificationServiceGetMyVerificationData, VerificationServiceGetMyVerificationErrors, VerificationServiceGetMyVerificationResponses, VerificationServiceListVerificationsData, VerificationServiceListVerificationsErrors, VerificationServiceListVerificationsResponses, VerificationServiceReviewVerificationData, VerificationServiceReviewVerificationErrors, VerificationServiceReviewVerificationResponses, WsServiceGetWsEnvelopeSchemaData, WsServiceGetWsEnvelopeSchemaErrors, WsServiceGetWsEnvelopeSchemaResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -17,6 +17,201 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+/**
+ * 批量删除部门
+ * 删除前需要用户二次确认
+ * 删除后，现网用户的对应部门徽章即消失
+ */
+export const departmentServiceDeleteDepartments = <ThrowOnError extends boolean = false>(options: Options<DepartmentServiceDeleteDepartmentsData, ThrowOnError>) => (options.client ?? client).delete<DepartmentServiceDeleteDepartmentsResponses, DepartmentServiceDeleteDepartmentsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/departments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取部门列表
+ * 返回所有部门信息
+ */
+export const departmentServiceListDepartments = <ThrowOnError extends boolean = false>(options?: Options<DepartmentServiceListDepartmentsData, ThrowOnError>) => (options?.client ?? client).get<DepartmentServiceListDepartmentsResponses, DepartmentServiceListDepartmentsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/departments',
+    ...options
+});
+
+/**
+ * 批量新增部门
+ * 新增的部门会分配新的ID
+ */
+export const departmentServiceCreateDepartments = <ThrowOnError extends boolean = false>(options: Options<DepartmentServiceCreateDepartmentsData, ThrowOnError>) => (options.client ?? client).post<DepartmentServiceCreateDepartmentsResponses, DepartmentServiceCreateDepartmentsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/departments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 重命名部门
+ * 只改变部门名称，不改变部门ID
+ */
+export const departmentServiceRenameDepartment = <ThrowOnError extends boolean = false>(options: Options<DepartmentServiceRenameDepartmentData, ThrowOnError>) => (options.client ?? client).put<DepartmentServiceRenameDepartmentResponses, DepartmentServiceRenameDepartmentErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/departments/{department_id}/name',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取分区列表
+ * 返回所有分区信息
+ */
+export const partitionServiceListPartitions = <ThrowOnError extends boolean = false>(options?: Options<PartitionServiceListPartitionsData, ThrowOnError>) => (options?.client ?? client).get<PartitionServiceListPartitionsResponses, PartitionServiceListPartitionsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions',
+    ...options
+});
+
+/**
+ * 批量新增分区
+ * 新增的分区会分配新的ID
+ */
+export const partitionServiceCreatePartitions = <ThrowOnError extends boolean = false>(options: Options<PartitionServiceCreatePartitionsData, ThrowOnError>) => (options.client ?? client).post<PartitionServiceCreatePartitionsResponses, PartitionServiceCreatePartitionsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除分区
+ * 删除前需要用户选择迁移目标分区，并二次确认
+ */
+export const partitionServiceDeletePartition = <ThrowOnError extends boolean = false>(options: Options<PartitionServiceDeletePartitionData, ThrowOnError>) => (options.client ?? client).delete<PartitionServiceDeletePartitionResponses, PartitionServiceDeletePartitionErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions/{partition_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 重命名分区
+ * 只改变分区名称，不改变分区ID
+ */
+export const partitionServiceRenamePartition = <ThrowOnError extends boolean = false>(options: Options<PartitionServiceRenamePartitionData, ThrowOnError>) => (options.client ?? client).put<PartitionServiceRenamePartitionResponses, PartitionServiceRenamePartitionErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/partitions/{partition_id}/name',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取管理员列表 - 按"超级管理员"、"管理员"分类展示
+ * 返回所有管理员的基本信息（头像、昵称（优先备注）、QQ号）
+ */
+export const adminServiceListAdmins = <ThrowOnError extends boolean = false>(options?: Options<AdminServiceListAdminsData, ThrowOnError>) => (options?.client ?? client).get<AdminServiceListAdminsResponses, AdminServiceListAdminsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/permissions/admins',
+    ...options
+});
+
+/**
+ * 批量变更管理员角色 - 可选择多个管理员，批量变更为"超级管理员"、"管理员"、"社团成员"
+ * 支持降级（超级管理员→管理员→社团成员）和提升（社团成员→管理员→超级管理员）
+ */
+export const adminServiceEditAdmins = <ThrowOnError extends boolean = false>(options: Options<AdminServiceEditAdminsData, ThrowOnError>) => (options.client ?? client).put<AdminServiceEditAdminsResponses, AdminServiceEditAdminsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/permissions/admins',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取举报列表（管理员）
+ */
+export const reportServiceListReports = <ThrowOnError extends boolean = false>(options?: Options<ReportServiceListReportsData, ThrowOnError>) => (options?.client ?? client).get<ReportServiceListReportsResponses, ReportServiceListReportsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/reports',
+    ...options
+});
+
+/**
+ * 封禁用户/删除评论/帖子（管理员）
+ */
+export const reportServiceApprovalReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceApprovalReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceApprovalReportResponses, ReportServiceApprovalReportErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/reports/{report_id}/approval',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）
+ */
+export const reportServiceListReportEvidence = <ThrowOnError extends boolean = false>(options: Options<ReportServiceListReportEvidenceData, ThrowOnError>) => (options.client ?? client).get<ReportServiceListReportEvidenceResponses, ReportServiceListReportEvidenceErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/reports/{report_id}/evidence',
+    ...options
+});
+
+/**
+ * 驳回举报（管理员）
+ */
+export const reportServiceRejectReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceRejectReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceRejectReportResponses, ReportServiceRejectReportErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/reports/{report_id}/rejection',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取认证申请列表（管理员）
+ */
+export const verificationServiceListVerifications = <ThrowOnError extends boolean = false>(options?: Options<VerificationServiceListVerificationsData, ThrowOnError>) => (options?.client ?? client).get<VerificationServiceListVerificationsResponses, VerificationServiceListVerificationsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/verifications',
+    ...options
+});
+
+/**
+ * 审批认证申请（管理员）
+ */
+export const verificationServiceReviewVerification = <ThrowOnError extends boolean = false>(options: Options<VerificationServiceReviewVerificationData, ThrowOnError>) => (options.client ?? client).put<VerificationServiceReviewVerificationResponses, VerificationServiceReviewVerificationErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/admin/verifications/{application_id}/review',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * 统一登录接口 (支持 QQ, 微信, 手机号等)
@@ -129,6 +324,188 @@ export const feedServiceListFeedCategories = <ThrowOnError extends boolean = fal
 });
 
 /**
+ * GetBatchMedia 查询批次内全部媒体元素（按顺序返回）。
+ * 调用时机：前端准备调用 CreatePost/EditPost 前做最终拉取。
+ * 参数：batch_id。
+ * 返回：按服务端固定顺序排序的 media_assets。
+ * 错误：NOT_FOUND（批次不存在）；INTERNAL（查询失败）。
+ */
+export const mediaServiceGetBatchMedia = <ThrowOnError extends boolean = false>(options: Options<MediaServiceGetBatchMediaData, ThrowOnError>) => (options.client ?? client).get<MediaServiceGetBatchMediaResponses, MediaServiceGetBatchMediaErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/batches/{batch_id}/media',
+    ...options
+});
+
+/**
+ * AbortMultipartUpload 中止未完成上传并清理存储侧临时分片。
+ * 调用时机：用户取消上传或客户端显式回滚。
+ * 参数：task_id/upload_id。
+ * 返回：success=true 表示成功中止或会话已不可用。
+ * 错误：INTERNAL（清理失败）。
+ */
+export const mediaServiceAbortMultipartUpload = <ThrowOnError extends boolean = false>(options: Options<MediaServiceAbortMultipartUploadData, ThrowOnError>) => (options.client ?? client).post<MediaServiceAbortMultipartUploadResponses, MediaServiceAbortMultipartUploadErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/multipart/abort',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * PrepareUploadBatch 批量准备上传任务并固化顺序。
+ * 调用时机：前端准备开始上传一个业务批次时调用一次。
+ * 参数：batch_id + items（数组顺序即最终顺序来源）。
+ * 返回：每个媒体元素对应的 item_id，以及其下每个文件的 task_id 映射。
+ * 错误：INVALID_ARGUMENT（格式/大小非法）；INTERNAL（存储服务故障）。
+ */
+export const mediaServicePrepareUploadBatch = <ThrowOnError extends boolean = false>(options: Options<MediaServicePrepareUploadBatchData, ThrowOnError>) => (options.client ?? client).post<MediaServicePrepareUploadBatchResponses, MediaServicePrepareUploadBatchErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/multipart/batch/prepare',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * CompleteMultipartUpload 完成分片合并并触发媒体处理。
+ * 调用时机：前端确认所有分片上传成功后调用。
+ * 参数：task_id/upload_id + parts（part_number/etag）。
+ * 返回：当前文件的 MediaInfo；图片通常更快完成，视频会进入异步处理。
+ * 错误：FAILED_PRECONDITION（分片不完整）；INTERNAL（合并或处理失败）。
+ */
+export const mediaServiceCompleteMultipartUpload = <ThrowOnError extends boolean = false>(options: Options<MediaServiceCompleteMultipartUploadData, ThrowOnError>) => (options.client ?? client).post<MediaServiceCompleteMultipartUploadResponses, MediaServiceCompleteMultipartUploadErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/multipart/complete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * CreateMultipartUpload 创建单文件 multipart 上传会话（S3 CreateMultipartUpload 语义）。
+ * 调用时机：Uppy 在文件开始上传时调用。
+ * 参数：task_id。
+ * 返回：upload_id/object_key/part_size_bytes 等会话参数。
+ * 错误：NOT_FOUND（task 不存在）；FAILED_PRECONDITION（状态冲突）。
+ */
+export const mediaServiceCreateMultipartUpload = <ThrowOnError extends boolean = false>(options: Options<MediaServiceCreateMultipartUploadData, ThrowOnError>) => (options.client ?? client).post<MediaServiceCreateMultipartUploadResponses, MediaServiceCreateMultipartUploadErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/multipart/create',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * SignMultipartPart 为单个分片签名。
+ * 调用时机：Uppy 在上传每个 part 前调用。
+ * 参数：task_id/upload_id/part_number。
+ * 返回：该分片的预签名 URL 与必要请求头。
+ * 错误：NOT_FOUND（task 不存在）；FAILED_PRECONDITION（会话不匹配）。
+ */
+export const mediaServiceSignMultipartPart = <ThrowOnError extends boolean = false>(options: Options<MediaServiceSignMultipartPartData, ThrowOnError>) => (options.client ?? client).post<MediaServiceSignMultipartPartResponses, MediaServiceSignMultipartPartErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/multipart/part/sign',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * ListUploadedParts 查询会话已上传分片，支持断点续传恢复。
+ * 调用时机：Uppy 续传恢复时调用。
+ * 参数：task_id/upload_id。
+ * 返回：已上传分片列表。
+ * 错误：NOT_FOUND（会话不存在）；INTERNAL（存储查询失败）。
+ */
+export const mediaServiceListUploadedParts = <ThrowOnError extends boolean = false>(options?: Options<MediaServiceListUploadedPartsData, ThrowOnError>) => (options?.client ?? client).get<MediaServiceListUploadedPartsResponses, MediaServiceListUploadedPartsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/media/multipart/parts',
+    ...options
+});
+
+/**
+ * 获取评论和@通知列表
+ */
+export const notificationServiceListCommentMentionNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListCommentMentionNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListCommentMentionNotificationsResponses, NotificationServiceListCommentMentionNotificationsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/comment-mentions',
+    ...options
+});
+
+/**
+ * 获取新增关注通知列表
+ */
+export const notificationServiceListFollowNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListFollowNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListFollowNotificationsResponses, NotificationServiceListFollowNotificationsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/follows',
+    ...options
+});
+
+/**
+ * 获取赞和收藏通知列表
+ */
+export const notificationServiceListLikeCollectNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListLikeCollectNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListLikeCollectNotificationsResponses, NotificationServiceListLikeCollectNotificationsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/like-collects',
+    ...options
+});
+
+/**
+ * 标记某类所有通知为已读（幂等操作）
+ */
+export const notificationServiceMarkAllNotificationsRead = <ThrowOnError extends boolean = false>(options: Options<NotificationServiceMarkAllNotificationsReadData, ThrowOnError>) => (options.client ?? client).post<NotificationServiceMarkAllNotificationsReadResponses, NotificationServiceMarkAllNotificationsReadErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/mark-all-read',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 标记指定通知为已读（幂等操作）
+ */
+export const notificationServiceMarkNotificationRead = <ThrowOnError extends boolean = false>(options: Options<NotificationServiceMarkNotificationReadData, ThrowOnError>) => (options.client ?? client).post<NotificationServiceMarkNotificationReadResponses, NotificationServiceMarkNotificationReadErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/mark-read',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取未读通知统计
+ */
+export const notificationServiceGetNotificationStats = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceGetNotificationStatsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceGetNotificationStatsResponses, NotificationServiceGetNotificationStatsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/stats',
+    ...options
+});
+
+/**
+ * 获取系统通知列表
+ */
+export const notificationServiceListSystemNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListSystemNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListSystemNotificationsResponses, NotificationServiceListSystemNotificationsErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/notifications/system',
+    ...options
+});
+
+/**
  * 发布帖子
  */
 export const postServiceCreatePost = <ThrowOnError extends boolean = false>(options: Options<PostServiceCreatePostData, ThrowOnError>) => (options.client ?? client).post<PostServiceCreatePostResponses, PostServiceCreatePostErrors, ThrowOnError>({
@@ -208,15 +585,6 @@ export const postServiceSetPostLike = <ThrowOnError extends boolean = false>(opt
 });
 
 /**
- * 获取举报列表（管理员）
- */
-export const reportServiceListReports = <ThrowOnError extends boolean = false>(options?: Options<ReportServiceListReportsData, ThrowOnError>) => (options?.client ?? client).get<ReportServiceListReportsResponses, ReportServiceListReportsErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/reports',
-    ...options
-});
-
-/**
  * 举报评论
  */
 export const reportServiceReportComment = <ThrowOnError extends boolean = false>(options: Options<ReportServiceReportCommentData, ThrowOnError>) => (options.client ?? client).post<ReportServiceReportCommentResponses, ReportServiceReportCommentErrors, ThrowOnError>({
@@ -248,41 +616,6 @@ export const reportServiceReportPost = <ThrowOnError extends boolean = false>(op
 export const reportServiceReportUser = <ThrowOnError extends boolean = false>(options: Options<ReportServiceReportUserData, ThrowOnError>) => (options.client ?? client).post<ReportServiceReportUserResponses, ReportServiceReportUserErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/reports/users',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 封禁用户/删除评论/帖子（管理员）
- */
-export const reportServiceApprovalReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceApprovalReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceApprovalReportResponses, ReportServiceApprovalReportErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/reports/{report_id}/approval',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * 查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）
- */
-export const reportServiceListReportEvidence = <ThrowOnError extends boolean = false>(options: Options<ReportServiceListReportEvidenceData, ThrowOnError>) => (options.client ?? client).get<ReportServiceListReportEvidenceResponses, ReportServiceListReportEvidenceErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/reports/{report_id}/evidence',
-    ...options
-});
-
-/**
- * 驳回举报（管理员）
- */
-export const reportServiceRejectReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceRejectReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceRejectReportResponses, ReportServiceRejectReportErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/reports/{report_id}/rejection',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -416,28 +749,6 @@ export const userServiceUpdateSettings = <ThrowOnError extends boolean = false>(
 });
 
 /**
- * 查看我的认证申请状态
- */
-export const userServiceGetMyVerification = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetMyVerificationData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetMyVerificationResponses, UserServiceGetMyVerificationErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/users/me/verification',
-    ...options
-});
-
-/**
- * 申请身份认证
- */
-export const userServiceApplyVerification = <ThrowOnError extends boolean = false>(options: Options<UserServiceApplyVerificationData, ThrowOnError>) => (options.client ?? client).post<UserServiceApplyVerificationResponses, UserServiceApplyVerificationErrors, ThrowOnError>({
-    responseType: 'json',
-    url: '/v1/users/me/verification',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
  * 关注/取消关注
  */
 export const userServiceSetFollow = <ThrowOnError extends boolean = false>(options: Options<UserServiceSetFollowData, ThrowOnError>) => (options.client ?? client).put<UserServiceSetFollowResponses, UserServiceSetFollowErrors, ThrowOnError>({
@@ -513,4 +824,32 @@ export const userServiceChangeRemark = <ThrowOnError extends boolean = false>(op
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * 查看我的认证申请状态
+ */
+export const verificationServiceGetMyVerification = <ThrowOnError extends boolean = false>(options?: Options<VerificationServiceGetMyVerificationData, ThrowOnError>) => (options?.client ?? client).get<VerificationServiceGetMyVerificationResponses, VerificationServiceGetMyVerificationErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/verifications/me',
+    ...options
+});
+
+/**
+ * 申请身份认证
+ */
+export const verificationServiceApplyVerification = <ThrowOnError extends boolean = false>(options: Options<VerificationServiceApplyVerificationData, ThrowOnError>) => (options.client ?? client).put<VerificationServiceApplyVerificationResponses, VerificationServiceApplyVerificationErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/verifications/me',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const wsServiceGetWsEnvelopeSchema = <ThrowOnError extends boolean = false>(options?: Options<WsServiceGetWsEnvelopeSchemaData, ThrowOnError>) => (options?.client ?? client).get<WsServiceGetWsEnvelopeSchemaResponses, WsServiceGetWsEnvelopeSchemaErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/v1/ws/schema',
+    ...options
 });
