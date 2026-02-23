@@ -16,21 +16,22 @@ struct IdentifiableURL: Identifiable {
 }
 
 struct ContentView: View {
-  let url = "https://\(AppConfig.app)"
+  let url = URL(string: "https://\(AppConfig.app)")
   @State private var sheetUrl: IdentifiableURL?
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     if let url {
       WebView(url: url) { interceptedUrl in
         sheetUrl = IdentifiableURL(url: interceptedUrl)
       }
-      .ignoresSafeArea(.keyboard)
+      .ignoresSafeArea()
       .sheet(item: $sheetUrl) { item in
         SafariView(url: item.url)
           .ignoresSafeArea()
       }
     } else {
-      Text("内容加载失败")
+      Text("URL 错误")
     }
   }
 }
