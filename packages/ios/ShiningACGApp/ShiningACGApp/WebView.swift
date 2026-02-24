@@ -15,6 +15,8 @@ struct WebView: UIViewRepresentable {
   @Environment(\.colorScheme) private var colorScheme
   let url: URL
   var onOpenUrlInSheet: ((URL) -> Void)?
+  var onLoadingStatusChange: ((Bool) -> Void)?
+  var onNetworkFail: (() -> Void)?
 
   func makeCoordinator() -> Coordinator {
     Coordinator(self)
@@ -55,6 +57,7 @@ struct WebView: UIViewRepresentable {
 
     // 解决黑夜模式下首屏白屏问题：初始隐藏，等待脚本注入后显示
     wkwebView.alpha = 0
+    wkwebView.isOpaque = false
 
     // 开启远程调试 (iOS 16.4+)
     if #available(iOS 16.4, *) {
@@ -81,11 +84,12 @@ struct WebView: UIViewRepresentable {
     return wkwebView
   }
 
-  func updateUIView(_ uiView: WKWebView, context: Context) {}
+  func updateUIView(_ uiView: WKWebView, context: Context) {
+    context.coordinator.parent = self
+  }
 
   class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
     var parent: WebView
-    private var openPanelCompletion: (([URL]?) -> Void)?
 
     // 预创建 Feedback Generator
     private let impactGenerators:
@@ -95,105 +99,168 @@ struct WebView: UIViewRepresentable {
         ]
         var map: [UIImpactFeedbackGenerator.FeedbackStyle: UIImpactFeedbackGenerator] = [:]
         for style in styles {
-          let g = UIImpactFeedbackGenerator(style: style)
-          map[style] = g
+          map[style] = UIImpactFeedbackGenerator(style: style)
         }
         return map
       }()
-    private let notificationGenerator: UINotificationFeedbackGenerator = {
-      let g = UINotificationFeedbackGenerator()
-      return g
-    }()
-    private let selectionGenerator: UISelectionFeedbackGenerator = {
-      let g = UISelectionFeedbackGenerator()
-      return g
-    }()
+
+    private let notificationGenerator = UINotificationFeedbackGenerator()
+    private let selectionGenerator = UISelectionFeedbackGenerator()
 
     init(_ parent: WebView) {
       self.parent = parent
     }
 
-    enum FeedbackKind {
-      case impact(UIImpactFeedbackGenerator.FeedbackStyle)
-      case notification(UINotificationFeedbackGenerator.FeedbackType)
-      case selection
-    }
+    // 解析前端传来的 type 和 style
+    private func getFeedbackParameters(type: String?, styleString: String?) -> (
+      type: String, style: Any
+    ) {
+      let t = type ?? "impact"
 
-    // 统一的位置感知触发方法，触发后立即 re-prepare 保持就绪
-    private func triggerFeedback(kind: FeedbackKind, at location: CGPoint?) {
-      switch kind {
-      case .impact(let style):
-        let generator = impactGenerators[style] ?? impactGenerators[.medium]!
-        if #available(iOS 17.5, *), let loc = location {
-          generator.impactOccurred(at: loc)
-        } else {
-          generator.impactOccurred()
+      switch t {
+      case "notification":
+        let feedbackType: UINotificationFeedbackGenerator.FeedbackType
+        switch styleString {
+        case "success": feedbackType = .success
+        case "warning": feedbackType = .warning
+        case "error": feedbackType = .error
+        default: feedbackType = .success
         }
-      case .notification(let type):
-        if #available(iOS 17.5, *), let loc = location {
-          notificationGenerator.notificationOccurred(type, at: loc)
-        } else {
-          notificationGenerator.notificationOccurred(type)
+        return (t, feedbackType)
+
+      case "selection":
+        return (t, "selection")
+
+      default:  // 默认为 impact
+        let style: UIImpactFeedbackGenerator.FeedbackStyle
+        switch styleString {
+        case "light": style = .light
+        case "medium": style = .medium
+        case "heavy": style = .heavy
+        case "soft": style = .soft
+        case "rigid": style = .rigid
+        default: style = .medium
         }
-      case .selection:
-        if #available(iOS 17.5, *), let loc = location {
-          selectionGenerator.selectionChanged(at: loc)
-        } else {
-          selectionGenerator.selectionChanged()
-        }
-        selectionGenerator.prepare()
+        return ("impact", style)
       }
     }
 
     func userContentController(
       _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
     ) {
-      if message.name == "ShiningBridge",
+      guard message.name == "ShiningBridge",
         let body = message.body as? [String: Any],
         let action = body["action"] as? String
-      {
-        if action == "vibrate" {
-          var location: CGPoint? = nil
-          if let x = body["x"] as? Int, let y = body["y"] as? Int {
-            location = CGPoint(x: x, y: y)
-          }
+      else { return }
 
-          let type = body["type"] as? String
-          let styleString = body["style"] as? String
+      if action == "vibrate" || action == "prepareForVibrate" {
+        let type = body["type"] as? String
+        let styleString = body["style"] as? String
+        let params = getFeedbackParameters(type: type, styleString: styleString)
 
-          switch type {
-          case "impact":
-            let style: UIImpactFeedbackGenerator.FeedbackStyle
-            switch styleString {
-            case "light": style = .light
-            case "medium": style = .medium
-            case "heavy": style = .heavy
-            case "soft": style = .soft
-            case "rigid": style = .rigid
-            default: style = .medium
-            }
-            triggerFeedback(kind: .impact(style), at: location)
-
-          case "notification":
-            let feedbackType: UINotificationFeedbackGenerator.FeedbackType
-            switch styleString {
-            case "success": feedbackType = .success
-            case "warning": feedbackType = .warning
-            case "error": feedbackType = .error
-            default: feedbackType = .success
-            }
-            triggerFeedback(kind: .notification(feedbackType), at: location)
-
-          case "selection":
-            triggerFeedback(kind: .selection, at: location)
-
-          default:
-            triggerFeedback(kind: .impact(.medium), at: location)
-          }
-        } else if action == "readyForDisply" {
-
+        var location: CGPoint? = nil
+        if let x = body["x"] as? Int, let y = body["y"] as? Int {
+          location = CGPoint(x: x, y: y)
         }
 
+        if action == "prepareForVibrate" {
+          // 提前唤醒马达
+          self.prepareFeedback(type: params.type, style: params.style)
+        } else {
+          // 实际触发震动
+          self.triggerFeedback(type: params.type, style: params.style, at: location)
+        }
+      }
+    }
+
+    // MARK: - 触觉反馈核心逻辑
+
+    // 唤醒马达（消除冷启动延迟）
+    private func prepareFeedback(type: String, style: Any) {
+      switch type {
+      case "impact":
+        if let impactStyle = style as? UIImpactFeedbackGenerator.FeedbackStyle,
+          let generator = impactGenerators[impactStyle]
+        {
+          generator.prepare()
+        }
+      case "notification":
+        notificationGenerator.prepare()
+      case "selection":
+        selectionGenerator.prepare()
+      default:
+        break
+      }
+    }
+
+    // 触发马达
+    private func triggerFeedback(type: String, style: Any, at location: CGPoint?) {
+      switch type {
+      case "impact":
+        if let impactStyle = style as? UIImpactFeedbackGenerator.FeedbackStyle,
+          let generator = impactGenerators[impactStyle]
+        {
+          if #available(iOS 17.5, *), let loc = location {
+            generator.impactOccurred(at: loc)
+          } else {
+            generator.impactOccurred()
+          }
+        }
+      case "notification":
+        if let notifType = style as? UINotificationFeedbackGenerator.FeedbackType {
+          if #available(iOS 17.5, *), let loc = location {
+            notificationGenerator.notificationOccurred(notifType, at: loc)
+          } else {
+            notificationGenerator.notificationOccurred(notifType)
+          }
+        }
+      case "selection":
+        if #available(iOS 17.5, *), let loc = location {
+          selectionGenerator.selectionChanged(at: loc)
+        } else {
+          selectionGenerator.selectionChanged()
+        }
+      default:
+        break
+      }
+    }
+
+    //    加载失败处理（如：网络权限未开启）
+    func webView(
+      _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
+      withError error: Error
+    ) {
+      let nsError = error as NSError
+      // -1009: The internet connection appears to be offline.
+      // -1020: Data not allowed (e.g. cellular data disabled or first launch permission).
+      if nsError.code == -1009 || nsError.code == -1020 {
+        parent.onLoadingStatusChange?(true)
+        parent.onNetworkFail?()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+          // Retry loading the initial URL
+          webView.load(URLRequest(url: self.parent.url))
+        }
+        NSLog("\(nsError),\(nsError.code)")
+      } else {
+        parent.onLoadingStatusChange?(false)
+        webView.alpha = 1
+      }
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+      let nsError = error as NSError
+      if nsError.code == -1009 || nsError.code == -1020 {
+        parent.onLoadingStatusChange?(true)
+        parent.onNetworkFail?()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+          webView.reload()
+        }
+        NSLog("\(nsError),\(nsError.code)")
+      } else {
+        parent.onLoadingStatusChange?(false)
+        webView.alpha = 1
       }
     }
 
@@ -216,6 +283,7 @@ struct WebView: UIViewRepresentable {
     //    解决黑夜模式下首屏白屏问题：在页面加载完成后淡入显示 WebView
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       webView.alpha = 1
+      parent.onLoadingStatusChange?(false)
     }
   }
 }

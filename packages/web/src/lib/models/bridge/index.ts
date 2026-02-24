@@ -1,7 +1,7 @@
 // 自定义 JSBridge 实现
 import type { Bridge, VibrationOptions } from './types';
 
-const postToNative = <T extends object>(action: string, payload: T) => {
+const postToNative = <T extends object>(action: string, payload?: T) => {
 	const message = { action, ...payload };
 
 	// Android Bridge
@@ -39,8 +39,18 @@ const vibrate = (input?: VibrationOptions) => {
 	}
 };
 
+/**
+ * Feature: Prepare for Vibrate
+ * 提升 iOS 震动响应速度-仅对 iOS 有效
+ */
+const prepareForVibrate = (input?: VibrationOptions) => {
+	const payload = input || { type: 'impact', style: 'medium' };
+	postToNative('prepareForVibrate', payload);
+};
+
 export const shiningBridge: Bridge = {
-	vibrate
+	vibrate,
+	prepareForVibrate
 };
 
 if (typeof window !== 'undefined') {
