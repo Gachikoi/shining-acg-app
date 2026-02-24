@@ -9,12 +9,7 @@
 	</dict>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问你的照片库以选择图片、视频和 Live Photo。</string>
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIImageName</key>
-		<string>LaunchLogo</string>
-		<key>UIColorName</key>
-		<string>AccentColor</string>
-	</dict>
+	<key>UILaunchStoryboardName</key>
+	<string>Launch Screen</string>
 </dict>
 </plist>

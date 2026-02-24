@@ -4,6 +4,7 @@ export type VibrationOptions = ImpactOptions | NotificationOptions | SelectionOp
 // Define the shape of the bridge object
 export interface Bridge {
 	vibrate: (options?: VibrationOptions) => void;
+	prepareForVibrate: (options?: VibrationOptions) => void;
 }
 
 // Base options available to all vibration types
