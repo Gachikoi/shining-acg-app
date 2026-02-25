@@ -1,8 +1,5 @@
 <script lang="ts">
-	let aspectRatio: number;
-
-	const ratios = [0.75, 1, 1.33, 1.5, 0.8, 1.25];
-	aspectRatio = ratios[Math.floor(Math.random() * ratios.length)];
+	export let aspectRatio: number;
 </script>
 
 <article class="bg-transparent">

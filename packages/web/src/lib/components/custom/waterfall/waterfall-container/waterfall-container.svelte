@@ -18,66 +18,229 @@
 	let cardPositions: CardPosition[] = [];
 	let visibleRange = { start: 0, end: 0 };
 	let skeletonCount = 0;
+	let skeletonPositions: CardPosition[] = [];
+	let lastUsedColumnIndex = 0;
+	let lastCalculatedPostCount = 0;
 
 	let pullRefreshDistance = 0;
 	let isPulling = false;
 	let startY = 0;
 	let currentY = 0;
+	let lastTouchY = 0;
+	let touchMoveFrameId: number | null = null;
+	let scrollFrameId: number | null = null;
+
+	const PULL_REFRESH_CONFIG = {
+		MAX_DISTANCE: 120,
+		TRIGGER_THRESHOLD: 80,
+		TRIGGERED_DISTANCE: 60,
+		DAMPING_FACTOR: 0.5
+	} as const;
 
 	const DEFAULT_CONFIG: Partial<WaterfallConfig> = {
 		minCardWidth: 280,
 		gap: 16,
 		bufferSize: 3,
+		bufferHeight: 400,
 		loadingThreshold: 200,
-		needNum: 20
+		cardContentHeight: 120,
+		skeletonCardCount: 20,
+		binarySearchThreshold: 100
 	};
 
 	$: mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
-	function calculateColumnCount(width: number): number {
-		return Math.max(1, Math.floor(width / mergedConfig.minCardWidth));
+	function calculateLayoutBase(width: number): { columnCount: number; cardWidth: number } {
+		const columnCount = Math.max(1, Math.floor(width / mergedConfig.minCardWidth));
+		const cardWidth = (width - (columnCount - 1) * mergedConfig.gap) / columnCount;
+		return { columnCount, cardWidth };
 	}
 
-	function calculateCardWidth(width: number, columns: number): number {
-		return (width - (columns - 1) * mergedConfig.gap) / columns;
+	function findMinColumnIndex(columnHeights: number[]): number {
+		let minHeight = columnHeights[0];
+		let minIndex = 0;
+		for (let i = 1; i < columnHeights.length; i++) {
+			if (columnHeights[i] < minHeight) {
+				minHeight = columnHeights[i];
+				minIndex = i;
+			}
+		}
+		return minIndex;
 	}
 
-	function calculateCardPositions(): void {
-		if (containerWidth === 0) return;
+	function findMinColumnIndexWithRoundRobin(columnHeights: number[]): number {
+		let minHeight = columnHeights[0];
+		let minIndex = 0;
+		const minIndices: number[] = [0];
 
-		const newColumnCount = calculateColumnCount(containerWidth);
-		const newCardWidth = calculateCardWidth(containerWidth, newColumnCount);
-
-		if (newColumnCount !== columnCount || newCardWidth !== cardWidth) {
-			columnCount = newColumnCount;
-			cardWidth = newCardWidth;
-			columnHeights = Array(columnCount).fill(0);
+		for (let i = 1; i < columnHeights.length; i++) {
+			if (columnHeights[i] < minHeight) {
+				minHeight = columnHeights[i];
+				minIndex = i;
+				minIndices.length = 0;
+				minIndices.push(i);
+			} else if (columnHeights[i] === minHeight) {
+				minIndices.push(i);
+			}
 		}
 
-		cardPositions = [];
+		if (minIndices.length === 1) return minIndex;
+
+		const roundRobinIndex = (lastUsedColumnIndex + 1) % minIndices.length;
+		lastUsedColumnIndex = roundRobinIndex;
+		return minIndices[roundRobinIndex];
+	}
+
+	function calculatePositions(
+		count: number,
+		getAspectRatio: (index: number) => number,
+		useRoundRobin: boolean,
+		targetPositions: CardPosition[],
+		targetColumnHeights: number[]
+	): number {
+		if (containerWidth === 0 || count === 0) return 0;
+
+		const layout = calculateLayoutBase(containerWidth);
+
+		if (layout.columnCount !== columnCount || layout.cardWidth !== cardWidth) {
+			columnCount = layout.columnCount;
+			cardWidth = layout.cardWidth;
+			targetColumnHeights.length = 0;
+			targetColumnHeights.push(...Array(columnCount).fill(0));
+			if (useRoundRobin) {
+				lastUsedColumnIndex = 0;
+			}
+		}
+
+		targetPositions.length = 0;
 		let maxHeight = 0;
 
-		for (let i = 0; i < data.posts.length; i++) {
-			const post = data.posts[i];
-			const coverRatio =
-				post.cover?.single?.meta?.width && post.cover.single.meta.height
-					? post.cover.single.meta.height / post.cover.single.meta.width
-					: 1;
+		const findMinIndex = useRoundRobin ? findMinColumnIndexWithRoundRobin : findMinColumnIndex;
+
+		for (let i = 0; i < count; i++) {
+			const coverRatio = getAspectRatio(i);
+
+			if (!isFinite(coverRatio) || coverRatio <= 0) continue;
 
 			const coverHeight = cardWidth * coverRatio;
-			const cardHeight = coverHeight + 120;
+			const cardHeight = coverHeight + mergedConfig.cardContentHeight;
 
-			const minHeight = Math.min(...columnHeights);
-			const minIndex = columnHeights.indexOf(minHeight);
+			const minIndex = findMinIndex(targetColumnHeights);
 
 			const left = minIndex * (cardWidth + mergedConfig.gap);
-			const top = minHeight;
+			const top = targetColumnHeights[minIndex];
 
-			cardPositions.push({ top, left, width: cardWidth, height: cardHeight });
+			let pos = targetPositions[i];
+			if (pos) {
+				pos.top = top;
+				pos.left = left;
+				pos.width = cardWidth;
+				pos.height = cardHeight;
+			} else {
+				targetPositions.push({ top, left, width: cardWidth, height: cardHeight });
+			}
 
-			columnHeights[minIndex] = minHeight + cardHeight + mergedConfig.gap;
+			targetColumnHeights[minIndex] = top + cardHeight + mergedConfig.gap;
+			maxHeight = Math.max(maxHeight, targetColumnHeights[minIndex]);
+		}
+
+		return maxHeight;
+	}
+
+	function calculateCardPositionsIncremental(): void {
+		const currentPostCount = postsRef.length;
+
+		if (currentPostCount < lastCalculatedPostCount) {
+			resetCardPositions();
+		}
+
+		if (currentPostCount <= lastCalculatedPostCount) {
+			return;
+		}
+
+		if (containerWidth === 0 || currentPostCount === 0) return;
+
+		const layout = calculateLayoutBase(containerWidth);
+
+		if (layout.columnCount !== columnCount || layout.cardWidth !== cardWidth) {
+			columnCount = layout.columnCount;
+			cardWidth = layout.cardWidth;
+			columnHeights.length = 0;
+			columnHeights.push(...Array(columnCount).fill(0));
+			lastUsedColumnIndex = 0;
+			lastCalculatedPostCount = 0;
+			cardPositions.length = 0;
+		}
+
+		let maxHeight = 0;
+		const findMinIndex = findMinColumnIndexWithRoundRobin;
+
+		for (let i = lastCalculatedPostCount; i < currentPostCount; i++) {
+			const post = postsRef[i];
+			let coverRatio = 1;
+
+			if (
+				post.cover?.single?.meta?.width &&
+				post.cover.single.meta.height &&
+				typeof post.cover.single.meta.width === 'number' &&
+				typeof post.cover.single.meta.height === 'number' &&
+				post.cover.single.meta.width > 0 &&
+				post.cover.single.meta.height > 0
+			) {
+				const ratio = post.cover.single.meta.height / post.cover.single.meta.width;
+				if (isFinite(ratio) && ratio > 0) {
+					coverRatio = ratio;
+				}
+			}
+
+			const coverHeight = cardWidth * coverRatio;
+			const cardHeight = coverHeight + mergedConfig.cardContentHeight;
+
+			const minIndex = findMinIndex(columnHeights);
+
+			const left = minIndex * (cardWidth + mergedConfig.gap);
+			const top = columnHeights[minIndex];
+
+			let pos = cardPositions[i];
+			if (pos) {
+				pos.top = top;
+				pos.left = left;
+				pos.width = cardWidth;
+				pos.height = cardHeight;
+			} else {
+				cardPositions.push({ top, left, width: cardWidth, height: cardHeight });
+			}
+
+			columnHeights[minIndex] = top + cardHeight + mergedConfig.gap;
 			maxHeight = Math.max(maxHeight, columnHeights[minIndex]);
 		}
+
+		lastCalculatedPostCount = currentPostCount;
+
+		if (scrollContainer) {
+			scrollContainer.style.height = `${maxHeight}px`;
+		}
+	}
+
+	function resetCardPositions(): void {
+		cardPositions.length = 0;
+		columnHeights.length = 0;
+		lastCalculatedPostCount = 0;
+		lastUsedColumnIndex = 0;
+	}
+
+	function calculateSkeletonPositions(): void {
+		const skeletonColumnHeights: number[] = [];
+		const maxHeight = calculatePositions(
+			skeletonCount,
+			(index) => {
+				const ratios = [0.75, 1, 1.33, 1.5, 0.8, 1.25];
+				return ratios[index % ratios.length];
+			},
+			false,
+			skeletonPositions,
+			skeletonColumnHeights
+		);
 
 		if (scrollContainer) {
 			scrollContainer.style.height = `${maxHeight}px`;
@@ -89,77 +252,189 @@
 
 		const scrollTop = scrollContainer.scrollTop;
 		const containerHeight = containerElement.clientHeight;
-		const bufferHeight = mergedConfig.bufferSize * 400;
+		const visibleBuffer = mergedConfig.bufferSize * mergedConfig.bufferHeight;
 
-		const startBuffer = Math.max(0, scrollTop - bufferHeight);
-		const endBuffer = scrollTop + containerHeight + bufferHeight;
+		const startBuffer = Math.max(0, scrollTop - visibleBuffer);
+		const endBuffer = scrollTop + containerHeight + visibleBuffer;
 
-		let start = 0;
+		let start = cardPositions.length;
 		let end = 0;
 
-		for (let i = 0; i < cardPositions.length; i++) {
-			const pos = cardPositions[i];
-			if (pos.top + pos.height >= startBuffer && pos.top <= endBuffer) {
-				if (start === 0) start = i;
-				end = i;
+		if (cardPositions.length > mergedConfig.binarySearchThreshold) {
+			start = findVisibleRangeStart(startBuffer);
+			end = findVisibleRangeEnd(endBuffer);
+		} else {
+			for (let i = 0; i < cardPositions.length; i++) {
+				const pos = cardPositions[i];
+				if (pos.top + pos.height >= startBuffer && pos.top <= endBuffer) {
+					start = Math.min(start, i);
+					end = Math.max(end, i);
+				}
 			}
 		}
 
+		if (start === cardPositions.length) start = 0;
 		if (end < start) end = start;
 		visibleRange = { start, end };
 	}
 
-	function handleScroll(): void {
-		updateVisibleRange();
+	function findVisibleRangeStart(target: number): number {
+		let left = 0;
+		let right = cardPositions.length - 1;
+		let result = cardPositions.length;
 
-		if (!scrollContainer) return;
+		while (left <= right) {
+			const mid = Math.floor((left + right) / 2);
+			const pos = cardPositions[mid];
 
-		const scrollTop = scrollContainer.scrollTop;
-		const scrollHeight = scrollContainer.scrollHeight;
-		const clientHeight = scrollContainer.clientHeight;
-
-		if (
-			scrollHeight - scrollTop - clientHeight < mergedConfig.loadingThreshold &&
-			data.hasMore &&
-			!data.loading
-		) {
-			data.loadMore();
+			if (pos.top + pos.height >= target) {
+				result = mid;
+				right = mid - 1;
+			} else {
+				left = mid + 1;
+			}
 		}
+
+		return result;
+	}
+
+	function findVisibleRangeEnd(target: number): number {
+		let left = 0;
+		let right = cardPositions.length - 1;
+		let result = 0;
+
+		while (left <= right) {
+			const mid = Math.floor((left + right) / 2);
+			const pos = cardPositions[mid];
+
+			if (pos.top <= target) {
+				result = mid;
+				left = mid + 1;
+			} else {
+				right = mid - 1;
+			}
+		}
+
+		return result;
+	}
+
+	function handleScroll(): void {
+		if (scrollFrameId !== null) return;
+
+		scrollFrameId = requestAnimationFrame(() => {
+			updateVisibleRange();
+
+			if (!scrollContainer) {
+				scrollFrameId = null;
+				return;
+			}
+
+			const scrollTop = scrollContainer.scrollTop;
+			const scrollHeight = scrollContainer.scrollHeight;
+			const clientHeight = scrollContainer.clientHeight;
+
+			if (
+				scrollHeight - scrollTop - clientHeight < mergedConfig.loadingThreshold &&
+				data.hasMore &&
+				!data.loading
+			) {
+				data.loadMore().catch((error) => {
+					console.error('Failed to load more posts:', error);
+				});
+			}
+
+			scrollFrameId = null;
+		});
 	}
 
 	async function handleRefresh(): Promise<void> {
 		if (data.refreshing) return;
-		await data.refresh();
+		try {
+			await data.refresh();
+		} catch (error) {
+			console.error('Failed to refresh posts:', error);
+			pullRefreshDistance = 0;
+		}
 	}
 
 	function handleTouchStart(event: TouchEvent): void {
-		if (scrollContainer.scrollTop > 0) return;
+		if (scrollContainer.scrollTop > 1) return;
 		startY = event.touches[0].clientY;
+		lastTouchY = startY;
 		isPulling = true;
 	}
 
 	function handleTouchMove(event: TouchEvent): void {
-		if (!isPulling || scrollContainer.scrollTop > 0) return;
+		if (!isPulling) return;
 
-		currentY = event.touches[0].clientY;
-		const distance = currentY - startY;
-
-		if (distance > 0) {
-			pullRefreshDistance = Math.min(distance * 0.5, 120);
+		if (scrollContainer.scrollTop > 0) {
+			resetPullRefresh();
+			return;
 		}
+
+		const touchY = event.touches[0].clientY;
+		const deltaY = touchY - lastTouchY;
+		lastTouchY = touchY;
+
+		if (deltaY <= 0) {
+			resetPullRefresh();
+			return;
+		}
+
+		if (touchMoveFrameId !== null) {
+			return;
+		}
+
+		touchMoveFrameId = requestAnimationFrame(() => {
+			currentY = touchY;
+			const distance = currentY - startY;
+
+			if (distance > 0) {
+				pullRefreshDistance = Math.min(
+					distance * PULL_REFRESH_CONFIG.DAMPING_FACTOR,
+					PULL_REFRESH_CONFIG.MAX_DISTANCE
+				);
+			}
+
+			touchMoveFrameId = null;
+		});
 	}
 
-	async function handleTouchEnd(): Promise<void> {
+	function handleTouchEnd(): void {
 		if (!isPulling) return;
 
 		isPulling = false;
 
-		if (pullRefreshDistance >= 80) {
-			pullRefreshDistance = 60;
-			await handleRefresh();
+		if (pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) {
+			pullRefreshDistance = PULL_REFRESH_CONFIG.TRIGGERED_DISTANCE;
+			handleRefresh();
+		} else {
+			pullRefreshDistance = 0;
 		}
+	}
 
+	function handleTouchCancel(): void {
+		resetPullRefresh();
+	}
+
+	function resetPullRefresh(): void {
+		isPulling = false;
 		pullRefreshDistance = 0;
+		if (touchMoveFrameId !== null) {
+			cancelAnimationFrame(touchMoveFrameId);
+			touchMoveFrameId = null;
+		}
+	}
+
+	function cleanup(): void {
+		if (touchMoveFrameId !== null) {
+			cancelAnimationFrame(touchMoveFrameId);
+			touchMoveFrameId = null;
+		}
+		if (scrollFrameId !== null) {
+			cancelAnimationFrame(scrollFrameId);
+			scrollFrameId = null;
+		}
 	}
 
 	onMount(() => {
@@ -172,7 +447,8 @@
 				const newWidth = entry.contentRect.width;
 				if (newWidth !== containerWidth) {
 					containerWidth = newWidth;
-					calculateCardPositions();
+					resetCardPositions();
+					calculateCardPositionsIncremental();
 					updateVisibleRange();
 				}
 			}
@@ -181,18 +457,21 @@
 		resizeObserver.observe(containerElement);
 
 		if (data.loading && data.posts.length === 0) {
-			skeletonCount = mergedConfig.needNum;
+			skeletonCount = mergedConfig.skeletonCardCount;
 		}
 
 		scrollContainer.addEventListener('scroll', handleScroll);
-		scrollContainer.addEventListener('touchstart', handleTouchStart);
-		scrollContainer.addEventListener('touchmove', handleTouchMove);
+		scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+		scrollContainer.addEventListener('touchmove', handleTouchMove, { passive: true });
 		scrollContainer.addEventListener('touchend', handleTouchEnd);
+		scrollContainer.addEventListener('touchcancel', handleTouchCancel);
 
 		tick().then(() => {
 			if (containerElement) {
 				containerWidth = containerElement.clientWidth;
-				calculateCardPositions();
+				resetCardPositions();
+				calculateCardPositionsIncremental();
+				calculateSkeletonPositions();
 				updateVisibleRange();
 			}
 		});
@@ -207,17 +486,23 @@
 			scrollContainer.removeEventListener('touchstart', handleTouchStart);
 			scrollContainer.removeEventListener('touchmove', handleTouchMove);
 			scrollContainer.removeEventListener('touchend', handleTouchEnd);
+			scrollContainer.removeEventListener('touchcancel', handleTouchCancel);
 		}
+		cleanup();
 	});
 
-	$: if (data.posts.length > 0) {
-		calculateCardPositions();
+	$: postsRef = data.posts;
+	$: loadingRef = data.loading;
+
+	$: if (postsRef.length > 0) {
+		calculateCardPositionsIncremental();
 		updateVisibleRange();
 	}
 
-	$: if (data.loading && data.posts.length === 0) {
-		skeletonCount = mergedConfig.needNum;
-	} else if (!data.loading) {
+	$: if (loadingRef && postsRef.length === 0) {
+		skeletonCount = mergedConfig.skeletonCardCount;
+		calculateSkeletonPositions();
+	} else if (!loadingRef) {
 		skeletonCount = 0;
 	}
 </script>
@@ -231,7 +516,7 @@
 			>
 				{#if data.refreshing}
 					<div class="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-				{:else if pullRefreshDistance >= 80}
+				{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
 					<span class="text-sm text-muted-foreground">释放刷新</span>
 				{:else}
 					<span class="text-sm text-muted-foreground">下拉刷新</span>
@@ -240,11 +525,13 @@
 		{/if}
 
 		{#if skeletonCount > 0}
-			<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-				{#each Array(skeletonCount) as i (i)}
-					<WaterfallSkeletonCard />
-				{/each}
-			</div>
+			{#each skeletonPositions as pos, i (i)}
+				<div class="absolute" style="top: {pos.top}px; left: {pos.left}px; width: {pos.width}px;">
+					<WaterfallSkeletonCard
+						aspectRatio={(pos.height - mergedConfig.cardContentHeight) / pos.width}
+					/>
+				</div>
+			{/each}
 		{:else}
 			{#each data.posts as post, i (i)}
 				{#if i >= visibleRange.start && i <= visibleRange.end}
