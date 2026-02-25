@@ -28,7 +28,6 @@ export interface WaterfallConfig {
 	bufferHeight: number;
 	loadingThreshold: number;
 	cardContentHeight: number;
-	scene: string;
 	skeletonCardCount: number;
 	binarySearchThreshold: number;
 }

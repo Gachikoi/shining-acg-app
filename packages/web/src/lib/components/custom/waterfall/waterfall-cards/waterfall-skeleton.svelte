@@ -1,5 +1,5 @@
 <script lang="ts">
-	export let aspectRatio: number;
+	let { aspectRatio }: { aspectRatio: number } = $props();
 </script>
 
 <article class="bg-transparent">

@@ -11,20 +11,33 @@
 	interface Media {
 		url: string;
 		ratio: number;
-		type?: 'image' | 'video';
 	}
 
-	export let postId: string;
-	export let title: string;
-	export let summary: string | undefined;
-	export let cover: Media;
-	export let author: UserSummary;
-	export let likeCount = 0;
-	export let viewCount = 0;
-	export let commentCount = 0;
-	export let isLiked = false;
-	export let isOnlyVideo = false;
-	export let publishTime: number;
+	let {
+		postId,
+		title,
+		summary,
+		cover,
+		author,
+		likeCount = 0,
+		viewCount = 0,
+		commentCount = 0,
+		isLiked = false,
+		isOnlyVideo = false,
+		publishTime
+	}: {
+		postId: string;
+		title: string;
+		summary: string | undefined;
+		cover: Media;
+		author: UserSummary;
+		likeCount?: number;
+		viewCount?: number;
+		commentCount?: number;
+		isLiked?: boolean;
+		isOnlyVideo?: boolean;
+		publishTime: number;
+	} = $props();
 </script>
 
 <article data-post-id={postId}>
@@ -49,7 +62,7 @@
 			<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">{summary}</p>
 		{/if}
 
-		<div class="mt-2 flex items-center justify-between">
+		<div class="mt-2 flex items-center justify-between" data-author-id={author.id}>
 			<div class="flex items-center gap-2">
 				<img class="size-5 rounded-full object-cover" src={author.avatar} alt={author.name} />
 				<span class="text-xs text-muted-foreground">{author.name}</span>

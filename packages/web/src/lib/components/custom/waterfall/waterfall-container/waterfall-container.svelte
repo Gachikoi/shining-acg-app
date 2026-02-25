@@ -4,8 +4,7 @@
 	import { WaterfallSkeletonCard } from '../waterfall-cards';
 	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
 
-	export let data: WaterfallData;
-	export let config: WaterfallConfig;
+	let { data, config }: { data: WaterfallData; config?: WaterfallConfig } = $props();
 
 	let containerElement: HTMLElement;
 	let resizeObserver: ResizeObserver;
@@ -16,13 +15,13 @@
 	let cardWidth = 0;
 	let columnHeights: number[] = [];
 	let cardPositions: CardPosition[] = [];
-	let visibleRange = { start: 0, end: 0 };
-	let skeletonCount = 0;
+	let visibleRange = $state({ start: 0, end: 0 });
+	let skeletonCount = $state(0);
 	let skeletonPositions: CardPosition[] = [];
 	let lastUsedColumnIndex = 0;
 	let lastCalculatedPostCount = 0;
 
-	let pullRefreshDistance = 0;
+	let pullRefreshDistance = $state(0);
 	let isPulling = false;
 	let startY = 0;
 	let currentY = 0;
@@ -37,7 +36,7 @@
 		DAMPING_FACTOR: 0.5
 	} as const;
 
-	const DEFAULT_CONFIG: Partial<WaterfallConfig> = {
+	const DEFAULT_CONFIG: WaterfallConfig = {
 		minCardWidth: 280,
 		gap: 16,
 		bufferSize: 3,
@@ -48,7 +47,7 @@
 		binarySearchThreshold: 100
 	};
 
-	$: mergedConfig = { ...DEFAULT_CONFIG, ...config };
+	let mergedConfig = $derived({ ...config, ...DEFAULT_CONFIG });
 
 	function calculateLayoutBase(width: number): { columnCount: number; cardWidth: number } {
 		const columnCount = Math.max(1, Math.floor(width / mergedConfig.minCardWidth));
@@ -491,20 +490,24 @@
 		cleanup();
 	});
 
-	$: postsRef = data.posts;
-	$: loadingRef = data.loading;
+	let postsRef = $derived(data.posts);
+	let loadingRef = $derived(data.posts);
 
-	$: if (postsRef.length > 0) {
-		calculateCardPositionsIncremental();
-		updateVisibleRange();
-	}
+	$effect(() => {
+		if (postsRef.length > 0) {
+			calculateCardPositionsIncremental();
+			updateVisibleRange();
+		}
+	});
 
-	$: if (loadingRef && postsRef.length === 0) {
-		skeletonCount = mergedConfig.skeletonCardCount;
-		calculateSkeletonPositions();
-	} else if (!loadingRef) {
-		skeletonCount = 0;
-	}
+	$effect(() => {
+		if (loadingRef && postsRef.length === 0) {
+			skeletonCount = mergedConfig.skeletonCardCount;
+			calculateSkeletonPositions();
+		} else if (!loadingRef) {
+			skeletonCount = 0;
+		}
+	});
 </script>
 
 <div class="relative h-full w-full overflow-y-auto" bind:this={containerElement}>
