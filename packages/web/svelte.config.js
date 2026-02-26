@@ -13,7 +13,10 @@ const config = {
 				include: ['/*'],
 				exclude: ['<all>']
 			}
-		})
+		}),
+		serviceWorker: {
+			register: false
+		}
 	}
 };
 

@@ -33,16 +33,22 @@ sw.addEventListener('fetch', (event) => {
 	// 只处理 GET 请求
 	if (event.request.method !== 'GET') return;
 
+	const url = new URL(event.request.url);
+	const isAsset = ASSETS.includes(url.pathname);
+
+	// 仅处理应用内的资源请求
+	if (!isAsset) {
+		return;
+	}
+
+	// isAppAndAsset 的请求我们才会进行缓存处理，其他请求直接放行
 	async function respond() {
-		const url = new URL(event.request.url);
 		const cache = await caches.open(CACHE);
 
 		// 如果请求的文件在缓存中，直接返回缓存的响应
-		if (ASSETS.includes(url.pathname)) {
-			const response = await cache.match(url.pathname);
-			if (response) {
-				return response;
-			}
+		const response = await cache.match(url.pathname);
+		if (response) {
+			return response;
 		}
 
 		// 如果请求的文件不在缓存中，尝试从网络获取
@@ -56,7 +62,7 @@ sw.addEventListener('fetch', (event) => {
 			}
 
 			// 仅缓存 assets 中的文件
-			if (response.status === 200 && ASSETS.includes(url.pathname)) {
+			if (response.status === 200 && isAsset) {
 				cache.put(event.request, response.clone());
 			}
 
