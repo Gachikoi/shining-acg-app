@@ -50,14 +50,17 @@ struct WebView: UIViewRepresentable {
 
     let configuration = WKWebViewConfiguration()
     configuration.userContentController = userContentController
+    configuration.limitsNavigationsToAppBoundDomains = true
 
     let wkwebView = WKWebView(frame: .zero, configuration: configuration)
     wkwebView.navigationDelegate = context.coordinator
     wkwebView.uiDelegate = context.coordinator
 
-    // 解决黑夜模式下首屏白屏问题：初始隐藏，等待脚本注入后显示
-    wkwebView.alpha = 0
+    // 解决黑夜模式下首屏白屏/屏幕完全黑问题
     wkwebView.isOpaque = false
+    wkwebView.backgroundColor =
+      colorScheme == .dark
+      ? UIColor(red: 9 / 255, green: 9 / 255, blue: 11 / 255, alpha: 1) : .white
 
     // 开启远程调试 (iOS 16.4+)
     if #available(iOS 16.4, *) {
@@ -282,7 +285,6 @@ struct WebView: UIViewRepresentable {
 
     //    解决黑夜模式下首屏白屏问题：在页面加载完成后淡入显示 WebView
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-      webView.alpha = 1
       parent.onLoadingStatusChange?(false)
     }
   }
