@@ -38,6 +38,6 @@ export const createClientConfig: CreateClientConfig = (config) => ({
 	...config,
 	// 3. 将自定义实例传入配置
 	axios: axiosInstance,
-	baseURL: `https:${DOMAIN_CONFIG.app}/api`,
+	baseURL: `https://${DOMAIN_CONFIG.api}`,
 	throwOnError: true
 });

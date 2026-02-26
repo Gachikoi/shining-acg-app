@@ -70,6 +70,18 @@ reroute 到 /site 路由下，以实现在一个 spa 应用中模拟两个独立
 如果不配置 whistle 代理，直接用本地
 ip（如127.0.0.1、localhost）访问项目，会在开发过程中出现路由导航问题。
 
+## 环境变量
+
+本项目依赖 `$env/static/public` 在构建时引入环境变量（例如 `PUBLIC_IS_TEST`）。
+
+> 注意：由于使用了静态注入，如果缺失必要的环境变量，项目在构建或开发启动时将直接报错。
+
+在 web 目录下运行以下命令，快速创建本地开发环境配置：
+
+```Bash
+cp .env.example .env.local
+```
+
 ## dev
 
 ```sh
@@ -88,9 +100,9 @@ deno task build
 deno add npm:[依赖名称]
 
 # 例
-npm add lucide-svelte
+npm add lucide-svelte ❌
 # ⬇️
-deno add npm:lucide-svelte
+deno add npm:lucide-svelte ✅
 ```
 
 ## 运行 npm 命令
@@ -99,9 +111,9 @@ deno add npm:lucide-svelte
 deno run -A npm:[命令]
 
 # 例
-npm sv create my-app
+npm sv create my-app ❌
 # ⬇️
-deno run -A npm:sv create my-app
+deno run -A npm:sv create my-app ✅
 ```
 
 # API 接口生成流程
@@ -130,7 +142,7 @@ deno run -A npm:sv create my-app
 
 ## 自定义配置
 
-如需修改 API 客户端的运行时配置（如 baseURL），请编辑 `src/hey-api.ts` 文件：
+如需修改 API 客户端的运行时配置（如 baseURL），请编辑 `src/hey-api.svelte.ts` 文件：
 
 ```typescript
 export const createClientConfig: CreateClientConfig = (config) => ({
@@ -198,8 +210,6 @@ shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库
 - QQ：1131997238
 - 邮箱：1131997238@qq.com
 
-2. Nt.
-
 ## 部署运维
 
 测试环境：https://dash.cloudflare.com/dca725a549c82a7e9364aeced533962e/pages/view/test-shining-acg-app
@@ -212,4 +222,3 @@ shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库
 
 - QQ：1131997238
 - 邮箱：1131997238@qq.com
-- 微信：mineskura
