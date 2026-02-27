@@ -22,7 +22,8 @@ import {
 	getTextLengthWithNewlines,
 	insertTextAtCaret,
 	insertAtEnd,
-	tryGetCaretPosition
+	tryGetCaretPosition,
+	NBSP
 } from './contenteditable-utils';
 import { createKeydownHandlerChain, type KeydownContext } from './keydown-handlers';
 
@@ -118,7 +119,7 @@ export class RichTextareaController {
 	 */
 	private async insertMentionAtCaret(target: HTMLElement, user: MentionUser): Promise<void> {
 		const mentionEl = await this.cloneMentionFromTemplate(user);
-		const spaceNode = document.createTextNode(' ');
+		const spaceNode = document.createTextNode(NBSP);
 		const fragment = document.createDocumentFragment();
 		fragment.appendChild(mentionEl);
 		fragment.appendChild(spaceNode);
@@ -191,7 +192,7 @@ export class RichTextareaController {
 				insertRange.setStart(startPos.node, startPos.offset);
 				insertRange.collapse(true);
 				const mentionEl = await this.cloneMentionFromTemplate(user);
-				const spaceNode = document.createTextNode(' ');
+				const spaceNode = document.createTextNode(NBSP);
 				const fragment = document.createDocumentFragment();
 				fragment.appendChild(mentionEl);
 				fragment.appendChild(spaceNode);
