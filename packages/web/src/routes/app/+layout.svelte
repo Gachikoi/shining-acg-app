@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { startRealtimeAppManager, stopRealtimeAppManager } from '$lib/models/realtime';
+	// import { startRealtimeAppManager, stopRealtimeAppManager } from '$lib/models/realtime';
 	import { Bell, House, SquarePen, UserCogIcon } from 'lucide-svelte';
 	import { ModeWatcher } from 'mode-watcher';
 	import { onDestroy, onMount } from 'svelte';
@@ -10,11 +10,11 @@
 	let { children } = $props();
 
 	onMount(() => {
-		startRealtimeAppManager();
+		// startRealtimeAppManager();
 	});
 
 	onDestroy(() => {
-		stopRealtimeAppManager();
+		// stopRealtimeAppManager();
 	});
 </script>
 
