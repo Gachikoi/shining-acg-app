@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+package api.media.v1;
+
+import "buf/validate/validate.proto";
+
+// MediaType 描述媒体资源的主类型。
+enum MediaType {
+  // 默认值，表示未设置媒体类型。
+  MEDIA_TYPE_UNSPECIFIED = 0;
+  // 图片媒体（JPG/PNG/WebP/HEIC 等转码后的图片资产）。
+  MEDIA_TYPE_IMAGE = 1;
+  // 视频媒体（MP4/MOV/WebM 等转码后的流媒体资产）。
+  MEDIA_TYPE_VIDEO = 2;
+  // Live Photo 复合媒体（由一张图片和一个视频组成）。
+  MEDIA_TYPE_LIVE_PHOTO = 3;
+}
+
+// MediaScene 描述业务上传场景（不再区分图片/视频）。
+enum MediaScene {
+  // 默认值，表示未指定场景。
+  MEDIA_SCENE_UNSPECIFIED = 0;
+  // 用户头像场景。
+  MEDIA_SCENE_USER_AVATAR = 1;
+  // 帖子媒体场景（图片/视频/Live Photo）。
+  MEDIA_SCENE_POST_MEDIA = 2;
+  // 评论媒体场景（图片/视频/Live Photo）。
+  MEDIA_SCENE_COMMENT_MEDIA = 3;
+  // 帖子封面场景（仅图片）。
+  MEDIA_SCENE_POST_COVER = 4;
+}
+
+// MediaStatus 表示媒体处理状态。
+enum MediaStatus {
+  // 默认值，状态未知。
+  MEDIA_STATUS_UNSPECIFIED = 0;
+  // 处理中，可能处于上传完成待处理或转码中。
+  MEDIA_STATUS_PROCESSING = 1;
+  // 处理完成，可供业务引用。
+  MEDIA_STATUS_COMPLETED = 2;
+  // 处理失败，需要前端重试或提示用户。
+  MEDIA_STATUS_FAILED = 3;
+  // 已屏蔽，不可对外展示。
+  MEDIA_STATUS_BLOCKED = 4;
+}
+
+// ProgressStage 表示批次处理阶段。
+enum ProgressStage {
+  // 默认值，阶段未知。
+  PROGRESS_STAGE_UNSPECIFIED = 0;
+  // 上传阶段（由前端 Uppy 监听，本枚举用于阶段占位）。
+  PROGRESS_STAGE_UPLOADING = 1;
+  // 视频转码阶段。
+  PROGRESS_STAGE_TRANSCODING = 2;
+  // 图片压缩/裁剪阶段。
+  PROGRESS_STAGE_COMPRESSING = 3;
+  // 批次处理完成阶段。
+  PROGRESS_STAGE_COMPLETED = 4;
+  // 批次处理失败阶段。
+  PROGRESS_STAGE_FAILED = 5;
+}
+
+// MediaMeta 描述媒体基础元信息。
+message MediaMeta {
+  // 媒体宽度（像素）。
+  int32 width = 1;
+  // 媒体高度（像素）。
+  int32 height = 2;
+  // 媒体时长（毫秒），图片通常为 0。
+  int64 duration_ms = 3;
+  // 文件体积（字节）。
+  int64 size_bytes = 4;
+  // 媒体 MIME 类型，如 image/webp、application/x-mpegURL。
+  string mime_type = 5;
+}
+
+// MediaFile 表示单个物理文件（图片或视频）。
+message MediaFile {
+  // 文件媒体主键 ID（雪花 ID 字符串形式）。
+  string file_id = 1;
+  // 文件媒体类型（仅 IMAGE 或 VIDEO）。
+  MediaType type = 2;
+  // 存储桶名称。
+  string bucket = 3;
+  // 对象键（Object Key），用于后端精确定位对象。
+  string object_key = 4;
+  // 对外可访问 URL（CDN 或对象存储网关地址）。
+  string url = 5;
+  // 缩略图 URL（图片可选，视频建议提供）。
+  optional string thumbnail_url = 6;
+  // 媒体元信息。
+  MediaMeta meta = 7;
+  // 当前媒体处理状态。
+  MediaStatus status = 8;
+}
+
+// LivePhotoAsset 表示 Live Photo 的图片与视频组合。
+message LivePhotoAsset {
+  // Live Photo 图片轨资产。
+  MediaFile image = 1;
+  // Live Photo 视频轨资产。
+  MediaFile video = 2;
+}
+
+// MediaAsset 是业务层对“一个媒体数组元素”的统一表达。
+message MediaAsset {
+  // 媒体元素 ID（数组元素级别 ID）。
+  string asset_id = 1;
+  // 元素类型（IMAGE / VIDEO / LIVE_PHOTO）。
+  MediaType type = 2;
+  // 业务场景。
+  MediaScene scene = 3;
+  // 元素状态（由元素内文件状态聚合得出）。
+  MediaStatus status = 4;
+  // 元素顺序索引（从 0 开始），用于 CreatePost/EditPost 时稳定保序。
+  int32 order_index = 7;
+
+  oneof content {
+    // 普通单文件媒体（图片或视频）。
+    MediaFile single = 5;
+    // Live Photo 复合媒体。
+    LivePhotoAsset live_photo = 6;
+  }
+}
+
+// MediaFileInfo 是面向单文件 complete 响应的媒体包装。
+message MediaFileInfo {
+  // 文件任务 ID，用于前后端对账。
+  string task_id = 1;
+  // 单文件媒体实体。
+  MediaFile file = 2;
+  // 所属媒体元素 ID。
+  string asset_id = 3;
+  // 上传场景。
+  MediaScene scene = 5;
+}
+
+// UploadFile 描述单个文件上传任务。
+message UploadFile {
+  // 原始文件名。
+  string filename = 2 [(buf.validate.field).string.pattern = "\\S"];
+  // 文件大小（字节）。
+  int64 size_bytes = 3 [(buf.validate.field).int64.gt = 0];
+  // 文件 MIME 类型，由前端探测上送，后端会二次校验。
+  string mime_type = 4 [(buf.validate.field).string.pattern = "\\S"];
+  // 可选文件哈希，便于去重或幂等检查。
+  optional string file_hash = 5 [(buf.validate.field).string.pattern = "\\S"];
+  // 帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。
+  optional bool crop_cover = 6;
+}
+
+// LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。
+message LivePhotoUploadPair {
+  // Live Photo 图片文件。
+  UploadFile image_file = 1 [(buf.validate.field).required = true];
+  // Live Photo 视频文件。
+  UploadFile video_file = 2 [(buf.validate.field).required = true];
+}
+
+// UploadAsset 描述前端发起批量上传时的单个“媒体元素”。
+message UploadAsset {
+  option (buf.validate.message).cel = {
+    id: "upload_asset.single_file.mime_type"
+    message: "single_file mime_type must be an allowed image or video type"
+    expression:
+      "!has(this.single_file) || "
+      "this.single_file.mime_type.matches('(?i)^\\\\s*(image/jpeg|image/jpg|image/png|image/heic|image/heif|image/webp|video/mp4|video/quicktime|video/x-m4v|video/webm)\\\\s*$')"
+  };
+  option (buf.validate.message).cel = {
+    id: "upload_asset.live_photo_pair.mime_type"
+    message: "live_photo_pair requires image_file as image mime and video_file as video mime"
+    expression:
+      "!has(this.live_photo_pair) || ("
+      "this.live_photo_pair.image_file.mime_type.matches('(?i)^\\\\s*(image/jpeg|image/jpg|image/png|image/heic|image/heif|image/webp)\\\\s*$') && "
+      "this.live_photo_pair.video_file.mime_type.matches('(?i)^\\\\s*(video/mp4|video/quicktime|video/x-m4v|video/webm)\\\\s*$'))"
+  };
+
+  // 上传场景。
+  MediaScene scene = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  oneof payload {
+    option (buf.validate.oneof).required = true;
+
+    // 普通媒体元素（单文件）。
+    UploadFile single_file = 2;
+    // Live Photo 媒体元素（图片 + 视频）。
+    LivePhotoUploadPair live_photo_pair = 3;
+  }
+}
+
+// PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。
+message PreparedUploadTask {
+  // 服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。
+  string task_id = 2;
+  // 所属媒体元素 ID。
+  string asset_id = 3;
+  // 文件上传场景（回显）。
+  MediaScene scene = 5;
+  // 文件媒体类型（IMAGE/VIDEO）。
+  MediaType type = 6;
+}
+
+// PreparedUploadAsset 描述 PrepareUploadBatch 后单个媒体元素的映射结果。
+message PreparedUploadAsset {
+  // 媒体元素 ID。
+  string asset_id = 1;
+  // 元素顺序索引（从 0 开始）。
+  int32 order_index = 2;
+  // 元素场景。
+  MediaScene scene = 3;
+  // 元素类型（IMAGE/VIDEO/LIVE_PHOTO）。
+  MediaType type = 4;
+  // 该元素下的文件任务列表（1 个或 2 个）。
+  repeated PreparedUploadTask tasks = 5;
+}
+
+// UploadedPart 描述客户端已上传分片（用于 complete 请求）。
+message UploadedPart {
+  // 分片号。
+  int32 part_number = 1 [(buf.validate.field).int32.gt = 0];
+  // 分片 ETag。
+  string etag = 2;
+  // 分片大小（字节）。
+  int64 size_bytes = 3 [(buf.validate.field).int64.gt = 0];
+}
+
+// BatchProgress 表示批次级处理进度（服务端通过 WS 推送）。
+message BatchProgress {
+  // 批次 ID。
+  string batch_id = 1;
+  // 当前阶段。
+  ProgressStage stage = 2;
+  // 当前批次已完成处理的文件数。
+  int32 processed_count = 3;
+  // 批次总文件数。
+  int32 total_count = 4;
+  // 转码/压缩阶段的百分比（0-100）；上传阶段由前端 Uppy 负责。
+  int32 transcode_percent = 5;
+  // 人类可读的阶段说明。
+  string message = 6;
+}

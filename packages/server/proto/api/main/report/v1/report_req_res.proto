@@ -2,15 +2,20 @@ syntax = "proto3";
 
 package api.main.report.v1;
 
+import "buf/validate/validate.proto";
 import "api/main/common/v1/common.proto";
 import "api/main/report/v1/report_models.proto";
+import "api/media/v1/media_models.proto";
 
 // ---------------------------------------------------------
 // 举报用户
 message ReportUserRequest {
-  string user_id = 1; // 被举报的用户ID
-  string reason = 2; // 举报说明（必填）
-  repeated api.main.common.v1.Media media = 3; // 证明材料图片ID（最多3张）
+  string user_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 被举报的用户ID
+  string reason = 2 [(buf.validate.field).string = {
+    max_len: 200
+    pattern: "\\S"
+  }]; // 举报说明（必填）
+  repeated api.media.v1.MediaAsset media = 3 [(buf.validate.field).repeated.max_items = 3]; // 证明材料图片ID（最多3张）
 }
 
 message ReportUserResponse {
@@ -20,7 +25,7 @@ message ReportUserResponse {
 // ---------------------------------------------------------
 // 举报帖子
 message ReportPostRequest {
-  string post_id = 1; // 被举报的帖子ID
+  string post_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 被举报的帖子ID
 }
 
 message ReportPostResponse {
@@ -30,8 +35,8 @@ message ReportPostResponse {
 // ---------------------------------------------------------
 // 举报评论
 message ReportCommentRequest {
-  string comment_id = 1; // 被举报的评论ID
-  string post_id = 2; // 评论所属的帖子ID
+  string comment_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 被举报的评论ID
+  string post_id = 2 [(buf.validate.field).string.pattern = "\\S"]; // 评论所属的帖子ID
 }
 
 message ReportCommentResponse {
@@ -39,11 +44,14 @@ message ReportCommentResponse {
 }
 
 // ---------------------------------------------------------
-// 获取举报列表（管理员）
+// 获取举报列表（管理员），默认优先展示待处理的举报，次优先展示最新 update 的举报
 message ListReportsRequest {
-  optional ReportType type = 1; // 举报类型筛选（可选，不传则返回全部）
-  optional ReportStatus status = 2; // 举报状态筛选（可选，不传则返回全部）
-  api.main.common.v1.CursorPagination pagination = 3; // 分页参数
+  // 刷新类型
+  api.main.common.v1.RefreshType refresh_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true]; // 分页参数
 }
 
 message ListReportsResponse {
@@ -54,8 +62,8 @@ message ListReportsResponse {
 // ---------------------------------------------------------
 // 查看举报证据（管理员）
 message ListReportEvidenceRequest {
-  string report_id = 1; // 举报记录ID
-  api.main.common.v1.CursorPagination pagination = 2; // 分页参数
+  string report_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 举报记录ID
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true]; // 分页参数
 }
 
 message ListReportEvidenceResponse {
@@ -66,7 +74,7 @@ message ListReportEvidenceResponse {
 // ---------------------------------------------------------
 // 驳回举报（管理员）
 message RejectReportRequest {
-  string report_id = 1; // 举报记录ID
+  string report_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 举报记录ID
 }
 
 message RejectReportResponse {}
@@ -74,10 +82,12 @@ message RejectReportResponse {}
 // ---------------------------------------------------------
 // 封禁内容（管理员）
 message ApprovalReportRequest {
-  string report_id = 1; // 举报记录ID
-  string approval_reason = 2; // 封禁/删除原因
+  string report_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 举报记录ID
+  string approval_reason = 2 [(buf.validate.field).string = {
+    max_len: 200
+    pattern: "\\S"
+  }]; // 封禁/删除原因
   optional BanDurationType ban_duration = 3; // 封禁时长（仅对用户封禁有效，帖子/评论删除后不再展示）
 }
 
 message ApprovalReportResponse {}
-

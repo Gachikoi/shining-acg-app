@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package api.media.v1;
+
+import "api/media/v1/media_req_res.proto";
+import "google/api/annotations.proto";
+
+// MediaService 提供媒体上传控制面与媒体查询能力。
+//
+// 集成说明（面向前端）：
+// 1) 前端先调用 PrepareUploadBatch 固化媒体元素顺序并拿到文件级 task_id。
+// 2) Uppy 在每个文件生命周期中调用 create/sign/list/complete/abort。
+// 3) 上传完毕后，后端触发图片压缩或视频转码并通过 WS 推送 batch 级进度。
+// 4) 前端通过 GetBatchMedia 拉取最终媒体元素详情并提交到 CreatePost/EditPost。
+service MediaService {
+  // PrepareUploadBatch 批量准备上传任务并固化顺序。
+  // 调用时机：前端准备开始上传一个业务批次时调用一次。
+  // 参数：batch_id + assets（数组顺序即最终顺序来源）。
+  // 返回：每个媒体元素对应的 asset_id，以及其下每个文件的 task_id 映射。
+  // 错误：INVALID_ARGUMENT（格式/大小非法）；INTERNAL（存储服务故障）。
+  rpc PrepareUploadBatch(PrepareUploadBatchRequest) returns (PrepareUploadBatchResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/multipart/batch/prepare"
+      body: "*"
+    };
+  }
+
+  // CreateMultipartUpload 创建单文件 multipart 上传会话（S3 CreateMultipartUpload 语义）。
+  // 调用时机：Uppy 在文件开始上传时调用。
+  // 参数：task_id。
+  // 返回：upload_id/object_key 等会话参数。
+  // 错误：NOT_FOUND（task 不存在）；FAILED_PRECONDITION（状态冲突）。
+  rpc CreateMultipartUpload(CreateMultipartUploadRequest) returns (CreateMultipartUploadResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/multipart/create"
+      body: "*"
+    };
+  }
+
+  // SignMultipartPart 为单个分片签名。
+  // 调用时机：Uppy 在上传每个 part 前调用。
+  // 参数：task_id/upload_id/part_number。
+  // 返回：该分片的预签名 URL 与必要请求头。
+  // 错误：NOT_FOUND（task 不存在）；FAILED_PRECONDITION（会话不匹配）。
+  rpc SignMultipartPart(SignMultipartPartRequest) returns (SignMultipartPartResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/multipart/part/sign"
+      body: "*"
+    };
+  }
+
+  // ListUploadedParts 查询会话已上传分片，支持断点续传恢复。
+  // 调用时机：Uppy 续传恢复时调用。
+  // 参数：task_id/upload_id。
+  // 返回：已上传分片列表。
+  // 错误：NOT_FOUND（会话不存在）；INTERNAL（存储查询失败）。
+  rpc ListUploadedParts(ListUploadedPartsRequest) returns (ListUploadedPartsResponse) {
+    option (google.api.http) = {get: "/v1/media/multipart/parts"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // CompleteMultipartUpload 完成分片合并并触发媒体处理。
+  // 调用时机：前端确认所有分片上传成功后调用。
+  // 参数：task_id/upload_id + parts（part_number/etag）。
+  // 返回：当前文件的 MediaFileInfo；图片通常更快完成，视频会进入异步处理。
+  // 错误：FAILED_PRECONDITION（分片不完整）；INTERNAL（合并或处理失败）。
+  rpc CompleteMultipartUpload(CompleteMultipartUploadRequest) returns (CompleteMultipartUploadResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/multipart/complete"
+      body: "*"
+    };
+  }
+
+  // AbortMultipartUpload 中止未完成上传并清理存储侧临时分片。
+  // 调用时机：用户取消上传或客户端显式回滚。
+  // 参数：task_id/upload_id。
+  // 返回：success=true 表示成功中止或会话已不可用。
+  // 错误：INTERNAL（清理失败）。
+  rpc AbortMultipartUpload(AbortMultipartUploadRequest) returns (AbortMultipartUploadResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/multipart/abort"
+      body: "*"
+    };
+  }
+
+  // GetBatchMedia 查询批次内全部媒体元素（按顺序返回）。
+  // 调用时机：前端准备调用 CreatePost/EditPost 前做最终拉取。
+  // 参数：batch_id。
+  // 返回：按服务端固定顺序排序的 media_assets。
+  // 错误：NOT_FOUND（批次不存在）；INTERNAL（查询失败）。
+  rpc GetBatchMedia(GetBatchMediaRequest) returns (GetBatchMediaResponse) {
+    option (google.api.http) = {get: "/v1/media/batches/{batch_id}/media"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

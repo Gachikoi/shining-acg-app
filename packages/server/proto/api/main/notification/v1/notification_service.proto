@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package api.main.notification.v1;
+
+import "api/main/notification/v1/notification_req_res.proto";
+import "google/api/annotations.proto";
+
+// 通知服务
+service NotificationService {
+  // --- 通知统计 ---
+
+  // 获取未读通知统计
+  rpc GetNotificationStats(GetNotificationStatsRequest) returns (GetNotificationStatsResponse) {
+    option (google.api.http) = {get: "/v1/notifications/stats"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  } // TODO：改用 websocket 实现实时通知统计更新
+
+  // --- 获取通知列表 ---
+
+  // 获取评论和@通知列表
+  rpc ListCommentMentionNotifications(ListCommentMentionNotificationsRequest) returns (ListCommentMentionNotificationsResponse) {
+    option (google.api.http) = {get: "/v1/notifications/comment-mentions"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取赞和收藏通知列表
+  rpc ListLikeCollectNotifications(ListLikeCollectNotificationsRequest) returns (ListLikeCollectNotificationsResponse) {
+    option (google.api.http) = {get: "/v1/notifications/like-collects"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取新增关注通知列表
+  rpc ListFollowNotifications(ListFollowNotificationsRequest) returns (ListFollowNotificationsResponse) {
+    option (google.api.http) = {get: "/v1/notifications/follows"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 获取系统通知列表
+  rpc ListSystemNotifications(ListSystemNotificationsRequest) returns (ListSystemNotificationsResponse) {
+    option (google.api.http) = {get: "/v1/notifications/system"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // --- 标记已读 ---
+
+  // 标记指定通知为已读（幂等操作）
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications/mark-read"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 标记某类所有通知为已读（幂等操作）
+  rpc MarkAllNotificationsRead(MarkAllNotificationsReadRequest) returns (MarkAllNotificationsReadResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications/mark-all-read"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+}

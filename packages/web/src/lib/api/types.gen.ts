@@ -139,9 +139,6 @@ export type UserServiceSetFollowBody = {
  */
 export type VerificationServiceReviewVerificationBody = {
     action?: V1ReviewAction;
-    /**
-     * 审批原因/意见（批准或拒绝的理由）
-     */
     reason?: string;
 };
 
@@ -169,6 +166,10 @@ export type V1AbortMultipartUploadRequest = {
      * multipart upload_id。
      */
     upload_id?: string;
+    /**
+     * 上传对象键（Object Key）。
+     */
+    object_key?: string;
 };
 
 /**
@@ -268,33 +269,6 @@ export type V1BanDurationType = 'BAN_DURATION_TYPE_UNSPECIFIED' | 'BAN_DURATION_
 export type V1BasePrivacyLevel = 'BASE_PRIVACY_LEVEL_PUBLIC' | 'BASE_PRIVACY_LEVEL_PRIVATE';
 
 /**
- * BatchProgress 表示批次级处理进度（服务端通过 WS 推送）。
- */
-export type V1BatchProgress = {
-    /**
-     * 批次 ID。
-     */
-    batch_id?: string;
-    stage?: V1ProgressStage;
-    /**
-     * 当前批次已完成处理的文件数。
-     */
-    processed_count?: number;
-    /**
-     * 批次总文件数。
-     */
-    total_count?: number;
-    /**
-     * 转码/压缩阶段的百分比（0-100）；上传阶段由前端 Uppy 负责。
-     */
-    transcode_percent?: number;
-    /**
-     * 人类可读的阶段说明。
-     */
-    message?: string;
-};
-
-/**
  * ---------------------------------------------------------
  * 修改头像
  */
@@ -360,7 +334,7 @@ export type V1Comment = {
     relation_status?: V1CommentRelationStatus;
     reply_context?: V1ReplyContext;
     /**
-     * 创建时间（秒级时间戳）
+     * 创建时间（毫秒级时间戳）
      */
     create_time?: string;
 };
@@ -374,7 +348,7 @@ export type V1CommentMentionNotification = {
      */
     notification_id?: string;
     type?: V1CommentMentionType;
-    user?: V1UserBrief;
+    actor?: V1UserBrief;
     /**
      * 通知产生时间戳（秒）
      */
@@ -496,13 +470,17 @@ export type V1CompleteMultipartUploadRequest = {
      * 客户端确认分片清单（建议按 part_number 升序）。
      */
     parts?: Array<V1UploadedPart>;
+    /**
+     * 上传对象键（Object Key）。
+     */
+    object_key?: string;
 };
 
 /**
  * CompleteMultipartUploadResponse 返回处理任务对应媒体信息。
  */
 export type V1CompleteMultipartUploadResponse = {
-    media?: V1MediaInfo;
+    media?: V1MediaFileInfo;
 };
 
 /**
@@ -577,20 +555,6 @@ export type V1CreateMultipartUploadResponse = {
      * 上传对象键（Object Key）。
      */
     object_key?: string;
-    /**
-     * 建议分片大小（字节），前端应按该大小切片上传。
-     */
-    part_size_bytes?: string;
-    /**
-     * 预估总分片数（按文件大小与分片大小计算）。
-     */
-    total_parts?: number;
-    /**
-     * 分片上传时必须携带的公共请求头。
-     */
-    required_headers?: {
-        [key: string]: string;
-    };
 };
 
 /**
@@ -623,7 +587,7 @@ export type V1CreatePostRequest = {
     partition_id?: string;
     /**
      * 已完成上传与处理的媒体资产列表。
-     * 后端会严格按数组顺序保存，不进行重排。
+     * 后端按每个 MediaAsset.order_index 保存，不依赖数组位置。
      */
     media_assets?: Array<V1MediaAsset>;
 };
@@ -855,7 +819,7 @@ export type V1FollowNotification = {
      * 通知 ID
      */
     notification_id?: string;
-    user?: V1UserSummary;
+    actor?: V1UserSummary;
     /**
      * 通知产生时间戳（秒）
      */
@@ -978,10 +942,6 @@ export type V1GetUserResponse = {
     view_capabilities?: V1UserViewCapabilities;
 };
 
-export type V1GetWsEnvelopeSchemaResponse = {
-    envelope?: V1WsEnvelope;
-};
-
 export type V1HandleReportAdmin = {
     /**
      * 处理管理员ID
@@ -1002,7 +962,7 @@ export type V1LikeCollectNotification = {
      */
     notification_id?: string;
     type?: V1LikeCollectType;
-    user?: V1UserBrief;
+    actor?: V1UserBrief;
     /**
      * 通知产生时间戳（秒）
      */
@@ -1040,9 +1000,6 @@ export type V1LikeCollectType = 'LIKE_COLLECT_TYPE_UNSPECIFIED' | 'LIKE_COLLECT_
  * 外部链接结构
  */
 export type V1Link = {
-    /**
-     * 链接显示文字
-     */
     label?: string;
     /**
      * 实际跳转地址
@@ -1205,8 +1162,8 @@ export type V1ListVerificationsResponse = {
  * LivePhotoAsset 表示 Live Photo 的图片与视频组合。
  */
 export type V1LivePhotoAsset = {
-    image?: V1MediaFileAsset;
-    video?: V1MediaFileAsset;
+    image?: V1MediaFile;
+    video?: V1MediaFile;
 };
 
 /**
@@ -1271,22 +1228,26 @@ export type V1MediaAsset = {
     /**
      * 媒体元素 ID（数组元素级别 ID）。
      */
-    item_id?: string;
+    asset_id?: string;
     type?: V1MediaType;
     scene?: V1MediaScene;
     status?: V1MediaStatus;
-    single?: V1MediaFileAsset;
+    /**
+     * 元素顺序索引（从 0 开始），用于 CreatePost/EditPost 时稳定保序。
+     */
+    order_index?: number;
+    single?: V1MediaFile;
     live_photo?: V1LivePhotoAsset;
 };
 
 /**
- * MediaFileAsset 表示单个物理文件资产（图片或视频）。
+ * MediaFile 表示单个物理文件（图片或视频）。
  */
-export type V1MediaFileAsset = {
+export type V1MediaFile = {
     /**
      * 文件媒体主键 ID（雪花 ID 字符串形式）。
      */
-    id?: string;
+    file_id?: string;
     type?: V1MediaType;
     /**
      * 存储桶名称。
@@ -1309,18 +1270,18 @@ export type V1MediaFileAsset = {
 };
 
 /**
- * MediaInfo 是面向单文件 complete 响应的媒体包装。
+ * MediaFileInfo 是面向单文件 complete 响应的媒体包装。
  */
-export type V1MediaInfo = {
+export type V1MediaFileInfo = {
     /**
      * 文件任务 ID，用于前后端对账。
      */
     task_id?: string;
-    asset?: V1MediaFileAsset;
+    file?: V1MediaFile;
     /**
      * 所属媒体元素 ID。
      */
-    item_id?: string;
+    asset_id?: string;
     scene?: V1MediaScene;
 };
 
@@ -1462,7 +1423,7 @@ export type V1Post = {
     stats?: V1PostStats;
     relation_status?: V1PostRelationStatus;
     /**
-     * 秒级时间戳
+     * 毫秒级时间戳
      */
     publish_time?: string;
     update_time?: string;
@@ -1518,7 +1479,7 @@ export type V1PostPreview = {
      */
     is_only_video?: boolean;
     /**
-     * 秒级时间戳
+     * 毫秒级时间戳
      */
     publish_time?: string;
     update_time?: string;
@@ -1557,7 +1518,7 @@ export type V1PrepareUploadBatchRequest = {
     /**
      * 本次批量准备的媒体元素，数组顺序即最终返回顺序来源。
      */
-    items?: Array<V1UploadItem>;
+    assets?: Array<V1UploadAsset>;
 };
 
 /**
@@ -1565,19 +1526,23 @@ export type V1PrepareUploadBatchRequest = {
  */
 export type V1PrepareUploadBatchResponse = {
     /**
-     * 与请求 items 一一对应的映射结果。
+     * 与请求 assets 一一对应的映射结果。
      */
-    items?: Array<V1PreparedUploadItem>;
+    assets?: Array<V1PreparedUploadAsset>;
 };
 
 /**
- * PreparedUploadItem 描述 PrepareUploadBatch 后单个媒体元素的映射结果。
+ * PreparedUploadAsset 描述 PrepareUploadBatch 后单个媒体元素的映射结果。
  */
-export type V1PreparedUploadItem = {
+export type V1PreparedUploadAsset = {
     /**
      * 媒体元素 ID。
      */
-    item_id?: string;
+    asset_id?: string;
+    /**
+     * 元素顺序索引（从 0 开始）。
+     */
+    order_index?: number;
     scene?: V1MediaScene;
     type?: V1MediaType;
     /**
@@ -1591,32 +1556,16 @@ export type V1PreparedUploadItem = {
  */
 export type V1PreparedUploadTask = {
     /**
-     * 前端文件 ID（用于与 Uppy file.id 对账）。
-     */
-    client_file_id?: string;
-    /**
      * 服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。
      */
     task_id?: string;
     /**
      * 所属媒体元素 ID。
      */
-    item_id?: string;
+    asset_id?: string;
     scene?: V1MediaScene;
     type?: V1MediaType;
 };
-
-/**
- * ProgressStage 表示批次处理阶段。
- *
- * - PROGRESS_STAGE_UNSPECIFIED: 默认值，阶段未知。
- * - PROGRESS_STAGE_UPLOADING: 上传阶段（由前端 Uppy 监听，本枚举用于阶段占位）。
- * - PROGRESS_STAGE_TRANSCODING: 视频转码阶段。
- * - PROGRESS_STAGE_COMPRESSING: 图片压缩/裁剪阶段。
- * - PROGRESS_STAGE_COMPLETED: 批次处理完成阶段。
- * - PROGRESS_STAGE_FAILED: 批次处理失败阶段。
- */
-export type V1ProgressStage = 'PROGRESS_STAGE_UNSPECIFIED' | 'PROGRESS_STAGE_UPLOADING' | 'PROGRESS_STAGE_TRANSCODING' | 'PROGRESS_STAGE_COMPRESSING' | 'PROGRESS_STAGE_COMPLETED' | 'PROGRESS_STAGE_FAILED';
 
 /**
  * ---------------------------------------------------------
@@ -1904,6 +1853,10 @@ export type V1SignMultipartPartRequest = {
      * 分片号（从 1 开始）。
      */
     part_number?: number;
+    /**
+     * 上传对象键（Object Key）。
+     */
+    object_key?: string;
 };
 
 /**
@@ -2040,7 +1993,7 @@ export type V1SystemNotificationType = 'SYSTEM_NOTIFICATION_TYPE_UNSPECIFIED' | 
 
 /**
  * --------------------
- * 时间范围结构（秒级时间戳）
+ * 时间范围结构（毫秒级时间戳）
  */
 export type V1TimeRange = {
     /**
@@ -2083,13 +2036,18 @@ export type V1UpdateSettingsResponse = {
 };
 
 /**
+ * UploadAsset 描述前端发起批量上传时的单个“媒体元素”。
+ */
+export type V1UploadAsset = {
+    scene?: V1MediaScene;
+    single_file?: V1UploadFile;
+    live_photo_pair?: V1LivePhotoUploadPair;
+};
+
+/**
  * UploadFile 描述单个文件上传任务。
  */
 export type V1UploadFile = {
-    /**
-     * 前端文件 ID（如 Uppy file.id），用于请求响应映射。
-     */
-    client_file_id?: string;
     /**
      * 原始文件名。
      */
@@ -2110,15 +2068,6 @@ export type V1UploadFile = {
      * 帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。
      */
     crop_cover?: boolean;
-};
-
-/**
- * UploadItem 描述前端发起批量上传时的单个“媒体元素”。
- */
-export type V1UploadItem = {
-    scene?: V1MediaScene;
-    single_file?: V1UploadFile;
-    live_photo_pair?: V1LivePhotoUploadPair;
 };
 
 /**
@@ -2386,101 +2335,6 @@ export type V1VerificationNotificationDetail = {
  * - VERIFICATION_STATUS_CANCELLED: 已取消（暂不投入使用）
  */
 export type V1VerificationStatus = 'VERIFICATION_STATUS_UNSPECIFIED' | 'VERIFICATION_STATUS_PENDING' | 'VERIFICATION_STATUS_APPROVED' | 'VERIFICATION_STATUS_REJECTED' | 'VERIFICATION_STATUS_CANCELLED';
-
-export type V1WsAck = {
-    ref_message_id?: string;
-    success?: boolean;
-    message?: string;
-};
-
-/**
- * WsChatEvent 是实时聊天 WS 的占位事件模型。
- */
-export type V1WsChatEvent = {
-    event_type?: string;
-    message?: string;
-};
-
-export type V1WsConnected = {
-    session_id?: string;
-    user_id?: string;
-    device_id?: string;
-    available_sync_types?: Array<V1SyncDataType>;
-};
-
-/**
- * WsEnvelope 是统一 WebSocket 消息封装。
- */
-export type V1WsEnvelope = {
-    message_id?: string;
-    type?: V1WsMessageType;
-    timestamp_ms?: string;
-    connected?: V1WsConnected;
-    subscribe?: V1WsSubscribe;
-    unsubscribe?: V1WsUnsubscribe;
-    settings_sync?: V1WsSettingsSync;
-    settings_update?: V1WsSettingsUpdate;
-    media_progress?: V1WsMediaProgress;
-    notification_event?: V1WsNotificationEvent;
-    chat_event?: V1WsChatEvent;
-    error?: V1WsError;
-    ack?: V1WsAck;
-};
-
-export type V1WsError = {
-    code?: string;
-    message?: string;
-    details?: {
-        [key: string]: string;
-    };
-};
-
-export type V1WsMediaProgress = {
-    progress?: V1BatchProgress;
-};
-
-/**
- * WsMessageType 定义统一 WebSocket 消息类型。
- *
- * - WS_MESSAGE_TYPE_SUBSCRIBE: 客户端 -> 服务端
- * - WS_MESSAGE_TYPE_CONNECTED: 服务端 -> 客户端
- */
-export type V1WsMessageType = 'WS_MESSAGE_TYPE_UNSPECIFIED' | 'WS_MESSAGE_TYPE_SUBSCRIBE' | 'WS_MESSAGE_TYPE_UNSUBSCRIBE' | 'WS_MESSAGE_TYPE_SETTINGS_UPDATE' | 'WS_MESSAGE_TYPE_CONNECTED' | 'WS_MESSAGE_TYPE_SETTINGS_SYNC' | 'WS_MESSAGE_TYPE_MEDIA_PROGRESS' | 'WS_MESSAGE_TYPE_NOTIFICATION_EVENT' | 'WS_MESSAGE_TYPE_CHAT_EVENT' | 'WS_MESSAGE_TYPE_ERROR' | 'WS_MESSAGE_TYPE_ACK';
-
-/**
- * WsNotificationEvent 是通知 WS 的占位事件模型。
- */
-export type V1WsNotificationEvent = {
-    event_type?: string;
-    message?: string;
-};
-
-export type V1WsSettingsSync = {
-    data_type?: V1SyncDataType;
-    version?: string;
-    source_device_id?: string;
-    user_settings?: V1SyncedUserSettings;
-    notification_settings?: V1SyncedNotificationSettings;
-    privacy_settings?: V1SyncedPrivacySettings;
-    content_category_order?: V1SyncedContentCategoryOrder;
-};
-
-export type V1WsSettingsUpdate = {
-    data_type?: V1SyncDataType;
-    device_id?: string;
-    user_settings?: V1SyncedUserSettings;
-    notification_settings?: V1SyncedNotificationSettings;
-    privacy_settings?: V1SyncedPrivacySettings;
-    content_category_order?: V1SyncedContentCategoryOrder;
-};
-
-export type V1WsSubscribe = {
-    sync_types?: Array<V1SyncDataType>;
-};
-
-export type V1WsUnsubscribe = {
-    sync_types?: Array<V1SyncDataType>;
-};
 
 export type DepartmentServiceDeleteDepartmentsData = {
     body: V1DeleteDepartmentsRequest;
@@ -2752,25 +2606,12 @@ export type ReportServiceListReportsData = {
     path?: never;
     query?: {
         /**
-         * 举报类型筛选（可选，不传则返回全部）
+         * 刷新类型
          *
-         * - REPORT_TYPE_UNSPECIFIED: 未指定
-         * - REPORT_TYPE_USER: 举报用户
-         * - REPORT_TYPE_POST: 举报帖子
-         * - REPORT_TYPE_COMMENT: 举报评论
-         * - REPORT_TYPE_REPLY: 举报回复
+         * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
+         * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        type?: 'REPORT_TYPE_UNSPECIFIED' | 'REPORT_TYPE_USER' | 'REPORT_TYPE_POST' | 'REPORT_TYPE_COMMENT' | 'REPORT_TYPE_REPLY';
-        /**
-         * 举报状态筛选（可选，不传则返回全部）
-         *
-         * - REPORT_STATUS_UNSPECIFIED: 未指定
-         * - REPORT_STATUS_PENDING: 待处理
-         * - REPORT_STATUS_PROCESSING: 处理中
-         * - REPORT_STATUS_RESOLVED: 已处理（已采纳）
-         * - REPORT_STATUS_REJECTED: 已驳回
-         */
-        status?: 'REPORT_STATUS_UNSPECIFIED' | 'REPORT_STATUS_PENDING' | 'REPORT_STATUS_PROCESSING' | 'REPORT_STATUS_RESOLVED' | 'REPORT_STATUS_REJECTED';
+        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
@@ -3508,6 +3349,10 @@ export type MediaServiceListUploadedPartsData = {
          * multipart upload_id。
          */
         upload_id?: string;
+        /**
+         * 上传对象键（Object Key）。
+         */
+        object_key?: string;
     };
     url: '/v1/media/multipart/parts';
 };
@@ -3962,7 +3807,9 @@ export type CommentServiceListPostCommentsData = {
          */
         need_reply_count?: number;
         /**
-         * 从“评论和 @”、“赞和收藏”通知进入时，传入目标评论 ID 以在评论列表中第一个展示目标评论。并且后续列表中不再展示该评论。
+         * 从“评论和 @”、“赞和收藏”通知进入时，传入目标评论 ID。
+         * 如果目标评论就是一级评论，则以该评论为起点展示评论列表，并且后续列表中不再展示该评论（可以将 exclude_id 编码进 cursor 以排除评论）；
+         * 如果目标评论是二级回复，则以该回复所在的一级评论为起点展示评论列表，后续列表中不再展示一级评论的同时，一级评论展开回复到目标评论处，比目标评论早发布的评论都要展开。
          */
         target_comment_id?: string;
     };
@@ -4831,28 +4678,3 @@ export type VerificationServiceApplyVerificationResponses = {
 };
 
 export type VerificationServiceApplyVerificationResponse = VerificationServiceApplyVerificationResponses[keyof VerificationServiceApplyVerificationResponses];
-
-export type WsServiceGetWsEnvelopeSchemaData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/v1/ws/schema';
-};
-
-export type WsServiceGetWsEnvelopeSchemaErrors = {
-    /**
-     * An unexpected error response.
-     */
-    default: RpcStatus;
-};
-
-export type WsServiceGetWsEnvelopeSchemaError = WsServiceGetWsEnvelopeSchemaErrors[keyof WsServiceGetWsEnvelopeSchemaErrors];
-
-export type WsServiceGetWsEnvelopeSchemaResponses = {
-    /**
-     * A successful response.
-     */
-    200: V1GetWsEnvelopeSchemaResponse;
-};
-
-export type WsServiceGetWsEnvelopeSchemaResponse = WsServiceGetWsEnvelopeSchemaResponses[keyof WsServiceGetWsEnvelopeSchemaResponses];

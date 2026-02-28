@@ -2,15 +2,16 @@ syntax = "proto3";
 
 package api.main.auth.v1;
 
+import "buf/validate/validate.proto";
 import "api/main/auth/v1/auth_models.proto";
-import "api/main/common/v1/user.proto";
+import "api/main/common/v1/common.proto";
 
 // ---------------------------------------------------------
 // 登录请求
 message LoginRequest {
   // 凭证载荷：QQ 传 AccessToken
-  string credential = 1;
-  DeviceInfo device = 2;
+  string credential = 1 [(buf.validate.field).string.pattern = "\\S"];
+  DeviceInfo device = 2 [(buf.validate.field).required = true];
 }
 
 message LoginResponse {
@@ -29,7 +30,7 @@ message LogoutResponse {}
 // ---------------------------------------------------------
 // 刷新 token
 message RefreshTokenRequest {
-  string refresh_token = 1;
+  string refresh_token = 1 [(buf.validate.field).string.pattern = "\\S"];
 }
 
 message RefreshTokenResponse {
@@ -40,8 +41,8 @@ message RefreshTokenResponse {
 // ---------------------------------------------------------
 // 更新 push_token
 message UpdatePushTokenRequest {
-  string device_id = 2; // 标识是哪个设备变更了 token
-  string push_token = 1;
+  string device_id = 2 [(buf.validate.field).string.pattern = "\\S"]; // 标识是哪个设备变更了 token
+  string push_token = 1 [(buf.validate.field).string.pattern = "\\S"];
 }
 
 message UpdatePushTokenResponse {}

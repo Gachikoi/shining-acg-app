@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package api.main.notification.v1;
+
+import "buf/validate/validate.proto";
+import "api/main/common/v1/common.proto";
+import "api/main/notification/v1/notification_models.proto";
+
+//--------------------
+// 获取通知统计
+//--------------------
+
+message GetNotificationStatsRequest {
+  // 空请求，返回当前用户的未读通知统计
+}
+
+message GetNotificationStatsResponse {
+  NotificationStats stats = 1; // 通知统计信息
+}
+
+//--------------------
+// 评论和@通知列表
+//--------------------
+
+message ListCommentMentionNotificationsRequest {
+  api.main.common.v1.RefreshType refresh_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // 刷新类型（下拉/上拉）
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true]; // 分页信息
+}
+
+message ListCommentMentionNotificationsResponse {
+  repeated CommentMentionNotification notifications = 1; // 通知列表
+  optional string cursor = 2; // 下一页游标（为空表示没有更多数据）
+}
+
+//--------------------
+// 赞和收藏通知列表
+//--------------------
+
+message ListLikeCollectNotificationsRequest {
+  api.main.common.v1.RefreshType refresh_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // 刷新类型（下拉/上拉）
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true]; // 分页信息
+}
+
+message ListLikeCollectNotificationsResponse {
+  repeated LikeCollectNotification notifications = 1; // 通知列表
+  optional string cursor = 2; // 下一页游标（为空表示没有更多数据）
+}
+
+//--------------------
+// 新增关注通知列表
+//--------------------
+
+message ListFollowNotificationsRequest {
+  api.main.common.v1.RefreshType refresh_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // 刷新类型（下拉/上拉）
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true]; // 分页信息
+}
+
+message ListFollowNotificationsResponse {
+  repeated FollowNotification notifications = 1; // 通知列表
+  optional string next_cursor = 2; // 下一页游标（为空表示没有更多数据）
+}
+
+//--------------------
+// 系统通知列表
+//--------------------
+
+message ListSystemNotificationsRequest {
+  api.main.common.v1.RefreshType refresh_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // 刷新类型（下拉/上拉）
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true]; // 分页信息
+}
+
+message ListSystemNotificationsResponse {
+  repeated SystemNotification notifications = 1; // 通知列表
+  optional string cursor = 2; // 下一页游标（为空表示没有更多数据）
+}
+
+//--------------------
+// 标记通知为已读
+//--------------------
+
+message MarkNotificationReadRequest {
+  repeated string notification_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        pattern: "\\S"
+      }
+    }
+  }]; // 要标记为已读的通知 ID 列表
+}
+
+message MarkNotificationReadResponse {}
+
+//--------------------
+// 标记所有通知为已读（按类型）
+//--------------------
+
+message MarkAllNotificationsReadRequest {
+  NotificationCategory category = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // 通知类别
+}
+
+message MarkAllNotificationsReadResponse {}

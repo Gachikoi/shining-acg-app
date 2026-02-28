@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package api.main.permission.v1;
+
+import "api/main/permission/v1/permission_req_res.proto";
+import "google/api/annotations.proto";
+
+// 权限管理服务 - 负责管理员权限的后台管理功能
+// 仅限超级管理员可访问，包含管理员列表查看、角色变更、批量添加等功能
+service AdminService {
+  // 获取管理员列表 - 按"超级管理员"、"管理员"分类展示
+  // 返回所有管理员的基本信息（头像、昵称（优先备注）、QQ号）
+  rpc ListAdmins(ListAdminsRequest) returns (ListAdminsResponse) {
+    option (google.api.http) = {get: "/v1/admin/permissions/admins"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 批量变更管理员角色 - 可选择多个管理员，批量变更为"超级管理员"、"管理员"、"社团成员"
+  // 支持降级（超级管理员→管理员→社团成员）和提升（社团成员→管理员→超级管理员）
+  rpc EditAdmins(EditAdminsRequest) returns (EditAdminsResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/permissions/admins"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+}

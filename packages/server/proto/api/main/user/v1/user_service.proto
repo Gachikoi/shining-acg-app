@@ -42,7 +42,7 @@ service UserService {
       patch: "/v1/users/me/settings"
       body: "*"
     };
-  }
+  } // TODO 使用 websocket 实现设置的实时更新和同步
 
   // 关注/取消关注
   rpc SetFollow(SetFollowRequest) returns (SetFollowResponse) {
@@ -51,22 +51,6 @@ service UserService {
       body: "*"
     };
     option idempotency_level = IDEMPOTENT;
-  }
-
-  // 申请身份认证
-  rpc ApplyVerification(ApplyVerificationRequest) returns (ApplyVerificationResponse) {
-    option (google.api.http) = {
-      post: "/v1/users/me/verification"
-      body: "*"
-    };
-  }
-
-  // 查看我的认证申请状态
-  rpc GetMyVerification(GetMyVerificationRequest) returns (GetMyVerificationResponse) {
-    option (google.api.http) = {
-      get: "/v1/users/me/verification" // 简化URL
-    };
-    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 修改所属部门
@@ -139,11 +123,9 @@ service UserService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-//  根据 QQ 号查询用户 id（用于官网）
+  //  根据 QQ 号查询用户 id（用于官网）
   rpc GetUserIdByQQ(GetUserIdByQQRequest) returns (GetUserIdByQQResponse) {
-    option (google.api.http) = {
-      get: "/v1/users/id_by_qq"
-    };
+    option (google.api.http) = {get: "/v1/users/id_by_qq"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

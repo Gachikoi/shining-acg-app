@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package api.main.permission.v1;
+
+import "api/main/common/v1/common.proto";
+
+// ---------------------------------------------------------
+// 权限管理相关数据模型
+
+// 管理员信息（用于列表展示）
+message AdminInfo {
+  string user_id = 1; // 用户ID
+  string avatar = 2; // 头像URL
+  string nickname = 3; // 昵称（优先显示备注）
+  string qq_number = 4; // QQ号
+  api.main.common.v1.Role role = 5; // 当前角色
+}
+
+// 管理员分类列表
+message AdminsByRole {
+  repeated AdminInfo super_admins = 1; // 超级管理员列表
+  repeated AdminInfo admins = 2; // 管理员列表
+}

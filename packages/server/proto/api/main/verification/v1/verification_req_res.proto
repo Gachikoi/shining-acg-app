@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package api.main.verification.v1;
+
+import "buf/validate/validate.proto";
+import "api/main/common/v1/common.proto";
+import "api/main/verification/v1/verification_models.proto";
+import "api/media/v1/media_models.proto";
+
+// ---------------------------------------------------------
+// 用户侧 API
+// ---------------------------------------------------------
+
+// 申请身份认证
+message ApplyVerificationRequest {
+  string verified_title = 1 [(buf.validate.field).string = {
+    max_len: 12
+    pattern: "\\S"
+  }];// 申请的认证头衔 (如: 23届部长, 社团负责人)
+  string verification_description = 2 [(buf.validate.field).string = {
+    max_len: 200
+    pattern: "\\S"
+  }]; // 申请说明 (如: 申请理由、相关经历等)
+  repeated api.media.v1.MediaAsset media = 3 [(buf.validate.field).repeated.min_items = 1]; // 证明材料
+}
+
+message ApplyVerificationResponse {}
+
+// ---------------------------------------------------------
+// 查看我的认证申请
+message GetMyVerificationRequest {}
+
+message GetMyVerificationResponse {
+  // 如果用户有申请则返回，没有则为null
+  optional VerificationApplication application = 1;
+}
+
+// ---------------------------------------------------------
+// 管理员侧 API
+// ---------------------------------------------------------
+
+// 获取认证申请列表（管理员）。默认优先展示待处理的项，次优先展示最新 update 的项
+message ListVerificationsRequest {
+  // 刷新类型
+  api.main.common.v1.RefreshType refresh_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // 分页
+  api.main.common.v1.CursorPagination pagination = 2 [(buf.validate.field).required = true];
+}
+
+message ListVerificationsResponse {
+  repeated VerificationApplication applications = 1;
+  optional string cursor = 2; // 分页游标，如果为空则表示没有更多数据
+}
+
+// ---------------------------------------------------------
+// 审批认证申请（管理员）
+message ReviewVerificationRequest {
+  string application_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  ReviewAction action = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // APPROVE 或 REJECT
+  optional string reason = 3 [(buf.validate.field).string = {
+    max_len: 200
+    pattern: "\\S"
+  }];; // 审批原因/意见（批准或拒绝的理由）
+}
+
+message ReviewVerificationResponse {
+  VerificationApplication application = 1; // 更新后的申请详情
+}

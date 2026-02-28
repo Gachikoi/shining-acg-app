@@ -51,12 +51,6 @@ const (
 	UserServiceUpdateSettingsProcedure = "/api.main.user.v1.UserService/UpdateSettings"
 	// UserServiceSetFollowProcedure is the fully-qualified name of the UserService's SetFollow RPC.
 	UserServiceSetFollowProcedure = "/api.main.user.v1.UserService/SetFollow"
-	// UserServiceApplyVerificationProcedure is the fully-qualified name of the UserService's
-	// ApplyVerification RPC.
-	UserServiceApplyVerificationProcedure = "/api.main.user.v1.UserService/ApplyVerification"
-	// UserServiceGetMyVerificationProcedure is the fully-qualified name of the UserService's
-	// GetMyVerification RPC.
-	UserServiceGetMyVerificationProcedure = "/api.main.user.v1.UserService/GetMyVerification"
 	// UserServiceModifyDepartmentsProcedure is the fully-qualified name of the UserService's
 	// ModifyDepartments RPC.
 	UserServiceModifyDepartmentsProcedure = "/api.main.user.v1.UserService/ModifyDepartments"
@@ -99,10 +93,6 @@ type UserServiceClient interface {
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
 	// 关注/取消关注
 	SetFollow(context.Context, *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error)
-	// 申请身份认证
-	ApplyVerification(context.Context, *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error)
-	// 查看我的认证申请状态
-	GetMyVerification(context.Context, *connect.Request[v1.GetMyVerificationRequest]) (*connect.Response[v1.GetMyVerificationResponse], error)
 	// 修改所属部门
 	ModifyDepartments(context.Context, *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error)
 	EditLinks(context.Context, *connect.Request[v1.EditLinksRequest]) (*connect.Response[v1.EditLinksResponse], error)
@@ -172,17 +162,6 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
-		applyVerification: connect.NewClient[v1.ApplyVerificationRequest, v1.ApplyVerificationResponse](
-			httpClient,
-			baseURL+UserServiceApplyVerificationProcedure,
-			opts...,
-		),
-		getMyVerification: connect.NewClient[v1.GetMyVerificationRequest, v1.GetMyVerificationResponse](
-			httpClient,
-			baseURL+UserServiceGetMyVerificationProcedure,
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
 		modifyDepartments: connect.NewClient[v1.ModifyDepartmentsRequest, v1.ModifyDepartmentsResponse](
 			httpClient,
 			baseURL+UserServiceModifyDepartmentsProcedure,
@@ -249,8 +228,6 @@ type userServiceClient struct {
 	listUserMutualFollowers *connect.Client[v1.ListUserRelatedRequest, v1.ListUserRelatedResponse]
 	updateSettings          *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
 	setFollow               *connect.Client[v1.SetFollowRequest, v1.SetFollowResponse]
-	applyVerification       *connect.Client[v1.ApplyVerificationRequest, v1.ApplyVerificationResponse]
-	getMyVerification       *connect.Client[v1.GetMyVerificationRequest, v1.GetMyVerificationResponse]
 	modifyDepartments       *connect.Client[v1.ModifyDepartmentsRequest, v1.ModifyDepartmentsResponse]
 	editLinks               *connect.Client[v1.EditLinksRequest, v1.EditLinksResponse]
 	changeAvatar            *connect.Client[v1.ChangeAvatarRequest, v1.ChangeAvatarResponse]
@@ -295,16 +272,6 @@ func (c *userServiceClient) UpdateSettings(ctx context.Context, req *connect.Req
 // SetFollow calls api.main.user.v1.UserService.SetFollow.
 func (c *userServiceClient) SetFollow(ctx context.Context, req *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error) {
 	return c.setFollow.CallUnary(ctx, req)
-}
-
-// ApplyVerification calls api.main.user.v1.UserService.ApplyVerification.
-func (c *userServiceClient) ApplyVerification(ctx context.Context, req *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error) {
-	return c.applyVerification.CallUnary(ctx, req)
-}
-
-// GetMyVerification calls api.main.user.v1.UserService.GetMyVerification.
-func (c *userServiceClient) GetMyVerification(ctx context.Context, req *connect.Request[v1.GetMyVerificationRequest]) (*connect.Response[v1.GetMyVerificationResponse], error) {
-	return c.getMyVerification.CallUnary(ctx, req)
 }
 
 // ModifyDepartments calls api.main.user.v1.UserService.ModifyDepartments.
@@ -367,10 +334,6 @@ type UserServiceHandler interface {
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
 	// 关注/取消关注
 	SetFollow(context.Context, *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error)
-	// 申请身份认证
-	ApplyVerification(context.Context, *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error)
-	// 查看我的认证申请状态
-	GetMyVerification(context.Context, *connect.Request[v1.GetMyVerificationRequest]) (*connect.Response[v1.GetMyVerificationResponse], error)
 	// 修改所属部门
 	ModifyDepartments(context.Context, *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error)
 	EditLinks(context.Context, *connect.Request[v1.EditLinksRequest]) (*connect.Response[v1.EditLinksResponse], error)
@@ -434,17 +397,6 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceSetFollowProcedure,
 		svc.SetFollow,
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
-		connect.WithHandlerOptions(opts...),
-	)
-	userServiceApplyVerificationHandler := connect.NewUnaryHandler(
-		UserServiceApplyVerificationProcedure,
-		svc.ApplyVerification,
-		opts...,
-	)
-	userServiceGetMyVerificationHandler := connect.NewUnaryHandler(
-		UserServiceGetMyVerificationProcedure,
-		svc.GetMyVerification,
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceModifyDepartmentsHandler := connect.NewUnaryHandler(
@@ -517,10 +469,6 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceUpdateSettingsHandler.ServeHTTP(w, r)
 		case UserServiceSetFollowProcedure:
 			userServiceSetFollowHandler.ServeHTTP(w, r)
-		case UserServiceApplyVerificationProcedure:
-			userServiceApplyVerificationHandler.ServeHTTP(w, r)
-		case UserServiceGetMyVerificationProcedure:
-			userServiceGetMyVerificationHandler.ServeHTTP(w, r)
 		case UserServiceModifyDepartmentsProcedure:
 			userServiceModifyDepartmentsHandler.ServeHTTP(w, r)
 		case UserServiceEditLinksProcedure:
@@ -574,14 +522,6 @@ func (UnimplementedUserServiceHandler) UpdateSettings(context.Context, *connect.
 
 func (UnimplementedUserServiceHandler) SetFollow(context.Context, *connect.Request[v1.SetFollowRequest]) (*connect.Response[v1.SetFollowResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.main.user.v1.UserService.SetFollow is not implemented"))
-}
-
-func (UnimplementedUserServiceHandler) ApplyVerification(context.Context, *connect.Request[v1.ApplyVerificationRequest]) (*connect.Response[v1.ApplyVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.main.user.v1.UserService.ApplyVerification is not implemented"))
-}
-
-func (UnimplementedUserServiceHandler) GetMyVerification(context.Context, *connect.Request[v1.GetMyVerificationRequest]) (*connect.Response[v1.GetMyVerificationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.main.user.v1.UserService.GetMyVerification is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) ModifyDepartments(context.Context, *connect.Request[v1.ModifyDepartmentsRequest]) (*connect.Response[v1.ModifyDepartmentsResponse], error) {

@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api.main.verification.v1;
+
+import "api/main/common/v1/common.proto";
+import "api/media/v1/media_models.proto";
+
+// ---------------------------------------------------------
+// 认证状态枚举
+enum VerificationStatus {
+  VERIFICATION_STATUS_UNSPECIFIED = 0;
+  VERIFICATION_STATUS_PENDING = 1; // 待处理
+  VERIFICATION_STATUS_APPROVED = 2; // 已通过
+  VERIFICATION_STATUS_REJECTED = 3; // 已拒绝
+  VERIFICATION_STATUS_CANCELLED = 4; // 已取消（暂不投入使用）
+}
+
+// ---------------------------------------------------------
+// 审批动作
+enum ReviewAction {
+  REVIEW_ACTION_UNSPECIFIED = 0;
+  REVIEW_ACTION_APPROVE = 1; // 批准
+  REVIEW_ACTION_REJECT = 2; // 拒绝
+}
+
+// ---------------------------------------------------------
+// 认证申请详情（管理员详情视角）
+message VerificationApplication {
+  string application_id = 1; // 申请 ID
+
+  // 申请人信息
+  api.main.common.v1.UserBrief user = 2; // 申请人基本信息
+
+  // 申请内容
+  string verified_title = 3; // 申请的认证头衔
+  string verification_description = 4; // 申请说明
+  repeated api.media.v1.MediaAsset media = 5; // 证明材料
+
+  // 状态信息
+  VerificationStatus status = 6;
+  int64 created_at = 7; // 创建时间
+  int64 updated_at = 8; // 更新时间
+
+  // 审批信息（如果已审批）
+  optional string reviewed_by_user_id = 9; // 审批人 ID
+  optional string reviewed_by_username = 10; // 审批人名称
+  optional int64 reviewed_at = 11; // 审批时间
+  optional string review_comment = 12; // 审批意见
+}

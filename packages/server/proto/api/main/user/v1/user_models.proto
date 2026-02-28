@@ -3,28 +3,6 @@ syntax = "proto3";
 package api.main.user.v1;
 
 import "api/main/common/v1/common.proto";
-import "api/main/common/v1/user.proto";
-
-// ---------------------------------------------------------
-// 身份认证相关数据模型设计
-
-// 认证状态枚举
-enum VerificationStatus {
-  VERIFICATION_STATUS_UNSPECIFIED = 0;
-  VERIFICATION_STATUS_PENDING = 1; // 待处理
-  VERIFICATION_STATUS_APPROVED = 2; // 已通过
-  VERIFICATION_STATUS_REJECTED = 3; // 已拒绝
-}
-
-// 认证申请详情
-message VerificationApplication {
-  string application_id = 1; // 申请 ID
-  string verified_title = 2; // 申请的认证头衔
-  string verification_description = 3; // 申请说明
-  repeated api.main.common.v1.Media media = 4; // 证明材料
-  int64 applied_time = 5; // 申请时间
-  VerificationStatus status = 6; // 当前状态
-}
 
 // ---------------------------------------------------------
 // 用户通用设置 (仅自己可见的需要多端同步的设置选项)
@@ -82,7 +60,7 @@ message UserFilter {
 // 用户列表数据模型设计（用于批量接口返回）
 message UserListItem {
   api.main.common.v1.UserBrief info = 1;
-  optional api.main.common.v1.UserRelationStatus relation_status = 2; // 可选，当前用户与列表中用户的关系状态
+  optional api.main.common.v1.UserRelationStatus relation_status = 2;
 }
 
 // ---------------------------------------------------------

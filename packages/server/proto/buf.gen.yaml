@@ -6,6 +6,7 @@ managed:
       value: app.shiningacg.club/gen/proto
   disable:
     - module: buf.build/googleapis/googleapis
+    - module: buf.build/bufbuild/protovalidate
 inputs:
   - directory: .
 plugins:
@@ -21,3 +22,4 @@ plugins:
       - allow_merge=true
       - merge_file_name=swagger
       - json_names_for_fields=false
+      - allow_delete_body=true
