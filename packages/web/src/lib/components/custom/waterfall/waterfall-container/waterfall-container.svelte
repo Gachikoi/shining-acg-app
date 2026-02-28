@@ -3,6 +3,8 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { WaterfallCard } from '../waterfall-cards';
 	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
+	import type { V1PostPreview } from '$lib/api/types.gen';
+	import { Spinner } from '$lib/components/ui/spinner';
 
 	// 组件属性：接收瀑布流数据和配置
 	let { data, config }: { data: WaterfallData; config?: WaterfallConfig } = $props();
@@ -26,18 +28,70 @@
 	let isPulling = $state(false); // 是否正在下拉
 	let startY = $state(0); // 触摸起始Y坐标
 	let currentY = $state(0); // 当前触摸Y坐标
-	let lastTouchY = $state(0); // 上一次触摸Y坐标
 	let touchMoveFrameId: number | null = $state(null); // 触摸移动动画帧ID
 	let scrollFrameId: number | null = $state(null); // 滚动动画帧ID
 
-	// 帖子数据引用（响应式）
-	let postsRef = $derived(data.posts);
+	// 帖子数据引用（响应式）- 支持 store 或普通值
+	let postsRef = $state<V1PostPreview[]>([]);
+	let loadingRef = $state<boolean>(false);
+	let refreshingRef = $state<boolean>(false);
+	let hasMoreRef = $state<boolean>(true);
 	let lastPostsLength = 0;
+
+	// 追踪 store 变化并更新本地状态
+	let unsubscribePosts: (() => void) | null = null;
+	let unsubscribeLoading: (() => void) | null = null;
+	let unsubscribeRefreshing: (() => void) | null = null;
+	let unsubscribeHasMore: (() => void) | null = null;
+
+	/* eslint-disable svelte/require-store-reactive-access */
+	$effect(() => {
+		if (typeof data.posts === 'object' && 'subscribe' in data.posts) {
+			unsubscribePosts?.();
+			unsubscribePosts = data.posts.subscribe((value) => {
+				postsRef = value;
+			});
+		} else {
+			postsRef = data.posts;
+		}
+		if (typeof data.loading === 'object' && 'subscribe' in data.loading) {
+			unsubscribeLoading?.();
+			unsubscribeLoading = data.loading.subscribe((value) => {
+				loadingRef = value;
+			});
+		} else {
+			loadingRef = data.loading;
+		}
+		if (typeof data.refreshing === 'object' && 'subscribe' in data.refreshing) {
+			unsubscribeRefreshing?.();
+			unsubscribeRefreshing = data.refreshing.subscribe((value) => {
+				refreshingRef = value;
+			});
+		} else {
+			refreshingRef = data.refreshing;
+		}
+		if (typeof data.hasMore === 'object' && 'subscribe' in data.hasMore) {
+			unsubscribeHasMore?.();
+			unsubscribeHasMore = data.hasMore.subscribe((value) => {
+				hasMoreRef = value;
+			});
+		} else {
+			hasMoreRef = data.hasMore;
+		}
+
+		return () => {
+			unsubscribePosts?.();
+			unsubscribeLoading?.();
+			unsubscribeRefreshing?.();
+			unsubscribeHasMore?.();
+		};
+	});
+	/* eslint-enable svelte/require-store-reactive-access */
 
 	// 下拉刷新配置常量
 	const PULL_REFRESH_CONFIG = {
 		MAX_DISTANCE: 120, // 最大下拉距离
-		TRIGGER_THRESHOLD: 80, // 触发刷新的阈值
+		TRIGGER_THRESHOLD: 60, // 触发刷新的阈值
 		TRIGGERED_DISTANCE: 60, // 触发刷新后的固定距离
 		DAMPING_FACTOR: 0.5 // 阻尼系数
 	} as const;
@@ -222,8 +276,8 @@
 			// 检查是否需要加载更多
 			if (
 				scrollHeight - scrollTop - clientHeight < mergedConfig.loadingThreshold &&
-				data.hasMore &&
-				!data.loading
+				hasMoreRef &&
+				!loadingRef
 			) {
 				data.loadMore().catch((error) => {
 					console.error('Failed to load more posts:', error);
@@ -236,9 +290,20 @@
 
 	// 处理下拉刷新
 	async function handleRefresh(): Promise<void> {
-		if (data.refreshing) return;
+		if (refreshingRef) return;
+		// !NOTE: 这里会对上一轮的数据清空，产生一个白屏画面，是故意为之的，如果不喜欢，注释这两行即可。
+		cardPositions = [];
+		visibleRange = { start: 0, end: -1 };
 		try {
 			await data.refresh();
+			maxHeight = 0;
+			columnHeights = [];
+			calculateCardPositions();
+			updateVisibleRange();
+			if (scrollContainer) {
+				scrollContainer.scrollTop = 0;
+			}
+			pullRefreshDistance = 0;
 		} catch (error) {
 			console.error('Failed to refresh posts:', error);
 			pullRefreshDistance = 0;
@@ -249,7 +314,6 @@
 	function handleTouchStart(event: TouchEvent): void {
 		if (scrollContainer.scrollTop > 1) return; // 只有在顶部时才能下拉刷新
 		startY = event.touches[0].clientY;
-		lastTouchY = startY;
 		isPulling = true;
 	}
 
@@ -258,34 +322,28 @@
 		if (!isPulling) return;
 
 		if (scrollContainer.scrollTop > 0) {
-			resetPullRefresh(); // 滚动后取消下拉刷新
+			resetPullRefresh();
 			return;
 		}
 
 		const touchY = event.touches[0].clientY;
-		const deltaY = touchY - lastTouchY;
-		lastTouchY = touchY;
+		currentY = touchY;
+		const distance = currentY - startY;
 
-		if (deltaY <= 0) {
-			resetPullRefresh(); // 向上滑动时取消下拉刷新
+		if (distance <= 0) {
+			resetPullRefresh();
 			return;
 		}
 
 		if (touchMoveFrameId !== null) {
-			return; // 防止重复触发
+			return;
 		}
 
 		touchMoveFrameId = requestAnimationFrame(() => {
-			currentY = touchY;
-			const distance = currentY - startY;
-
-			if (distance > 0) {
-				pullRefreshDistance = Math.min(
-					distance * PULL_REFRESH_CONFIG.DAMPING_FACTOR,
-					PULL_REFRESH_CONFIG.MAX_DISTANCE
-				); // 应用阻尼系数并限制最大距离
-			}
-
+			pullRefreshDistance = Math.min(
+				distance * PULL_REFRESH_CONFIG.DAMPING_FACTOR,
+				PULL_REFRESH_CONFIG.MAX_DISTANCE
+			);
 			touchMoveFrameId = null;
 		});
 	}
@@ -401,17 +459,36 @@
 			class="absolute top-0 right-0 left-0 flex items-center justify-center transition-all duration-200"
 			style="height: {pullRefreshDistance}px;"
 		>
-			{#if data.refreshing}
-				<div class="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+			{#if refreshingRef}
+				<Spinner class="mr-2 text-primary" />
+				<span class="text-sm text-muted-foreground">正在刷新</span>
 			{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
+				<div
+					class="mr-2 text-primary"
+					style="transform: rotate({Math.min(
+						(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
+						360
+					)}deg);"
+				>
+					<Spinner class="animate-none!" />
+				</div>
 				<span class="text-sm text-muted-foreground">释放刷新</span>
 			{:else}
+				<div
+					class="mr-2 text-primary"
+					style="transform: rotate({Math.min(
+						(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
+						360
+					)}deg);"
+				>
+					<Spinner class="animate-none!" />
+				</div>
 				<span class="text-sm text-muted-foreground">下拉刷新</span>
 			{/if}
 		</div>
 	{/if}
 
-	{#each data.posts as post, i (i)}
+	{#each postsRef as post, i (i)}
 		{#if i >= visibleRange.start && i <= visibleRange.end}
 			<div
 				class="absolute"
@@ -445,13 +522,13 @@
 		{/if}
 	{/each}
 
-	{#if data.loading && data.posts.length > 0}
+	{#if loadingRef && postsRef.length > 0}
 		<div class="flex justify-center py-4">
 			<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
 		</div>
 	{/if}
 
-	{#if !data.hasMore && data.posts.length > 0}
+	{#if !hasMoreRef && postsRef.length > 0}
 		<div class="py-4 text-center text-sm text-muted-foreground">没有更多内容了</div>
 	{/if}
 </div>

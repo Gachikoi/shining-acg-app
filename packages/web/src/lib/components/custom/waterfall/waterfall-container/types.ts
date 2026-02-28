@@ -1,11 +1,12 @@
 import type { V1PostPreview } from '$lib/api/types.gen';
+import type { Readable } from 'svelte/store';
 
 export interface WaterfallData {
-	posts: V1PostPreview[];
-	loading: boolean;
-	refreshing: boolean;
-	hasMore: boolean;
-	cursor: string | null;
+	posts: Readable<V1PostPreview[]> | V1PostPreview[];
+	loading: Readable<boolean> | boolean;
+	refreshing: Readable<boolean> | boolean;
+	hasMore: Readable<boolean> | boolean;
+	cursor: Readable<string | null> | string | null;
 	loadMore: () => Promise<void>;
 	refresh: () => Promise<void>;
 }
