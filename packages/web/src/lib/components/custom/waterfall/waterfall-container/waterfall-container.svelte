@@ -1,63 +1,73 @@
+<!-- 549行空的Summary -->
 <script lang="ts">
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { WaterfallCard } from '../waterfall-cards';
-	import { WaterfallSkeletonCard } from '../waterfall-cards';
 	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
 
+	// 组件属性：接收瀑布流数据和配置
 	let { data, config }: { data: WaterfallData; config?: WaterfallConfig } = $props();
 
-	let containerElement: HTMLElement;
-	let resizeObserver: ResizeObserver;
-	let scrollContainer: HTMLElement;
+	// DOM 元素引用
+	let containerElement: HTMLElement; // 容器元素
+	let resizeObserver: ResizeObserver; // 容器尺寸变化观察器
+	let scrollContainer: HTMLElement; // 滚动容器元素
 
-	let containerWidth = 0;
-	let columnCount = 1;
-	let cardWidth = 0;
-	let columnHeights: number[] = [];
-	let cardPositions: CardPosition[] = [];
-	let visibleRange = $state({ start: 0, end: 0 });
-	let skeletonCount = $state(0);
-	let skeletonPositions: CardPosition[] = [];
-	let lastUsedColumnIndex = 0;
-	let lastCalculatedPostCount = 0;
+	// 布局相关状态
+	let containerWidth = $state(0); // 容器宽度
+	let columnCount = $state(1); // 列数
+	let cardWidth = $state(0); // 卡片宽度
+	let columnHeights: number[] = $state([]); // 各列高度数组
+	let cardPositions: CardPosition[] = $state([]); // 卡片位置信息数组
+	let visibleRange = $state({ start: 0, end: 0 }); // 可见范围（起始和结束索引）
+	let maxHeight = $state(0); // 最大高度
 
-	let pullRefreshDistance = $state(0);
-	let isPulling = false;
-	let startY = 0;
-	let currentY = 0;
-	let lastTouchY = 0;
-	let touchMoveFrameId: number | null = null;
-	let scrollFrameId: number | null = null;
+	// 下拉刷新相关状态
+	let pullRefreshDistance = $state(0); // 下拉距离
+	let isPulling = $state(false); // 是否正在下拉
+	let startY = $state(0); // 触摸起始Y坐标
+	let currentY = $state(0); // 当前触摸Y坐标
+	let lastTouchY = $state(0); // 上一次触摸Y坐标
+	let touchMoveFrameId: number | null = $state(null); // 触摸移动动画帧ID
+	let scrollFrameId: number | null = $state(null); // 滚动动画帧ID
 
+	// 帖子数据引用（响应式）
+	let postsRef = $derived(data.posts);
+	let lastPostsLength = 0;
+
+	// 下拉刷新配置常量
 	const PULL_REFRESH_CONFIG = {
-		MAX_DISTANCE: 120,
-		TRIGGER_THRESHOLD: 80,
-		TRIGGERED_DISTANCE: 60,
-		DAMPING_FACTOR: 0.5
+		MAX_DISTANCE: 120, // 最大下拉距离
+		TRIGGER_THRESHOLD: 80, // 触发刷新的阈值
+		TRIGGERED_DISTANCE: 60, // 触发刷新后的固定距离
+		DAMPING_FACTOR: 0.5 // 阻尼系数
 	} as const;
 
+	// 默认配置常量
 	const DEFAULT_CONFIG: WaterfallConfig = {
-		minCardWidth: 280,
-		gap: 16,
-		bufferSize: 3,
-		bufferHeight: 400,
-		loadingThreshold: 200,
-		cardContentHeight: 120,
-		skeletonCardCount: 20,
-		binarySearchThreshold: 100
+		minCardWidth: 280, // 最小卡片宽度
+		gap: 16, // 卡片间距
+		bufferSize: 3, // 缓冲区大小（倍数）
+		bufferHeight: 400, // 缓冲区高度
+		loadingThreshold: 200, // 加载更多阈值
+		cardContentHeight: 120, // 卡片内容高度
+		skeletonCardCount: 20, // 骨架屏卡片数量
+		binarySearchThreshold: 100 // 使用二分查找的阈值
 	};
 
-	let mergedConfig = $derived({ ...config, ...DEFAULT_CONFIG });
+	// 合并配置：默认配置 + 用户配置
+	let mergedConfig = $derived({ ...DEFAULT_CONFIG, ...config });
 
+	// 计算布局基础参数：根据容器宽度计算列数和卡片宽度
 	function calculateLayoutBase(width: number): { columnCount: number; cardWidth: number } {
 		const columnCount = Math.max(1, Math.floor(width / mergedConfig.minCardWidth));
 		const cardWidth = (width - (columnCount - 1) * mergedConfig.gap) / columnCount;
 		return { columnCount, cardWidth };
 	}
 
+	// 找到列高度最低的那一列的索引
 	function findMinColumnIndex(columnHeights: number[]): number {
-		let minHeight = columnHeights[0];
-		let minIndex = 0;
+		let minHeight = columnHeights[0]; // 最小高度
+		let minIndex = 0; // 最小高度对应的索引
 		for (let i = 1; i < columnHeights.length; i++) {
 			if (columnHeights[i] < minHeight) {
 				minHeight = columnHeights[i];
@@ -67,116 +77,22 @@
 		return minIndex;
 	}
 
-	function findMinColumnIndexWithRoundRobin(columnHeights: number[]): number {
-		let minHeight = columnHeights[0];
-		let minIndex = 0;
-		const minIndices: number[] = [0];
-
-		for (let i = 1; i < columnHeights.length; i++) {
-			if (columnHeights[i] < minHeight) {
-				minHeight = columnHeights[i];
-				minIndex = i;
-				minIndices.length = 0;
-				minIndices.push(i);
-			} else if (columnHeights[i] === minHeight) {
-				minIndices.push(i);
-			}
-		}
-
-		if (minIndices.length === 1) return minIndex;
-
-		const roundRobinIndex = (lastUsedColumnIndex + 1) % minIndices.length;
-		lastUsedColumnIndex = roundRobinIndex;
-		return minIndices[roundRobinIndex];
-	}
-
-	function calculatePositions(
-		count: number,
-		getAspectRatio: (index: number) => number,
-		useRoundRobin: boolean,
-		targetPositions: CardPosition[],
-		targetColumnHeights: number[]
-	): number {
-		if (containerWidth === 0 || count === 0) return 0;
+	// 计算所有卡片的位置
+	function calculateCardPositions(): void {
+		if (containerWidth === 0 || postsRef.length === 0) return;
 
 		const layout = calculateLayoutBase(containerWidth);
+		columnCount = layout.columnCount;
+		cardWidth = layout.cardWidth;
 
-		if (layout.columnCount !== columnCount || layout.cardWidth !== cardWidth) {
-			columnCount = layout.columnCount;
-			cardWidth = layout.cardWidth;
-			targetColumnHeights.length = 0;
-			targetColumnHeights.push(...Array(columnCount).fill(0));
-			if (useRoundRobin) {
-				lastUsedColumnIndex = 0;
-			}
-		}
+		columnHeights.length = 0;
+		columnHeights.push(...Array(columnCount).fill(0)); // 初始化所有列高度为0
 
-		targetPositions.length = 0;
-		let maxHeight = 0;
+		cardPositions.length = 0;
 
-		const findMinIndex = useRoundRobin ? findMinColumnIndexWithRoundRobin : findMinColumnIndex;
-
-		for (let i = 0; i < count; i++) {
-			const coverRatio = getAspectRatio(i);
-
-			if (!isFinite(coverRatio) || coverRatio <= 0) continue;
-
-			const coverHeight = cardWidth * coverRatio;
-			const cardHeight = coverHeight + mergedConfig.cardContentHeight;
-
-			const minIndex = findMinIndex(targetColumnHeights);
-
-			const left = minIndex * (cardWidth + mergedConfig.gap);
-			const top = targetColumnHeights[minIndex];
-
-			let pos = targetPositions[i];
-			if (pos) {
-				pos.top = top;
-				pos.left = left;
-				pos.width = cardWidth;
-				pos.height = cardHeight;
-			} else {
-				targetPositions.push({ top, left, width: cardWidth, height: cardHeight });
-			}
-
-			targetColumnHeights[minIndex] = top + cardHeight + mergedConfig.gap;
-			maxHeight = Math.max(maxHeight, targetColumnHeights[minIndex]);
-		}
-
-		return maxHeight;
-	}
-
-	function calculateCardPositionsIncremental(): void {
-		const currentPostCount = postsRef.length;
-
-		if (currentPostCount < lastCalculatedPostCount) {
-			resetCardPositions();
-		}
-
-		if (currentPostCount <= lastCalculatedPostCount) {
-			return;
-		}
-
-		if (containerWidth === 0 || currentPostCount === 0) return;
-
-		const layout = calculateLayoutBase(containerWidth);
-
-		if (layout.columnCount !== columnCount || layout.cardWidth !== cardWidth) {
-			columnCount = layout.columnCount;
-			cardWidth = layout.cardWidth;
-			columnHeights.length = 0;
-			columnHeights.push(...Array(columnCount).fill(0));
-			lastUsedColumnIndex = 0;
-			lastCalculatedPostCount = 0;
-			cardPositions.length = 0;
-		}
-
-		let maxHeight = 0;
-		const findMinIndex = findMinColumnIndexWithRoundRobin;
-
-		for (let i = lastCalculatedPostCount; i < currentPostCount; i++) {
+		for (let i = 0; i < postsRef.length; i++) {
 			const post = postsRef[i];
-			let coverRatio = 1;
+			let coverRatio = 1; // 默认封面宽高比
 
 			if (
 				post.cover?.single?.meta?.width &&
@@ -195,74 +111,42 @@
 			const coverHeight = cardWidth * coverRatio;
 			const cardHeight = coverHeight + mergedConfig.cardContentHeight;
 
-			const minIndex = findMinIndex(columnHeights);
+			const minIndex = findMinColumnIndex(columnHeights); // 找到最短的列
 
 			const left = minIndex * (cardWidth + mergedConfig.gap);
 			const top = columnHeights[minIndex];
 
-			let pos = cardPositions[i];
-			if (pos) {
-				pos.top = top;
-				pos.left = left;
-				pos.width = cardWidth;
-				pos.height = cardHeight;
-			} else {
-				cardPositions.push({ top, left, width: cardWidth, height: cardHeight });
-			}
+			cardPositions.push({ top, left, width: cardWidth, height: cardHeight });
 
-			columnHeights[minIndex] = top + cardHeight + mergedConfig.gap;
+			columnHeights[minIndex] = top + cardHeight; // 更新列高度（不加gap）
 			maxHeight = Math.max(maxHeight, columnHeights[minIndex]);
 		}
 
-		lastCalculatedPostCount = currentPostCount;
-
 		if (scrollContainer) {
-			scrollContainer.style.height = `${maxHeight}px`;
+			scrollContainer.style.height = `${maxHeight}px`; // 设置容器高度
 		}
 	}
 
-	function resetCardPositions(): void {
-		cardPositions.length = 0;
-		columnHeights.length = 0;
-		lastCalculatedPostCount = 0;
-		lastUsedColumnIndex = 0;
-	}
-
-	function calculateSkeletonPositions(): void {
-		const skeletonColumnHeights: number[] = [];
-		const maxHeight = calculatePositions(
-			skeletonCount,
-			(index) => {
-				const ratios = [0.75, 1, 1.33, 1.5, 0.8, 1.25];
-				return ratios[index % ratios.length];
-			},
-			false,
-			skeletonPositions,
-			skeletonColumnHeights
-		);
-
-		if (scrollContainer) {
-			scrollContainer.style.height = `${maxHeight}px`;
-		}
-	}
-
+	// 更新可见范围（虚拟滚动优化）
 	function updateVisibleRange(): void {
 		if (!scrollContainer || !containerElement) return;
 
 		const scrollTop = scrollContainer.scrollTop;
 		const containerHeight = containerElement.clientHeight;
-		const visibleBuffer = mergedConfig.bufferSize * mergedConfig.bufferHeight;
+		const visibleBuffer = mergedConfig.bufferSize * mergedConfig.bufferHeight; // 缓冲区高度
 
-		const startBuffer = Math.max(0, scrollTop - visibleBuffer);
-		const endBuffer = scrollTop + containerHeight + visibleBuffer;
+		const startBuffer = Math.max(0, scrollTop - visibleBuffer); // 可见范围起始位置（包含缓冲区）
+		const endBuffer = scrollTop + containerHeight + visibleBuffer; // 可见范围结束位置（包含缓冲区）
 
 		let start = cardPositions.length;
 		let end = 0;
 
 		if (cardPositions.length > mergedConfig.binarySearchThreshold) {
+			// 卡片数量超过阈值时使用二分查找
 			start = findVisibleRangeStart(startBuffer);
 			end = findVisibleRangeEnd(endBuffer);
 		} else {
+			// 卡片数量较少时使用线性查找
 			for (let i = 0; i < cardPositions.length; i++) {
 				const pos = cardPositions[i];
 				if (pos.top + pos.height >= startBuffer && pos.top <= endBuffer) {
@@ -274,9 +158,10 @@
 
 		if (start === cardPositions.length) start = 0;
 		if (end < start) end = start;
-		visibleRange = { start, end };
+		visibleRange = { start, end }; // 更新可见范围
 	}
 
+	// 使用二分查找找到可见范围的起始索引
 	function findVisibleRangeStart(target: number): number {
 		let left = 0;
 		let right = cardPositions.length - 1;
@@ -297,6 +182,7 @@
 		return result;
 	}
 
+	// 使用二分查找找到可见范围的结束索引
 	function findVisibleRangeEnd(target: number): number {
 		let left = 0;
 		let right = cardPositions.length - 1;
@@ -317,8 +203,9 @@
 		return result;
 	}
 
+	// 处理滚动事件（节流优化）
 	function handleScroll(): void {
-		if (scrollFrameId !== null) return;
+		if (scrollFrameId !== null) return; // 防止重复触发
 
 		scrollFrameId = requestAnimationFrame(() => {
 			updateVisibleRange();
@@ -332,6 +219,7 @@
 			const scrollHeight = scrollContainer.scrollHeight;
 			const clientHeight = scrollContainer.clientHeight;
 
+			// 检查是否需要加载更多
 			if (
 				scrollHeight - scrollTop - clientHeight < mergedConfig.loadingThreshold &&
 				data.hasMore &&
@@ -346,6 +234,7 @@
 		});
 	}
 
+	// 处理下拉刷新
 	async function handleRefresh(): Promise<void> {
 		if (data.refreshing) return;
 		try {
@@ -356,18 +245,20 @@
 		}
 	}
 
+	// 处理触摸开始事件
 	function handleTouchStart(event: TouchEvent): void {
-		if (scrollContainer.scrollTop > 1) return;
+		if (scrollContainer.scrollTop > 1) return; // 只有在顶部时才能下拉刷新
 		startY = event.touches[0].clientY;
 		lastTouchY = startY;
 		isPulling = true;
 	}
 
+	// 处理触摸移动事件
 	function handleTouchMove(event: TouchEvent): void {
 		if (!isPulling) return;
 
 		if (scrollContainer.scrollTop > 0) {
-			resetPullRefresh();
+			resetPullRefresh(); // 滚动后取消下拉刷新
 			return;
 		}
 
@@ -376,12 +267,12 @@
 		lastTouchY = touchY;
 
 		if (deltaY <= 0) {
-			resetPullRefresh();
+			resetPullRefresh(); // 向上滑动时取消下拉刷新
 			return;
 		}
 
 		if (touchMoveFrameId !== null) {
-			return;
+			return; // 防止重复触发
 		}
 
 		touchMoveFrameId = requestAnimationFrame(() => {
@@ -392,30 +283,33 @@
 				pullRefreshDistance = Math.min(
 					distance * PULL_REFRESH_CONFIG.DAMPING_FACTOR,
 					PULL_REFRESH_CONFIG.MAX_DISTANCE
-				);
+				); // 应用阻尼系数并限制最大距离
 			}
 
 			touchMoveFrameId = null;
 		});
 	}
 
+	// 处理触摸结束事件
 	function handleTouchEnd(): void {
 		if (!isPulling) return;
 
 		isPulling = false;
 
 		if (pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) {
-			pullRefreshDistance = PULL_REFRESH_CONFIG.TRIGGERED_DISTANCE;
+			pullRefreshDistance = PULL_REFRESH_CONFIG.TRIGGERED_DISTANCE; // 触发刷新
 			handleRefresh();
 		} else {
-			pullRefreshDistance = 0;
+			pullRefreshDistance = 0; // 未达到阈值，取消刷新
 		}
 	}
 
+	// 处理触摸取消事件
 	function handleTouchCancel(): void {
 		resetPullRefresh();
 	}
 
+	// 重置下拉刷新状态
 	function resetPullRefresh(): void {
 		isPulling = false;
 		pullRefreshDistance = 0;
@@ -425,6 +319,7 @@
 		}
 	}
 
+	// 清理动画帧
 	function cleanup(): void {
 		if (touchMoveFrameId !== null) {
 			cancelAnimationFrame(touchMoveFrameId);
@@ -436,18 +331,19 @@
 		}
 	}
 
+	// 组件挂载时初始化
 	onMount(() => {
 		if (!containerElement) return;
 
 		scrollContainer = containerElement;
 
+		// 监听容器尺寸变化
 		resizeObserver = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				const newWidth = entry.contentRect.width;
 				if (newWidth !== containerWidth) {
 					containerWidth = newWidth;
-					resetCardPositions();
-					calculateCardPositionsIncremental();
+					calculateCardPositions();
 					updateVisibleRange();
 				}
 			}
@@ -455,32 +351,30 @@
 
 		resizeObserver.observe(containerElement);
 
-		if (data.loading && data.posts.length === 0) {
-			skeletonCount = mergedConfig.skeletonCardCount;
-		}
-
+		// 注册事件监听器
 		scrollContainer.addEventListener('scroll', handleScroll);
 		scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
 		scrollContainer.addEventListener('touchmove', handleTouchMove, { passive: true });
 		scrollContainer.addEventListener('touchend', handleTouchEnd);
 		scrollContainer.addEventListener('touchcancel', handleTouchCancel);
 
+		// 初始化布局
 		tick().then(() => {
 			if (containerElement) {
 				containerWidth = containerElement.clientWidth;
-				resetCardPositions();
-				calculateCardPositionsIncremental();
-				calculateSkeletonPositions();
+				calculateCardPositions();
 				updateVisibleRange();
 			}
 		});
 	});
 
+	// 组件卸载时清理
 	onDestroy(() => {
 		if (resizeObserver) {
 			resizeObserver.disconnect();
 		}
 		if (scrollContainer) {
+			// 移除事件监听器
 			scrollContainer.removeEventListener('scroll', handleScroll);
 			scrollContainer.removeEventListener('touchstart', handleTouchStart);
 			scrollContainer.removeEventListener('touchmove', handleTouchMove);
@@ -490,94 +384,74 @@
 		cleanup();
 	});
 
-	let postsRef = $derived(data.posts);
-	let loadingRef = $derived(data.posts);
-
+	// 监听帖子数据变化，重新计算布局
 	$effect(() => {
-		if (postsRef.length > 0) {
-			calculateCardPositionsIncremental();
+		const currentLength = postsRef.length;
+		if (currentLength > 0 && currentLength !== lastPostsLength) {
+			lastPostsLength = currentLength;
+			calculateCardPositions();
 			updateVisibleRange();
-		}
-	});
-
-	$effect(() => {
-		if (loadingRef && postsRef.length === 0) {
-			skeletonCount = mergedConfig.skeletonCardCount;
-			calculateSkeletonPositions();
-		} else if (!loadingRef) {
-			skeletonCount = 0;
 		}
 	});
 </script>
 
 <div class="relative h-full w-full overflow-y-auto" bind:this={containerElement}>
-	<div class="relative w-full">
-		{#if pullRefreshDistance > 0}
+	{#if pullRefreshDistance > 0}
+		<div
+			class="absolute top-0 right-0 left-0 flex items-center justify-center transition-all duration-200"
+			style="height: {pullRefreshDistance}px;"
+		>
+			{#if data.refreshing}
+				<div class="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+			{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
+				<span class="text-sm text-muted-foreground">释放刷新</span>
+			{:else}
+				<span class="text-sm text-muted-foreground">下拉刷新</span>
+			{/if}
+		</div>
+	{/if}
+
+	{#each data.posts as post, i (i)}
+		{#if i >= visibleRange.start && i <= visibleRange.end}
 			<div
-				class="flex items-center justify-center transition-all duration-200"
-				style="height: {pullRefreshDistance}px;"
+				class="absolute"
+				style="top: {cardPositions[i]?.top + pullRefreshDistance}px; left: {cardPositions[i]
+					?.left}px; width: {cardPositions[i]?.width}px; height: {cardPositions[i]?.height}px;"
 			>
-				{#if data.refreshing}
-					<div class="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-				{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
-					<span class="text-sm text-muted-foreground">释放刷新</span>
-				{:else}
-					<span class="text-sm text-muted-foreground">下拉刷新</span>
-				{/if}
+				<WaterfallCard
+					postId={post.post_id || ''}
+					title={post.display_title || ''}
+					summary=""
+					cover={{
+						url: post.cover?.single?.url || '',
+						ratio:
+							post.cover?.single?.meta?.width && post.cover.single.meta?.height
+								? post.cover.single.meta.height / post.cover.single.meta.width
+								: 1
+					}}
+					author={{
+						avatar: post.author?.avatar || '',
+						name: post.author?.name || '',
+						id: post.author?.user_id || ''
+					}}
+					likeCount={Number(post.stats?.like_count) || 0}
+					viewCount={Number(post.stats?.view_count) || 0}
+					commentCount={Number(post.stats?.comment_count) || 0}
+					isLiked={post.relation_status?.is_liked || false}
+					isOnlyVideo={post.is_only_video || false}
+					publishTime={parseInt(post.publish_time || '0')}
+				/>
 			</div>
 		{/if}
+	{/each}
 
-		{#if skeletonCount > 0}
-			{#each skeletonPositions as pos, i (i)}
-				<div class="absolute" style="top: {pos.top}px; left: {pos.left}px; width: {pos.width}px;">
-					<WaterfallSkeletonCard
-						aspectRatio={(pos.height - mergedConfig.cardContentHeight) / pos.width}
-					/>
-				</div>
-			{/each}
-		{:else}
-			{#each data.posts as post, i (i)}
-				{#if i >= visibleRange.start && i <= visibleRange.end}
-					<div
-						class="absolute"
-						style="top: {cardPositions[i]?.top}px; left: {cardPositions[i]
-							?.left}px; width: {cardPositions[i]?.width}px;"
-					>
-						<WaterfallCard
-							postId={post.post_id || ''}
-							title={post.display_title || ''}
-							cover={{
-								url: post.cover?.single?.url || '',
-								ratio:
-									post.cover?.single?.meta?.width && post.cover.single.meta.height
-										? post.cover.single.meta.height / post.cover.single.meta.width
-										: 1
-							}}
-							author={{
-								avatar: post.author?.avatar || '',
-								name: post.author?.name || '',
-								id: post.author?.user_id || ''
-							}}
-							likeCount={post.stats?.like_count || 0}
-							viewCount={post.stats?.view_count || 0}
-							commentCount={post.stats?.comment_count || 0}
-							isLiked={post.relation_status?.is_liked || false}
-							isOnlyVideo={post.is_only_video || false}
-							publishTime={parseInt(post.publish_time || '0')}
-						/>
-					</div>
-				{/if}
-			{/each}
-		{/if}
+	{#if data.loading && data.posts.length > 0}
+		<div class="flex justify-center py-4">
+			<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+		</div>
+	{/if}
 
-		{#if data.loading && data.posts.length > 0}
-			<div class="flex justify-center py-4">
-				<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-			</div>
-		{/if}
-
-		{#if !data.hasMore && data.posts.length > 0}
-			<div class="py-4 text-center text-sm text-muted-foreground">没有更多内容了</div>
-		{/if}
-	</div>
+	{#if !data.hasMore && data.posts.length > 0}
+		<div class="py-4 text-center text-sm text-muted-foreground">没有更多内容了</div>
+	{/if}
 </div>

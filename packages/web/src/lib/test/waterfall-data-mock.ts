@@ -92,9 +92,6 @@ function generatePost(id: number): V1PostPreview {
 	};
 }
 
-let allPosts: V1PostPreview[] = [];
-let currentCursor = '0';
-
 function generatePosts(count: number, startIndex: number): V1PostPreview[] {
 	const posts: V1PostPreview[] = [];
 	for (let i = 0; i < count; i++) {
@@ -104,32 +101,44 @@ function generatePosts(count: number, startIndex: number): V1PostPreview[] {
 }
 
 export function createMockWaterfallData(): WaterfallData {
-	allPosts = generatePosts(50, 0);
-	currentCursor = '50';
+	let posts: V1PostPreview[] = generatePosts(50, 0);
+	let cursor = '50';
+	let loading = false;
+	let refreshing = false;
+	let hasMore = true;
 
 	return {
-		posts: allPosts,
-		loading: false,
-		refreshing: false,
-		hasMore: true,
-		cursor: currentCursor,
+		get posts() {
+			return posts;
+		},
+		get loading() {
+			return loading;
+		},
+		get refreshing() {
+			return refreshing;
+		},
+		get hasMore() {
+			return hasMore;
+		},
+		get cursor() {
+			return cursor;
+		},
 		loadMore: async () => {
+			loading = true;
 			await new Promise((resolve) => setTimeout(resolve, 1000));
-			const newPosts = generatePosts(20, internalData.posts.length);
-			internalData.posts = [...internalData.posts, ...newPosts];
-			internalData.cursor = internalData.posts.length.toString();
-			internalData.hasMore = internalData.posts.length < 200;
-			internalData.loading = false;
+			const newPosts = generatePosts(20, posts.length);
+			posts = [...posts, ...newPosts];
+			cursor = posts.length.toString();
+			hasMore = posts.length < 200;
+			loading = false;
 		},
 		refresh: async () => {
+			refreshing = true;
 			await new Promise((resolve) => setTimeout(resolve, 1500));
-			internalData.refreshing = true;
-			allPosts = generatePosts(30, 0);
-			currentCursor = '30';
-			internalData.posts = allPosts;
-			internalData.cursor = currentCursor;
-			internalData.hasMore = true;
-			internalData.refreshing = false;
+			posts = generatePosts(30, 0);
+			cursor = '30';
+			hasMore = true;
+			refreshing = false;
 		}
 	};
 }

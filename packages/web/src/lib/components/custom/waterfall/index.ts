@@ -1,3 +1,4 @@
-export { WaterfallContainer } from './waterfall-container';
-export { WaterfallCard, WaterfallSkeletonCard } from './waterfall-cards';
-export type { WaterfallData, WaterfallConfig } from './waterfall-container';
+export { default as WaterfallContainer } from './waterfall-container/waterfall-container.svelte';
+export { default as WaterfallCard } from './waterfall-cards/waterfall-card.svelte';
+export { default as WaterfallSkeletonCard } from './waterfall-cards/waterfall-skeleton.svelte';
+export type { WaterfallData, WaterfallConfig, CardPosition } from './waterfall-container/types';

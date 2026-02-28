@@ -1,2 +1,2 @@
-export { WaterfallContainer } from './waterfall-container.svelte';
-export type { WaterfallData, WaterfallConfig, CardPosition } from './types';
+export { default as WaterfallContainer } from './waterfall-container.svelte';
+export type { default as WaterfallData, WaterfallConfig, CardPosition } from './types';
