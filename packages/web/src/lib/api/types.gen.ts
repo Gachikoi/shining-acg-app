@@ -60,7 +60,7 @@ export type PostServiceEditPostBody = {
     cover: V1MediaAsset;
     media: Array<V1MediaAsset>;
     title?: string;
-    content?: string;
+    content?: Array<V1PostContentUnit>;
     partitionId: string;
     /**
      * 字段掩码，用于指定本次请求需要更新哪些字段
@@ -576,6 +576,19 @@ export type V1CreatePartitionsResponse = {
     partitions: Array<V1Partition>;
 };
 
+export type V1PostContentText = {
+    type: 'text';
+    content: string;
+}
+
+export type V1PostContentMention = {
+    type: 'mention';
+    user_id: string;
+    name: string;
+}
+
+export type V1PostContentUnit = V1PostContentText | V1PostContentMention;
+
 /**
  * ---------------------------------------------------------
  * 发布帖子
@@ -583,7 +596,7 @@ export type V1CreatePartitionsResponse = {
 export type V1CreatePostRequest = {
     batchId: string;
     title?: string;
-    content?: string;
+    content?: Array<V1PostContentUnit>;
     partitionId: string;
     /**
      * 已完成上传与处理的媒体资产列表。
@@ -1418,7 +1431,7 @@ export type V1Post = {
     /**
      * 帖子正文描述
      */
-    content?: string;
+    content?: Array<V1PostContentUnit>;
     media: Array<V1MediaAsset>;
     stats: V1PostStats;
     relationStatus: V1PostRelationStatus;

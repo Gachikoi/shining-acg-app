@@ -3,6 +3,8 @@
  * 用于 ShinRichTextarea 的选区、文本、换行等操作
  */
 
+import type { V1PostContentUnit } from '$lib/api/types.gen';
+
 /** 零宽空格，用于光标落点，解决跨浏览器换行后光标显示问题 */
 export const ZWSP = '\u200B';
 
@@ -217,4 +219,47 @@ export function tryGetCaretPosition(target: HTMLElement): { left: number; top: n
 		return { left: charRect.right, top: charRect.bottom + 4 };
 	}
 	return null;
+}
+
+export function extractContentFromShinRichTextarea(
+	contenteditable: HTMLElement
+): Array<V1PostContentUnit> {
+	const result: Array<V1PostContentUnit> = [];
+
+	function appendToLastTextOrPush(str: string) {
+		if (str.length === 0) return;
+		if (result.length > 0) {
+			const last = result[result.length - 1];
+			if (last.type === 'text') {
+				last.content += str;
+				return;
+			}
+		}
+		result.push({ type: 'text', content: str });
+	}
+
+	for (const child of contenteditable.childNodes) {
+		if (child.nodeType === Node.TEXT_NODE && child.textContent) {
+			const text = child.textContent.replaceAll(ZWSP, '');
+			appendToLastTextOrPush(text);
+		} else if (child.nodeType === Node.ELEMENT_NODE) {
+			const element = child as Element;
+			if (element.tagName === 'BR') {
+				appendToLastTextOrPush('\n');
+			} else if (element.hasAttribute('data-mention-user-id')) {
+				const userId = element.getAttribute('data-mention-user-id');
+				const name = element.textContent.slice(1); // @name
+
+				if (!userId) {
+					throw new Error('mention user id 不知为何丢失了');
+				}
+				result.push({
+					type: 'mention',
+					user_id: userId,
+					name: name
+				});
+			}
+		}
+	}
+	return result;
 }
