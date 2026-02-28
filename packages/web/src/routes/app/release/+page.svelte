@@ -44,6 +44,8 @@
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
 	import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
 	import * as Select from '$lib/components/ui/select';
+	import { extractContentFromShinRichTextarea } from '$lib/components/custom/shin-rich';
+	import type { V1CreatePostRequest } from '$lib/api/types.gen';
 
 	let lastSaved = $state('11:33');
 	// 考虑将 exampleImageDataURLs 改为从 IndexedDB 中获取图片
@@ -54,6 +56,8 @@
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
 
 	let titleContent = $state('');
+
+	let contenteditableRef = $state<HTMLDivElement | null>(null);
 
 	// TODO: 实现分区选择，目前仅支持 mock 数据
 	let selectedSection = $state<string>();
@@ -75,6 +79,21 @@
 		const currentIndex = CoverRatioArray.indexOf(coverRatio);
 		const nextIndex = (currentIndex + 1) % CoverRatioArray.length;
 		coverRatio = CoverRatioArray[nextIndex];
+	}
+
+	function createPostRequest(): V1CreatePostRequest {
+		return {
+			batch_id: undefined,
+			title: titleContent,
+			content: extractContentFromShinRichTextarea(contenteditableRef as HTMLElement),
+			partition_id: undefined,
+			media_assets: undefined
+		};
+	}
+
+	function handleSubmit() {
+		const postRequest = createPostRequest();
+		console.log(postRequest);
 	}
 
 	// 如果未选择封面，则使用第一张图片作为封面
@@ -163,7 +182,11 @@
 				{titleContent.length}/{titleWordLimit}
 			</div>
 		</div>
-		<ShinRichTextarea placeholder="添加帖子描述" class="mt-5" />
+		<ShinRichTextarea
+			placeholder="添加帖子描述"
+			class="mt-5"
+			bind:contentEditableRef={contenteditableRef}
+		/>
 
 		<p class="mt-6 text-lg font-bold">分区选择<span class="text-red-500">*</span></p>
 		<div class="mt-2">
@@ -198,9 +221,12 @@
 			{/snippet}
 		</ConfirmDialog>
 		<Button variant="tertiary" class="cursor-pointer text-muted-foreground">保存</Button>
-		<Button variant="default" class="flex-1 cursor-pointer transition-none lg:flex-none"
-			>发布帖子</Button
+		<Button
+			variant="default"
+			class="flex-1 cursor-pointer transition-none lg:flex-none"
+			onclick={handleSubmit}>发布帖子</Button
 		>
+		<!-- TODO: 下面目前不符合设计稿，需要后续修改 -->
 		<div class="mx-4 hidden items-center text-sm text-muted-foreground lg:flex">
 			自动保存于 {lastSaved}
 		</div>
