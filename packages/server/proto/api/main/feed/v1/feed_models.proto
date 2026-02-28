@@ -3,7 +3,6 @@ syntax = "proto3";
 package api.main.feed.v1;
 
 import "api/main/common/v1/common.proto";
-import "api/main/common/v1/user.proto";
 import "api/main/post/v1/post_models.proto";
 
 // Feed内容类型

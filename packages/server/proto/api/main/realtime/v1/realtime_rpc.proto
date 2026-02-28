@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package api.main.realtime.v1;
+
+import "api/main/user/v1/user_models.proto";
+
+// RealtimeRpcService 定义 WS Realtime 通道内的 RPC 方法。
+service RealtimeRpcService {
+  // SyncSettingsUpdate 处理同步设置更新请求。
+  rpc SyncSettingsUpdate(SyncSettingsUpdateRpcRequest) returns (SyncSettingsUpdateRpcResponse);
+}
+
+message SyncSettingsUpdateRpcRequest {
+  // session_id 由 WS 网关注入，客户端传入会被忽略。
+  string session_id = 1;
+  string data_type = 2;
+  string device_id = 3;
+  api.main.user.v1.SyncedUserSettings user_settings = 4;
+  api.main.user.v1.SyncedNotificationSettings notification_settings = 5;
+  api.main.user.v1.SyncedPrivacySettings privacy_settings = 6;
+  api.main.user.v1.SyncedContentCategoryOrder content_category_order = 7;
+}
+
+message SyncSettingsUpdateRpcResponse {
+  bool success = 1;
+  string message = 2;
+}

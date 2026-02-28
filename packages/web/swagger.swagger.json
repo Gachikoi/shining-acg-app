@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "api/admin/v1/content_admin.proto",
+    "title": "api/main/auth/v1/auth_models.proto",
     "version": "version not set"
   },
   "tags": [
@@ -12,10 +12,25 @@
       "name": "CommentService"
     },
     {
+      "name": "DepartmentService"
+    },
+    {
       "name": "FeedService"
     },
     {
+      "name": "NotificationService"
+    },
+    {
+      "name": "PartitionService"
+    },
+    {
+      "name": "AdminService"
+    },
+    {
       "name": "PostService"
+    },
+    {
+      "name": "RealtimeRpcService"
     },
     {
       "name": "ReportService"
@@ -25,6 +40,12 @@
     },
     {
       "name": "UserService"
+    },
+    {
+      "name": "VerificationService"
+    },
+    {
+      "name": "MediaService"
     }
   ],
   "consumes": [
@@ -34,6 +55,591 @@
     "application/json"
   ],
   "paths": {
+    "/v1/admin/departments": {
+      "get": {
+        "summary": "获取部门列表\n返回所有部门信息",
+        "operationId": "DepartmentService_ListDepartments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListDepartmentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "DepartmentService"
+        ]
+      },
+      "delete": {
+        "summary": "批量删除部门\n删除前需要用户二次确认\n删除后，现网用户的对应部门徽章即消失",
+        "operationId": "DepartmentService_DeleteDepartments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteDepartmentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteDepartmentsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DepartmentService"
+        ]
+      },
+      "post": {
+        "summary": "批量新增部门\n新增的部门会分配新的ID",
+        "operationId": "DepartmentService_CreateDepartments",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateDepartmentsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateDepartmentsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "DepartmentService"
+        ]
+      }
+    },
+    "/v1/admin/departments/{department_id}/name": {
+      "put": {
+        "summary": "重命名部门\n只改变部门名称，不改变部门ID",
+        "operationId": "DepartmentService_RenameDepartment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RenameDepartmentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "department_id",
+            "description": "部门ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DepartmentServiceRenameDepartmentBody"
+            }
+          }
+        ],
+        "tags": [
+          "DepartmentService"
+        ]
+      }
+    },
+    "/v1/admin/partitions": {
+      "get": {
+        "summary": "获取分区列表\n返回所有分区信息",
+        "operationId": "PartitionService_ListPartitions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListPartitionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "PartitionService"
+        ]
+      },
+      "post": {
+        "summary": "批量新增分区\n新增的分区会分配新的ID",
+        "operationId": "PartitionService_CreatePartitions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreatePartitionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreatePartitionsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "PartitionService"
+        ]
+      }
+    },
+    "/v1/admin/partitions/{partition_id}": {
+      "delete": {
+        "summary": "删除分区\n删除前需要用户选择迁移目标分区，并二次确认",
+        "operationId": "PartitionService_DeletePartition",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeletePartitionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "partition_id",
+            "description": "要删除的分区ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PartitionServiceDeletePartitionBody"
+            }
+          }
+        ],
+        "tags": [
+          "PartitionService"
+        ]
+      }
+    },
+    "/v1/admin/partitions/{partition_id}/name": {
+      "put": {
+        "summary": "重命名分区\n只改变分区名称，不改变分区ID",
+        "operationId": "PartitionService_RenamePartition",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RenamePartitionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "partition_id",
+            "description": "分区ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PartitionServiceRenamePartitionBody"
+            }
+          }
+        ],
+        "tags": [
+          "PartitionService"
+        ]
+      }
+    },
+    "/v1/admin/permissions/admins": {
+      "get": {
+        "summary": "获取管理员列表 - 按\"超级管理员\"、\"管理员\"分类展示\n返回所有管理员的基本信息（头像、昵称（优先备注）、QQ号）",
+        "operationId": "AdminService_ListAdmins",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListAdminsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "AdminService"
+        ]
+      },
+      "put": {
+        "summary": "批量变更管理员角色 - 可选择多个管理员，批量变更为\"超级管理员\"、\"管理员\"、\"社团成员\"\n支持降级（超级管理员→管理员→社团成员）和提升（社团成员→管理员→超级管理员）",
+        "operationId": "AdminService_EditAdmins",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1EditAdminsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1EditAdminsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AdminService"
+        ]
+      }
+    },
+    "/v1/admin/reports": {
+      "get": {
+        "summary": "获取举报列表（管理员）",
+        "operationId": "ReportService_ListReports",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListReportsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh_type",
+            "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/v1/admin/reports/{report_id}/approval": {
+      "put": {
+        "summary": "封禁用户/删除评论/帖子（管理员）",
+        "operationId": "ReportService_ApprovalReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ApprovalReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "report_id",
+            "description": "举报记录ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ReportServiceApprovalReportBody"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/v1/admin/reports/{report_id}/evidence": {
+      "get": {
+        "summary": "查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）",
+        "operationId": "ReportService_ListReportEvidence",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListReportEvidenceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "report_id",
+            "description": "举报记录ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/v1/admin/reports/{report_id}/rejection": {
+      "put": {
+        "summary": "驳回举报（管理员）",
+        "operationId": "ReportService_RejectReport",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1RejectReportResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "report_id",
+            "description": "举报记录ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ReportServiceRejectReportBody"
+            }
+          }
+        ],
+        "tags": [
+          "ReportService"
+        ]
+      }
+    },
+    "/v1/admin/verifications": {
+      "get": {
+        "summary": "获取认证申请列表（管理员）",
+        "operationId": "VerificationService_ListVerifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListVerificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh_type",
+            "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "VerificationService"
+        ]
+      }
+    },
+    "/v1/admin/verifications/{application_id}/review": {
+      "put": {
+        "summary": "审批认证申请（管理员）",
+        "operationId": "VerificationService_ReviewVerification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ReviewVerificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/VerificationServiceReviewVerificationBody"
+            }
+          }
+        ],
+        "tags": [
+          "VerificationService"
+        ]
+      }
+    },
     "/v1/auth/auth": {
       "post": {
         "summary": "统一登录接口 (支持 QQ, 微信, 手机号等)",
@@ -472,6 +1078,551 @@
         ]
       }
     },
+    "/v1/media/batches/{batch_id}/media": {
+      "get": {
+        "summary": "GetBatchMedia 查询批次内全部媒体元素（按顺序返回）。\n调用时机：前端准备调用 CreatePost/EditPost 前做最终拉取。\n参数：batch_id。\n返回：按服务端固定顺序排序的 media_assets。\n错误：NOT_FOUND（批次不存在）；INTERNAL（查询失败）。",
+        "operationId": "MediaService_GetBatchMedia",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetBatchMediaResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "batch_id",
+            "description": "批次 ID。",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/media/multipart/abort": {
+      "post": {
+        "summary": "AbortMultipartUpload 中止未完成上传并清理存储侧临时分片。\n调用时机：用户取消上传或客户端显式回滚。\n参数：task_id/upload_id。\n返回：success=true 表示成功中止或会话已不可用。\n错误：INTERNAL（清理失败）。",
+        "operationId": "MediaService_AbortMultipartUpload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AbortMultipartUploadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AbortMultipartUploadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/media/multipart/batch/prepare": {
+      "post": {
+        "summary": "PrepareUploadBatch 批量准备上传任务并固化顺序。\n调用时机：前端准备开始上传一个业务批次时调用一次。\n参数：batch_id + assets（数组顺序即最终顺序来源）。\n返回：每个媒体元素对应的 asset_id，以及其下每个文件的 task_id 映射。\n错误：INVALID_ARGUMENT（格式/大小非法）；INTERNAL（存储服务故障）。",
+        "operationId": "MediaService_PrepareUploadBatch",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PrepareUploadBatchResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "该接口只做控制面编排，不做任何分片 URL 下发。\n服务端会校验格式/大小/场景，固化顺序并分配 task_id。",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PrepareUploadBatchRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/media/multipart/complete": {
+      "post": {
+        "summary": "CompleteMultipartUpload 完成分片合并并触发媒体处理。\n调用时机：前端确认所有分片上传成功后调用。\n参数：task_id/upload_id + parts（part_number/etag）。\n返回：当前文件的 MediaFileInfo；图片通常更快完成，视频会进入异步处理。\n错误：FAILED_PRECONDITION（分片不完整）；INTERNAL（合并或处理失败）。",
+        "operationId": "MediaService_CompleteMultipartUpload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CompleteMultipartUploadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CompleteMultipartUploadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/media/multipart/create": {
+      "post": {
+        "summary": "CreateMultipartUpload 创建单文件 multipart 上传会话（S3 CreateMultipartUpload 语义）。\n调用时机：Uppy 在文件开始上传时调用。\n参数：task_id。\n返回：upload_id/object_key 等会话参数。\n错误：NOT_FOUND（task 不存在）；FAILED_PRECONDITION（状态冲突）。",
+        "operationId": "MediaService_CreateMultipartUpload",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateMultipartUploadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateMultipartUploadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/media/multipart/part/sign": {
+      "post": {
+        "summary": "SignMultipartPart 为单个分片签名。\n调用时机：Uppy 在上传每个 part 前调用。\n参数：task_id/upload_id/part_number。\n返回：该分片的预签名 URL 与必要请求头。\n错误：NOT_FOUND（task 不存在）；FAILED_PRECONDITION（会话不匹配）。",
+        "operationId": "MediaService_SignMultipartPart",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SignMultipartPartResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SignMultipartPartRequest"
+            }
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/media/multipart/parts": {
+      "get": {
+        "summary": "ListUploadedParts 查询会话已上传分片，支持断点续传恢复。\n调用时机：Uppy 续传恢复时调用。\n参数：task_id/upload_id。\n返回：已上传分片列表。\n错误：NOT_FOUND（会话不存在）；INTERNAL（存储查询失败）。",
+        "operationId": "MediaService_ListUploadedParts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListUploadedPartsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "description": "文件任务 ID。",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "upload_id",
+            "description": "multipart upload_id。",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "object_key",
+            "description": "上传对象键（Object Key）。",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MediaService"
+        ]
+      }
+    },
+    "/v1/notifications/comment-mentions": {
+      "get": {
+        "summary": "获取评论和@通知列表",
+        "operationId": "NotificationService_ListCommentMentionNotifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListCommentMentionNotificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh_type",
+            "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/v1/notifications/follows": {
+      "get": {
+        "summary": "获取新增关注通知列表",
+        "operationId": "NotificationService_ListFollowNotifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListFollowNotificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh_type",
+            "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/v1/notifications/like-collects": {
+      "get": {
+        "summary": "获取赞和收藏通知列表",
+        "operationId": "NotificationService_ListLikeCollectNotifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListLikeCollectNotificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh_type",
+            "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/v1/notifications/mark-all-read": {
+      "post": {
+        "summary": "标记某类所有通知为已读（幂等操作）",
+        "operationId": "NotificationService_MarkAllNotificationsRead",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarkAllNotificationsReadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1MarkAllNotificationsReadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/v1/notifications/mark-read": {
+      "post": {
+        "summary": "标记指定通知为已读（幂等操作）",
+        "operationId": "NotificationService_MarkNotificationRead",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1MarkNotificationReadResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1MarkNotificationReadRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/v1/notifications/stats": {
+      "get": {
+        "summary": "获取未读通知统计",
+        "operationId": "NotificationService_GetNotificationStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetNotificationStatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
+    "/v1/notifications/system": {
+      "get": {
+        "summary": "获取系统通知列表",
+        "operationId": "NotificationService_ListSystemNotifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListSystemNotificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh_type",
+            "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "REFRESH_TYPE_UNSPECIFIED",
+              "REFRESH_TYPE_PULL_DOWN",
+              "REFRESH_TYPE_PULL_UP"
+            ],
+            "default": "REFRESH_TYPE_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.need_num",
+            "description": "需要返回的帖子数量",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.cursor",
+            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NotificationService"
+        ]
+      }
+    },
     "/v1/posts": {
       "post": {
         "summary": "发布帖子",
@@ -669,7 +1820,7 @@
           },
           {
             "name": "order_type",
-            "description": "排序方式（默认：点赞数最多）\n\n - COMMENT_ORDER_TYPE_UNSPECIFIED: 未指定（默认使用 LATEST）\n - COMMENT_ORDER_TYPE_LATEST: --- 按时间排序 ---\n\n最新评论（按创建时间降序）\n - COMMENT_ORDER_TYPE_EARLIEST: 最早评论（按创建时间升序）\n - COMMENT_ORDER_TYPE_MOST_LIKED: --- 按点赞数排序 ---\n\n最多点赞（按点赞数降序）\n - COMMENT_ORDER_TYPE_LEAST_LIKED: 最少点赞（按点赞数升序）\n - COMMENT_ORDER_TYPE_MOST_REPLIES: --- 按回复数排序（仅第一层评论有效） ---\n\n最多回复（按回复数降序）\n - COMMENT_ORDER_TYPE_LEAST_REPLIES: 最少回复（按回复数升序）",
+            "description": "排序方式（默认：最新）\n\n - COMMENT_ORDER_TYPE_UNSPECIFIED: 未指定（默认使用 LATEST）\n - COMMENT_ORDER_TYPE_LATEST: --- 按时间排序 ---\n\n最新评论（按创建时间降序）\n - COMMENT_ORDER_TYPE_EARLIEST: 最早评论（按创建时间升序）\n - COMMENT_ORDER_TYPE_MOST_LIKED: --- 按点赞数排序 ---\n\n最多点赞（按点赞数降序）\n - COMMENT_ORDER_TYPE_LEAST_LIKED: 最少点赞（按点赞数升序）\n - COMMENT_ORDER_TYPE_MOST_REPLIES: --- 按回复数排序（仅第一层评论有效） ---\n\n最多回复（按回复数降序）\n - COMMENT_ORDER_TYPE_LEAST_REPLIES: 最少回复（按回复数升序）",
             "in": "query",
             "required": false,
             "type": "string",
@@ -695,6 +1846,21 @@
           {
             "name": "pagination.cursor",
             "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "need_reply_count",
+            "description": "每条第一层评论需要返回的第二层回复数量（默认1条）",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "target_comment_id",
+            "description": "从“评论和 @”、“赞和收藏”通知进入时，传入目标评论 ID。\n如果目标评论就是一级评论，则以该评论为起点展示评论列表，并且后续列表中不再展示该评论（可以将 exclude_id 编码进 cursor 以排除评论）；\n如果目标评论是二级回复，则以该回复所在的一级评论为起点展示评论列表，后续列表中不再展示一级评论的同时，一级评论展开回复到目标评论处，比目标评论早发布的评论都要展开。",
             "in": "query",
             "required": false,
             "type": "string"
@@ -741,76 +1907,6 @@
         ],
         "tags": [
           "PostService"
-        ]
-      }
-    },
-    "/v1/reports": {
-      "get": {
-        "summary": "获取举报列表（管理员）",
-        "operationId": "ReportService_ListReports",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ListReportsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "type",
-            "description": "举报类型筛选（可选，不传则返回全部）\n\n - REPORT_TYPE_UNSPECIFIED: 未指定\n - REPORT_TYPE_USER: 举报用户\n - REPORT_TYPE_POST: 举报帖子\n - REPORT_TYPE_COMMENT: 举报评论\n - REPORT_TYPE_REPLY: 举报回复",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "REPORT_TYPE_UNSPECIFIED",
-              "REPORT_TYPE_USER",
-              "REPORT_TYPE_POST",
-              "REPORT_TYPE_COMMENT",
-              "REPORT_TYPE_REPLY"
-            ],
-            "default": "REPORT_TYPE_UNSPECIFIED"
-          },
-          {
-            "name": "status",
-            "description": "举报状态筛选（可选，不传则返回全部）\n\n - REPORT_STATUS_UNSPECIFIED: 未指定\n - REPORT_STATUS_PENDING: 待处理\n - REPORT_STATUS_PROCESSING: 处理中\n - REPORT_STATUS_RESOLVED: 已处理（已采纳）\n - REPORT_STATUS_REJECTED: 已驳回",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "REPORT_STATUS_UNSPECIFIED",
-              "REPORT_STATUS_PENDING",
-              "REPORT_STATUS_PROCESSING",
-              "REPORT_STATUS_RESOLVED",
-              "REPORT_STATUS_REJECTED"
-            ],
-            "default": "REPORT_STATUS_UNSPECIFIED"
-          },
-          {
-            "name": "pagination.need_num",
-            "description": "需要返回的帖子数量",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "pagination.cursor",
-            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ReportService"
         ]
       }
     },
@@ -905,133 +2001,6 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1ReportUserRequest"
-            }
-          }
-        ],
-        "tags": [
-          "ReportService"
-        ]
-      }
-    },
-    "/v1/reports/{report_id}/approval": {
-      "put": {
-        "summary": "封禁用户/删除评论/帖子（管理员）",
-        "operationId": "ReportService_ApprovalReport",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ApprovalReportResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "report_id",
-            "description": "举报记录ID",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ReportServiceApprovalReportBody"
-            }
-          }
-        ],
-        "tags": [
-          "ReportService"
-        ]
-      }
-    },
-    "/v1/reports/{report_id}/evidence": {
-      "get": {
-        "summary": "查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）",
-        "operationId": "ReportService_ListReportEvidence",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ListReportEvidenceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "report_id",
-            "description": "举报记录ID",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "pagination.need_num",
-            "description": "需要返回的帖子数量",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "pagination.cursor",
-            "description": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间\n\n为空则说明是首次请求第一页数据",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ReportService"
-        ]
-      }
-    },
-    "/v1/reports/{report_id}/rejection": {
-      "put": {
-        "summary": "驳回举报（管理员）",
-        "operationId": "ReportService_RejectReport",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1RejectReportResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "report_id",
-            "description": "举报记录ID",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ReportServiceRejectReportBody"
             }
           }
         ],
@@ -1362,60 +2331,6 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1UpdateSettingsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "UserService"
-        ]
-      }
-    },
-    "/v1/users/me/verification": {
-      "get": {
-        "summary": "查看我的认证申请状态",
-        "operationId": "UserService_GetMyVerification",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetMyVerificationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "tags": [
-          "UserService"
-        ]
-      },
-      "post": {
-        "summary": "申请身份认证",
-        "operationId": "UserService_ApplyVerification",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1ApplyVerificationResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1ApplyVerificationRequest"
             }
           }
         ],
@@ -1931,6 +2846,60 @@
           "UserService"
         ]
       }
+    },
+    "/v1/verifications/me": {
+      "get": {
+        "summary": "查看我的认证申请状态",
+        "operationId": "VerificationService_GetMyVerification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetMyVerificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "VerificationService"
+        ]
+      },
+      "put": {
+        "summary": "申请身份认证",
+        "operationId": "VerificationService_ApplyVerification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ApplyVerificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1ApplyVerificationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "VerificationService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -1944,18 +2913,48 @@
       },
       "title": "---------------------------------------------------------\nSetCommentLike - 点赞/取消点赞评论（幂等操作）\n---------------------------------------------------------"
     },
+    "DepartmentServiceRenameDepartmentBody": {
+      "type": "object",
+      "properties": {
+        "new_name": {
+          "type": "string",
+          "title": "新名称，最多12个字符"
+        }
+      },
+      "title": "==========================================\n重命名部门\n=========================================="
+    },
+    "PartitionServiceDeletePartitionBody": {
+      "type": "object",
+      "properties": {
+        "target_partition_id": {
+          "type": "string",
+          "title": "目标分区ID，将删除分区下的内容迁移到此分区"
+        }
+      },
+      "title": "==========================================\n删除分区\n=========================================="
+    },
+    "PartitionServiceRenamePartitionBody": {
+      "type": "object",
+      "properties": {
+        "new_name": {
+          "type": "string",
+          "title": "新名称，最多12个字符"
+        }
+      },
+      "title": "==========================================\n重命名分区\n=========================================="
+    },
     "PostServiceEditPostBody": {
       "type": "object",
       "properties": {
         "cover": {
-          "$ref": "#/definitions/v1Media",
-          "title": "要更新的字段值"
+          "$ref": "#/definitions/v1MediaAsset",
+          "title": "要更新的字段值\ncover/media 的顺序均以 MediaAsset.order_index 为准。"
         },
         "media": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           }
         },
         "title": {
@@ -2032,6 +3031,19 @@
       },
       "title": "---------------------------------------------------------\n关注/取关"
     },
+    "VerificationServiceReviewVerificationBody": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/v1ReviewAction",
+          "title": "APPROVE 或 REJECT"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "title": "---------------------------------------------------------\n审批认证申请（管理员）"
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -2060,36 +3072,106 @@
         }
       }
     },
+    "v1AbortMultipartUploadRequest": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "文件任务 ID。"
+        },
+        "upload_id": {
+          "type": "string",
+          "title": "multipart upload_id。"
+        },
+        "object_key": {
+          "type": "string",
+          "title": "上传对象键（Object Key）。"
+        }
+      },
+      "title": "------------------------------------------------------------------------------\nAbortMultipartUploadRequest 用于取消并清理未完成 multipart 会话。"
+    },
+    "v1AbortMultipartUploadResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "title": "true 表示已成功中断（或目标会话已不可用）。"
+        }
+      },
+      "title": "AbortMultipartUploadResponse 返回中断结果。"
+    },
     "v1ActiveDevice": {
       "type": "object",
       "properties": {
         "device_id": {
-          "type": "string",
-          "title": "设备 ID"
+          "type": "string"
         },
         "device_name": {
-          "type": "string",
-          "title": "设备名称"
+          "type": "string"
         },
         "platform": {
-          "type": "string",
-          "title": "平台"
+          "type": "string"
         },
         "connected_at": {
           "type": "string",
-          "format": "int64",
-          "title": "连接时间"
+          "format": "int64"
         },
         "last_active_at": {
           "type": "string",
-          "format": "int64",
-          "title": "最后活跃时间"
+          "format": "int64"
         },
         "is_current": {
-          "type": "boolean",
-          "title": "是否为当前设备"
+          "type": "boolean"
         }
       }
+    },
+    "v1AdminInfo": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "title": "用户ID"
+        },
+        "avatar": {
+          "type": "string",
+          "title": "头像URL"
+        },
+        "nickname": {
+          "type": "string",
+          "title": "昵称（优先显示备注）"
+        },
+        "qq_number": {
+          "type": "string",
+          "title": "QQ号"
+        },
+        "role": {
+          "$ref": "#/definitions/v1Role",
+          "title": "当前角色"
+        }
+      },
+      "title": "管理员信息（用于列表展示）"
+    },
+    "v1AdminsByRole": {
+      "type": "object",
+      "properties": {
+        "super_admins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AdminInfo"
+          },
+          "title": "超级管理员列表"
+        },
+        "admins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AdminInfo"
+          },
+          "title": "管理员列表"
+        }
+      },
+      "title": "管理员分类列表"
     },
     "v1ApplyVerificationRequest": {
       "type": "object",
@@ -2106,12 +3188,12 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           },
           "title": "证明材料"
         }
       },
-      "title": "---------------------------------------------------------\n申请身份认证"
+      "title": "申请身份认证"
     },
     "v1ApplyVerificationResponse": {
       "type": "object"
@@ -2206,7 +3288,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           },
           "title": "评论附带的媒体（图片，最多 6 张）"
         },
@@ -2225,10 +3307,67 @@
         "create_time": {
           "type": "string",
           "format": "int64",
-          "title": "创建时间（秒级时间戳）"
+          "title": "创建时间（毫秒级时间戳）"
         }
       },
       "title": "---------------------------------------------------------\n评论完整信息（用于评论详情）\n说明：Comment 统一表示评论和回复，通过 parent_comment_id 区分：\n  - parent_comment_id == null  → 第一层评论（对帖子的直接评论）\n  - parent_comment_id != null  → 第二层回复（对评论的回复）"
+    },
+    "v1CommentMentionNotification": {
+      "type": "object",
+      "properties": {
+        "notification_id": {
+          "type": "string",
+          "title": "通知 ID"
+        },
+        "type": {
+          "$ref": "#/definitions/v1CommentMentionType",
+          "title": "通知类型"
+        },
+        "actor": {
+          "$ref": "#/definitions/v1UserBrief",
+          "title": "触发通知的用户（昵称会返回备注如果有）"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "通知产生时间戳（秒）"
+        },
+        "post": {
+          "$ref": "#/definitions/v1PostBrief",
+          "description": "帖子信息（包含封面缩略图）",
+          "title": "相关内容"
+        },
+        "comment_content": {
+          "type": "string",
+          "title": "评论内容（带@高亮的富文本）"
+        },
+        "target_comment_content": {
+          "type": "string",
+          "title": "被回复的目标评论内容（如果是回复）"
+        },
+        "comment_id": {
+          "type": "string",
+          "title": "当前评论ID（用于定位跳转，当类型不是 MENTION_IN_POST 时存在）"
+        },
+        "is_read": {
+          "type": "boolean",
+          "title": "是否已读"
+        }
+      },
+      "title": "评论和@通知"
+    },
+    "v1CommentMentionType": {
+      "type": "string",
+      "enum": [
+        "COMMENT_MENTION_TYPE_UNSPECIFIED",
+        "COMMENT_MENTION_TYPE_REPLY_COMMENT",
+        "COMMENT_MENTION_TYPE_COMMENT_POST",
+        "COMMENT_MENTION_TYPE_MENTION_IN_COMMENT",
+        "COMMENT_MENTION_TYPE_MENTION_IN_POST"
+      ],
+      "default": "COMMENT_MENTION_TYPE_UNSPECIFIED",
+      "description": "- COMMENT_MENTION_TYPE_REPLY_COMMENT: 回复了你的评论\n - COMMENT_MENTION_TYPE_COMMENT_POST: 评论了你的帖子\n - COMMENT_MENTION_TYPE_MENTION_IN_COMMENT: 在评论中@了你\n - COMMENT_MENTION_TYPE_MENTION_IN_POST: 在帖子中@了你",
+      "title": "评论和@类型"
     },
     "v1CommentOrderType": {
       "type": "string",
@@ -2281,23 +3420,63 @@
       "description": "- COMMENT_TARGET_TYPE_UNSPECIFIED: 未指定\n - COMMENT_TARGET_TYPE_POST: 帖子",
       "title": "---------------------------------------------------------\n评论目标类型枚举（为未来扩展预留）"
     },
-    "v1CommentWithFirstReply": {
+    "v1CommentWithReplies": {
       "type": "object",
       "properties": {
         "comment": {
           "$ref": "#/definitions/v1Comment",
           "title": "第一层评论本体"
         },
-        "first_reply": {
-          "$ref": "#/definitions/v1Comment",
-          "title": "第一条第二层回复（如果存在）"
+        "replies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Comment"
+          },
+          "title": "第一条第二层回复（如果存在），返回数量取决于 ListPostCommentsRequest.need_reply_count 参数"
         },
-        "first_reply_cursor": {
+        "cursor": {
           "type": "string",
-          "title": "第一条回复的分页游标（如果存在，用于获取更多回复；如果不存在，则表示没有更多回复）"
+          "title": "第二层回复的下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了"
         }
       },
-      "title": "---------------------------------------------------------\n第一层评论 + 第一条回复的组合结构"
+      "title": "---------------------------------------------------------\n第一层评论 + 若干条回复的组合结构"
+    },
+    "v1CompleteMultipartUploadRequest": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "文件任务 ID。"
+        },
+        "upload_id": {
+          "type": "string",
+          "title": "multipart upload_id。"
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UploadedPart"
+          },
+          "title": "客户端确认分片清单（建议按 part_number 升序）。"
+        },
+        "object_key": {
+          "type": "string",
+          "title": "上传对象键（Object Key）。"
+        }
+      },
+      "title": "------------------------------------------------------------------------------\nCompleteMultipartUploadRequest 通知后端合并分片并进入处理流程。"
+    },
+    "v1CompleteMultipartUploadResponse": {
+      "type": "object",
+      "properties": {
+        "media": {
+          "$ref": "#/definitions/v1MediaFileInfo",
+          "title": "已进入处理流程的单文件媒体信息。"
+        }
+      },
+      "title": "CompleteMultipartUploadResponse 返回处理任务对应媒体信息。"
     },
     "v1CreateCommentRequest": {
       "type": "object",
@@ -2318,7 +3497,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           },
           "title": "评论附带的媒体（图片，最多 6 张）"
         },
@@ -2339,18 +3518,91 @@
         }
       }
     },
-    "v1CreatePostRequest": {
+    "v1CreateDepartmentsRequest": {
       "type": "object",
       "properties": {
-        "cover": {
-          "$ref": "#/definitions/v1Media"
-        },
-        "media": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "部门名称列表，每个名称最多12个字符"
+        }
+      },
+      "title": "==========================================\n批量新增部门\n=========================================="
+    },
+    "v1CreateDepartmentsResponse": {
+      "type": "object",
+      "properties": {
+        "departments": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
-          }
+            "$ref": "#/definitions/v1Department"
+          },
+          "title": "更新后的部门列表"
+        }
+      }
+    },
+    "v1CreateMultipartUploadRequest": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "PrepareUploadBatch 返回的文件 task_id。"
+        }
+      },
+      "title": "------------------------------------------------------------------------------\nCreateMultipartUploadRequest 为指定文件任务创建 S3 multipart 上传会话。"
+    },
+    "v1CreateMultipartUploadResponse": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "文件任务 ID（回显）。"
+        },
+        "upload_id": {
+          "type": "string",
+          "title": "multipart upload_id（S3 原生概念）。"
+        },
+        "object_key": {
+          "type": "string",
+          "title": "上传对象键（Object Key）。"
+        }
+      },
+      "title": "CreateMultipartUploadResponse 返回 multipart 会话关键参数。"
+    },
+    "v1CreatePartitionsRequest": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "分区名称列表，每个名称最多12个字符"
+        }
+      },
+      "title": "==========================================\n批量新增分区\n=========================================="
+    },
+    "v1CreatePartitionsResponse": {
+      "type": "object",
+      "properties": {
+        "partitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Partition"
+          },
+          "title": "更新后的所有分区列表"
+        }
+      }
+    },
+    "v1CreatePostRequest": {
+      "type": "object",
+      "properties": {
+        "batch_id": {
+          "type": "string"
         },
         "title": {
           "type": "string"
@@ -2360,6 +3612,14 @@
         },
         "partition_id": {
           "type": "string"
+        },
+        "media_assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1MediaAsset"
+          },
+          "title": "已完成上传与处理的媒体资产列表。\n后端按每个 MediaAsset.order_index 保存，不依赖数组位置。"
         }
       },
       "title": "---------------------------------------------------------\n发布帖子"
@@ -2387,8 +3647,51 @@
       "type": "object",
       "title": "空响应"
     },
+    "v1DeleteDepartmentsRequest": {
+      "type": "object",
+      "properties": {
+        "department_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "要删除的部门ID列表"
+        }
+      },
+      "title": "==========================================\n批量删除部门\n=========================================="
+    },
+    "v1DeleteDepartmentsResponse": {
+      "type": "object",
+      "properties": {
+        "departments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Department"
+          },
+          "title": "更新后的部门列表"
+        }
+      }
+    },
+    "v1DeletePartitionResponse": {
+      "type": "object"
+    },
     "v1DeletePostResponse": {
       "type": "object"
+    },
+    "v1Department": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "部门ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "部门名称，最多12个字符"
+        }
+      },
+      "title": "部门详细信息"
     },
     "v1DepartmentBase": {
       "type": "object",
@@ -2452,6 +3755,25 @@
         }
       },
       "title": "断开指定设备连接响应"
+    },
+    "v1EditAdminsRequest": {
+      "type": "object",
+      "properties": {
+        "user_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "要变更角色的用户ID列表"
+        },
+        "role": {
+          "$ref": "#/definitions/v1Role",
+          "title": "目标角色（超级管理员/管理员/普通用户）"
+        }
+      }
+    },
+    "v1EditAdminsResponse": {
+      "type": "object"
     },
     "v1EditLinksRequest": {
       "type": "object",
@@ -2554,6 +3876,34 @@
       "description": "- FEED_ORDER_TYPE_RECOMMENDED: 推荐排序（帖子/用户通用）\n - FEED_ORDER_TYPE_LATEST: 最新排序（仅帖子）\n - FEED_ORDER_TYPE_HOT: 热门排序（仅帖子）\n - FEED_ORDER_TYPE_MOST_FOLLOWERS: 最多粉丝（仅用户）\n - FEED_ORDER_TYPE_LEAST_FOLLOWER: 最少粉丝（仅用户）\n - FEED_ORDER_TYPE_MOST_INTERACTIONS: 最多互动（仅用户）\n - FEED_ORDER_TYPE_LEAST_INTERACTIONS: 最少互动（仅用户）",
       "title": "Feed排序类型（统一的排序枚举）"
     },
+    "v1FollowNotification": {
+      "type": "object",
+      "properties": {
+        "notification_id": {
+          "type": "string",
+          "title": "通知 ID"
+        },
+        "actor": {
+          "$ref": "#/definitions/v1UserSummary",
+          "title": "关注者信息（昵称会返回备注如果有，包含身份认证和部门徽章）"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "通知产生时间戳（秒）"
+        },
+        "relation": {
+          "$ref": "#/definitions/v1UserRelationStatus",
+          "description": "关系状态（用于判断显示\"私信\"或\"回关\"按钮）",
+          "title": "关系状态"
+        },
+        "is_read": {
+          "type": "boolean",
+          "title": "是否已读"
+        }
+      },
+      "title": "新增关注通知"
+    },
     "v1FollowingAuthor": {
       "type": "object",
       "properties": {
@@ -2621,6 +3971,20 @@
       },
       "title": "获取活跃设备列表响应"
     },
+    "v1GetBatchMediaResponse": {
+      "type": "object",
+      "properties": {
+        "media_assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1MediaAsset"
+          },
+          "title": "批次中的媒体元素列表。"
+        }
+      },
+      "title": "GetBatchMediaResponse 返回批次媒体资产（按服务端固化顺序排序）。"
+    },
     "v1GetFeedResponse": {
       "type": "object",
       "properties": {
@@ -2660,6 +4024,15 @@
         "application": {
           "$ref": "#/definitions/v1VerificationApplication",
           "title": "如果用户有申请则返回，没有则为null"
+        }
+      }
+    },
+    "v1GetNotificationStatsResponse": {
+      "type": "object",
+      "properties": {
+        "stats": {
+          "$ref": "#/definitions/v1NotificationStats",
+          "title": "通知统计信息"
         }
       }
     },
@@ -2719,12 +4092,67 @@
         }
       }
     },
+    "v1LikeCollectNotification": {
+      "type": "object",
+      "properties": {
+        "notification_id": {
+          "type": "string",
+          "title": "通知 ID"
+        },
+        "type": {
+          "$ref": "#/definitions/v1LikeCollectType",
+          "title": "通知类型"
+        },
+        "actor": {
+          "$ref": "#/definitions/v1UserBrief",
+          "title": "触发通知的用户（昵称会返回备注如果有）"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "通知产生时间戳（秒）"
+        },
+        "post": {
+          "$ref": "#/definitions/v1PostBrief",
+          "description": "帖子信息（包含封面缩略图）",
+          "title": "相关内容"
+        },
+        "comment_content": {
+          "type": "string",
+          "title": "评论内容（当类型为 LIKE_COMMENT 时，带@高亮）"
+        },
+        "target_comment_content": {
+          "type": "string",
+          "title": "被回复的目标评论内容（如果评论是回复）"
+        },
+        "comment_id": {
+          "type": "string",
+          "title": "评论ID（用于定位跳转，当类型为 LIKE_COMMENT 时存在）"
+        },
+        "is_read": {
+          "type": "boolean",
+          "title": "是否已读"
+        }
+      },
+      "title": "赞和收藏通知"
+    },
+    "v1LikeCollectType": {
+      "type": "string",
+      "enum": [
+        "LIKE_COLLECT_TYPE_UNSPECIFIED",
+        "LIKE_COLLECT_TYPE_LIKE_POST",
+        "LIKE_COLLECT_TYPE_COLLECT_POST",
+        "LIKE_COLLECT_TYPE_LIKE_COMMENT"
+      ],
+      "default": "LIKE_COLLECT_TYPE_UNSPECIFIED",
+      "description": "- LIKE_COLLECT_TYPE_LIKE_POST: 赞了你的帖子\n - LIKE_COLLECT_TYPE_COLLECT_POST: 收藏了你的帖子\n - LIKE_COLLECT_TYPE_LIKE_COMMENT: 赞了你的评论",
+      "title": "赞和收藏类型"
+    },
     "v1Link": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string",
-          "title": "链接显示文字"
+          "type": "string"
         },
         "url": {
           "type": "string",
@@ -2732,6 +4160,32 @@
         }
       },
       "title": "--------------------\n外部链接结构"
+    },
+    "v1ListAdminsResponse": {
+      "type": "object",
+      "properties": {
+        "admins_by_role": {
+          "$ref": "#/definitions/v1AdminsByRole",
+          "title": "按角色分类的管理员列表"
+        }
+      }
+    },
+    "v1ListCommentMentionNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1CommentMentionNotification"
+          },
+          "title": "通知列表"
+        },
+        "cursor": {
+          "type": "string",
+          "title": "下一页游标（为空表示没有更多数据）"
+        }
+      }
     },
     "v1ListCommentRepliesResponse": {
       "type": "object",
@@ -2755,6 +4209,19 @@
         }
       }
     },
+    "v1ListDepartmentsResponse": {
+      "type": "object",
+      "properties": {
+        "departments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Department"
+          },
+          "title": "部门列表"
+        }
+      }
+    },
     "v1ListFeedCategoriesResponse": {
       "type": "object",
       "properties": {
@@ -2767,6 +4234,53 @@
         }
       }
     },
+    "v1ListFollowNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1FollowNotification"
+          },
+          "title": "通知列表"
+        },
+        "next_cursor": {
+          "type": "string",
+          "title": "下一页游标（为空表示没有更多数据）"
+        }
+      }
+    },
+    "v1ListLikeCollectNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LikeCollectNotification"
+          },
+          "title": "通知列表"
+        },
+        "cursor": {
+          "type": "string",
+          "title": "下一页游标（为空表示没有更多数据）"
+        }
+      }
+    },
+    "v1ListPartitionsResponse": {
+      "type": "object",
+      "properties": {
+        "partitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Partition"
+          },
+          "title": "分区列表"
+        }
+      }
+    },
     "v1ListPostCommentsResponse": {
       "type": "object",
       "properties": {
@@ -2774,7 +4288,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1CommentWithFirstReply"
+            "$ref": "#/definitions/v1CommentWithReplies"
           },
           "title": "第一层评论列表（每条自动包含第一条回复）"
         },
@@ -2818,6 +4332,37 @@
         }
       }
     },
+    "v1ListSystemNotificationsResponse": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1SystemNotification"
+          },
+          "title": "通知列表"
+        },
+        "cursor": {
+          "type": "string",
+          "title": "下一页游标（为空表示没有更多数据）"
+        }
+      }
+    },
+    "v1ListUploadedPartsResponse": {
+      "type": "object",
+      "properties": {
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UploadedPart"
+          },
+          "title": "已上传分片明细。"
+        }
+      },
+      "title": "ListUploadedPartsResponse 返回已上传分片列表（用于断点续传恢复）。"
+    },
     "v1ListUserPostsResponse": {
       "type": "object",
       "properties": {
@@ -2850,6 +4395,50 @@
           "title": "分页游标，如果为空则表示没有更多数据"
         }
       }
+    },
+    "v1ListVerificationsResponse": {
+      "type": "object",
+      "properties": {
+        "applications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1VerificationApplication"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "title": "分页游标，如果为空则表示没有更多数据"
+        }
+      }
+    },
+    "v1LivePhotoAsset": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$ref": "#/definitions/v1MediaFile",
+          "title": "Live Photo 图片轨资产。"
+        },
+        "video": {
+          "$ref": "#/definitions/v1MediaFile",
+          "title": "Live Photo 视频轨资产。"
+        }
+      },
+      "title": "LivePhotoAsset 表示 Live Photo 的图片与视频组合。"
+    },
+    "v1LivePhotoUploadPair": {
+      "type": "object",
+      "properties": {
+        "image_file": {
+          "$ref": "#/definitions/v1UploadFile",
+          "title": "Live Photo 图片文件。"
+        },
+        "video_file": {
+          "$ref": "#/definitions/v1UploadFile",
+          "title": "Live Photo 视频文件。"
+        }
+      },
+      "title": "LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。"
     },
     "v1LoginRequest": {
       "type": "object",
@@ -2884,74 +4473,195 @@
     "v1LogoutResponse": {
       "type": "object"
     },
-    "v1Media": {
+    "v1MarkAllNotificationsReadRequest": {
       "type": "object",
       "properties": {
-        "id": {
+        "category": {
+          "$ref": "#/definitions/v1NotificationCategory",
+          "title": "通知类别"
+        }
+      }
+    },
+    "v1MarkAllNotificationsReadResponse": {
+      "type": "object"
+    },
+    "v1MarkNotificationReadRequest": {
+      "type": "object",
+      "properties": {
+        "notification_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "要标记为已读的通知 ID 列表"
+        }
+      }
+    },
+    "v1MarkNotificationReadResponse": {
+      "type": "object"
+    },
+    "v1MediaAsset": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
           "type": "string",
-          "title": "雪花 ID"
+          "title": "媒体元素 ID（数组元素级别 ID）。"
         },
         "type": {
           "$ref": "#/definitions/v1MediaType",
-          "title": "使用枚举代替字符串"
+          "title": "元素类型（IMAGE / VIDEO / LIVE_PHOTO）。"
+        },
+        "scene": {
+          "$ref": "#/definitions/v1MediaScene",
+          "title": "业务场景。"
+        },
+        "status": {
+          "$ref": "#/definitions/v1MediaStatus",
+          "title": "元素状态（由元素内文件状态聚合得出）。"
+        },
+        "order_index": {
+          "type": "integer",
+          "format": "int32",
+          "title": "元素顺序索引（从 0 开始），用于 CreatePost/EditPost 时稳定保序。"
+        },
+        "single": {
+          "$ref": "#/definitions/v1MediaFile",
+          "title": "普通单文件媒体（图片或视频）。"
+        },
+        "live_photo": {
+          "$ref": "#/definitions/v1LivePhotoAsset",
+          "title": "Live Photo 复合媒体。"
+        }
+      },
+      "title": "MediaAsset 是业务层对“一个媒体数组元素”的统一表达。"
+    },
+    "v1MediaFile": {
+      "type": "object",
+      "properties": {
+        "file_id": {
+          "type": "string",
+          "title": "文件媒体主键 ID（雪花 ID 字符串形式）。"
+        },
+        "type": {
+          "$ref": "#/definitions/v1MediaType",
+          "title": "文件媒体类型（仅 IMAGE 或 VIDEO）。"
         },
         "bucket": {
           "type": "string",
-          "description": "存储桶：shining-vod",
-          "title": "核心存储标识"
+          "title": "存储桶名称。"
         },
         "object_key": {
           "type": "string",
-          "title": "对象路径：videos/2024/01/v001.m3u8"
+          "title": "对象键（Object Key），用于后端精确定位对象。"
+        },
+        "url": {
+          "type": "string",
+          "title": "对外可访问 URL（CDN 或对象存储网关地址）。"
+        },
+        "thumbnail_url": {
+          "type": "string",
+          "title": "缩略图 URL（图片可选，视频建议提供）。"
         },
         "meta": {
           "$ref": "#/definitions/v1MediaMeta",
-          "title": "元数据 (用 sub-message 保持整洁)"
+          "title": "媒体元信息。"
         },
         "status": {
-          "type": "integer",
-          "format": "int32",
-          "description": "0:处理中, 1:就绪, 2:违规屏蔽",
-          "title": "状态与权限"
+          "$ref": "#/definitions/v1MediaStatus",
+          "title": "当前媒体处理状态。"
         }
       },
-      "title": "--------------------\n媒体资源"
+      "title": "MediaFile 表示单个物理文件（图片或视频）。"
+    },
+    "v1MediaFileInfo": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "文件任务 ID，用于前后端对账。"
+        },
+        "file": {
+          "$ref": "#/definitions/v1MediaFile",
+          "title": "单文件媒体实体。"
+        },
+        "asset_id": {
+          "type": "string",
+          "title": "所属媒体元素 ID。"
+        },
+        "scene": {
+          "$ref": "#/definitions/v1MediaScene",
+          "title": "上传场景。"
+        }
+      },
+      "title": "MediaFileInfo 是面向单文件 complete 响应的媒体包装。"
     },
     "v1MediaMeta": {
       "type": "object",
       "properties": {
         "width": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "title": "媒体宽度（像素）。"
         },
         "height": {
           "type": "integer",
-          "format": "int32"
-        },
-        "duration": {
-          "type": "integer",
           "format": "int32",
-          "title": "视频时长（秒）"
+          "title": "媒体高度（像素）。"
         },
-        "size": {
+        "duration_ms": {
           "type": "string",
           "format": "int64",
-          "title": "文件大小（字节）"
+          "title": "媒体时长（毫秒），图片通常为 0。"
+        },
+        "size_bytes": {
+          "type": "string",
+          "format": "int64",
+          "title": "文件体积（字节）。"
         },
         "mime_type": {
           "type": "string",
-          "title": "video/mp4, image/webp"
+          "title": "媒体 MIME 类型，如 image/webp、application/x-mpegURL。"
         }
-      }
+      },
+      "title": "MediaMeta 描述媒体基础元信息。"
+    },
+    "v1MediaScene": {
+      "type": "string",
+      "enum": [
+        "MEDIA_SCENE_UNSPECIFIED",
+        "MEDIA_SCENE_USER_AVATAR",
+        "MEDIA_SCENE_POST_MEDIA",
+        "MEDIA_SCENE_COMMENT_MEDIA",
+        "MEDIA_SCENE_POST_COVER"
+      ],
+      "default": "MEDIA_SCENE_UNSPECIFIED",
+      "description": "- MEDIA_SCENE_UNSPECIFIED: 默认值，表示未指定场景。\n - MEDIA_SCENE_USER_AVATAR: 用户头像场景。\n - MEDIA_SCENE_POST_MEDIA: 帖子媒体场景（图片/视频/Live Photo）。\n - MEDIA_SCENE_COMMENT_MEDIA: 评论媒体场景（图片/视频/Live Photo）。\n - MEDIA_SCENE_POST_COVER: 帖子封面场景（仅图片）。",
+      "title": "MediaScene 描述业务上传场景（不再区分图片/视频）。"
+    },
+    "v1MediaStatus": {
+      "type": "string",
+      "enum": [
+        "MEDIA_STATUS_UNSPECIFIED",
+        "MEDIA_STATUS_PROCESSING",
+        "MEDIA_STATUS_COMPLETED",
+        "MEDIA_STATUS_FAILED",
+        "MEDIA_STATUS_BLOCKED"
+      ],
+      "default": "MEDIA_STATUS_UNSPECIFIED",
+      "description": "- MEDIA_STATUS_UNSPECIFIED: 默认值，状态未知。\n - MEDIA_STATUS_PROCESSING: 处理中，可能处于上传完成待处理或转码中。\n - MEDIA_STATUS_COMPLETED: 处理完成，可供业务引用。\n - MEDIA_STATUS_FAILED: 处理失败，需要前端重试或提示用户。\n - MEDIA_STATUS_BLOCKED: 已屏蔽，不可对外展示。",
+      "title": "MediaStatus 表示媒体处理状态。"
     },
     "v1MediaType": {
       "type": "string",
       "enum": [
         "MEDIA_TYPE_UNSPECIFIED",
         "MEDIA_TYPE_IMAGE",
-        "MEDIA_TYPE_VIDEO"
+        "MEDIA_TYPE_VIDEO",
+        "MEDIA_TYPE_LIVE_PHOTO"
       ],
-      "default": "MEDIA_TYPE_UNSPECIFIED"
+      "default": "MEDIA_TYPE_UNSPECIFIED",
+      "description": "- MEDIA_TYPE_UNSPECIFIED: 默认值，表示未设置媒体类型。\n - MEDIA_TYPE_IMAGE: 图片媒体（JPG/PNG/WebP/HEIC 等转码后的图片资产）。\n - MEDIA_TYPE_VIDEO: 视频媒体（MP4/MOV/WebM 等转码后的流媒体资产）。\n - MEDIA_TYPE_LIVE_PHOTO: Live Photo 复合媒体（由一张图片和一个视频组成）。",
+      "title": "MediaType 描述媒体资源的主类型。"
     },
     "v1ModifyDepartmentsRequest": {
       "type": "object",
@@ -2968,6 +4678,59 @@
     },
     "v1ModifyDepartmentsResponse": {
       "type": "object"
+    },
+    "v1NotificationCategory": {
+      "type": "string",
+      "enum": [
+        "NOTIFICATION_CATEGORY_UNSPECIFIED",
+        "NOTIFICATION_CATEGORY_COMMENT_MENTION",
+        "NOTIFICATION_CATEGORY_LIKE_COLLECT",
+        "NOTIFICATION_CATEGORY_FOLLOW",
+        "NOTIFICATION_CATEGORY_SYSTEM"
+      ],
+      "default": "NOTIFICATION_CATEGORY_UNSPECIFIED",
+      "description": "- NOTIFICATION_CATEGORY_COMMENT_MENTION: 评论和@\n - NOTIFICATION_CATEGORY_LIKE_COLLECT: 赞和收藏\n - NOTIFICATION_CATEGORY_FOLLOW: 新增关注\n - NOTIFICATION_CATEGORY_SYSTEM: 晒你（系统）通知",
+      "title": "通知类别枚举"
+    },
+    "v1NotificationStats": {
+      "type": "object",
+      "properties": {
+        "unread_comment_mention_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "未读评论和@数量"
+        },
+        "unread_like_collect_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "未读赞和收藏数量"
+        },
+        "unread_follow_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "未读新增关注数量"
+        },
+        "unread_system_count": {
+          "type": "integer",
+          "format": "int32",
+          "title": "未读系统通知数量"
+        }
+      },
+      "title": "通知统计信息"
+    },
+    "v1Partition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "分区ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "分区名称，最多12个字符"
+        }
+      },
+      "title": "分区详细信息"
     },
     "v1Post": {
       "type": "object",
@@ -2990,7 +4753,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           }
         },
         "stats": {
@@ -3003,7 +4766,7 @@
         "publish_time": {
           "type": "string",
           "format": "int64",
-          "title": "秒级时间戳"
+          "title": "毫秒级时间戳"
         },
         "update_time": {
           "type": "string",
@@ -3011,6 +4774,20 @@
         }
       },
       "title": "---------------------------------------------------------\n帖子相关"
+    },
+    "v1PostBrief": {
+      "type": "object",
+      "properties": {
+        "post_id": {
+          "type": "string",
+          "title": "帖子 ID"
+        },
+        "cover_url": {
+          "type": "string",
+          "title": "封面缩略图 URL"
+        }
+      },
+      "title": "帖子简要信息"
     },
     "v1PostFeedContent": {
       "type": "object",
@@ -3046,7 +4823,7 @@
           "title": "如果用户输入了标题，则这里显示标题；如果没有输入标题，则将正文描述的前30个字作为标题传输过来；如果都没有，不传输此字段。"
         },
         "cover": {
-          "$ref": "#/definitions/v1Media",
+          "$ref": "#/definitions/v1MediaAsset",
           "title": "封面：专门用于列表展示的媒体对象。"
         },
         "author": {
@@ -3068,7 +4845,7 @@
         "publish_time": {
           "type": "string",
           "format": "int64",
-          "title": "秒级时间戳"
+          "title": "毫秒级时间戳"
         },
         "update_time": {
           "type": "string",
@@ -3111,6 +4888,92 @@
       },
       "title": "帖子统计数据"
     },
+    "v1PrepareUploadBatchRequest": {
+      "type": "object",
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "title": "业务侧生成的批次 ID（同一帖子/评论一次提交流程应稳定不变）。"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1UploadAsset"
+          },
+          "title": "本次批量准备的媒体元素，数组顺序即最终返回顺序来源。"
+        }
+      },
+      "description": "该接口只做控制面编排，不做任何分片 URL 下发。\n服务端会校验格式/大小/场景，固化顺序并分配 task_id。",
+      "title": "------------------------------------------------------------------------------\nPrepareUploadBatchRequest 在真正开始 multipart 之前批量准备上传任务。"
+    },
+    "v1PrepareUploadBatchResponse": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PreparedUploadAsset"
+          },
+          "title": "与请求 assets 一一对应的映射结果。"
+        }
+      },
+      "title": "PrepareUploadBatchResponse 返回本批次媒体元素映射。"
+    },
+    "v1PreparedUploadAsset": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "title": "媒体元素 ID。"
+        },
+        "order_index": {
+          "type": "integer",
+          "format": "int32",
+          "title": "元素顺序索引（从 0 开始）。"
+        },
+        "scene": {
+          "$ref": "#/definitions/v1MediaScene",
+          "title": "元素场景。"
+        },
+        "type": {
+          "$ref": "#/definitions/v1MediaType",
+          "title": "元素类型（IMAGE/VIDEO/LIVE_PHOTO）。"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1PreparedUploadTask"
+          },
+          "title": "该元素下的文件任务列表（1 个或 2 个）。"
+        }
+      },
+      "title": "PreparedUploadAsset 描述 PrepareUploadBatch 后单个媒体元素的映射结果。"
+    },
+    "v1PreparedUploadTask": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。"
+        },
+        "asset_id": {
+          "type": "string",
+          "title": "所属媒体元素 ID。"
+        },
+        "scene": {
+          "$ref": "#/definitions/v1MediaScene",
+          "title": "文件上传场景（回显）。"
+        },
+        "type": {
+          "$ref": "#/definitions/v1MediaType",
+          "title": "文件媒体类型（IMAGE/VIDEO）。"
+        }
+      },
+      "title": "PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。"
+    },
     "v1RefreshTokenRequest": {
       "type": "object",
       "properties": {
@@ -3145,6 +5008,24 @@
     },
     "v1RejectReportResponse": {
       "type": "object"
+    },
+    "v1RenameDepartmentResponse": {
+      "type": "object",
+      "properties": {
+        "department": {
+          "$ref": "#/definitions/v1Department",
+          "title": "更新后的部门信息"
+        }
+      }
+    },
+    "v1RenamePartitionResponse": {
+      "type": "object",
+      "properties": {
+        "partition": {
+          "$ref": "#/definitions/v1Partition",
+          "title": "更新后的分区信息"
+        }
+      }
     },
     "v1Reply": {
       "type": "object",
@@ -3228,7 +5109,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           },
           "title": "举报证据图片"
         }
@@ -3278,6 +5159,24 @@
       },
       "title": "---------------------------------------------------------\n举报列表项（用于列表展示）"
     },
+    "v1ReportNotificationDetail": {
+      "type": "object",
+      "properties": {
+        "target_type": {
+          "$ref": "#/definitions/v1ReportTargetType",
+          "title": "举报目标类型"
+        },
+        "target_summary": {
+          "type": "string",
+          "title": "目标摘要（用户名/帖子摘要/评论摘要）"
+        },
+        "reason": {
+          "type": "string",
+          "title": "管理员处理原因"
+        }
+      },
+      "title": "举报通知详情"
+    },
     "v1ReportPostRequest": {
       "type": "object",
       "properties": {
@@ -3310,6 +5209,18 @@
       "description": "- REPORT_STATUS_UNSPECIFIED: 未指定\n - REPORT_STATUS_PENDING: 待处理\n - REPORT_STATUS_PROCESSING: 处理中\n - REPORT_STATUS_RESOLVED: 已处理（已采纳）\n - REPORT_STATUS_REJECTED: 已驳回",
       "title": "---------------------------------------------------------\n举报状态枚举"
     },
+    "v1ReportTargetType": {
+      "type": "string",
+      "enum": [
+        "REPORT_TARGET_TYPE_UNSPECIFIED",
+        "REPORT_TARGET_TYPE_USER",
+        "REPORT_TARGET_TYPE_POST",
+        "REPORT_TARGET_TYPE_COMMENT"
+      ],
+      "default": "REPORT_TARGET_TYPE_UNSPECIFIED",
+      "description": "- REPORT_TARGET_TYPE_USER: 用户\n - REPORT_TARGET_TYPE_POST: 帖子\n - REPORT_TARGET_TYPE_COMMENT: 评论",
+      "title": "举报目标类型"
+    },
     "v1ReportType": {
       "type": "string",
       "enum": [
@@ -3338,7 +5249,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           },
           "title": "证明材料图片ID（最多3张）"
         }
@@ -3351,6 +5262,26 @@
         "report_id": {
           "type": "string",
           "title": "举报记录ID"
+        }
+      }
+    },
+    "v1ReviewAction": {
+      "type": "string",
+      "enum": [
+        "REVIEW_ACTION_UNSPECIFIED",
+        "REVIEW_ACTION_APPROVE",
+        "REVIEW_ACTION_REJECT"
+      ],
+      "default": "REVIEW_ACTION_UNSPECIFIED",
+      "description": "- REVIEW_ACTION_APPROVE: 批准\n - REVIEW_ACTION_REJECT: 拒绝",
+      "title": "---------------------------------------------------------\n审批动作"
+    },
+    "v1ReviewVerificationResponse": {
+      "type": "object",
+      "properties": {
+        "application": {
+          "$ref": "#/definitions/v1VerificationApplication",
+          "title": "更新后的申请详情"
         }
       }
     },
@@ -3378,6 +5309,46 @@
     "v1SetPostLikeResponse": {
       "type": "object"
     },
+    "v1SignMultipartPartRequest": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "title": "文件任务 ID。"
+        },
+        "upload_id": {
+          "type": "string",
+          "title": "multipart upload_id。"
+        },
+        "part_number": {
+          "type": "integer",
+          "format": "int32",
+          "title": "分片号（从 1 开始）。"
+        },
+        "object_key": {
+          "type": "string",
+          "title": "上传对象键（Object Key）。"
+        }
+      },
+      "title": "------------------------------------------------------------------------------\nSignMultipartPartRequest 请求服务端为单个分片生成预签名 URL。"
+    },
+    "v1SignMultipartPartResponse": {
+      "type": "object",
+      "properties": {
+        "upload_url": {
+          "type": "string",
+          "title": "分片上传预签名 URL。"
+        },
+        "required_headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "该分片上传需要携带的额外头信息。"
+        }
+      },
+      "title": "SignMultipartPartResponse 返回可直接 PUT 分片的签名 URL。"
+    },
     "v1SyncDataType": {
       "type": "string",
       "enum": [
@@ -3388,37 +5359,34 @@
         "SYNC_DATA_TYPE_CONTENT_CATEGORY_ORDER"
       ],
       "default": "SYNC_DATA_TYPE_UNSPECIFIED",
-      "title": "- SYNC_DATA_TYPE_USER_SETTINGS: 用户设置\n - SYNC_DATA_TYPE_NOTIFICATION_SETTINGS: 通知设置\n - SYNC_DATA_TYPE_PRIVACY_SETTINGS: 隐私设置\n - SYNC_DATA_TYPE_CONTENT_CATEGORY_ORDER: 内容分类排序"
+      "title": "SyncDataType 定义可订阅的同步数据类型。"
     },
     "v1SyncStatus": {
       "type": "object",
       "properties": {
         "user_id": {
-          "type": "string",
-          "title": "用户 ID"
+          "type": "string"
         },
         "active_devices": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1ActiveDevice"
-          },
-          "title": "活跃设备列表"
+          }
         },
         "last_sync_at": {
           "type": "string",
-          "format": "int64",
-          "title": "最后同步时间"
+          "format": "int64"
         },
         "data_versions": {
           "type": "object",
           "additionalProperties": {
             "type": "string",
             "format": "int64"
-          },
-          "title": "各数据类型的版本号（key: SyncDataType的字符串值）"
+          }
         }
-      }
+      },
+      "title": "SyncStatus 描述当前用户的同步状态。"
     },
     "v1SyncedContentCategoryOrder": {
       "type": "object",
@@ -3508,6 +5476,51 @@
       },
       "title": "---------------------------------------------------------\n用户通用设置 (仅自己可见的需要多端同步的设置选项)"
     },
+    "v1SystemNotification": {
+      "type": "object",
+      "properties": {
+        "notification_id": {
+          "type": "string",
+          "title": "通知 ID"
+        },
+        "type": {
+          "$ref": "#/definitions/v1SystemNotificationType",
+          "title": "通知类型"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "通知产生时间戳（秒）"
+        },
+        "report_detail": {
+          "$ref": "#/definitions/v1ReportNotificationDetail",
+          "description": "举报相关详情",
+          "title": "根据类型，以下字段可能存在"
+        },
+        "verification_detail": {
+          "$ref": "#/definitions/v1VerificationNotificationDetail",
+          "title": "身份认证相关详情"
+        },
+        "is_read": {
+          "type": "boolean",
+          "title": "是否已读"
+        }
+      },
+      "title": "系统通知"
+    },
+    "v1SystemNotificationType": {
+      "type": "string",
+      "enum": [
+        "SYSTEM_NOTIFICATION_TYPE_UNSPECIFIED",
+        "SYSTEM_NOTIFICATION_TYPE_REPORT_REJECTED",
+        "SYSTEM_NOTIFICATION_TYPE_REPORT_APPROVED",
+        "SYSTEM_NOTIFICATION_TYPE_VERIFICATION_APPROVED",
+        "SYSTEM_NOTIFICATION_TYPE_VERIFICATION_REJECTED"
+      ],
+      "default": "SYSTEM_NOTIFICATION_TYPE_UNSPECIFIED",
+      "description": "- SYSTEM_NOTIFICATION_TYPE_REPORT_REJECTED: 举报被驳回\n - SYSTEM_NOTIFICATION_TYPE_REPORT_APPROVED: 举报已处理\n - SYSTEM_NOTIFICATION_TYPE_VERIFICATION_APPROVED: 身份认证通过\n - SYSTEM_NOTIFICATION_TYPE_VERIFICATION_REJECTED: 身份认证被拒绝",
+      "title": "系统通知类型"
+    },
     "v1TimeRange": {
       "type": "object",
       "properties": {
@@ -3522,7 +5535,7 @@
           "title": "结束时间"
         }
       },
-      "title": "--------------------\n时间范围结构（秒级时间戳）"
+      "title": "--------------------\n时间范围结构（毫秒级时间戳）"
     },
     "v1UpdatePushTokenRequest": {
       "type": "object",
@@ -3560,6 +5573,71 @@
           "$ref": "#/definitions/v1SyncedUserSettings"
         }
       }
+    },
+    "v1UploadAsset": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "$ref": "#/definitions/v1MediaScene",
+          "title": "上传场景。"
+        },
+        "single_file": {
+          "$ref": "#/definitions/v1UploadFile",
+          "title": "普通媒体元素（单文件）。"
+        },
+        "live_photo_pair": {
+          "$ref": "#/definitions/v1LivePhotoUploadPair",
+          "title": "Live Photo 媒体元素（图片 + 视频）。"
+        }
+      },
+      "title": "UploadAsset 描述前端发起批量上传时的单个“媒体元素”。"
+    },
+    "v1UploadFile": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "title": "原始文件名。"
+        },
+        "size_bytes": {
+          "type": "string",
+          "format": "int64",
+          "title": "文件大小（字节）。"
+        },
+        "mime_type": {
+          "type": "string",
+          "title": "文件 MIME 类型，由前端探测上送，后端会二次校验。"
+        },
+        "file_hash": {
+          "type": "string",
+          "title": "可选文件哈希，便于去重或幂等检查。"
+        },
+        "crop_cover": {
+          "type": "boolean",
+          "title": "帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。"
+        }
+      },
+      "title": "UploadFile 描述单个文件上传任务。"
+    },
+    "v1UploadedPart": {
+      "type": "object",
+      "properties": {
+        "part_number": {
+          "type": "integer",
+          "format": "int32",
+          "title": "分片号。"
+        },
+        "etag": {
+          "type": "string",
+          "title": "分片 ETag。"
+        },
+        "size_bytes": {
+          "type": "string",
+          "format": "int64",
+          "title": "分片大小（字节）。"
+        }
+      },
+      "title": "UploadedPart 描述客户端已上传分片（用于 complete 请求）。"
     },
     "v1UserBrief": {
       "type": "object",
@@ -3625,8 +5703,7 @@
           "$ref": "#/definitions/v1UserBrief"
         },
         "relation_status": {
-          "$ref": "#/definitions/v1UserRelationStatus",
-          "title": "可选，当前用户与列表中用户的关系状态"
+          "$ref": "#/definitions/v1UserRelationStatus"
         }
       },
       "title": "用户列表数据模型设计（用于批量接口返回）"
@@ -3793,9 +5870,15 @@
           "type": "string",
           "title": "申请 ID"
         },
+        "user": {
+          "$ref": "#/definitions/v1UserBrief",
+          "description": "申请人基本信息",
+          "title": "申请人信息"
+        },
         "verified_title": {
           "type": "string",
-          "title": "申请的认证头衔"
+          "description": "申请的认证头衔",
+          "title": "申请内容"
         },
         "verification_description": {
           "type": "string",
@@ -3805,21 +5888,58 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Media"
+            "$ref": "#/definitions/v1MediaAsset"
           },
           "title": "证明材料"
         },
-        "applied_time": {
-          "type": "string",
-          "format": "int64",
-          "title": "申请时间"
-        },
         "status": {
           "$ref": "#/definitions/v1VerificationStatus",
-          "title": "当前状态"
+          "title": "状态信息"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "创建时间"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "更新时间"
+        },
+        "reviewed_by_user_id": {
+          "type": "string",
+          "description": "审批人 ID",
+          "title": "审批信息（如果已审批）"
+        },
+        "reviewed_by_username": {
+          "type": "string",
+          "title": "审批人名称"
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "int64",
+          "title": "审批时间"
+        },
+        "review_comment": {
+          "type": "string",
+          "title": "审批意见"
         }
       },
-      "title": "认证申请详情"
+      "title": "---------------------------------------------------------\n认证申请详情（管理员详情视角）"
+    },
+    "v1VerificationNotificationDetail": {
+      "type": "object",
+      "properties": {
+        "verified_title": {
+          "type": "string",
+          "title": "认证头衔（如：社长）"
+        },
+        "reason": {
+          "type": "string",
+          "title": "拒绝原因（仅当认证被拒绝时）"
+        }
+      },
+      "title": "身份认证通知详情"
     },
     "v1VerificationStatus": {
       "type": "string",
@@ -3827,11 +5947,12 @@
         "VERIFICATION_STATUS_UNSPECIFIED",
         "VERIFICATION_STATUS_PENDING",
         "VERIFICATION_STATUS_APPROVED",
-        "VERIFICATION_STATUS_REJECTED"
+        "VERIFICATION_STATUS_REJECTED",
+        "VERIFICATION_STATUS_CANCELLED"
       ],
       "default": "VERIFICATION_STATUS_UNSPECIFIED",
-      "description": "- VERIFICATION_STATUS_PENDING: 待处理\n - VERIFICATION_STATUS_APPROVED: 已通过\n - VERIFICATION_STATUS_REJECTED: 已拒绝",
-      "title": "认证状态枚举"
+      "description": "- VERIFICATION_STATUS_PENDING: 待处理\n - VERIFICATION_STATUS_APPROVED: 已通过\n - VERIFICATION_STATUS_REJECTED: 已拒绝\n - VERIFICATION_STATUS_CANCELLED: 已取消（暂不投入使用）",
+      "title": "---------------------------------------------------------\n认证状态枚举"
     }
   }
 }

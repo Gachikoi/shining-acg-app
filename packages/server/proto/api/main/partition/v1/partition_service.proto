@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package api.main.partition.v1;
+
+import "api/main/partition/v1/partition_req_res.proto";
+import "google/api/annotations.proto";
+
+// 分区管理服务
+// 提供分区的增删改查功能
+service PartitionService {
+  // 批量新增分区
+  // 新增的分区会分配新的ID
+  rpc CreatePartitions(CreatePartitionsRequest) returns (CreatePartitionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/partitions"
+      body: "*"
+    };
+  }
+
+  // 删除分区
+  // 删除前需要用户选择迁移目标分区，并二次确认
+  rpc DeletePartition(DeletePartitionRequest) returns (DeletePartitionResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/partitions/{partition_id}"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 重命名分区
+  // 只改变分区名称，不改变分区ID
+  rpc RenamePartition(RenamePartitionRequest) returns (RenamePartitionResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/partitions/{partition_id}/name"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 获取分区列表
+  // 返回所有分区信息
+  rpc ListPartitions(ListPartitionsRequest) returns (ListPartitionsResponse) {
+    option (google.api.http) = {get: "/v1/admin/partitions"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

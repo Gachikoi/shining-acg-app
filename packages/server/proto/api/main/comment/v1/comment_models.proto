@@ -2,8 +2,9 @@ syntax = "proto3";
 
 package api.main.comment.v1;
 
+import "buf/validate/validate.proto";
 import "api/main/common/v1/common.proto";
-import "api/main/common/v1/user.proto";
+import "api/media/v1/media_models.proto";
 
 // ---------------------------------------------------------
 // 评论完整信息（用于评论详情）
@@ -16,13 +17,13 @@ message Comment {
   CommentTargetType target_type = 3; // 被评论对象类型
   api.main.common.v1.UserBrief author = 4; // 评论作者
   string content = 5; // 评论内容（最多 300 字）
-  repeated api.main.common.v1.Media media = 6; // 评论附带的媒体（图片，最多 6 张）
+  repeated api.media.v1.MediaAsset media = 6; // 评论附带的媒体（图片，最多 6 张）
   CommentStats stats = 7; // 评论统计数据
   CommentRelationStatus relation_status = 8; // 当前用户与评论的关系状态
 
   optional ReplyContext reply_context = 9; // 回复上下文（仅第二层评论有意义）
 
-  int64 create_time = 10; // 创建时间（秒级时间戳）
+  int64 create_time = 10; // 创建时间（毫秒级时间戳）
 }
 
 // ---------------------------------------------------------
@@ -51,32 +52,32 @@ enum CommentOrderType {
   COMMENT_ORDER_TYPE_UNSPECIFIED = 0; // 未指定（默认使用 LATEST）
 
   // --- 按时间排序 ---
-  COMMENT_ORDER_TYPE_LATEST = 1;      // 最新评论（按创建时间降序）
-  COMMENT_ORDER_TYPE_EARLIEST = 2;    // 最早评论（按创建时间升序）
+  COMMENT_ORDER_TYPE_LATEST = 1; // 最新评论（按创建时间降序）
+  COMMENT_ORDER_TYPE_EARLIEST = 2; // 最早评论（按创建时间升序）
 
   // --- 按点赞数排序 ---
-  COMMENT_ORDER_TYPE_MOST_LIKED = 3;  // 最多点赞（按点赞数降序）
+  COMMENT_ORDER_TYPE_MOST_LIKED = 3; // 最多点赞（按点赞数降序）
   COMMENT_ORDER_TYPE_LEAST_LIKED = 4; // 最少点赞（按点赞数升序）
 
   // --- 按回复数排序（仅第一层评论有效） ---
-  COMMENT_ORDER_TYPE_MOST_REPLIES = 5;  // 最多回复（按回复数降序）
+  COMMENT_ORDER_TYPE_MOST_REPLIES = 5; // 最多回复（按回复数降序）
   COMMENT_ORDER_TYPE_LEAST_REPLIES = 6; // 最少回复（按回复数升序）
 }
 
 // ---------------------------------------------------------
-// 第一层评论 + 第一条回复的组合结构
-message CommentWithFirstReply {
-  Comment comment = 1;                            // 第一层评论本体
-  optional Comment first_reply = 2;               // 第一条第二层回复（如果存在）
-  optional string first_reply_cursor = 3;         // 第一条回复的分页游标（如果存在，用于获取更多回复；如果不存在，则表示没有更多回复）
+// 第一层评论 + 若干条回复的组合结构
+message CommentWithReplies {
+  Comment comment = 1; // 第一层评论本体
+  repeated Comment replies = 2; // 第一条第二层回复（如果存在），返回数量取决于 ListPostCommentsRequest.need_reply_count 参数
+  optional string cursor = 3; // 第二层回复的下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了
 }
 
 // ---------------------------------------------------------
 // 回复上下文（仅第二层评论有意义）
 message ReplyContext {
   // 层级信息（仅第二层回复时有值）
-  string parent_comment_id = 1; // 父评论ID（第二层回复必填，第一层评论为null）
-  string reply_to_comment_id = 2; // 回复的评论ID（第二层回复必填，指向被回复的评论）
-  string reply_to_user_id = 3; // 回复的用户ID（第二层回复必填，用于UI显示"回复了@xxx"）
-  string reply_to_user_name = 4; // 回复的用户名（第二层回复必填，冗余字段避免额外查询）
+  string parent_comment_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 父评论ID（第二层回复必填，第一层评论为null）
+  string reply_to_comment_id = 2 [(buf.validate.field).string.pattern = "\\S"]; // 回复的评论ID（第二层回复必填，指向被回复的评论）
+  string reply_to_user_id = 3 [(buf.validate.field).string.pattern = "\\S"]; // 回复的用户ID（第二层回复必填，用于UI显示"回复了@xxx"）
+  string reply_to_user_name = 4 [(buf.validate.field).string.pattern = "\\S"]; // 回复的用户名（第二层回复必填，冗余字段避免额外查询）
 }

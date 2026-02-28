@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package api.main.partition.v1;
+
+import "buf/validate/validate.proto";
+import "api/main/partition/v1/partition_models.proto";
+
+// ==========================================
+// 批量新增分区
+// ==========================================
+message CreatePartitionsRequest {
+  repeated string names = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        pattern: "\\S"
+        max_len: 12
+      }
+    }
+  }]; // 分区名称列表，每个名称最多12个字符
+}
+
+message CreatePartitionsResponse {
+  repeated Partition partitions = 1; // 更新后的所有分区列表
+}
+
+// ==========================================
+// 删除分区
+// ==========================================
+message DeletePartitionRequest {
+  string partition_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 要删除的分区ID
+  string target_partition_id = 2 [(buf.validate.field).string.pattern = "\\S"]; // 目标分区ID，将删除分区下的内容迁移到此分区
+}
+
+message DeletePartitionResponse {}
+
+// ==========================================
+// 重命名分区
+// ==========================================
+message RenamePartitionRequest {
+  string partition_id = 1 [(buf.validate.field).string.pattern = "\\S"]; // 分区ID
+  string new_name = 2 [(buf.validate.field).string = {
+    pattern: "\\S"
+    max_len: 12
+  }]; // 新名称，最多12个字符
+}
+
+message RenamePartitionResponse {
+  Partition partition = 1; // 更新后的分区信息
+}
+
+// ==========================================
+// 获取分区列表
+// ==========================================
+message ListPartitionsRequest {
+  // 无需分页参数，获取所有分区
+}
+
+message ListPartitionsResponse {
+  repeated Partition partitions = 1; // 分区列表
+}

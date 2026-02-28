@@ -2,17 +2,15 @@ syntax = "proto3";
 
 package api.main.post.v1;
 
-import "api/main/common/v1/common.proto";
-import "api/main/common/v1/user.proto";
-// 假设 api.common.v1 在这里引用，实际使用请确保路径正确
+import "buf/validate/validate.proto";
 import "api/main/post/v1/post_models.proto";
-import "google/api/annotations.proto";
+import "api/media/v1/media_models.proto";
 import "google/protobuf/field_mask.proto";
 
 // ---------------------------------------------------------
 // 获取帖子详情
 message GetPostRequest {
-  string post_id = 1;
+  string post_id = 1 [(buf.validate.field).string.pattern = "\\S"];
 }
 
 message GetPostResponse {
@@ -22,11 +20,13 @@ message GetPostResponse {
 // ---------------------------------------------------------
 // 发布帖子
 message CreatePostRequest {
-  api.main.common.v1.Media cover = 1;
-  repeated api.main.common.v1.Media media = 2;
-  optional string title = 3;
-  optional string content = 4;
-  string partition_id = 5;
+  string batch_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  optional string title = 2;
+  optional string content = 3;
+  string partition_id = 4 [(buf.validate.field).string.pattern = "\\S"];
+  // 已完成上传与处理的媒体资产列表。
+  // 后端按每个 MediaAsset.order_index 保存，不依赖数组位置。
+  repeated api.media.v1.MediaAsset media_assets = 5;
 }
 
 message CreatePostResponse {}
@@ -34,13 +34,14 @@ message CreatePostResponse {}
 // ---------------------------------------------------------
 // 编辑帖子
 message EditPostRequest {
-  string post_id = 1;
+  string post_id = 1 [(buf.validate.field).string.pattern = "\\S"];
   // 要更新的字段值
-  api.main.common.v1.Media cover = 2;
-  repeated api.main.common.v1.Media media = 3;
+  // cover/media 的顺序均以 MediaAsset.order_index 为准。
+  api.media.v1.MediaAsset cover = 2;
+  repeated api.media.v1.MediaAsset media = 3;
   optional string title = 4;
   optional string content = 5;
-  string partition_id = 6;
+  string partition_id = 6 [(buf.validate.field).string.pattern = "\\S"];
 
   // 字段掩码，用于指定本次请求需要更新哪些字段
   // 例如：paths: ["title", "content"]
@@ -52,7 +53,7 @@ message EditPostResponse {}
 // ---------------------------------------------------------
 // 删除帖子
 message DeletePostRequest {
-  string post_id = 1;
+  string post_id = 1 [(buf.validate.field).string.pattern = "\\S"];
 }
 
 message DeletePostResponse {}
@@ -60,7 +61,7 @@ message DeletePostResponse {}
 // ---------------------------------------------------------
 // 点赞/取消点赞
 message SetPostLikeRequest {
-  string post_id = 1;
+  string post_id = 1 [(buf.validate.field).string.pattern = "\\S"];
   bool is_liked = 2; // true=点赞, false=取消点赞
 }
 
@@ -69,7 +70,7 @@ message SetPostLikeResponse {}
 // ---------------------------------------------------------
 // 收藏/取消收藏
 message SetPostCollectRequest {
-  string post_id = 1;
+  string post_id = 1 [(buf.validate.field).string.pattern = "\\S"];
   bool is_collected = 2; // true=收藏, false=取消收藏
 }
 

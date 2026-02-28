@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package api.main.permission.v1;
+
+import "buf/validate/validate.proto";
+import "api/main/common/v1/common.proto";
+import "api/main/permission/v1/permission_models.proto";
+
+// ---------------------------------------------------------
+// 获取管理员列表
+
+message ListAdminsRequest {}
+
+message ListAdminsResponse {
+  AdminsByRole admins_by_role = 1; // 按角色分类的管理员列表
+}
+
+// ---------------------------------------------------------
+// 批量变更管理员角色
+
+message EditAdminsRequest {
+  repeated string user_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        pattern: "\\S"
+      }
+    }
+  }]; // 要变更角色的用户ID列表
+  api.main.common.v1.Role role = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }]; // 目标角色（超级管理员/管理员/普通用户）
+}
+
+message EditAdminsResponse {}

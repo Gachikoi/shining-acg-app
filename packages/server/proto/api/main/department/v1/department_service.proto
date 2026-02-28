@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package api.main.department.v1;
+
+import "api/main/department/v1/department_req_res.proto";
+import "google/api/annotations.proto";
+
+// 部门管理服务
+// 提供部门的增删改查功能
+service DepartmentService {
+  // 批量新增部门
+  // 新增的部门会分配新的ID
+  rpc CreateDepartments(CreateDepartmentsRequest) returns (CreateDepartmentsResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/departments"
+      body: "*"
+    };
+  }
+
+  // 批量删除部门
+  // 删除前需要用户二次确认
+  // 删除后，现网用户的对应部门徽章即消失
+  rpc DeleteDepartments(DeleteDepartmentsRequest) returns (DeleteDepartmentsResponse) {
+    option (google.api.http) = {
+      delete: "/v1/admin/departments"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 重命名部门
+  // 只改变部门名称，不改变部门ID
+  rpc RenameDepartment(RenameDepartmentRequest) returns (RenameDepartmentResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/departments/{department_id}/name"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 获取部门列表
+  // 返回所有部门信息
+  rpc ListDepartments(ListDepartmentsRequest) returns (ListDepartmentsResponse) {
+    option (google.api.http) = {get: "/v1/admin/departments"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

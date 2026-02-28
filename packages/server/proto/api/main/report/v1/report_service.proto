@@ -37,20 +37,20 @@ service ReportService {
 
   // 获取举报列表（管理员）
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {
-    option (google.api.http) = {get: "/v1/reports"};
+    option (google.api.http) = {get: "/v1/admin/reports"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   //  查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）
   rpc ListReportEvidence(ListReportEvidenceRequest) returns (ListReportEvidenceResponse) {
-    option (google.api.http) = {get: "/v1/reports/{report_id}/evidence"};
+    option (google.api.http) = {get: "/v1/admin/reports/{report_id}/evidence"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // 驳回举报（管理员）
   rpc RejectReport(RejectReportRequest) returns (RejectReportResponse) {
     option (google.api.http) = {
-      put: "/v1/reports/{report_id}/rejection"
+      put: "/v1/admin/reports/{report_id}/rejection"
       body: "*"
     };
     option idempotency_level = IDEMPOTENT;
@@ -59,7 +59,7 @@ service ReportService {
   // 封禁用户/删除评论/帖子（管理员）
   rpc ApprovalReport(ApprovalReportRequest) returns (ApprovalReportResponse) {
     option (google.api.http) = {
-      put: "/v1/reports/{report_id}/approval"
+      put: "/v1/admin/reports/{report_id}/approval"
       body: "*"
     };
     option idempotency_level = IDEMPOTENT;

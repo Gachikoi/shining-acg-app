@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package api.main.verification.v1;
+
+import "api/main/verification/v1/verification_req_res.proto";
+import "google/api/annotations.proto";
+
+// 身份认证申请服务
+service VerificationService {
+  // --- 用户侧 ---
+
+  // 申请身份认证
+  rpc ApplyVerification(ApplyVerificationRequest) returns (ApplyVerificationResponse) {
+    option (google.api.http) = {
+      put: "/v1/verifications/me"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // 查看我的认证申请状态
+  rpc GetMyVerification(GetMyVerificationRequest) returns (GetMyVerificationResponse) {
+    option (google.api.http) = {get: "/v1/verifications/me"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // --- 管理员侧 ---
+
+  // 获取认证申请列表（管理员）
+  rpc ListVerifications(ListVerificationsRequest) returns (ListVerificationsResponse) {
+    option (google.api.http) = {get: "/v1/admin/verifications"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // 审批认证申请（管理员）
+  rpc ReviewVerification(ReviewVerificationRequest) returns (ReviewVerificationResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/verifications/{application_id}/review"
+      body: "*"
+    };
+    option idempotency_level = IDEMPOTENT;
+  }
+}

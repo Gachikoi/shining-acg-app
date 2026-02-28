@@ -4,8 +4,8 @@ package api.main.report.v1;
 
 import "api/main/comment/v1/comment_models.proto";
 import "api/main/common/v1/common.proto";
-import "api/main/common/v1/user.proto";
 import "api/main/post/v1/post_models.proto";
+import "api/media/v1/media_models.proto";
 
 // ---------------------------------------------------------
 // 举报类型枚举
@@ -63,7 +63,7 @@ message HandleReportAdmin {
   string admin_name = 2; // 处理管理员名称
 }
 
-message Reply{
+message Reply {
   api.main.comment.v1.Comment comment = 1; // 评论本体
   string reply_to_summary = 2; // 回复的评论摘要（截取 100 字符）
 }
@@ -75,5 +75,5 @@ message ReportEvidenceItem {
   string report_id = 2; // 举报证据所属举报记录ID
   api.main.common.v1.UserBrief reporter = 3; // 举报者信息
   string reason = 4; // 举报说明
-  repeated api.main.common.v1.Media media = 5; // 举报证据图片
+  repeated api.media.v1.MediaAsset media = 5; // 举报证据图片
 }

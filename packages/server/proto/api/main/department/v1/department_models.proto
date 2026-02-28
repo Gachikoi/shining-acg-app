@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package api.main.department.v1;
+
+// 部门详细信息
+message Department {
+  string id = 1; // 部门ID
+  string name = 2; // 部门名称，最多12个字符
+}

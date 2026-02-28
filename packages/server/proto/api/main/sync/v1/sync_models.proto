@@ -2,152 +2,28 @@ syntax = "proto3";
 
 package api.main.sync.v1;
 
-import "api/main/user/v1/user_models.proto";
-
-// ---------------------------------------------------------
-// WebSocket 消息类型枚举
-// ---------------------------------------------------------
-
-enum SyncMessageType {
-  SYNC_MESSAGE_TYPE_UNSPECIFIED = 0;
-
-  // 客户端 -> 服务端
-  SYNC_MESSAGE_TYPE_PING = 1; // 心跳包
-  SYNC_MESSAGE_TYPE_SUBSCRIBE = 2; // 订阅同步
-  SYNC_MESSAGE_TYPE_UNSUBSCRIBE = 3; // 取消订阅
-  SYNC_MESSAGE_TYPE_SETTINGS_UPDATE = 4; // 客户端更新设置
-
-  // 服务端 -> 客户端
-  SYNC_MESSAGE_TYPE_PONG = 10; // 心跳响应
-  SYNC_MESSAGE_TYPE_CONNECTED = 11; // 连接成功
-  SYNC_MESSAGE_TYPE_SETTINGS_SYNC = 12; // 设置同步推送
-  SYNC_MESSAGE_TYPE_ERROR = 13; // 错误消息
-  SYNC_MESSAGE_TYPE_ACK = 14; // 确认消息
-}
-
-// ---------------------------------------------------------
-// 同步数据类型枚举
-// ---------------------------------------------------------
-
+// SyncDataType 定义可订阅的同步数据类型。
 enum SyncDataType {
   SYNC_DATA_TYPE_UNSPECIFIED = 0;
-  SYNC_DATA_TYPE_USER_SETTINGS = 1; // 用户设置
-  SYNC_DATA_TYPE_NOTIFICATION_SETTINGS = 2; // 通知设置
-  SYNC_DATA_TYPE_PRIVACY_SETTINGS = 3; // 隐私设置
-  SYNC_DATA_TYPE_CONTENT_CATEGORY_ORDER = 4; // 内容分类排序
+  SYNC_DATA_TYPE_USER_SETTINGS = 1;
+  SYNC_DATA_TYPE_NOTIFICATION_SETTINGS = 2;
+  SYNC_DATA_TYPE_PRIVACY_SETTINGS = 3;
+  SYNC_DATA_TYPE_CONTENT_CATEGORY_ORDER = 4;
 }
 
-// ---------------------------------------------------------
-// WebSocket 消息封装
-// ---------------------------------------------------------
-
-message SyncMessage {
-  string message_id = 1; // 消息唯一标识
-  SyncMessageType type = 2; // 消息类型
-  int64 timestamp = 3; // 时间戳（毫秒）
-
-  oneof payload {
-    PingMessage ping = 10;
-    PongMessage pong = 11;
-    ConnectedMessage connected = 12;
-    SubscribeMessage subscribe = 13;
-    UnsubscribeMessage unsubscribe = 14;
-    SettingsSyncMessage settings_sync = 15;
-    SettingsUpdateMessage settings_update = 16;
-    ErrorMessage error = 17;
-    AckMessage ack = 18;
-  }
-}
-
-// ---------------------------------------------------------
-// 具体消息类型定义
-// ---------------------------------------------------------
-
-// 心跳包
-message PingMessage {
-  string device_id = 1; // 设备标识
-}
-
-// 心跳响应
-message PongMessage {
-  int64 server_time = 1; // 服务器时间戳
-}
-
-// 连接成功消息
-message ConnectedMessage {
-  string session_id = 1; // WebSocket 会话 ID
-  string user_id = 2; // 用户 ID
-  int64 connected_at = 3; // 连接时间戳
-  repeated SyncDataType available_sync_types = 4; // 可用的同步类型
-}
-
-// 订阅消息
-message SubscribeMessage {
-  repeated SyncDataType sync_types = 1; // 要订阅的同步类型
-}
-
-// 取消订阅消息
-message UnsubscribeMessage {
-  repeated SyncDataType sync_types = 1; // 要取消订阅的同步类型
-}
-
-// 设置同步消息（服务端推送给客户端）
-message SettingsSyncMessage {
-  SyncDataType data_type = 1; // 数据类型
-  int64 version = 2; // 数据版本号
-  string source_device_id = 3; // 触发同步的设备 ID（空表示服务端触发）
-
-  oneof data {
-    api.main.user.v1.SyncedUserSettings user_settings = 10;
-    api.main.user.v1.SyncedNotificationSettings notification_settings = 11;
-    api.main.user.v1.SyncedPrivacySettings privacy_settings = 12;
-    api.main.user.v1.SyncedContentCategoryOrder content_category_order = 13;
-  }
-}
-
-// 设置更新消息（客户端发送给服务端）
-message SettingsUpdateMessage {
-  SyncDataType data_type = 1; // 数据类型
-  string device_id = 2; // 发送设备 ID
-
-  oneof data {
-    api.main.user.v1.SyncedUserSettings user_settings = 10;
-    api.main.user.v1.SyncedNotificationSettings notification_settings = 11;
-    api.main.user.v1.SyncedPrivacySettings privacy_settings = 12;
-    api.main.user.v1.SyncedContentCategoryOrder content_category_order = 13;
-  }
-}
-
-// 错误消息
-message ErrorMessage {
-  string code = 1; // 错误码
-  string message = 2; // 错误描述
-  map<string, string> details = 3; // 详细信息
-}
-
-// 确认消息
-message AckMessage {
-  string ref_message_id = 1; // 引用的消息 ID
-  bool success = 2; // 是否成功
-  string message = 3; // 附加消息
-}
-
-// ---------------------------------------------------------
-// 同步状态信息
-// ---------------------------------------------------------
-
+// SyncStatus 描述当前用户的同步状态。
 message SyncStatus {
-  string user_id = 1; // 用户 ID
-  repeated ActiveDevice active_devices = 2; // 活跃设备列表
-  int64 last_sync_at = 3; // 最后同步时间
-  map<string, int64> data_versions = 4; // 各数据类型的版本号（key: SyncDataType的字符串值）
+  string user_id = 1;
+  repeated ActiveDevice active_devices = 2;
+  int64 last_sync_at = 3;
+  map<string, int64> data_versions = 4;
 }
 
 message ActiveDevice {
-  string device_id = 1; // 设备 ID
-  string device_name = 2; // 设备名称
-  string platform = 3; // 平台
-  int64 connected_at = 4; // 连接时间
-  int64 last_active_at = 5; // 最后活跃时间
-  bool is_current = 6; // 是否为当前设备
+  string device_id = 1;
+  string device_name = 2;
+  string platform = 3;
+  int64 connected_at = 4;
+  int64 last_active_at = 5;
+  bool is_current = 6;
 }

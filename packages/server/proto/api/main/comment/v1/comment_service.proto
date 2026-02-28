@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package api.main.comment.v1;
 
-import "api/main/comment/v1/comment_models.proto";
 import "api/main/comment/v1/comment_req_res.proto";
 import "google/api/annotations.proto";
 
@@ -45,4 +44,3 @@ service CommentService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
-

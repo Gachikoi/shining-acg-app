@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package api.main.partition.v1;
+
+// 分区详细信息
+message Partition {
+  string id = 1; // 分区ID
+  string name = 2; // 分区名称，最多12个字符
+}

@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package api.media.v1;
+
+import "api/media/v1/media_models.proto";
+import "buf/validate/validate.proto";
+
+// ------------------------------------------------------------------------------
+// PrepareUploadBatchRequest 在真正开始 multipart 之前批量准备上传任务。
+//
+// 该接口只做控制面编排，不做任何分片 URL 下发。
+// 服务端会校验格式/大小/场景，固化顺序并分配 task_id。
+message PrepareUploadBatchRequest {
+  // 业务侧生成的批次 ID（同一帖子/评论一次提交流程应稳定不变）。
+  string batch_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  // 本次批量准备的媒体元素，数组顺序即最终返回顺序来源。
+  repeated UploadAsset assets = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// PrepareUploadBatchResponse 返回本批次媒体元素映射。
+message PrepareUploadBatchResponse {
+  // 与请求 assets 一一对应的映射结果。
+  repeated PreparedUploadAsset assets = 1;
+}
+
+// ------------------------------------------------------------------------------
+// CreateMultipartUploadRequest 为指定文件任务创建 S3 multipart 上传会话。
+message CreateMultipartUploadRequest {
+  // PrepareUploadBatch 返回的文件 task_id。
+  string task_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+}
+
+// CreateMultipartUploadResponse 返回 multipart 会话关键参数。
+message CreateMultipartUploadResponse {
+  // 文件任务 ID（回显）。
+  string task_id = 1;
+  // multipart upload_id（S3 原生概念）。
+  string upload_id = 2;
+  // 上传对象键（Object Key）。
+  string object_key = 3;
+}
+
+// ------------------------------------------------------------------------------
+// SignMultipartPartRequest 请求服务端为单个分片生成预签名 URL。
+message SignMultipartPartRequest {
+  // 文件任务 ID。
+  string task_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  // multipart upload_id。
+  string upload_id = 2 [(buf.validate.field).string.pattern = "\\S"];
+  // 分片号（从 1 开始）。
+  int32 part_number = 3 [(buf.validate.field).int32.gt = 0];
+  // 上传对象键（Object Key）。
+  string object_key = 4 [(buf.validate.field).string.pattern = "\\S"];
+}
+
+// SignMultipartPartResponse 返回可直接 PUT 分片的签名 URL。
+message SignMultipartPartResponse {
+  // 分片上传预签名 URL。
+  string upload_url = 1;
+  // 该分片上传需要携带的额外头信息。
+  map<string, string> required_headers = 2;
+}
+
+// ------------------------------------------------------------------------------
+// ListUploadedPartsRequest 查询某个 multipart 会话已上传分片。
+message ListUploadedPartsRequest {
+  // 文件任务 ID。
+  string task_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  // multipart upload_id。
+  string upload_id = 2 [(buf.validate.field).string.pattern = "\\S"];
+  // 上传对象键（Object Key）。
+  string object_key = 3 [(buf.validate.field).string.pattern = "\\S"];
+}
+
+// ListUploadedPartsResponse 返回已上传分片列表（用于断点续传恢复）。
+message ListUploadedPartsResponse {
+  // 已上传分片明细。
+  repeated UploadedPart parts = 1;
+}
+
+// ------------------------------------------------------------------------------
+// CompleteMultipartUploadRequest 通知后端合并分片并进入处理流程。
+message CompleteMultipartUploadRequest {
+  // 文件任务 ID。
+  string task_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  // multipart upload_id。
+  string upload_id = 2 [(buf.validate.field).string.pattern = "\\S"];
+  // 客户端确认分片清单（建议按 part_number 升序）。
+  repeated UploadedPart parts = 3 [(buf.validate.field).repeated.min_items = 1];
+  // 上传对象键（Object Key）。
+  string object_key = 4 [(buf.validate.field).string.pattern = "\\S"];
+}
+
+// CompleteMultipartUploadResponse 返回处理任务对应媒体信息。
+message CompleteMultipartUploadResponse {
+  // 已进入处理流程的单文件媒体信息。
+  MediaFileInfo media = 1;
+}
+
+// ------------------------------------------------------------------------------
+// AbortMultipartUploadRequest 用于取消并清理未完成 multipart 会话。
+message AbortMultipartUploadRequest {
+  // 文件任务 ID。
+  string task_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+  // multipart upload_id。
+  string upload_id = 2 [(buf.validate.field).string.pattern = "\\S"];
+  // 上传对象键（Object Key）。
+  string object_key = 3 [(buf.validate.field).string.pattern = "\\S"];
+}
+
+// AbortMultipartUploadResponse 返回中断结果。
+message AbortMultipartUploadResponse {
+  // true 表示已成功中断（或目标会话已不可用）。
+  bool success = 1;
+}
+
+// ------------------------------------------------------------------------------
+// GetBatchMediaRequest 查询某批次最终媒体结果。
+message GetBatchMediaRequest {
+  // 批次 ID。
+  string batch_id = 1 [(buf.validate.field).string.pattern = "\\S"];
+}
+
+// GetBatchMediaResponse 返回批次媒体资产（按服务端固化顺序排序）。
+message GetBatchMediaResponse {
+  // 批次中的媒体元素列表。
+  repeated MediaAsset media_assets = 1;
+}

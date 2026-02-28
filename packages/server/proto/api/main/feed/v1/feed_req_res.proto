@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package api.main.feed.v1;
 
+import "buf/validate/validate.proto";
 import "api/main/common/v1/common.proto";
 import "api/main/feed/v1/feed_models.proto";
 
@@ -11,16 +12,19 @@ import "api/main/feed/v1/feed_models.proto";
 
 message GetFeedRequest {
   // 分类ID（来自ListFeedCategories返回的category_id）
-  string category_id = 1;
+  string category_id = 1 [(buf.validate.field).string.pattern = "\\S"];
 
   // 刷新类型：下拉刷新/上拉加载
-  api.main.common.v1.RefreshType refresh_type = 2;
+  api.main.common.v1.RefreshType refresh_type = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
 
   // 过滤条件（可选）
   optional FeedFilter filter = 3;
 
   // 分页参数
-  api.main.common.v1.CursorPagination pagination = 4;
+  api.main.common.v1.CursorPagination pagination = 4 [(buf.validate.field).required = true];
 }
 
 message GetFeedResponse {

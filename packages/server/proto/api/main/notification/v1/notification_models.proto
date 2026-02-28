@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package api.main.notification.v1;
+
+import "api/main/common/v1/common.proto";
+
+// 通知类别枚举
+enum NotificationCategory {
+  NOTIFICATION_CATEGORY_UNSPECIFIED = 0;
+  NOTIFICATION_CATEGORY_COMMENT_MENTION = 1; // 评论和@
+  NOTIFICATION_CATEGORY_LIKE_COLLECT = 2; // 赞和收藏
+  NOTIFICATION_CATEGORY_FOLLOW = 3; // 新增关注
+  NOTIFICATION_CATEGORY_SYSTEM = 4; // 晒你（系统）通知
+}
+
+//--------------------
+// 通知类型枚举
+//--------------------
+
+// 评论和@类型
+enum CommentMentionType {
+  COMMENT_MENTION_TYPE_UNSPECIFIED = 0;
+  COMMENT_MENTION_TYPE_REPLY_COMMENT = 1; // 回复了你的评论
+  COMMENT_MENTION_TYPE_COMMENT_POST = 2; // 评论了你的帖子
+  COMMENT_MENTION_TYPE_MENTION_IN_COMMENT = 3; // 在评论中@了你
+  COMMENT_MENTION_TYPE_MENTION_IN_POST = 4; // 在帖子中@了你
+}
+
+// 赞和收藏类型
+enum LikeCollectType {
+  LIKE_COLLECT_TYPE_UNSPECIFIED = 0;
+  LIKE_COLLECT_TYPE_LIKE_POST = 1; // 赞了你的帖子
+  LIKE_COLLECT_TYPE_COLLECT_POST = 2; // 收藏了你的帖子
+  LIKE_COLLECT_TYPE_LIKE_COMMENT = 3; // 赞了你的评论
+}
+
+// 系统通知类型
+enum SystemNotificationType {
+  SYSTEM_NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  SYSTEM_NOTIFICATION_TYPE_REPORT_REJECTED = 1; // 举报被驳回
+  SYSTEM_NOTIFICATION_TYPE_REPORT_APPROVED = 2; // 举报已处理
+  SYSTEM_NOTIFICATION_TYPE_VERIFICATION_APPROVED = 3; // 身份认证通过
+  SYSTEM_NOTIFICATION_TYPE_VERIFICATION_REJECTED = 4; // 身份认证被拒绝
+}
+
+// 举报目标类型
+enum ReportTargetType {
+  REPORT_TARGET_TYPE_UNSPECIFIED = 0;
+  REPORT_TARGET_TYPE_USER = 1; // 用户
+  REPORT_TARGET_TYPE_POST = 2; // 帖子
+  REPORT_TARGET_TYPE_COMMENT = 3; // 评论
+}
+
+// 举报处理动作
+enum ReportAction {
+  REPORT_ACTION_UNSPECIFIED = 0;
+  REPORT_ACTION_USER_BANNED = 1; // 用户已封禁
+  REPORT_ACTION_POST_DELETED = 2; // 帖子已删除
+  REPORT_ACTION_COMMENT_DELETED = 3; // 评论已删除
+}
+
+//--------------------
+// 通知数据模型
+//--------------------
+
+// 评论和@通知
+message CommentMentionNotification {
+  string notification_id = 1; // 通知 ID
+  CommentMentionType type = 2; // 通知类型
+  api.main.common.v1.UserBrief actor = 3; // 触发通知的用户（昵称会返回备注如果有）
+  int64 created_at = 4; // 通知产生时间戳（秒）
+
+  // 相关内容
+  PostBrief post = 5; // 帖子信息（包含封面缩略图）
+  optional string comment_content = 6; // 评论内容（带@高亮的富文本）
+  optional string target_comment_content = 7; // 被回复的目标评论内容（如果是回复）
+  optional string comment_id = 8; // 当前评论ID（用于定位跳转，当类型不是 MENTION_IN_POST 时存在）
+
+  bool is_read = 9; // 是否已读
+}
+
+// 赞和收藏通知
+message LikeCollectNotification {
+  string notification_id = 1; // 通知 ID
+  LikeCollectType type = 2; // 通知类型
+  api.main.common.v1.UserBrief actor = 3; // 触发通知的用户（昵称会返回备注如果有）
+  int64 created_at = 4; // 通知产生时间戳（秒）
+
+  // 相关内容
+  PostBrief post = 5; // 帖子信息（包含封面缩略图）
+  optional string comment_content = 6; // 评论内容（当类型为 LIKE_COMMENT 时，带@高亮）
+  optional string target_comment_content = 7; // 被回复的目标评论内容（如果评论是回复）
+  optional string comment_id = 8; // 评论ID（用于定位跳转，当类型为 LIKE_COMMENT 时存在）
+
+  bool is_read = 9; // 是否已读
+}
+
+// 新增关注通知
+message FollowNotification {
+  string notification_id = 1; // 通知 ID
+  api.main.common.v1.UserSummary actor = 2; // 关注者信息（昵称会返回备注如果有，包含身份认证和部门徽章）
+  int64 created_at = 3; // 通知产生时间戳（秒）
+
+  // 关系状态
+  api.main.common.v1.UserRelationStatus relation = 4; // 关系状态（用于判断显示"私信"或"回关"按钮）
+
+  bool is_read = 5; // 是否已读
+}
+
+// 系统通知
+message SystemNotification {
+  string notification_id = 1; // 通知 ID
+  SystemNotificationType type = 2; // 通知类型
+  int64 created_at = 3; // 通知产生时间戳（秒）
+
+  // 根据类型，以下字段可能存在
+  optional ReportNotificationDetail report_detail = 4; // 举报相关详情
+  optional VerificationNotificationDetail verification_detail = 5; // 身份认证相关详情
+
+  bool is_read = 7; // 是否已读
+}
+
+// 举报通知详情
+message ReportNotificationDetail {
+  ReportTargetType target_type = 1; // 举报目标类型
+  string target_summary = 2; // 目标摘要（用户名/帖子摘要/评论摘要）
+  optional string reason = 4; // 管理员处理原因
+}
+
+// 身份认证通知详情
+message VerificationNotificationDetail {
+  string verified_title = 1; // 认证头衔（如：社长）
+  optional string reason = 2; // 拒绝原因（仅当认证被拒绝时）
+}
+
+//--------------------
+// 辅助数据结构
+//--------------------
+
+// 帖子简要信息
+message PostBrief {
+  string post_id = 1; // 帖子 ID
+  string cover_url = 2; // 封面缩略图 URL
+}
+
+// 通知统计信息
+message NotificationStats {
+  int32 unread_comment_mention_count = 1; // 未读评论和@数量
+  int32 unread_like_collect_count = 2; // 未读赞和收藏数量
+  int32 unread_follow_count = 3; // 未读新增关注数量
+  int32 unread_system_count = 4; // 未读系统通知数量
+}
