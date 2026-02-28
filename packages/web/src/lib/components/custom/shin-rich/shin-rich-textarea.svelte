@@ -7,12 +7,79 @@
 	基于 contenteditable 的富文本输入框，用于正文描述等场景。支持回车换行、粘贴、字数统计，
 	以及 @ 用户（点击按钮或输入 @ 触发，支持键盘导航与搜索过滤）。
 
+	## 功能特性
+	- 换行：Enter 插入 br+ZWSP，粘贴时 \n 自动转为 br+ZWSP
+	- @ 提及：点击「@ 用户」按钮或输入 @ 打开用户选择弹层，支持上下键切换、Enter 确认、Escape 关闭
+	- 搜索过滤：输入 @ 后继续输入可过滤用户列表（按 qq、name、remark）
+	- 字数统计：右下角显示当前字数 / 最大字数
+	- Backspace：mention 整块删除、br+ZWSP 整行删除、删除 @ 时关闭 popover
+
 	## Props
-	- contentEditableRef: 可绑定的 contenteditable 根元素引用
+	- contentEditableRef: 可绑定的 contenteditable 根元素引用，用于外部获取 DOM 或调用 extractContentFromShinRichTextarea
 	- class: 容器样式类名
 	- placeholder: 占位文案
 	- maxLength: 最大字数，默认 10000
 	- onMentionClick: 点击 mention 时的回调，用于跳转个人资料页等
+
+	## 使用示例
+
+	### 基础用法
+	```svelte
+	<script>
+		import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
+
+		let contentEditableRef = $state<HTMLDivElement | null>(null);
+	</script>
+
+	<ShinRichTextarea
+		placeholder="添加帖子描述"
+		class="mt-5"
+		bind:contentEditableRef
+	/>
+	```
+
+	### 提取内容为 API 格式
+	```svelte
+	<script>
+		import ShinRichTextarea, { extractContentFromShinRichTextarea } from '$lib/components/custom/shin-rich';
+		import type { V1PostContentUnit } from '$lib/api/types.gen';
+
+		let contentEditableRef = $state<HTMLDivElement | null>(null);
+
+		function handleSubmit() {
+			if (!contentEditableRef) return;
+			const units: V1PostContentUnit[] = extractContentFromShinRichTextarea(contentEditableRef);
+			// units 为 { type: 'text', content } 与 { type: 'mention', user_id, name } 的数组
+			console.log(units);
+		}
+	</script>
+
+	<ShinRichTextarea bind:contentEditableRef placeholder="请输入" />
+	<button onclick={handleSubmit}>提交</button>
+	```
+
+	### 点击 mention 跳转个人资料
+	```svelte
+	<script>
+		import { goto } from '$app/navigation';
+		import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
+
+		function onMentionClick(userId: string) {
+			goto(`/app/profile/${userId}`);
+		}
+	</script>
+
+	<ShinRichTextarea onMentionClick={onMentionClick} placeholder="@ 提及用户" />
+	```
+
+	### 自定义最大字数
+	```svelte
+	<ShinRichTextarea maxLength={500} placeholder="最多 500 字" />
+	```
+
+	## 依赖说明
+	- 当前用户列表为 MOCK_USERS 硬编码，待对接真实用户搜索 API 后替换
+	- 点击 mention 跳转依赖 onMentionClick 回调及 /app/profile/[user_id] 路由
 -->
 
 <script lang="ts">
