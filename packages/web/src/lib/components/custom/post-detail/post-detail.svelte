@@ -10,7 +10,10 @@
 		postServiceGetPost,
 		postServiceSetPostLike,
 		postServiceSetPostCollect,
-		commentServiceCreateComment
+		commentServiceCreateComment,
+		userServiceSetFollow,
+		userServiceGetMe,
+		type UserServiceSetFollowBody
 	} from '$lib/api';
 	import { formatTimeAgo } from '$lib/time';
 	import { Badge } from '$lib/components/ui/badge';
@@ -59,6 +62,9 @@
 	let error = $state<string | null>(null);
 	let isLiking = $state(false);
 	let isCollecting = $state(false);
+	let isFollowing = $state(false);
+	let currentUserId = $state<string | null>(null);
+	let actionError = $state<string | null>(null); // 用于局部错误提示，不影响整个弹窗
 
 	// 通过 UA 判断是否为移动端设备（与预览组件保持一致）
 	const isMobile = $derived.by(() => isMobileUA());
@@ -82,15 +88,47 @@
 		}
 	});
 
+	// 获取当前用户信息，用于判断关注状态
+	$effect(() => {
+		async function fetchCurrentUser() {
+			try {
+				const response = await userServiceGetMe({});
+				if (response.data?.profile?.user_id) {
+					currentUserId = response.data.profile.user_id;
+				}
+			} catch (err) {
+				console.error('获取当前用户信息失败:', err);
+				// 静默失败，不影响主流程
+			}
+		}
+		fetchCurrentUser();
+	});
+
+	// 更新关注状态 - 从 post.author 中获取（如果 API 返回了关系状态）
+	// 注意：根据类型定义，V1UserSummary 没有 relation_status，可能需要单独获取
+	// 这里先使用一个临时方案：通过比较 user_id 来判断是否是自己
+	$effect(() => {
+		if (post?.author?.user_id && currentUserId) {
+			// 如果是自己，不显示关注按钮（已在模板中处理）
+			// 关注状态需要从其他地方获取，暂时设为 false
+			// TODO: 如果 API 返回了作者的关系状态，应该从这里获取
+		}
+	});
+
 	async function fetchPost(id: string) {
 		isLoading = true;
 		error = null;
+		actionError = null;
 		try {
 			const response = await postServiceGetPost({
 				path: { post_id: id }
 			});
 			if (response.data?.post) {
 				post = response.data.post;
+				// 注意：V1PostRelationStatus 没有 is_following 字段
+				// 关注状态需要从其他地方获取（如单独调用 userServiceGetUser）
+				// 暂时设为 false，后续可以优化
+				isFollowing = false;
 			} else {
 				error = '帖子不存在';
 			}
@@ -133,7 +171,7 @@
 			if (post.relation_status) {
 				post.relation_status.is_liked = currentIsLiked;
 			}
-			error = '点赞操作失败，请重试';
+			actionError = '点赞操作失败，请重试';
 		} finally {
 			isLiking = false;
 		}
@@ -155,6 +193,7 @@
 		}
 
 		isCollecting = true;
+		actionError = null;
 		try {
 			await postServiceSetPostCollect({
 				path: { post_id: post.post_id },
@@ -170,9 +209,71 @@
 			if (post.relation_status) {
 				post.relation_status.is_collected = currentIsCollected;
 			}
-			error = '收藏操作失败，请重试';
+			actionError = '收藏操作失败，请重试';
 		} finally {
 			isCollecting = false;
+		}
+	}
+
+	async function handleFollow() {
+		if (!post?.author?.user_id || isFollowing === null) return;
+
+		const currentIsFollowing = isFollowing;
+		const newIsFollowing = !currentIsFollowing;
+
+		// 乐观更新
+		isFollowing = newIsFollowing;
+		// 注意：V1PostRelationStatus 没有 is_following 字段
+		// 这里只更新本地状态
+
+		try {
+			const body: UserServiceSetFollowBody = {
+				is_following: newIsFollowing
+			};
+			await userServiceSetFollow({
+				path: { user_id: post.author.user_id },
+				body
+			});
+		} catch (err) {
+			console.error('关注操作失败:', err);
+			// 回滚乐观更新
+			isFollowing = currentIsFollowing;
+			// 注意：V1PostRelationStatus 没有 is_following 字段
+			// 这里只回滚本地状态
+			actionError = '关注操作失败，请重试';
+		}
+	}
+
+	async function handleShare() {
+		if (!post) return;
+
+		try {
+			const postTitle = post.title || '帖子';
+			const postUrl = `${window.location.origin}${resolve('/app/home')}?post_id=${post.post_id}`;
+			const shareText = `【${postTitle}】${postUrl}`;
+
+			// 使用 Clipboard API
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				await navigator.clipboard.writeText(shareText);
+			} else {
+				// 降级方案：使用传统方法
+				const textArea = document.createElement('textarea');
+				textArea.value = shareText;
+				textArea.style.position = 'fixed';
+				textArea.style.opacity = '0';
+				document.body.appendChild(textArea);
+				textArea.select();
+				document.execCommand('copy');
+				document.body.removeChild(textArea);
+			}
+
+			// 显示成功提示（使用简单的 alert，后续可以替换为 toast 组件）
+			actionError = null;
+			// 临时使用 alert，后续可以替换为 toast
+			alert('已复制分享链接至剪切板，快去分享给好友吧！');
+		} catch (err) {
+			console.error('分享失败:', err);
+			actionError = '分享失败，请重试';
 		}
 	}
 
@@ -338,6 +439,13 @@
 		startSwipe(touch.clientX, touch.clientY);
 	}
 
+	// touchmove 事件处理：不更新起始点，只用于节流或取消操作
+	function handleTouchMove(event: TouchEvent) {
+		// 移动时不更新起始点，保持起始点不变
+		// 这样可以正确计算滑动距离
+		event.preventDefault(); // 防止页面滚动
+	}
+
 	function handlePointerUp(event: PointerEvent | TouchEvent) {
 		if (swipeStartX === null || swipeStartY === null) return;
 		const touch = 'changedTouches' in event ? event.changedTouches[0] : event;
@@ -430,6 +538,12 @@
 		onclick={(e) => {
 			if (e.currentTarget === e.target) handleClose();
 		}}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				if (e.currentTarget === e.target) handleClose();
+			}
+		}}
 	>
 		<div
 			class={cn(
@@ -510,7 +624,7 @@
 						onpointerup={handlePointerUp}
 						onpointerleave={handlePointerLeave}
 						ontouchstart={handlePointerDown}
-						ontouchmove={handlePointerDown}
+						ontouchmove={handleTouchMove}
 						ontouchend={handlePointerUp}
 					>
 						{#if mediaList.length > 0 && activeIndex >= 0}
@@ -676,7 +790,16 @@
 								</div>
 							</div>
 							<div class="ml-auto flex flex-col items-end gap-2">
-								<Button variant="default" class="text-md min-w-20 font-bold">关注</Button>
+								{#if post.author?.user_id && currentUserId && post.author.user_id !== currentUserId}
+									<Button
+										variant="default"
+										class="text-md min-w-20 font-bold"
+										onclick={handleFollow}
+										disabled={isFollowing === null}
+									>
+										{isFollowing ? '已关注' : '关注'}
+									</Button>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -695,7 +818,7 @@
 								onpointerup={handlePointerUp}
 								onpointerleave={handlePointerLeave}
 								ontouchstart={handlePointerDown}
-								ontouchmove={handlePointerDown}
+								ontouchmove={handleTouchMove}
 								ontouchend={handlePointerUp}
 							>
 								{#if mediaList.length > 0 && activeIndex >= 0}
@@ -861,7 +984,7 @@
 									<span class="truncate">Ciallo～</span>
 								</Popover.PopoverTrigger>
 
-								<Popover.PopoverContent class="w-80 p-3">
+								<Popover.PopoverContent class="w-80 p-3" side="top" align="start">
 									<EditCommentPopover
 										replyTo={commentReplyTo}
 										onSubmit={handleSubmitComment}
@@ -932,6 +1055,7 @@
 									variant="ghost"
 									size="sm"
 									class="flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+									onclick={handleShare}
 								>
 									<Share class="size-4" />
 								</Button>
@@ -941,6 +1065,23 @@
 				</div>
 			</div>
 		</div>
+	</div>
+{/if}
+
+<!-- 局部错误提示（不影响整个弹窗） -->
+{#if actionError}
+	<div
+		class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white shadow-lg"
+		role="alert"
+	>
+		{actionError}
+		<button
+			class="ml-2 text-white hover:text-red-100"
+			onclick={() => (actionError = null)}
+			aria-label="关闭"
+		>
+			×
+		</button>
 	</div>
 {/if}
 
