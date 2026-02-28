@@ -20,10 +20,12 @@ struct ContentView: View {
   @State private var sheetUrl: IdentifiableURL?
   @State private var isLoading = true
   @State private var showNetworkAlert = false
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     if let url {
       ZStack {
+        if colorScheme == .dark { Color(red: 9 / 255, green: 9 / 255, blue: 11 / 255) }
         WebView(
           url: url,
           onOpenUrlInSheet: { interceptedUrl in
