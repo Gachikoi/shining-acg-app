@@ -3,6 +3,6 @@
 	import { data as waterfallData } from '$lib/test/waterfall-data-mock';
 </script>
 
-<div class="h-full">
+<div class="h-full overflow-y-scroll">
 	<WaterfallContainer data={waterfallData} />
 </div>

@@ -426,7 +426,7 @@
 						url: post.cover?.single?.url || '',
 						ratio:
 							post.cover?.single?.meta?.width && post.cover.single.meta?.height
-								? post.cover.single.meta.height / post.cover.single.meta.width
+								? post.cover.single.meta.width / post.cover.single.meta.height
 								: 1
 					}}
 					author={{
