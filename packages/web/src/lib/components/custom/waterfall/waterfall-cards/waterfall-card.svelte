@@ -40,7 +40,10 @@
 	} = $props();
 </script>
 
-<article data-post-id={postId} class="group cursor-pointer rounded-xl border border-border">
+<article
+	data-post-id={postId}
+	class="group cursor-pointer rounded-xl border border-border shadow-md"
+>
 	<figure class="relative overflow-hidden rounded-xl bg-gray-100">
 		<img
 			class="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"

@@ -22,6 +22,7 @@
 	let cardPositions: CardPosition[] = $state([]); // 卡片位置信息数组
 	let visibleRange = $state({ start: 0, end: 0 }); // 可见范围（起始和结束索引）
 	let maxHeight = $state(0); // 最大高度
+	let lastCalculatedCount = 0; // 已计算布局的卡片数量
 
 	// 下拉刷新相关状态
 	let pullRefreshDistance = $state(0); // 下拉距离
@@ -131,22 +132,24 @@
 		return minIndex;
 	}
 
-	// 计算所有卡片的位置
-	function calculateCardPositions(): void {
+	function calculateCardPositions(reset = false): void {
 		if (containerWidth === 0 || postsRef.length === 0) return;
 
 		const layout = calculateLayoutBase(containerWidth);
 		columnCount = layout.columnCount;
 		cardWidth = layout.cardWidth;
 
-		columnHeights.length = 0;
-		columnHeights.push(...Array(columnCount).fill(0)); // 初始化所有列高度为0
+		if (reset || columnHeights.length === 0) {
+			columnHeights.length = 0;
+			columnHeights.push(...Array(columnCount).fill(0));
+			cardPositions.length = 0;
+			maxHeight = 0;
+			lastCalculatedCount = 0;
+		}
 
-		cardPositions.length = 0;
-
-		for (let i = 0; i < postsRef.length; i++) {
+		for (let i = lastCalculatedCount; i < postsRef.length; i++) {
 			const post = postsRef[i];
-			let coverRatio = 1; // 默认封面宽高比
+			let coverRatio = 1;
 
 			if (
 				post.cover?.single?.meta?.width &&
@@ -165,19 +168,21 @@
 			const coverHeight = cardWidth * coverRatio;
 			const cardHeight = coverHeight + mergedConfig.cardContentHeight;
 
-			const minIndex = findMinColumnIndex(columnHeights); // 找到最短的列
+			const minIndex = findMinColumnIndex(columnHeights);
 
 			const left = minIndex * (cardWidth + mergedConfig.gap);
 			const top = columnHeights[minIndex];
 
 			cardPositions.push({ top, left, width: cardWidth, height: cardHeight });
 
-			columnHeights[minIndex] = top + cardHeight; // 更新列高度（不加gap）
+			columnHeights[minIndex] = top + cardHeight;
 			maxHeight = Math.max(maxHeight, columnHeights[minIndex]);
 		}
 
-		if (scrollContainer) {
-			scrollContainer.style.height = `${maxHeight}px`; // 设置容器高度
+		lastCalculatedCount = postsRef.length;
+
+		if (containerElement) {
+			containerElement.style.height = `${maxHeight}px`;
 		}
 	}
 
@@ -186,11 +191,11 @@
 		if (!scrollContainer || !containerElement) return;
 
 		const scrollTop = scrollContainer.scrollTop;
-		const containerHeight = containerElement.clientHeight;
-		const visibleBuffer = mergedConfig.bufferSize * mergedConfig.bufferHeight; // 缓冲区高度
+		const viewportHeight = scrollContainer.clientHeight;
+		const visibleBuffer = mergedConfig.bufferSize * mergedConfig.bufferHeight;
 
-		const startBuffer = Math.max(0, scrollTop - visibleBuffer); // 可见范围起始位置（包含缓冲区）
-		const endBuffer = scrollTop + containerHeight + visibleBuffer; // 可见范围结束位置（包含缓冲区）
+		const startBuffer = Math.max(0, scrollTop - visibleBuffer);
+		const endBuffer = scrollTop + viewportHeight + visibleBuffer;
 
 		let start = cardPositions.length;
 		let end = 0;
@@ -296,9 +301,7 @@
 		visibleRange = { start: 0, end: -1 };
 		try {
 			await data.refresh();
-			maxHeight = 0;
-			columnHeights = [];
-			calculateCardPositions();
+			calculateCardPositions(true);
 			updateVisibleRange();
 			if (scrollContainer) {
 				scrollContainer.scrollTop = 0;
@@ -312,7 +315,7 @@
 
 	// 处理触摸开始事件
 	function handleTouchStart(event: TouchEvent): void {
-		if (scrollContainer.scrollTop > 1) return; // 只有在顶部时才能下拉刷新
+		if (scrollContainer.scrollTop > 1) return;
 		startY = event.touches[0].clientY;
 		isPulling = true;
 	}
@@ -391,9 +394,7 @@
 
 	// 组件挂载时初始化
 	onMount(() => {
-		if (!containerElement) return;
-
-		scrollContainer = containerElement;
+		if (!containerElement || !scrollContainer) return;
 
 		// 监听容器尺寸变化
 		resizeObserver = new ResizeObserver((entries) => {
@@ -401,7 +402,7 @@
 				const newWidth = entry.contentRect.width;
 				if (newWidth !== containerWidth) {
 					containerWidth = newWidth;
-					calculateCardPositions();
+					calculateCardPositions(true);
 					updateVisibleRange();
 				}
 			}
@@ -453,82 +454,93 @@
 	});
 </script>
 
-<div class="relative h-full w-full overflow-y-auto" bind:this={containerElement}>
-	{#if pullRefreshDistance > 0}
-		<div
-			class="absolute top-0 right-0 left-0 flex items-center justify-center transition-all duration-200"
-			style="height: {pullRefreshDistance}px;"
-		>
-			{#if refreshingRef}
-				<Spinner class="mr-2 text-primary" />
-				<span class="text-sm text-muted-foreground">正在刷新</span>
-			{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
-				<div
-					class="mr-2 text-primary"
-					style="transform: rotate({Math.min(
-						(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
-						360
-					)}deg);"
-				>
-					<Spinner class="animate-none!" />
-				</div>
-				<span class="text-sm text-muted-foreground">释放刷新</span>
-			{:else}
-				<div
-					class="mr-2 text-primary"
-					style="transform: rotate({Math.min(
-						(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
-						360
-					)}deg);"
-				>
-					<Spinner class="animate-none!" />
-				</div>
-				<span class="text-sm text-muted-foreground">下拉刷新</span>
-			{/if}
-		</div>
-	{/if}
-
-	{#each postsRef as post, i (i)}
-		{#if i >= visibleRange.start && i <= visibleRange.end}
+<div class="h-full overflow-y-scroll px-2 pt-2" bind:this={scrollContainer}>
+	<div class="relative h-full w-full" bind:this={containerElement}>
+		{#if pullRefreshDistance > 0}
 			<div
-				class="absolute"
-				style="top: {cardPositions[i]?.top + pullRefreshDistance}px; left: {cardPositions[i]
-					?.left}px; width: {cardPositions[i]?.width}px; height: {cardPositions[i]?.height}px;"
+				class="absolute top-0 right-0 left-0 flex items-center justify-center transition-all duration-200"
+				style="height: {pullRefreshDistance}px;"
 			>
-				<WaterfallCard
-					postId={post.post_id || ''}
-					title={post.display_title || ''}
-					summary=""
-					cover={{
-						url: post.cover?.single?.url || '',
-						ratio:
-							post.cover?.single?.meta?.width && post.cover.single.meta?.height
-								? post.cover.single.meta.width / post.cover.single.meta.height
-								: 1
-					}}
-					author={{
-						avatar: post.author?.avatar || '',
-						name: post.author?.name || '',
-						id: post.author?.user_id || ''
-					}}
-					likeCount={Number(post.stats?.like_count) || 0}
-					viewCount={Number(post.stats?.view_count) || 0}
-					commentCount={Number(post.stats?.comment_count) || 0}
-					isLiked={post.relation_status?.is_liked || false}
-					isOnlyVideo={post.is_only_video || false}
-					publishTime={parseInt(post.publish_time || '0')}
-				/>
+				{#if refreshingRef}
+					<Spinner class="mr-2 text-primary" />
+					<span class="text-sm text-muted-foreground">正在刷新</span>
+				{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
+					<div
+						class="mr-2 text-primary"
+						style="transform: rotate({Math.min(
+							(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
+							360
+						)}deg);"
+					>
+						<Spinner class="animate-none!" />
+					</div>
+					<span class="text-sm text-muted-foreground">释放刷新</span>
+				{:else}
+					<div
+						class="mr-2 text-primary"
+						style="transform: rotate({Math.min(
+							(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
+							360
+						)}deg);"
+					>
+						<Spinner class="animate-none!" />
+					</div>
+					<span class="text-sm text-muted-foreground">下拉刷新</span>
+				{/if}
 			</div>
 		{/if}
-	{/each}
 
-	{#if loadingRef && postsRef.length > 0}
-		<div class="flex justify-center py-4">
-			<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-		</div>
-	{/if}
+		{#each postsRef as post, i (i)}
+			{#if i >= visibleRange.start && i <= visibleRange.end}
+				<div
+					class="absolute"
+					style="top: {cardPositions[i]?.top + pullRefreshDistance}px; left: {cardPositions[i]
+						?.left}px; width: {cardPositions[i]?.width}px; height: {cardPositions[i]?.height}px;"
+				>
+					<WaterfallCard
+						postId={post.post_id || ''}
+						title={post.display_title || ''}
+						summary=""
+						cover={{
+							url: post.cover?.single?.url || '',
+							ratio:
+								post.cover?.single?.meta?.width && post.cover.single.meta?.height
+									? post.cover.single.meta.width / post.cover.single.meta.height
+									: 1
+						}}
+						author={{
+							avatar: post.author?.avatar || '',
+							name: post.author?.name || '',
+							id: post.author?.user_id || ''
+						}}
+						likeCount={Number(post.stats?.like_count) || 0}
+						viewCount={Number(post.stats?.view_count) || 0}
+						commentCount={Number(post.stats?.comment_count) || 0}
+						isLiked={post.relation_status?.is_liked || false}
+						isOnlyVideo={post.is_only_video || false}
+						publishTime={parseInt(post.publish_time || '0')}
+					/>
+				</div>
+			{/if}
+		{/each}
 
-	{#if !hasMoreRef && postsRef.length > 0}
-		<div class="py-4 text-center text-sm text-muted-foreground">没有更多内容了</div>
-	{/if}
+		{#if loadingRef && postsRef.length > 0}
+			<div
+				class="absolute right-0 left-0 flex items-center justify-center py-4"
+				style="top: {maxHeight}px;"
+			>
+				<Spinner class="mr-2 text-primary" />
+				<span class="text-sm text-muted-foreground">加载中</span>
+			</div>
+		{/if}
+
+		{#if !hasMoreRef && postsRef.length > 0}
+			<div
+				class="absolute right-0 left-0 py-4 text-center text-sm text-muted-foreground"
+				style="top: {maxHeight}px;"
+			>
+				没有更多内容了
+			</div>
+		{/if}
+	</div>
 </div>
