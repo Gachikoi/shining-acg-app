@@ -44,8 +44,8 @@
 	const DEFAULT_CONFIG: WaterfallConfig = {
 		minCardWidth: 280, // 最小卡片宽度
 		gap: 16, // 卡片间距
-		bufferSize: 3, // 缓冲区大小（倍数）
-		bufferHeight: 400, // 缓冲区高度
+		bufferSize: 5, // 缓冲区大小（倍数）
+		bufferHeight: 600, // 缓冲区高度
 		loadingThreshold: 200, // 加载更多阈值
 		cardContentHeight: 136, // 卡片内容高度
 		skeletonCardCount: 20, // 骨架屏卡片数量

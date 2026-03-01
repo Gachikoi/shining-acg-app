@@ -49,7 +49,8 @@
 			class="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"
 			src={cover.url}
 			alt={title}
-			loading="lazy"
+			loading="eager"
+			decoding="async"
 			style="--aspect-ratio: {cover.ratio};"
 		/>
 		{#if isOnlyVideo}
