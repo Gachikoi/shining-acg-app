@@ -1,8 +1,61 @@
 <script lang="ts">
+	/**
+	 * @component
+	 * ## PostDetail - 帖子详情弹窗
+	 *
+	 * 全屏/弹窗式帖子详情组件，展示帖子内容、媒体、作者信息、评论区及交互操作。
+	 * 支持通过 post 属性直接传入数据，或通过 postId 从 API 获取。
+	 *
+	 * ### 功能特性
+	 *
+	 * - **媒体展示**：左侧/顶部展示图片/视频，支持滑动切换；点击进入全屏预览
+	 * - **作者信息**：展示头像、昵称、部门/认证标签，关注按钮
+	 * - **正文展示**：标题+内容，支持长内容折叠（超过1000字显示"查看全文"）
+	 * - **交互操作**：点赞、收藏、评论、分享
+	 * - **评论区**：集成 CommentSection 组件，支持评论展示、回复、点赞、删除
+	 * - **响应式布局**：桌面端左右分栏，移动端上下布局
+	 *
+	 * ### 使用方式
+	 *
+	 * **1. 通过 postId 从 API 获取**
+	 * ```svelte
+	 * <PostDetail postId="xxx" onClose={() => {}} />
+	 * ```
+	 *
+	 * **2. 直接传入 post 数据**
+	 * ```svelte
+	 * <PostDetail post={postData} onClose={() => {}} />
+	 * ```
+	 *
+	 * **3. 开发/联调模式（使用 mock 评论）**
+	 * ```svelte
+	 * <PostDetail
+	 *   post={postData}
+	 *   useMockComments={true}
+	 *   mockComments={mockComments}
+	 *   onClose={() => {}}
+	 * />
+	 * ```
+	 *
+	 * ### Props
+	 *
+	 * | 属性 | 类型 | 默认值 | 说明 |
+	 * |------|------|--------|------|
+	 * | post | V1Post | - | 直接传入的帖子数据（可选） |
+	 * | postId | string | - | 帖子 ID，从 API 获取时使用 |
+	 * | useMockComments | boolean | false | 开发/联调：是否启用评论 mock |
+	 * | mockComments | V1CommentWithReplies[] | - | 开发/联调：注入的 mock 评论数据 |
+	 * | onClose | () => void | - | 关闭弹窗时的回调 |
+	 *
+	 * ### 回调说明
+	 *
+	 * - onClose: 点击关闭按钮/遮罩/按 ESC 时调用，由父组件控制是否卸载
+	 */
+
 	import type {
 		V1Post as Post,
 		V1Comment,
-		V1CommentWithFirstReply,
+		V1CommentWithReplies,
 		V1CreateCommentRequest,
 		V1CommentTargetType
 	} from '$lib/api';
@@ -13,6 +66,7 @@
 		commentServiceCreateComment,
 		userServiceSetFollow,
 		userServiceGetMe,
+		userServiceGetUser,
 		type UserServiceSetFollowBody
 	} from '$lib/api';
 	import { formatTimeAgo } from '$lib/time';
@@ -27,7 +81,7 @@
 		Share,
 		ChevronLeft,
 		ChevronRight,
-		Loader2,
+		LoaderCircle,
 		Play
 	} from 'lucide-svelte';
 	import { cn } from '$lib/utils';
@@ -36,7 +90,6 @@
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
 	import { getMediaDisplayUrl } from '$lib/media-url';
-	import { isMobileUA } from '$lib/utils/device';
 
 	let {
 		post: initialPost,
@@ -52,22 +105,22 @@
 		/** 开发/联调：是否启用评论 mock（不影响帖子本身的获取方式） */
 		useMockComments?: boolean;
 		/** 开发/联调：直接注入评论 mock 数据（类型与 CommentSection 对齐） */
-		mockComments?: V1CommentWithFirstReply[];
+		mockComments?: V1CommentWithReplies[];
 		/** 可选：点击关闭按钮/遮罩时的回调，由父组件控制是否卸载 Stack */
 		onClose?: () => void;
 	} = $props();
 
-	let post = $state<Post | null>(initialPost ?? null);
+	let post = $state<Post | null>(null);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let isLiking = $state(false);
 	let isCollecting = $state(false);
-	let isFollowing = $state(false);
+	let isFollowingAction = $state(false); // 关注操作进行中状态
+	let isFetchingFollowing = $state(false); // 获取关注状态中
 	let currentUserId = $state<string | null>(null);
 	let actionError = $state<string | null>(null); // 用于局部错误提示，不影响整个弹窗
-
-	// 通过 UA 判断是否为移动端设备（与预览组件保持一致）
-	const isMobile = $derived.by(() => isMobileUA());
+	let notification = $state<string | null>(null); // 用于成功提示
+	let isFollowing = $state(false); // 关注状态，从 userServiceGetUser 获取
 
 	// 监听 initialPost 变化，更新 post
 	$effect(() => {
@@ -104,15 +157,29 @@
 		fetchCurrentUser();
 	});
 
-	// 更新关注状态 - 从 post.author 中获取（如果 API 返回了关系状态）
-	// 注意：根据类型定义，V1UserSummary 没有 relation_status，可能需要单独获取
-	// 这里先使用一个临时方案：通过比较 user_id 来判断是否是自己
+	// 通过 userServiceGetUser 获取作者的关注状态
 	$effect(() => {
-		if (post?.author?.user_id && currentUserId) {
-			// 如果是自己，不显示关注按钮（已在模板中处理）
-			// 关注状态需要从其他地方获取，暂时设为 false
-			// TODO: 如果 API 返回了作者的关系状态，应该从这里获取
+		async function fetchFollowingStatus() {
+			// 需要同时有 post、作者 ID、当前用户 ID 且不是自己
+			if (!post?.author?.user_id || !currentUserId || post.author.user_id === currentUserId) {
+				isFollowing = false;
+				return;
+			}
+
+			isFetchingFollowing = true;
+			try {
+				const response = await userServiceGetUser({
+					path: { user_id: post.author.user_id }
+				});
+				isFollowing = response.data?.relation_status?.is_following ?? false;
+			} catch (err) {
+				console.error('获取关注状态失败:', err);
+				isFollowing = false;
+			} finally {
+				isFetchingFollowing = false;
+			}
 		}
+		fetchFollowingStatus();
 	});
 
 	async function fetchPost(id: string) {
@@ -125,10 +192,6 @@
 			});
 			if (response.data?.post) {
 				post = response.data.post;
-				// 注意：V1PostRelationStatus 没有 is_following 字段
-				// 关注状态需要从其他地方获取（如单独调用 userServiceGetUser）
-				// 暂时设为 false，后续可以优化
-				isFollowing = false;
 			} else {
 				error = '帖子不存在';
 			}
@@ -216,16 +279,25 @@
 	}
 
 	async function handleFollow() {
-		if (!post?.author?.user_id || isFollowing === null) return;
+		// 未登录：触发登录引导（占位）
+		if (!currentUserId) {
+			// TODO: 实现登录功能后，替换为实际的登录弹窗触发
+			console.log('未登录，引导用户登录');
+			actionError = '请先登录后再关注';
+			return;
+		}
 
+		// 并发控制
+		if (!post?.author?.user_id || isFollowingAction) return;
+
+		actionError = null; // 清除之前的错误提示
 		const currentIsFollowing = isFollowing;
 		const newIsFollowing = !currentIsFollowing;
 
 		// 乐观更新
 		isFollowing = newIsFollowing;
-		// 注意：V1PostRelationStatus 没有 is_following 字段
-		// 这里只更新本地状态
 
+		isFollowingAction = true;
 		try {
 			const body: UserServiceSetFollowBody = {
 				is_following: newIsFollowing
@@ -238,9 +310,9 @@
 			console.error('关注操作失败:', err);
 			// 回滚乐观更新
 			isFollowing = currentIsFollowing;
-			// 注意：V1PostRelationStatus 没有 is_following 字段
-			// 这里只回滚本地状态
 			actionError = '关注操作失败，请重试';
+		} finally {
+			isFollowingAction = false;
 		}
 	}
 
@@ -253,24 +325,15 @@
 			const shareText = `【${postTitle}】${postUrl}`;
 
 			// 使用 Clipboard API
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				await navigator.clipboard.writeText(shareText);
-			} else {
-				// 降级方案：使用传统方法
-				const textArea = document.createElement('textarea');
-				textArea.value = shareText;
-				textArea.style.position = 'fixed';
-				textArea.style.opacity = '0';
-				document.body.appendChild(textArea);
-				textArea.select();
-				document.execCommand('copy');
-				document.body.removeChild(textArea);
-			}
+			await navigator.clipboard.writeText(shareText);
 
-			// 显示成功提示（使用简单的 alert，后续可以替换为 toast 组件）
+			// 显示成功提示
 			actionError = null;
-			// 临时使用 alert，后续可以替换为 toast
-			alert('已复制分享链接至剪切板，快去分享给好友吧！');
+			notification = '已复制分享链接至剪切板，快去分享给好友吧！';
+			// 3秒后自动关闭通知
+			setTimeout(() => {
+				notification = null;
+			}, 3000);
 		} catch (err) {
 			console.error('分享失败:', err);
 			actionError = '分享失败，请重试';
@@ -522,7 +585,7 @@
 					'rounded-none shadow-xl'
 				)}
 			>
-				<Loader2 class="size-8 animate-spin text-zinc-500" />
+				<LoaderCircle class="size-8 animate-spin text-zinc-500" />
 				<p class="mt-4 text-sm text-zinc-500">加载中...</p>
 			</div>
 		</div>
@@ -610,123 +673,119 @@
 					'rounded-none shadow-xl lg:rounded-2xl'
 				)}
 			>
-				<!-- 媒体区（桌面端：仅在 UA 判定为非移动设备时展示左侧大预览） -->
-				{#if !isMobile}
-					<div
-						class={cn(
-							'group relative hidden shrink-0 items-center justify-center bg-black/80 lg:flex',
-							'lg:w-1/2',
-							'lg:h-auto'
-						)}
-						role="group"
-						aria-roledescription="carousel"
-						onpointerdown={handlePointerDown}
-						onpointerup={handlePointerUp}
-						onpointerleave={handlePointerLeave}
-						ontouchstart={handlePointerDown}
-						ontouchmove={handleTouchMove}
-						ontouchend={handlePointerUp}
-					>
-						{#if mediaList.length > 0 && activeIndex >= 0}
-							<!-- 媒体滑动视口 -->
-							<div class="relative h-full w-full overflow-hidden">
-								<div
-									class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
-									style={`transform: translateX(-${activeIndex * 100}%);`}
-								>
-									{#each mediaList as media, index (media.object_key ?? index)}
-										<div
-											class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
-											data-media-index={index}
-										>
-											{#if media.type === 'MEDIA_TYPE_IMAGE'}
-												<img
+				<div
+					class={cn(
+						'group relative hidden shrink-0 items-center justify-center bg-black/80',
+						' lg:flex lg:h-auto lg:w-1/2'
+					)}
+					role="group"
+					aria-roledescription="carousel"
+					onpointerdown={handlePointerDown}
+					onpointerup={handlePointerUp}
+					onpointerleave={handlePointerLeave}
+					ontouchstart={handlePointerDown}
+					ontouchmove={handleTouchMove}
+					ontouchend={handlePointerUp}
+				>
+					{#if mediaList.length > 0 && activeIndex >= 0}
+						<!-- 媒体滑动视口 -->
+						<div class="relative h-full w-full overflow-hidden">
+							<div
+								class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
+								style={`transform: translateX(-${activeIndex * 100}%);`}
+							>
+								{#each mediaList as media, index (media.item_id ?? index)}
+									<div
+										class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
+										data-media-index={index}
+									>
+										{#if media.type === 'MEDIA_TYPE_IMAGE'}
+											<img
+												src={getMediaDisplayUrl(media)}
+												alt={post.title ?? ''}
+												class="max-h-full max-w-full cursor-pointer object-contain"
+											/>
+										{:else}
+											<!-- 视频预览：显示第一帧和播放按钮 -->
+											<div
+												class="relative flex h-full w-full cursor-pointer items-center justify-center"
+											>
+												<video
 													src={getMediaDisplayUrl(media)}
-													alt={post.title ?? ''}
-													class="max-h-full max-w-full cursor-pointer object-contain"
-												/>
-											{:else}
-												<!-- 视频预览：显示第一帧和播放按钮 -->
+													class="max-h-full max-w-full object-contain"
+													preload="metadata"
+													playsinline
+													muted
+												></video>
+												<!-- 播放按钮覆盖层 -->
 												<div
-													class="relative flex h-full w-full cursor-pointer items-center justify-center"
+													class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20"
 												>
-													<video
-														src={getMediaDisplayUrl(media)}
-														class="max-h-full max-w-full object-contain"
-														preload="metadata"
-														playsinline
-														muted
-													></video>
-													<!-- 播放按钮覆盖层 -->
-													<div
-														class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20"
+													<Button
+														variant="ghost"
+														size="icon"
+														class="pointer-events-auto min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
+														onclick={(e) => {
+															e.stopPropagation();
+															openPreviewEditor(index, true);
+														}}
 													>
-														<Button
-															variant="ghost"
-															size="icon"
-															class="pointer-events-auto min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
-															onclick={(e) => {
-																e.stopPropagation();
-																openPreviewEditor(index, true);
-															}}
-														>
-															<Play class="size-8" />
-														</Button>
-													</div>
+														<Play class="size-8" />
+													</Button>
 												</div>
-											{/if}
-										</div>
+											</div>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						</div>
+
+						<!-- 左右切换 -->
+						{#if mediaList.length > 1}
+							<button
+								class="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
+								onclick={prevMedia}
+								aria-label="上一张"
+								type="button"
+							>
+								<ChevronLeft class="size-5" />
+							</button>
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
+								onclick={nextMedia}
+								aria-label="下一张"
+								type="button"
+							>
+								<ChevronRight class="size-5" />
+							</button>
+
+							<!-- 媒体分页圆点 + 热区 -->
+							<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
+								<div
+									class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
+								>
+									{#each mediaList as media, index (media.item_id ?? index)}
+										<button
+											type="button"
+											class={cn(
+												'h-2 w-2 cursor-pointer rounded-full transition-colors',
+												index === activeIndex
+													? 'bg-rose-500'
+													: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
+											)}
+											onclick={() => (activeIndex = index)}
+											aria-label={`查看第 ${index + 1} 张媒体`}
+										></button>
 									{/each}
 								</div>
 							</div>
-
-							<!-- 左右切换 -->
-							{#if mediaList.length > 1}
-								<button
-									class="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-									onclick={prevMedia}
-									aria-label="上一张"
-									type="button"
-								>
-									<ChevronLeft class="size-5" />
-								</button>
-								<button
-									class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-									onclick={nextMedia}
-									aria-label="下一张"
-									type="button"
-								>
-									<ChevronRight class="size-5" />
-								</button>
-
-								<!-- 媒体分页圆点 + 热区 -->
-								<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
-									<div
-										class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
-									>
-										{#each mediaList as media, index (media.object_key ?? index)}
-											<button
-												type="button"
-												class={cn(
-													'h-2 w-2 cursor-pointer rounded-full transition-colors',
-													index === activeIndex
-														? 'bg-rose-500'
-														: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
-												)}
-												onclick={() => (activeIndex = index)}
-												aria-label={`查看第 ${index + 1} 张媒体`}
-											></button>
-										{/each}
-									</div>
-								</div>
-							{/if}
-						{:else}
-							<div class="flex h-full w-full items-center justify-center text-sm text-zinc-300">
-								暂无媒体内容
-							</div>
 						{/if}
-					</div>
-				{/if}
+					{:else}
+						<div class="flex h-full w-full items-center justify-center text-sm text-zinc-300">
+							暂无媒体内容
+						</div>
+					{/if}
+				</div>
 
 				<!-- 文本与操作区：头部 + 中间滚动区（含移动端媒体区）+ 底部操作栏 -->
 				<div class="flex h-full grow flex-col lg:w-1/2">
@@ -790,137 +849,148 @@
 								</div>
 							</div>
 							<div class="ml-auto flex flex-col items-end gap-2">
-								{#if post.author?.user_id && currentUserId && post.author.user_id !== currentUserId}
+								{#if post.author?.user_id && post.author.user_id !== currentUserId}
 									<Button
 										variant="default"
 										class="text-md min-w-20 font-bold"
+										disabled={isFollowingAction || isFetchingFollowing}
 										onclick={handleFollow}
-										disabled={isFollowing === null}
 									>
+										{#if isFollowingAction || isFetchingFollowing}
+											<LoaderCircle class="mr-1 size-4 animate-spin" />
+										{/if}
 										{isFollowing ? '已关注' : '关注'}
+									</Button>
+								{:else if !currentUserId}
+									<!-- 未登录用户显示关注按钮，点击引导登录 -->
+									<Button
+										variant="default"
+										class="text-md min-w-20 font-bold"
+										onclick={() => {
+											actionError = '请先登录后再关注';
+										}}
+									>
+										关注
 									</Button>
 								{/if}
 							</div>
 						</div>
 					</div>
 					<div class="scrollbar-hide flex-1 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-4">
-						<!-- 媒体区（移动端单独展示，位于中间区域，并占满头部与底部之间空间的绝大部分） -->
-						{#if isMobile}
-							<div
-								class={cn(
-									'mb-4 lg:hidden',
-									'group relative flex items-center justify-center bg-black/80',
-									'h-[60vh]'
-								)}
-								role="group"
-								aria-roledescription="carousel"
-								onpointerdown={handlePointerDown}
-								onpointerup={handlePointerUp}
-								onpointerleave={handlePointerLeave}
-								ontouchstart={handlePointerDown}
-								ontouchmove={handleTouchMove}
-								ontouchend={handlePointerUp}
-							>
-								{#if mediaList.length > 0 && activeIndex >= 0}
-									<!-- 媒体滑动视口 -->
-									<div class="relative h-full w-full overflow-hidden">
-										<div
-											class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
-											style={`transform: translateX(-${activeIndex * 100}%);`}
-										>
-											{#each mediaList as media, index (media.object_key ?? index)}
-												<div
-													class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
-													data-media-index={index}
-												>
-													{#if media.type === 'MEDIA_TYPE_IMAGE'}
-														<img
+						<div
+							class={cn(
+								'mb-4 lg:hidden',
+								'group relative flex items-center justify-center bg-black/80',
+								'h-[60vh]'
+							)}
+							role="group"
+							aria-roledescription="carousel"
+							onpointerdown={handlePointerDown}
+							onpointerup={handlePointerUp}
+							onpointerleave={handlePointerLeave}
+							ontouchstart={handlePointerDown}
+							ontouchmove={handleTouchMove}
+							ontouchend={handlePointerUp}
+						>
+							{#if mediaList.length > 0 && activeIndex >= 0}
+								<!-- 媒体滑动视口 -->
+								<div class="relative h-full w-full overflow-hidden">
+									<div
+										class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
+										style={`transform: translateX(-${activeIndex * 100}%);`}
+									>
+										{#each mediaList as media, index (media.item_id ?? index)}
+											<div
+												class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
+												data-media-index={index}
+											>
+												{#if media.type === 'MEDIA_TYPE_IMAGE'}
+													<img
+														src={getMediaDisplayUrl(media)}
+														alt={post.title ?? ''}
+														class="max-h-full max-w-full cursor-pointer object-contain"
+													/>
+												{:else}
+													<!-- 视频预览：显示第一帧和播放按钮 -->
+													<div
+														class="relative flex h-full w-full cursor-pointer items-center justify-center"
+													>
+														<video
 															src={getMediaDisplayUrl(media)}
-															alt={post.title ?? ''}
-															class="max-h-full max-w-full cursor-pointer object-contain"
-														/>
-													{:else}
-														<!-- 视频预览：显示第一帧和播放按钮 -->
+															class="max-h-full max-w-full object-contain"
+															preload="metadata"
+															playsinline
+															muted
+														></video>
+														<!-- 播放按钮覆盖层 -->
 														<div
-															class="relative flex h-full w-full cursor-pointer items-center justify-center"
+															class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20"
 														>
-															<video
-																src={getMediaDisplayUrl(media)}
-																class="max-h-full max-w-full object-contain"
-																preload="metadata"
-																playsinline
-																muted
-															></video>
-															<!-- 播放按钮覆盖层 -->
-															<div
-																class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20"
+															<Button
+																variant="ghost"
+																size="icon"
+																class="pointer-events-auto min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
+																onclick={(e) => {
+																	e.stopPropagation();
+																	openPreviewEditor(index, true);
+																}}
 															>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	class="pointer-events-auto min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
-																	onclick={(e) => {
-																		e.stopPropagation();
-																		openPreviewEditor(index, true);
-																	}}
-																>
-																	<Play class="size-8" />
-																</Button>
-															</div>
+																<Play class="size-8" />
+															</Button>
 														</div>
-													{/if}
-												</div>
+													</div>
+												{/if}
+											</div>
+										{/each}
+									</div>
+								</div>
+
+								<!-- 左右切换 -->
+								{#if mediaList.length > 1}
+									<button
+										class="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
+										onclick={prevMedia}
+										aria-label="上一张"
+										type="button"
+									>
+										<ChevronLeft class="size-5" />
+									</button>
+									<button
+										class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
+										onclick={nextMedia}
+										aria-label="下一张"
+										type="button"
+									>
+										<ChevronRight class="size-5" />
+									</button>
+
+									<!-- 媒体分页圆点 + 热区 -->
+									<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
+										<div
+											class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
+										>
+											{#each mediaList as media, index (media.item_id ?? index)}
+												<button
+													type="button"
+													class={cn(
+														'h-2 w-2 cursor-pointer rounded-full transition-colors',
+														index === activeIndex
+															? 'bg-rose-500'
+															: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
+													)}
+													onclick={() => (activeIndex = index)}
+													aria-label={`查看第 ${index + 1} 张媒体`}
+												></button>
 											{/each}
 										</div>
 									</div>
-
-									<!-- 左右切换 -->
-									{#if mediaList.length > 1}
-										<button
-											class="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-											onclick={prevMedia}
-											aria-label="上一张"
-											type="button"
-										>
-											<ChevronLeft class="size-5" />
-										</button>
-										<button
-											class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-											onclick={nextMedia}
-											aria-label="下一张"
-											type="button"
-										>
-											<ChevronRight class="size-5" />
-										</button>
-
-										<!-- 媒体分页圆点 + 热区 -->
-										<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
-											<div
-												class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
-											>
-												{#each mediaList as media, index (media.object_key ?? index)}
-													<button
-														type="button"
-														class={cn(
-															'h-2 w-2 cursor-pointer rounded-full transition-colors',
-															index === activeIndex
-																? 'bg-rose-500'
-																: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
-														)}
-														onclick={() => (activeIndex = index)}
-														aria-label={`查看第 ${index + 1} 张媒体`}
-													></button>
-												{/each}
-											</div>
-										</div>
-									{/if}
-								{:else}
-									<div class="flex h-full w-full items-center justify-center text-sm text-zinc-300">
-										暂无媒体内容
-									</div>
 								{/if}
-							</div>
-						{/if}
+							{:else}
+								<div class="flex h-full w-full items-center justify-center text-sm text-zinc-300">
+									暂无媒体内容
+								</div>
+							{/if}
+						</div>
 						<!-- 标题与正文 -->
 						<div class="mt-4 space-y-3">
 							{#if post.title}
@@ -1008,7 +1078,7 @@
 									onclick={handleLike}
 								>
 									{#if isLiking}
-										<Loader2 class="size-4 animate-spin" />
+										<LoaderCircle class="size-4 animate-spin" />
 									{:else}
 										<Heart class={cn('size-4', post.relation_status?.is_liked && 'fill-current')} />
 									{/if}
@@ -1027,7 +1097,7 @@
 									onclick={handleCollect}
 								>
 									{#if isCollecting}
-										<Loader2 class="size-4 animate-spin" />
+										<LoaderCircle class="size-4 animate-spin" />
 									{:else}
 										<Star
 											class={cn('size-4', post.relation_status?.is_collected && 'fill-current')}
@@ -1078,6 +1148,23 @@
 		<button
 			class="ml-2 text-white hover:text-red-100"
 			onclick={() => (actionError = null)}
+			aria-label="关闭"
+		>
+			×
+		</button>
+	</div>
+{/if}
+
+<!-- 成功提示通知 -->
+{#if notification}
+	<div
+		class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-emerald-500 px-4 py-2 text-sm text-white shadow-lg"
+		role="status"
+	>
+		{notification}
+		<button
+			class="ml-2 text-white hover:text-emerald-100"
+			onclick={() => (notification = null)}
 			aria-label="关闭"
 		>
 			×
