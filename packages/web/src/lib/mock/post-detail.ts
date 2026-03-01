@@ -1,10 +1,10 @@
 import type {
 	V1Post as Post,
-	V1Media as Media,
+	V1MediaAsset as Media,
 	V1UserSummary as UserSummary,
 	V1GetPostResponse as GetPostResponse,
 	V1Comment,
-	V1CommentWithFirstReply,
+	V1CommentWithReplies,
 	V1CommentStats,
 	V1CommentRelationStatus,
 	V1ListPostCommentsResponse
@@ -49,33 +49,47 @@ function makeAuthor(partial?: Partial<UserSummary>): UserSummary {
 
 function makeImageMedia(
 	id: string,
-	object_key: string,
+	url: string,
 	width: number,
 	height: number,
 	mime_type: string
 ): Media {
 	return {
-		id,
+		item_id: id,
 		type: 'MEDIA_TYPE_IMAGE',
-		object_key,
-		meta: { width, height, mime_type },
-		status: 1
+		scene: 'MEDIA_SCENE_POST_MEDIA',
+		status: 'MEDIA_STATUS_COMPLETED',
+		single: {
+			id,
+			type: 'MEDIA_TYPE_IMAGE',
+			object_key: url,
+			url,
+			meta: { width, height, mime_type },
+			status: 'MEDIA_STATUS_COMPLETED'
+		}
 	};
 }
 
 function makeVideoMedia(
 	id: string,
-	object_key: string,
+	url: string,
 	width: number,
 	height: number,
 	mime_type: string
 ): Media {
 	return {
-		id,
+		item_id: id,
 		type: 'MEDIA_TYPE_VIDEO',
-		object_key,
-		meta: { width, height, mime_type },
-		status: 1
+		scene: 'MEDIA_SCENE_POST_MEDIA',
+		status: 'MEDIA_STATUS_COMPLETED',
+		single: {
+			id,
+			type: 'MEDIA_TYPE_VIDEO',
+			object_key: url,
+			url,
+			meta: { width, height, mime_type },
+			status: 'MEDIA_STATUS_COMPLETED'
+		}
 	};
 }
 
@@ -217,14 +231,14 @@ function makeCommentBase(args: {
 function makeLongCommentText(seed: string): string {
 	return (
 		`长评论（${seed}）：` +
-		'为了覆盖“超长评论内容折行/溢出/查看更多”等排版场景，这里会生成一段更长的文本。'.repeat(12)
+		'为了覆盖“超长评论内容折行/溢出/查看更多”等排版场景，这里会生成一段更长的文本。'.repeat(25)
 	);
 }
 
 export function getMockPostComments(
 	postId: string,
 	scenario: PostDetailMockScenario = 'default'
-): V1CommentWithFirstReply[] {
+): V1CommentWithReplies[] {
 	if (scenario === 'comments-empty') return [];
 
 	const authorA = makeAuthor({ user_id: 'u2', name: '路人甲', avatar: '' });
@@ -276,9 +290,9 @@ export function getMockPostComments(
 		reply_count: 0
 	});
 
-	const base: V1CommentWithFirstReply[] = [
-		{ comment: top1, first_reply: replyToTop1, first_reply_cursor: '' },
-		{ comment: top2, first_reply: undefined, first_reply_cursor: '' }
+	const base: V1CommentWithReplies[] = [
+		{ comment: top1, replies: [replyToTop1], cursor: '' },
+		{ comment: top2, replies: [], cursor: '' }
 	];
 
 	if (
@@ -291,7 +305,7 @@ export function getMockPostComments(
 	}
 
 	// comments-many：生成更多一级评论，覆盖分页/滚动/性能场景
-	const many: V1CommentWithFirstReply[] = [...base];
+	const many: V1CommentWithReplies[] = [...base];
 	for (let i = 4; i <= 28; i += 1) {
 		const idx = String(i);
 		const author = makeAuthor({ user_id: `u${100 + i}`, name: `用户 ${idx}`, avatar: '' });
@@ -311,8 +325,8 @@ export function getMockPostComments(
 				reply_count: i % 4 === 0 ? 2 : 0,
 				is_liked: scenario === 'comments-liked-by-me' && i % 6 === 0
 			}),
-			first_reply: undefined,
-			first_reply_cursor: ''
+			replies: [],
+			cursor: ''
 		});
 	}
 	return many;

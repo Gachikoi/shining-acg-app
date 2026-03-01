@@ -1,17 +1,60 @@
 <script lang="ts">
+	/**
+	 * @component
+	 * ## ImageVideoPreview - 图片/视频预览器
+	 *
+	 * 全屏预览组件，实现图片和视频的查看、切换、控制等功能。常用于帖子详情中的媒体预览。
+	 *
+	 * ### 功能特性
+	 *
+	 * - **图片预览**：支持双击填满屏幕、左右按钮切换
+	 * - **视频预览**：支持播放/暂停、进度拖拽、音量调节、倍速播放、全屏、自动隐藏控制条
+	 * - **下载功能**：支持单图/视频下载、批量下载（右击菜单）
+	 * - **响应式适配**：自动检测移动端设备，适配不同交互方式
+	 * - **键盘支持**：支持 ArrowLeft/ArrowRight 切换，Space/K 播放/暂停，Escape 关闭
+	 * - **懒加载优化**：只渲染当前及相邻媒体，非当前视频使用 preload="none"
+	 *
+	 * ### 使用方式
+	 *
+	 * ```svelte
+	 * let open = $state(false);
+	 * let mediaList = $state([
+	 *   { type: 'MEDIA_TYPE_IMAGE', single: { url: 'xxx.jpg' } },
+	 *   { type: 'MEDIA_TYPE_VIDEO', single: { url: 'xxx.mp4' } }
+	 * ] as V1MediaAsset[]);
+	 *
+	 * <ImageVideoPreview
+	 *   bind:open
+	 *   {mediaList}
+	 *   initialIndex={0}
+	 *   autoplay={false}
+	 *   fullScreen={true}
+	 * />
+	 * ```
+	 *
+	 * ### Props
+	 *
+	 * | 属性 | 类型 | 默认值 | 说明 |
+	 * |------|------|--------|------|
+	 * | open | boolean | false | 控制预览框显示/隐藏（bindable） |
+	 * | mediaList | V1MediaAsset[] | [] | 媒体资产列表 |
+	 * | initialIndex | number | 0 | 初始显示的媒体索引 |
+	 * | autoplay | boolean | false | 视频是否自动播放 |
+	 * | fullScreen | boolean | true | 是否全屏显示 |
+	 * | class | string | '' | 自定义样式类 |
+	 *
+	 * ### 热区扩充说明
+	 *
+	 * 可点击事物（如按钮）的最小可触控区域为 44x44px，已通过 min-h-* / min-w-* 实现热区扩充。
+	 */
 	import { Button } from '$lib/components/ui/button';
-	import type { V1Media as Media } from '$lib/api/types.gen';
+	import type { V1MediaAsset as Media } from '$lib/api';
 	import { X, Play, Pause, Volume2, VolumeX, Maximize, Minimize, Download } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import { getMediaDisplayUrl } from '$lib/media-url';
 	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
 	import { isMobileUA } from '$lib/utils/device';
-
-	/**
-	 * 图片/视频预览器
-	 * 实现全屏预览、左右滑动切换、上下滑动退出、双击填满、视频控制条等功能
-	 */
 	let {
 		open = $bindable(false),
 		mediaList = [] as Media[],
@@ -43,14 +86,12 @@
 	let volume = $state(1);
 	// 视频是否静音
 	let isMuted = $state(false);
-	// 视频控制界面是否显示（始终显示，不自动隐藏）
+	// 视频控制界面是否显示（可自动隐藏）
 	let showControls = $state(true);
+	// 控制条自动隐藏定时器
+	let controlsHideTimer: ReturnType<typeof setTimeout> | null = null;
 	// 自动播放是否已经消费（每次打开只尝试一次）
 	let autoplayConsumed = $state(false);
-	// 长按定时器
-	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-	// 是否正在长按
-	let isLongPressing = $state(false);
 	// 双击定时器
 	let doubleClickTimer: ReturnType<typeof setTimeout> | null = null;
 	// 上次点击时间
@@ -65,20 +106,18 @@
 	let isFullscreen = $state(false);
 	// 视频容器（用于调用浏览器 Fullscreen API）
 	let videoContainer: HTMLDivElement | null = $state(null);
-	// 滑动相关
-	let swipeStartX: number | null = null;
-	let swipeStartY: number | null = null;
-	let swipeStartTime: number | null = null;
 	// 视频是否正在调整进度
 	let isSeeking = $state(false);
 	// 下载 popover 状态
 	let downloadPopoverOpen = $state(false);
-	// 长按用于下载的定时器（区分于倍速播放的长按）
-	let downloadLongPressTimer: ReturnType<typeof setTimeout> | null = null;
 	// 右键菜单位置
 	let contextMenuPosition = $state<{ x: number; y: number } | null>(null);
 	// 倍速选择 popover 状态
 	let playbackRatePopoverOpen = $state(false);
+	// 下载错误提示状态
+	let downloadError = $state<string | null>(null);
+	// 下载错误显示定时器
+	let downloadErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// 当前媒体
 	const currentMedia = $derived(
@@ -88,6 +127,40 @@
 	);
 	const isImage = $derived(currentMedia?.type === 'MEDIA_TYPE_IMAGE');
 	const isVideo = $derived(currentMedia?.type === 'MEDIA_TYPE_VIDEO');
+
+	// 控制条自动隐藏逻辑
+	function startControlsHideTimer() {
+		stopControlsHideTimer();
+		if (isVideoPlaying) {
+			controlsHideTimer = setTimeout(() => {
+				showControls = false;
+			}, 3000);
+		}
+	}
+
+	function stopControlsHideTimer() {
+		if (controlsHideTimer) {
+			clearTimeout(controlsHideTimer);
+			controlsHideTimer = null;
+		}
+	}
+
+	function showControlsTemporarily() {
+		showControls = true;
+		startControlsHideTimer();
+	}
+
+	// 显示下载错误提示
+	function showDownloadError(message: string) {
+		downloadError = message;
+		// 3秒后自动隐藏错误提示
+		if (downloadErrorTimer) {
+			clearTimeout(downloadErrorTimer);
+		}
+		downloadErrorTimer = setTimeout(() => {
+			downloadError = null;
+		}, 3000);
+	}
 
 	// 监听 initialIndex 变化
 	$effect(() => {
@@ -104,16 +177,17 @@
 			playbackRate = 1;
 			showControls = true;
 			autoplayConsumed = false;
+			stopControlsHideTimer();
 		} else {
+			// 关闭时清理定时器
+			stopControlsHideTimer();
 			// 关闭时退出全屏（如果仍处于全屏）
 			if (
 				typeof document !== 'undefined' &&
 				document.fullscreenElement &&
 				document.fullscreenElement === videoContainer
 			) {
-				document.exitFullscreen?.().catch(() => {
-					// ignore
-				});
+				document.exitFullscreen?.().catch(() => {});
 			}
 			// 关闭时暂停视频
 			if (videoElement) {
@@ -140,6 +214,7 @@
 			.play()
 			.then(() => {
 				isVideoPlaying = true;
+				startControlsHideTimer();
 			})
 			.catch(() => {
 				// 部分浏览器/场景会阻止自动播放；保持为暂停态并显示控件即可
@@ -204,7 +279,7 @@
 			if (doubleClickTimer) {
 				clearTimeout(doubleClickTimer);
 			}
-			handleDoubleClick(event);
+			handleDoubleClick();
 			lastClickTime = 0;
 			return;
 		}
@@ -212,7 +287,7 @@
 
 		// 视频暂停时，单击显示控制界面或恢复播放
 		if (isVideo && !isVideoPlaying) {
-			showControls = true;
+			showControlsTemporarily();
 			// 如果点击的是播放按钮区域，则播放
 			if ((event.target as HTMLElement).closest('.play-button-area')) {
 				togglePlay();
@@ -232,6 +307,11 @@
 		if (isVideo && isVideoPlaying) {
 			if (isFullscreen) {
 				showControls = !showControls;
+				if (showControls) {
+					startControlsHideTimer();
+				} else {
+					stopControlsHideTimer();
+				}
 				return;
 			}
 			handleClose();
@@ -249,218 +329,32 @@
 		}
 	}
 
-	// 处理滑动开始
-	function handleTouchStart(event: TouchEvent | PointerEvent) {
-		const touch = 'touches' in event ? event.touches[0] : event;
-		const target = event.target as HTMLElement;
-
-		// 排除播放按钮区域、控制按钮区域和下载菜单区域
-		if (
-			target.closest('.play-button-area') ||
-			target.closest('.video-controls') ||
-			target.closest('[data-download-menu]') ||
-			target.closest('button') ||
-			target.closest('input')
-		) {
-			return;
-		}
-
-		swipeStartX = touch.clientX;
-		swipeStartY = touch.clientY;
-		swipeStartTime = Date.now();
-
-		// 视频长按检测（倍速播放）/ 下载长按
-		if (isVideo && videoElement) {
-			const rect = videoElement.getBoundingClientRect();
-			const x = touch.clientX - rect.left;
-			const width = rect.width;
-			// 判断是否在左右边缘（20% 区域）
-			if (x < width * 0.2) {
-				startLongPress();
-			} else if (x > width * 0.8) {
-				startLongPress();
-			} else {
-				// 中间部分，用于下载长按
-				handleDownloadLongPress(event);
-			}
-		} else if (isImage) {
-			// 图片长按用于下载
-			handleDownloadLongPress(event);
-		}
-	}
-
-	// 处理滑动移动
-	function handleTouchMove(event: TouchEvent | PointerEvent) {
-		if (swipeStartX === null || swipeStartY === null) return;
-
-		const touch = 'touches' in event ? event.touches[0] : event;
-		const deltaX = touch.clientX - swipeStartX;
-		const deltaY = touch.clientY - swipeStartY;
-
-		// 如果正在调整视频进度，更新进度
-		if (isVideo && isFullscreen && isSeeking && videoElement) {
-			const rect = videoElement.getBoundingClientRect();
-			const progress = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-			videoElement.currentTime = progress * videoDuration;
-			videoProgress = progress;
-			return;
-		}
-
-		// 取消长按
-		if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-			stopLongPress();
-			cancelDownloadLongPress();
-		}
-	}
-
-	// 处理滑动结束
-	function handleTouchEnd(event: TouchEvent | PointerEvent) {
-		if (swipeStartX === null || swipeStartY === null || swipeStartTime === null) return;
-
-		const touch = 'changedTouches' in event ? event.changedTouches[0] : event;
-		const target = event.target as HTMLElement;
-		const deltaX = touch.clientX - swipeStartX;
-		const deltaY = touch.clientY - swipeStartY;
-		const deltaTime = Date.now() - swipeStartTime;
-		const MIN_SWIPE_DISTANCE = 40;
-		const MAX_SWIPE_TIME = 500;
-
-		stopLongPress();
-		cancelDownloadLongPress();
-
-		// 如果点击了非下载菜单区域且不是滑动，关闭下载菜单
-		if (downloadPopoverOpen && !target.closest('[data-download-menu]')) {
-			const isSwipe =
-				Math.abs(deltaX) > MIN_SWIPE_DISTANCE || Math.abs(deltaY) > MIN_SWIPE_DISTANCE;
-			if (!isSwipe) {
-				downloadPopoverOpen = false;
-				contextMenuPosition = null;
-			}
-		}
-
-		// 如果正在调整视频进度，结束调整
-		if (isSeeking) {
-			isSeeking = false;
-			return;
-		}
-
-		// 视频全屏时，左右滑动调整进度
-		if (
-			isVideo &&
-			isFullscreen &&
-			Math.abs(deltaX) > Math.abs(deltaY) &&
-			Math.abs(deltaX) > MIN_SWIPE_DISTANCE
-		) {
-			if (videoElement) {
-				const rect = videoElement.getBoundingClientRect();
-				const progress = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-				videoElement.currentTime = progress * videoDuration;
-				videoProgress = progress;
-			}
-			swipeStartX = null;
-			swipeStartY = null;
-			swipeStartTime = null;
-			return;
-		}
-
-		// 上下滑动退出预览
-		if (
-			Math.abs(deltaY) > MIN_SWIPE_DISTANCE &&
-			Math.abs(deltaY) > Math.abs(deltaX) &&
-			deltaTime < MAX_SWIPE_TIME
-		) {
-			handleClose();
-			swipeStartX = null;
-			swipeStartY = null;
-			swipeStartTime = null;
-			return;
-		}
-
-		// 左右滑动切换（全屏状态下不切换）
-		if (
-			Math.abs(deltaX) > MIN_SWIPE_DISTANCE &&
-			Math.abs(deltaX) > Math.abs(deltaY) &&
-			deltaTime < MAX_SWIPE_TIME
-		) {
-			// 视频全屏时，不切换媒体（全屏时用于调整进度）
-			if (isVideo && isFullscreen) {
-				swipeStartX = null;
-				swipeStartY = null;
-				swipeStartTime = null;
-				return;
-			}
-
-			// 允许在视频暂停状态下切换，也允许在视频播放时切换（但需要先暂停）
-			if (isVideo && isVideoPlaying) {
-				// 视频播放时，先暂停再切换
-				if (videoElement) {
-					videoElement.pause();
-					isVideoPlaying = false;
-				}
-			}
-
-			if (deltaX > 0) {
-				prevMedia();
-			} else {
-				nextMedia();
-			}
-		}
-
-		swipeStartX = null;
-		swipeStartY = null;
-		swipeStartTime = null;
-	}
-
-	// 长按处理（倍速播放）
-	function startLongPress() {
-		stopLongPress();
-		isLongPressing = true;
-		longPressTimer = setTimeout(() => {
-			if (videoElement && isLongPressing) {
-				playbackRate = 2.0;
-				videoElement.playbackRate = 2.0;
-			}
-		}, 300);
-	}
-
-	function stopLongPress() {
-		if (longPressTimer) {
-			clearTimeout(longPressTimer);
-			longPressTimer = null;
-		}
-		if (isLongPressing && videoElement) {
-			isLongPressing = false;
-			playbackRate = 1;
-			videoElement.playbackRate = 1;
-		}
-	}
-
 	// 视频播放控制
 	function togglePlay() {
 		if (!videoElement) return;
 		if (isVideoPlaying) {
 			videoElement.pause();
 			isVideoPlaying = false;
-			showControls = true;
+			showControlsTemporarily();
 		} else {
 			videoElement.play();
 			isVideoPlaying = true;
-			showControls = true;
+			showControlsTemporarily();
 		}
 	}
 
 	function handleVideoPlay() {
 		if (videoElement) {
-			// 确保播放速度正确应用
 			videoElement.playbackRate = playbackRate;
 		}
 		isVideoPlaying = true;
-		showControls = true;
+		showControlsTemporarily();
 	}
 
 	function handleVideoPause() {
 		isVideoPlaying = false;
 		showControls = true;
+		stopControlsHideTimer();
 	}
 
 	function handleVideoTimeUpdate() {
@@ -535,15 +429,43 @@
 		if (!isVideo) return;
 		if (typeof document === 'undefined') return;
 
-		// 注意：全屏 API 需要用户手势触发，这里由按钮点击触发
+		// 移动端优先使用容器全屏，保留自定义 UI
+		if (isMobile && videoElement) {
+			// iOS Safari 优先尝试容器全屏（保留自定义控件）
+			const videoEl = videoElement as HTMLVideoElement & {
+				webkitEnterFullscreen?: () => void;
+			};
+
+			// 先尝试标准全屏 API
+			const containerEl = videoContainer;
+			if (containerEl && containerEl.requestFullscreen) {
+				containerEl.requestFullscreen().catch(() => {
+					// 如果标准 API 失败，回退到 video 元素全屏
+					if (videoEl.webkitEnterFullscreen) {
+						videoEl.webkitEnterFullscreen();
+						isFullscreen = true;
+						showControls = true;
+					}
+				});
+				showControls = true;
+				return;
+			}
+
+			// 回退到 video 元素全屏
+			if (videoEl.webkitEnterFullscreen) {
+				videoEl.webkitEnterFullscreen();
+				isFullscreen = true;
+				showControls = true;
+				return;
+			}
+		}
+
 		const el = videoContainer;
 		if (!el) return;
 
 		// 若已在全屏，退出；否则对“容器”进入全屏（而非 video），以保留自定义 UI
 		if (document.fullscreenElement && document.fullscreenElement === el) {
-			document.exitFullscreen?.().catch(() => {
-				// ignore
-			});
+			document.exitFullscreen?.().catch(() => {});
 			return;
 		}
 
@@ -560,14 +482,12 @@
 			fullscreenTarget.msRequestFullscreen?.bind(fullscreenTarget);
 
 		if (request) {
-			Promise.resolve(request()).catch(() => {
-				// ignore
-			});
+			Promise.resolve(request()).catch(() => {});
 			showControls = true;
 		}
 	}
 
-	// 监听全局点击，关闭下载菜单和倍速选择菜单
+	// 监听全局点击、键盘事件，关闭下载菜单和倍速选择菜单
 	onMount(() => {
 		// 监听全屏变化（ESC/系统退出也会触发），同步 isFullscreen
 		const handleFullscreenChange = () => {
@@ -596,10 +516,56 @@
 		};
 		document.addEventListener('click', handleGlobalClick);
 
+		// 键盘导航支持
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// 忽略如果用户在输入框中
+			if ((e.target as HTMLElement).closest('input')) return;
+
+			switch (e.key) {
+				case 'Escape':
+					handleClose();
+					break;
+				case 'ArrowLeft':
+					if (mediaList.length > 1) {
+						prevMedia();
+					}
+					break;
+				case 'ArrowRight':
+					if (mediaList.length > 1) {
+						nextMedia();
+					}
+					break;
+				case ' ':
+				case 'k':
+					// 空格或 K 键切换播放/暂停
+					if (isVideo) {
+						e.preventDefault();
+						togglePlay();
+					}
+					break;
+			}
+		};
+		document.addEventListener('keydown', handleKeyDown);
+
+		// 移动端触摸事件：触摸时显示控制条，3秒后隐藏
+		const handleTouchStartForControls = () => {
+			if (isVideo) {
+				showControlsTemporarily();
+			}
+		};
+		// 仅在移动端添加触摸事件监听
+		if (isMobile) {
+			document.addEventListener('touchstart', handleTouchStartForControls, { passive: true });
+		}
+
 		return () => {
 			document.removeEventListener('fullscreenchange', handleFullscreenChange);
 			docWithWebkit.removeEventListener?.('webkitfullscreenchange', handleFullscreenChange);
 			document.removeEventListener('click', handleGlobalClick);
+			document.removeEventListener('keydown', handleKeyDown);
+			if (isMobile) {
+				document.removeEventListener('touchstart', handleTouchStartForControls);
+			}
 		};
 	});
 
@@ -621,29 +587,23 @@
 	}
 
 	// 下载单个媒体文件
-	async function downloadMedia(media: Media) {
-		if (!media.object_key) {
-			alert('下载失败：媒体文件不存在');
-			return;
-		}
-
-		// 获取媒体 URL，优先使用 getMediaDisplayUrl，如果为空则使用 object_key
-		let mediaUrl = getMediaDisplayUrl(media);
+	async function downloadMedia(media: Media): Promise<boolean> {
+		// 获取媒体 URL（已适配新媒体资产结构）
+		const mediaUrl = getMediaDisplayUrl(media);
 		if (!mediaUrl) {
-			// 如果 getMediaDisplayUrl 返回空，直接使用 object_key
-			mediaUrl = media.object_key;
-		}
-
-		// 如果 object_key 是完整 URL，直接使用；否则可能需要添加基础路径
-		if (!mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://')) {
-			// 如果不是完整 URL，尝试添加协议（假设是相对路径或需要完整 URL）
-			console.warn('媒体 URL 不是完整 URL，可能无法下载:', mediaUrl);
+			showDownloadError('下载失败：媒体文件不存在');
+			return false;
 		}
 
 		// 根据媒体类型设置文件名
 		const isMediaImage = media.type === 'MEDIA_TYPE_IMAGE';
 		const extension = isMediaImage ? 'jpg' : 'mp4';
-		const filename = `media_${media.id ?? Date.now()}.${extension}`;
+		const fileId =
+			media.single?.id ??
+			media.live_photo?.image?.id ??
+			media.live_photo?.video?.id ??
+			Date.now().toString();
+		const filename = `media_${fileId}.${extension}`;
 
 		// 首先尝试使用 fetch 下载（适用于同源或已配置 CORS 的资源）
 		const controller = new AbortController();
@@ -670,17 +630,38 @@
 			a.click();
 			document.body.removeChild(a);
 			window.URL.revokeObjectURL(url);
-			return; // 成功下载，直接返回
+			return true; // 成功下载
 		} catch (fetchError) {
-			clearTimeout(timeoutId); // 确保清理超时定时器
-			console.error('下载媒体失败，可能回退到浏览器默认下载行为', fetchError);
+			clearTimeout(timeoutId);
+			console.warn('Fetch 下载失败，尝试直接链接下载', fetchError);
+
+			// Fallback: 使用 <a download> 直接链接下载（需同源或服务器支持）
+			try {
+				const a = document.createElement('a');
+				a.href = mediaUrl;
+				a.download = filename;
+				a.target = '_blank';
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				return true;
+			} catch (linkError) {
+				console.error('直接链接下载也失败', linkError);
+				showDownloadError('下载失败，请尝试长按保存');
+				return false;
+			}
 		}
 	}
 
 	// 下载当前媒体
 	function handleDownloadCurrent() {
 		if (currentMedia) {
-			downloadMedia(currentMedia);
+			downloadMedia(currentMedia).then((success) => {
+				if (!success && downloadError) {
+					// 显示错误提示（可以后续替换为 Toast）
+					console.warn(downloadError);
+				}
+			});
 		}
 		downloadPopoverOpen = false;
 	}
@@ -689,63 +670,58 @@
 	async function handleDownloadAll() {
 		if (mediaList.length === 0) return;
 
-		try {
-			for (let i = 0; i < mediaList.length; i++) {
-				const media = mediaList[i];
-				if (media.object_key) {
-					await downloadMedia(media);
-					// 添加延迟避免浏览器阻止多个下载
-					if (i < mediaList.length - 1) {
-						await new Promise((resolve) => setTimeout(resolve, 1000));
-					}
+		let failCount = 0;
+
+		for (let i = 0; i < mediaList.length; i++) {
+			const media = mediaList[i];
+			const success = await downloadMedia(media);
+			if (!success) {
+				failCount++;
+				// 如果失败，提示用户并停止下载
+				if (downloadError) {
+					console.warn(`第 ${i + 1} 个文件下载失败:`, downloadError);
 				}
 			}
-		} catch (error) {
-			console.error('批量下载失败:', error);
-			alert('部分文件下载失败，请重试');
+			// 添加延迟避免浏览器阻止多个下载
+			if (i < mediaList.length - 1) {
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+			}
+		}
+
+		if (failCount > 0) {
+			showDownloadError(`${failCount} 个文件下载失败`);
 		}
 		downloadPopoverOpen = false;
 	}
 
 	// 处理右键菜单（仅桌面端）
 	function handleContextMenu(event: MouseEvent) {
-		// 手机端禁用右键菜单，只使用长按
+		// 手机端禁用右键菜单
 		if (isMobile) {
 			event.preventDefault();
 			return;
 		}
 		event.preventDefault();
-		contextMenuPosition = { x: event.clientX, y: event.clientY };
+
+		// 边界检测：避免菜单超出可视区
+		const menuWidth = 192; // w-48 = 12rem = 192px
+		const menuHeight = 100; // 估算菜单高度
+		const padding = 8; // 边距
+
+		let x = event.clientX;
+		let y = event.clientY;
+
+		// 检测右边界
+		if (x + menuWidth + padding > window.innerWidth) {
+			x = window.innerWidth - menuWidth - padding;
+		}
+		// 检测下边界
+		if (y + menuHeight + padding > window.innerHeight) {
+			y = window.innerHeight - menuHeight - padding;
+		}
+
+		contextMenuPosition = { x, y };
 		downloadPopoverOpen = true;
-	}
-
-	// 处理长按（用于下载，区分于倍速播放）
-	function handleDownloadLongPress(event: TouchEvent | PointerEvent) {
-		// 如果是视频，需要判断是否在中间部分（不是左右边缘）
-		if (isVideo && videoElement) {
-			const rect = videoElement.getBoundingClientRect();
-			const touch = 'touches' in event ? event.touches[0] : event;
-			const x = touch.clientX - rect.left;
-			const width = rect.width;
-			// 如果在左右边缘（20% 区域），不触发下载，而是倍速播放
-			if (x < width * 0.2 || x > width * 0.8) {
-				return;
-			}
-		}
-
-		downloadLongPressTimer = setTimeout(() => {
-			const touch = 'touches' in event ? event.touches[0] : event;
-			contextMenuPosition = { x: touch.clientX, y: touch.clientY };
-			downloadPopoverOpen = true;
-		}, 500);
-	}
-
-	// 取消下载长按
-	function cancelDownloadLongPress() {
-		if (downloadLongPressTimer) {
-			clearTimeout(downloadLongPressTimer);
-			downloadLongPressTimer = null;
-		}
 	}
 </script>
 
@@ -755,7 +731,7 @@
 		aria-label="图片视频预览"
 		tabindex="-1"
 		class={cn(
-			'fixed z-[60] flex flex-col items-center justify-center',
+			'fixed z-60 flex flex-col items-center justify-center',
 			fullScreen ? 'inset-0 bg-black' : 'inset-0 bg-zinc-100',
 			className
 		)}
@@ -772,15 +748,13 @@
 			}
 			handleClick(e);
 		}}
-		ontouchstart={handleTouchStart}
-		ontouchmove={handleTouchMove}
-		ontouchend={handleTouchEnd}
-		onpointerdown={handleTouchStart}
-		onpointermove={handleTouchMove}
-		onpointerup={handleTouchEnd}
+		onkeydown={(e) => {
+			// 阻止键盘事件冒泡，避免影响全局键盘监听
+			e.stopPropagation();
+		}}
 	>
 		<!-- 关闭按钮 -->
-		<div class={cn('absolute top-4 left-4', isVideo && isFullscreen ? 'z-[70]' : 'z-10')}>
+		<div class={cn('absolute top-4 left-4', isVideo && isFullscreen ? 'z-70' : 'z-10')}>
 			<Button
 				variant="ghost"
 				size="icon"
@@ -802,18 +776,23 @@
 							class="flex h-full w-full transition-transform duration-300 ease-out"
 							style={`transform: translateX(-${currentIndex * 100}%);`}
 						>
-							{#each mediaList as media, index (media.object_key ?? index)}
-								<div class="flex h-full w-full flex-[0_0_100%] items-center justify-center">
-									<img
-										src={getMediaDisplayUrl(media)}
-										alt="预览图片"
-										class={cn(
-											'max-h-full max-w-full object-contain transition-all duration-300',
-											index === currentIndex && isImageFilled && 'h-full w-full object-cover'
-										)}
-										oncontextmenu={handleContextMenu}
-									/>
-								</div>
+							{#each mediaList as media, index (media.item_id ?? index)}
+								{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1}
+									<div class="flex h-full w-full flex-[0_0_100%] items-center justify-center">
+										<img
+											src={getMediaDisplayUrl(media)}
+											alt="预览图片"
+											loading={index === currentIndex ? 'eager' : 'lazy'}
+											class={cn(
+												'max-h-full max-w-full object-contain transition-all duration-300',
+												index === currentIndex && isImageFilled && 'h-full w-full object-cover'
+											)}
+											oncontextmenu={handleContextMenu}
+										/>
+									</div>
+								{:else}
+									<div class="flex h-full w-full flex-[0_0_100%] items-center justify-center"></div>
+								{/if}
 							{/each}
 						</div>
 					</div>
@@ -831,78 +810,92 @@
 							class="flex h-full w-full transition-transform duration-300 ease-out"
 							style={`transform: translateX(-${currentIndex * 100}%);`}
 						>
-							{#each mediaList as media, index (media.object_key ?? index)}
-								<div
-									class="relative flex h-full w-full flex-[0_0_100%] items-center justify-center"
-								>
-									{#if index === currentIndex}
-										<video
-											bind:this={videoElement}
-											src={getMediaDisplayUrl(media)}
-											class={cn(
-												isFullscreen ? 'h-full w-full object-contain' : 'max-h-full max-w-full'
-											)}
-											onplay={handleVideoPlay}
-											onpause={handleVideoPause}
-											ontimeupdate={handleVideoTimeUpdate}
-											onloadedmetadata={handleVideoLoadedMetadata}
-											oncontextmenu={handleContextMenu}
-											playsinline
-										></video>
-									{:else}
-										<video
-											src={getMediaDisplayUrl(media)}
-											class={cn(
-												isFullscreen ? 'h-full w-full object-contain' : 'max-h-full max-w-full'
-											)}
-											oncontextmenu={handleContextMenu}
-											playsinline
-										></video>
-									{/if}
-
-									<!-- 播放按钮（暂停时显示，仅当前视频） -->
-									{#if index === currentIndex && !isVideoPlaying}
-										<div
-											class={cn(
-												'play-button-area absolute inset-0 flex cursor-pointer items-center justify-center bg-black/20',
-												isFullscreen ? 'z-[65]' : 'z-10'
-											)}
-											onclick={(e) => {
-												e.stopPropagation();
-												togglePlay();
-											}}
-										>
-											<Button
-												variant="ghost"
-												size="icon"
-												class="min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
+							{#each mediaList as media, index (media.item_id ?? index)}
+								{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1}
+									<div
+										class="relative flex h-full w-full flex-[0_0_100%] items-center justify-center"
+									>
+										{#if index === currentIndex}
+											<video
+												bind:this={videoElement}
+												src={getMediaDisplayUrl(media)}
+												class={cn(
+													isFullscreen ? 'h-full w-full object-contain' : 'max-h-full max-w-full'
+												)}
+												onplay={handleVideoPlay}
+												onpause={handleVideoPause}
+												ontimeupdate={handleVideoTimeUpdate}
+												onloadedmetadata={handleVideoLoadedMetadata}
+												oncontextmenu={handleContextMenu}
+												playsinline
 											>
-												<Play class="size-8" />
-											</Button>
-										</div>
-									{/if}
-								</div>
+												<track kind="captions" />
+											</video>
+										{:else}
+											<video
+												src={getMediaDisplayUrl(media)}
+												preload="none"
+												class={cn(
+													isFullscreen ? 'h-full w-full object-contain' : 'max-h-full max-w-full'
+												)}
+												oncontextmenu={handleContextMenu}
+												playsinline
+											>
+												<track kind="captions" />
+											</video>
+										{/if}
+
+										<!-- 播放按钮（暂停时显示，仅当前视频） -->
+										{#if index === currentIndex && !isVideoPlaying}
+											<button
+												type="button"
+												class={cn(
+													'play-button-area absolute inset-0 flex cursor-pointer items-center justify-center bg-black/20',
+													isFullscreen ? 'z-65' : 'z-10'
+												)}
+												onclick={(e) => {
+													e.stopPropagation();
+													togglePlay();
+												}}
+												aria-label="播放视频"
+											>
+												<Button
+													variant="ghost"
+													size="icon"
+													class="min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
+												>
+													<Play class="size-8" />
+												</Button>
+											</button>
+										{/if}
+									</div>
+								{:else}
+									<div class="flex h-full w-full flex-[0_0_100%] items-center justify-center"></div>
+								{/if}
 							{/each}
 						</div>
 
-						<!-- 视频控制界面（始终显示，包括预览状态，仅当前视频） -->
-						{#if isVideo && currentMedia?.type === 'MEDIA_TYPE_VIDEO'}
+						<!-- 视频控制界面（可自动隐藏） -->
+						{#if isVideo && currentMedia?.type === 'MEDIA_TYPE_VIDEO' && showControls}
 							<div
+								role="toolbar"
+								tabindex="-1"
 								class={cn(
-									'video-controls absolute bottom-4 left-1/2 w-[calc(100%-3rem)] max-w-5xl -translate-x-1/2',
-									isFullscreen ? 'z-[70]' : 'z-20'
+									'video-controls absolute bottom-4 left-1/2 w-[calc(100%-3rem)] max-w-5xl -translate-x-1/2 transition-opacity duration-300',
+									isFullscreen ? 'z-70' : 'z-20'
 								)}
 								onclick={handleControlsClick}
+								onkeydown={(e) => e.stopPropagation()}
 							>
 								<div
-									class="flex items-center justify-between gap-4 rounded-[40px] bg-zinc-100 px-4 py-3 text-zinc-900 shadow-lg"
+									class="flex items-center justify-between gap-4 rounded-[40px] bg-white/90 px-4 py-3 text-zinc-900 shadow-lg backdrop-blur-sm transition-colors dark:bg-zinc-900/90 dark:text-zinc-100"
 								>
 									<!-- 左侧：播放按钮 + 时间（当前/总时长） -->
 									<div class="flex items-center gap-3">
 										<Button
 											variant="ghost"
 											size="icon"
-											class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200"
+											class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
 											onclick={(e) => {
 												e.stopPropagation();
 												togglePlay();
@@ -927,7 +920,7 @@
 											max="1"
 											step="0.001"
 											value={videoProgress}
-											class="h-1 w-full cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900"
+											class="h-1 w-full cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
 											oninput={handleProgressChange}
 											onmousedown={handleProgressMouseDown}
 											onmouseup={handleProgressMouseUp}
@@ -938,11 +931,13 @@
 									<div class="flex items-center gap-3">
 										<!-- 倍速（文字样式） -->
 										<Popover bind:open={playbackRatePopoverOpen}>
-											<PopoverTrigger class="text-sm font-medium text-zinc-900 hover:text-zinc-700">
+											<PopoverTrigger
+												class="text-sm font-medium text-zinc-900 hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
+											>
 												<span>倍速 {playbackRate}x</span>
 											</PopoverTrigger>
 											<PopoverContent
-												class="z-[100] mb-2 w-32 bg-zinc-900/95 p-1"
+												class="z-100 mb-2 w-32 bg-zinc-900/95 p-1"
 												portalProps={{ disabled: isFullscreen }}
 												side="top"
 												sideOffset={8}
@@ -977,7 +972,7 @@
 												<Button
 													variant="ghost"
 													size="icon"
-													class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200"
+													class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
 													onclick={(e) => {
 														e.stopPropagation();
 														toggleMute();
@@ -995,7 +990,7 @@
 													max="1"
 													step="0.05"
 													value={volume}
-													class="h-1 w-20 cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900"
+													class="h-1 w-20 cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
 													oninput={(e) => {
 														e.stopPropagation();
 														handleVolumeChange(e);
@@ -1009,7 +1004,7 @@
 											<Button
 												variant="ghost"
 												size="icon"
-												class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200"
+												class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
 												onclick={(e) => {
 													e.stopPropagation();
 													toggleFullscreen();
@@ -1132,11 +1127,14 @@
 	{#if downloadPopoverOpen && contextMenuPosition}
 		<div
 			data-download-menu
-			class="fixed z-[70] w-48 rounded-md border bg-popover p-2 text-popover-foreground shadow-md"
+			role="menu"
+			tabindex="-1"
+			class="fixed z-70 w-48 rounded-md border bg-popover p-2 text-popover-foreground shadow-md"
 			style={`left: ${contextMenuPosition.x}px; top: ${contextMenuPosition.y}px;`}
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 		>
-			<div class="flex flex-col gap-1">
+			<div class="flex flex-col gap-1" role="menuitem">
 				<Button variant="ghost" class="w-full justify-start gap-2" onclick={handleDownloadCurrent}>
 					<Download class="size-4" />
 					{isImage ? '保存图片' : '保存视频'}
@@ -1146,6 +1144,15 @@
 					全部保存
 				</Button>
 			</div>
+		</div>
+	{/if}
+
+	<!-- 下载错误提示 -->
+	{#if downloadError}
+		<div
+			class="fixed bottom-20 left-1/2 z-70 -translate-x-1/2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white shadow-lg"
+		>
+			{downloadError}
 		</div>
 	{/if}
 {/if}

@@ -237,8 +237,8 @@
 	import { getMockPost, getMockPostComments } from '$lib/mock/post-detail';
 
 	// 开发时可通过 env 快速切换不同 mock 场景
-	// 例如：VITE_POST_DETAIL_MOCK_SCENARIO=comments-many
-	const scenario = import.meta.env?.VITE_POST_DETAIL_MOCK_SCENARIO ?? 'default';
+	// 默认使用 comments-many，点击后一次性展示复杂评论区（多条一级评论、长评论、回复等）
+	const scenario = import.meta.env?.VITE_POST_DETAIL_MOCK_SCENARIO ?? 'comments-many';
 
 	const mockPost = getMockPost('mock-post-1', scenario);
 	const mockComments = getMockPostComments('mock-post-1', scenario);
