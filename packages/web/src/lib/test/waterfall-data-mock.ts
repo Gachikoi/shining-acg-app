@@ -1,6 +1,5 @@
 import type { WaterfallData } from '$lib/components/custom/waterfall/waterfall-container/types';
 import type { V1PostPreview, FeedServiceGetFeedData } from '$lib/api/types.gen';
-import { writable, get } from 'svelte/store';
 
 const TITLES = [
 	'春日樱花盛开',
@@ -98,38 +97,48 @@ function generatePosts(count: number, startIndex: number): V1PostPreview[] {
 }
 
 export function createMockWaterfallData(): WaterfallData {
-	const posts = writable<V1PostPreview[]>(generatePosts(50, 0));
-	const cursor = writable('50');
-	const loading = writable(false);
-	const refreshing = writable(false);
-	const hasMore = writable(true);
+	let posts = generatePosts(50, 0);
+	let cursor: string | null = '50';
+	let loading = false;
+	let refreshing = false;
+	let hasMore = true;
 
-	return {
+	const result: WaterfallData = {
 		posts,
 		loading,
 		refreshing,
 		hasMore,
 		cursor,
 		loadMore: async () => {
-			loading.set(true);
+			loading = true;
+			result.loading = loading;
 			await new Promise((resolve) => setTimeout(resolve, 1000));
-			posts.update((current) => {
-				const newPosts = generatePosts(20, current.length);
-				return [...current, ...newPosts];
-			});
-			cursor.set(get(posts).length.toString());
-			hasMore.set(get(posts).length < 200);
-			loading.set(false);
+			const newPosts = generatePosts(20, posts.length);
+			posts = [...posts, ...newPosts];
+			cursor = posts.length.toString();
+			hasMore = posts.length < 200;
+			loading = false;
+			result.posts = posts;
+			result.cursor = cursor;
+			result.hasMore = hasMore;
+			result.loading = loading;
 		},
 		refresh: async () => {
-			refreshing.set(true);
+			refreshing = true;
+			result.refreshing = refreshing;
 			await new Promise((resolve) => setTimeout(resolve, 1500));
-			posts.set(generatePosts(30, 0));
-			cursor.set('30');
-			hasMore.set(true);
-			refreshing.set(false);
+			posts = generatePosts(30, 0);
+			cursor = '30';
+			hasMore = true;
+			refreshing = false;
+			result.posts = posts;
+			result.cursor = cursor;
+			result.hasMore = hasMore;
+			result.refreshing = refreshing;
 		}
 	};
+
+	return result;
 }
 
 export const data = createMockWaterfallData();

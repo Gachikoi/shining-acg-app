@@ -27,7 +27,6 @@
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
 			appState.searchKeyword = keywordToDebounce;
-			console.log('触发搜索');
 		}, 500);
 		return () => clearTimeout(debounceTimer);
 	});

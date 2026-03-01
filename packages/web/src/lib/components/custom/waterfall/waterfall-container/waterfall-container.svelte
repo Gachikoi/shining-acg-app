@@ -3,7 +3,6 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { WaterfallCard, WaterfallSkeletonCard } from '../waterfall-cards';
 	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
-	import type { V1PostPreview } from '$lib/api/types.gen';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { formatNumber } from '../util';
 
@@ -33,62 +32,13 @@
 	let touchMoveFrameId: number | null = $state(null); // 触摸移动动画帧ID
 	let scrollFrameId: number | null = $state(null); // 滚动动画帧ID
 
-	// 帖子数据引用（响应式）- 支持 store 或普通值
-	let postsRef = $state<V1PostPreview[]>([]);
-	let loadingRef = $state<boolean>(false);
-	let refreshingRef = $state<boolean>(false);
-	let hasMoreRef = $state<boolean>(true);
+	// 帖子数据引用
+	let postsRef = $derived(data.posts);
+	let visiblePosts = $derived(postsRef.slice(visibleRange.start, visibleRange.end + 1));
+	let loadingRef = $derived(data.loading);
+	let refreshingRef = $derived(data.refreshing);
+	let hasMoreRef = $derived(data.hasMore);
 	let lastPostsLength = 0;
-
-	// 追踪 store 变化并更新本地状态
-	let unsubscribePosts: (() => void) | null = null;
-	let unsubscribeLoading: (() => void) | null = null;
-	let unsubscribeRefreshing: (() => void) | null = null;
-	let unsubscribeHasMore: (() => void) | null = null;
-
-	/* eslint-disable svelte/require-store-reactive-access */
-	$effect(() => {
-		if (typeof data.posts === 'object' && 'subscribe' in data.posts) {
-			unsubscribePosts?.();
-			unsubscribePosts = data.posts.subscribe((value) => {
-				postsRef = value;
-			});
-		} else {
-			postsRef = data.posts;
-		}
-		if (typeof data.loading === 'object' && 'subscribe' in data.loading) {
-			unsubscribeLoading?.();
-			unsubscribeLoading = data.loading.subscribe((value) => {
-				loadingRef = value;
-			});
-		} else {
-			loadingRef = data.loading;
-		}
-		if (typeof data.refreshing === 'object' && 'subscribe' in data.refreshing) {
-			unsubscribeRefreshing?.();
-			unsubscribeRefreshing = data.refreshing.subscribe((value) => {
-				refreshingRef = value;
-			});
-		} else {
-			refreshingRef = data.refreshing;
-		}
-		if (typeof data.hasMore === 'object' && 'subscribe' in data.hasMore) {
-			unsubscribeHasMore?.();
-			unsubscribeHasMore = data.hasMore.subscribe((value) => {
-				hasMoreRef = value;
-			});
-		} else {
-			hasMoreRef = data.hasMore;
-		}
-
-		return () => {
-			unsubscribePosts?.();
-			unsubscribeLoading?.();
-			unsubscribeRefreshing?.();
-			unsubscribeHasMore?.();
-		};
-	});
-	/* eslint-enable svelte/require-store-reactive-access */
 
 	// 默认配置常量
 	const DEFAULT_CONFIG: WaterfallConfig = {
@@ -510,12 +460,15 @@
 			</div>
 		{/if}
 
-		{#each postsRef as post, i (i)}
-			{#if i >= visibleRange.start && i <= visibleRange.end}
+		<div style="transform: translateY({pullRefreshDistance}px); will-change: transform;">
+			{#each visiblePosts as post, i (post.post_id)}
+				{@const absoluteIndex = visibleRange.start + i}
 				<div
 					class="absolute"
-					style="top: {cardPositions[i]?.top + pullRefreshDistance}px; left: {cardPositions[i]
-						?.left}px; width: {cardPositions[i]?.width}px; height: {cardPositions[i]?.height}px;"
+					style="top: {cardPositions[absoluteIndex]?.top}px; left: {cardPositions[absoluteIndex]
+						?.left}px; width: {cardPositions[absoluteIndex]?.width}px; height: {cardPositions[
+						absoluteIndex
+					]?.height}px;"
 				>
 					{#if refreshingRef}
 						<WaterfallSkeletonCard
@@ -550,26 +503,26 @@
 						/>
 					{/if}
 				</div>
+			{/each}
+
+			{#if loadingRef && postsRef.length > 0}
+				<div
+					class="absolute right-0 left-0 flex items-center justify-center py-4"
+					style="top: {maxHeight}px;"
+				>
+					<Spinner class="mr-2 text-primary" />
+					<span class="text-sm text-muted-foreground">加载中</span>
+				</div>
 			{/if}
-		{/each}
 
-		{#if loadingRef && postsRef.length > 0}
-			<div
-				class="absolute right-0 left-0 flex items-center justify-center py-4"
-				style="top: {maxHeight}px;"
-			>
-				<Spinner class="mr-2 text-primary" />
-				<span class="text-sm text-muted-foreground">加载中</span>
-			</div>
-		{/if}
-
-		{#if !hasMoreRef && postsRef.length > 0}
-			<div
-				class="absolute right-0 left-0 py-4 text-center text-sm text-muted-foreground"
-				style="top: {maxHeight}px;"
-			>
-				没有更多内容了
-			</div>
-		{/if}
+			{#if !hasMoreRef && postsRef.length > 0}
+				<div
+					class="absolute right-0 left-0 py-4 text-center text-sm text-muted-foreground"
+					style="top: {maxHeight}px;"
+				>
+					没有更多内容了
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>
