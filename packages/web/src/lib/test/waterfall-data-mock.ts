@@ -51,11 +51,9 @@ function generatePost(id: number): V1PostPreview {
 		post_id: `post_${id}`,
 		display_title: `${title} #${id}`,
 		cover: {
-			item_id: `cover_${id}`,
 			type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
 			status: 'MEDIA_STATUS_UNSPECIFIED',
 			single: {
-				id: `file_${id}`,
 				type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
 				bucket: 'test-bucket',
 				object_key: `test/image_${id}.jpg`,
