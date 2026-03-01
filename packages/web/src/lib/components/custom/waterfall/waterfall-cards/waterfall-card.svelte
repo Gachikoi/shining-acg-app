@@ -19,9 +19,9 @@
 		summary,
 		cover,
 		author,
-		likeCount = 0,
-		viewCount = 0,
-		commentCount = 0,
+		likeCount = '0',
+		viewCount = '0',
+		commentCount = '0',
 		isLiked = false,
 		isOnlyVideo = false,
 		publishTime
@@ -31,9 +31,9 @@
 		summary: string | undefined;
 		cover: Media;
 		author: UserSummary;
-		likeCount?: number;
-		viewCount?: number;
-		commentCount?: number;
+		likeCount?: string;
+		viewCount?: string;
+		commentCount?: string;
 		isLiked?: boolean;
 		isOnlyVideo?: boolean;
 		publishTime: number;
@@ -74,8 +74,7 @@
 					src={author.avatar}
 					alt={author.name}
 				/>
-				<span class="max-w-[80px] truncate text-xs text-gray-600 dark:text-gray-400"
-					>{author.name}</span
+				<span class="max-w-20 truncate text-xs text-gray-600 dark:text-gray-400">{author.name}</span
 				>
 			</div>
 			<span class="text-xs text-gray-400 dark:text-gray-500">{formatTime(publishTime)}</span>

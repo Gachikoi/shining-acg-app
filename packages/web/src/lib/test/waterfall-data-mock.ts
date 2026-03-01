@@ -53,21 +53,18 @@ function generatePost(id: number): V1PostPreview {
 		display_title: `${title} #${id}`,
 		cover: {
 			item_id: `cover_${id}`,
-			type: 'image',
-			scene: 'post_cover',
-			status: 'ready',
+			type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
+			status: 'MEDIA_STATUS_UNSPECIFIED',
 			single: {
 				id: `file_${id}`,
-				type: 'image',
+				type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
 				bucket: 'test-bucket',
 				object_key: `test/image_${id}.jpg`,
 				url: `https://picsum.photos/400/${aspectRatio.height}?random=${id}`,
 				meta: {
 					width: aspectRatio.width,
 					height: aspectRatio.height,
-					size: Math.floor(Math.random() * 5000000),
-					mime_type: 'image/jpeg',
-					format: 'jpeg'
+					mime_type: 'image/jpeg'
 				}
 			}
 		},
@@ -77,11 +74,10 @@ function generatePost(id: number): V1PostPreview {
 			avatar: author.avatar
 		},
 		stats: {
-			like_count: likeCount,
-			view_count: viewCount,
-			comment_count: commentCount,
-			collect_count: Math.floor(likeCount * 0.3),
-			share_count: Math.floor(likeCount * 0.1)
+			like_count: likeCount.toString(),
+			view_count: viewCount.toString(),
+			comment_count: commentCount.toString(),
+			collect_count: Math.floor(likeCount * 0.3).toString()
 		},
 		relation_status: {
 			is_liked: isLiked,

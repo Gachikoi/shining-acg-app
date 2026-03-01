@@ -5,6 +5,7 @@
 	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
 	import type { V1PostPreview } from '$lib/api/types.gen';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { formatNumber } from '../util';
 
 	// 组件属性：接收瀑布流数据和配置
 	let { data, config }: { data: WaterfallData; config?: WaterfallConfig } = $props();
@@ -96,7 +97,7 @@
 		bufferSize: 3, // 缓冲区大小（倍数）
 		bufferHeight: 400, // 缓冲区高度
 		loadingThreshold: 200, // 加载更多阈值
-		cardContentHeight: 120, // 卡片内容高度
+		cardContentHeight: 136, // 卡片内容高度
 		skeletonCardCount: 20, // 骨架屏卡片数量
 		binarySearchThreshold: 100, // 使用二分查找的阈值
 		pullRefreshConfig: {
@@ -506,7 +507,7 @@
 						<WaterfallCard
 							postId={post.post_id || ''}
 							title={post.display_title || ''}
-							summary=""
+							summary="总结字段不存在在API中"
 							cover={{
 								url: post.cover?.single?.url || '',
 								ratio:
@@ -519,9 +520,9 @@
 								name: post.author?.name || '',
 								id: post.author?.user_id || ''
 							}}
-							likeCount={Number(post.stats?.like_count) || 0}
-							viewCount={Number(post.stats?.view_count) || 0}
-							commentCount={Number(post.stats?.comment_count) || 0}
+							likeCount={formatNumber(Number(post.stats?.like_count)) || '0'}
+							viewCount={formatNumber(Number(post.stats?.view_count)) || '0'}
+							commentCount={formatNumber(Number(post.stats?.comment_count)) || '0'}
 							isLiked={post.relation_status?.is_liked || false}
 							isOnlyVideo={post.is_only_video || false}
 							publishTime={parseInt(post.publish_time || '0')}
