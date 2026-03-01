@@ -54,7 +54,8 @@
 			maxDistance: 120,
 			triggerThreshold: 60,
 			triggeredDistance: 60,
-			dampingFactor: 0.5
+			dampingFactor: 0.5,
+			functionalRefreshDuration: 300
 		}
 	};
 
@@ -422,9 +423,51 @@
 		}
 		updateVisibleRange();
 	}
+
+	// 暴露给外部的回顶刷新方法
+	export function scrollToTopAndRefresh() {
+		if (scrollContainer) {
+			scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+
+			const checkScrollParams = () => {
+				if (scrollContainer.scrollTop <= 0) {
+					// 确保已经停止滚动
+					updateVisibleRange();
+
+					// 模拟下拉动作动画
+					const targetDistance = mergedConfig.pullRefreshConfig.triggeredDistance;
+					const duration = mergedConfig.pullRefreshConfig.functionalRefreshDuration; // 动画持续时间 ms
+					const startTime = performance.now();
+
+					const animatePull = (currentTime: number) => {
+						const elapsed = currentTime - startTime;
+						const progress = Math.min(elapsed / duration, 1);
+						// easeOutCubic 缓动函数
+						const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+						pullRefreshDistance = targetDistance * easeProgress;
+
+						if (progress < 1) {
+							requestAnimationFrame(animatePull);
+						} else {
+							// 动画结束后触发刷新
+							handleRefresh();
+						}
+					};
+
+					requestAnimationFrame(animatePull);
+				} else {
+					requestAnimationFrame(checkScrollParams);
+				}
+			};
+			requestAnimationFrame(checkScrollParams);
+		} else {
+			handleRefresh();
+		}
+	}
 </script>
 
-<div class="h-full overflow-y-scroll px-2 pt-2" bind:this={scrollContainer}>
+<div class="hidden-scroll-bar h-full overflow-y-scroll px-2 pt-2" bind:this={scrollContainer}>
 	<div class="relative h-full w-full" bind:this={containerElement}>
 		{#if pullRefreshDistance > 0}
 			<div
@@ -526,3 +569,15 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	.hidden-scroll-bar {
+		overflow: auto;
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	.hidden-scroll-bar::-webkit-scrollbar {
+		display: none;
+	}
+</style>

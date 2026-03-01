@@ -7,6 +7,7 @@
 	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { LucideRefreshCw } from 'lucide-svelte';
 
 	// 状态管理
 	let posts = $state<V1PostPreview[]>([]);
@@ -219,4 +220,13 @@
 	<div class="flex-1 overflow-hidden">
 		<WaterfallContainer bind:this={waterfallRef} data={waterfallData} />
 	</div>
+
+	<!-- 悬浮按钮 - 仅在 md (平板/电脑) 以上屏幕显示 -->
+	<Button
+		size="icon"
+		class="absolute right-4 bottom-8 z-50 hidden h-12 w-12 rounded-md shadow-lg md:flex"
+		onclick={() => waterfallRef?.scrollToTopAndRefresh()}
+	>
+		<LucideRefreshCw class="h-6 w-6" />
+	</Button>
 </div>

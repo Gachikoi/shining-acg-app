@@ -38,6 +38,7 @@ export interface PullRefreshConfig {
 	triggerThreshold: number;
 	triggeredDistance: number;
 	dampingFactor: number;
+	functionalRefreshDuration: number;
 }
 
 export interface CardPosition {
