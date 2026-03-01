@@ -777,7 +777,7 @@
 							style={`transform: translateX(-${currentIndex * 100}%);`}
 						>
 							{#each mediaList as media, index (media.item_id ?? index)}
-								{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1}
+								{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1 || mediaList.length <= 3}
 									<div class="flex h-full w-full flex-[0_0_100%] items-center justify-center">
 										<img
 											src={getMediaDisplayUrl(media)}
@@ -811,7 +811,7 @@
 							style={`transform: translateX(-${currentIndex * 100}%);`}
 						>
 							{#each mediaList as media, index (media.item_id ?? index)}
-								{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1}
+								{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1 || mediaList.length <= 3}
 									<div
 										class="relative flex h-full w-full flex-[0_0_100%] items-center justify-center"
 									>
@@ -907,7 +907,7 @@
 												<Play class="size-5" />
 											{/if}
 										</Button>
-										<div class="text-sm font-medium">
+										<div class="cursor-text text-sm font-medium">
 											{formatTime(videoProgress * videoDuration)}/{formatTime(videoDuration)}
 										</div>
 									</div>

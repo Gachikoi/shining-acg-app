@@ -89,8 +89,8 @@
 	import ImageVideoPreview from '$lib/components/custom/image-video-preview/image-video-preview.svelte';
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
+	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
 	import { getMediaDisplayUrl } from '$lib/media-url';
-
 	let {
 		post: initialPost,
 		postId,
@@ -121,6 +121,9 @@
 	let actionError = $state<string | null>(null); // 用于局部错误提示，不影响整个弹窗
 	let notification = $state<string | null>(null); // 用于成功提示
 	let isFollowing = $state(false); // 关注状态，从 userServiceGetUser 获取
+	// 用户资料 Popover 状态
+	let isUserProfilePopoverOpen = $state(false);
+	let pendingUserProfileUserId = $state<string | null>(null);
 
 	// 监听 initialPost 变化，更新 post
 	$effect(() => {
@@ -341,7 +344,7 @@
 	}
 
 	const mediaList = $derived(post?.media ?? []);
-	let activeIndex = $state(mediaList.length > 0 ? 0 : -1);
+	let activeIndex = $derived(mediaList.length > 0 ? 0 : -1);
 	// 图片视频预览编辑器状态
 	let isPreviewEditorOpen = $state(false);
 	let previewEditorInitialIndex = $state(0);
@@ -804,26 +807,55 @@
 									<X class="size-5" />
 								</Button>
 							</div>
-							<!-- 之后需要替换为用户的个人主页 -->
-							<a href={resolve('/app/home')}>
-								{#if author?.avatar}
-									<img
-										src={author.avatar}
-										alt={author.name ?? '用户头像'}
-										class="size-11 rounded-full object-cover"
-									/>
-								{:else}
-									<div
-										class="flex size-11 items-center justify-center rounded-full bg-zinc-300 text-sm font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
-									>
-										{author?.name?.slice(0, 1) ?? 'U'}
-									</div>
-								{/if}
-							</a>
+							<!-- TODO: Stack 基建完成后，非本人用户使用 UserProfilePopover 打开 -->
+							{#if author?.user_id && currentUserId && author.user_id === currentUserId}
+								<a href={resolve('/app/profile')} class="cursor-pointer">
+									{#if author?.avatar}
+										<img
+											src={author.avatar}
+											alt={author.name ?? '用户头像'}
+											class="size-11 rounded-full object-cover"
+										/>
+									{:else}
+										<div
+											class="flex size-11 items-center justify-center rounded-full bg-zinc-300 text-sm font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
+										>
+											{author?.name?.slice(0, 1) ?? 'U'}
+										</div>
+									{/if}
+								</a>
+							{:else}
+								<button
+									type="button"
+									class="cursor-pointer"
+									onclick={() => {
+										if (author?.user_id) {
+											pendingUserProfileUserId = author.user_id;
+											isUserProfilePopoverOpen = true;
+										}
+									}}
+								>
+									{#if author?.avatar}
+										<img
+											src={author.avatar}
+											alt={author.name ?? '用户头像'}
+											class="size-11 rounded-full object-cover"
+										/>
+									{:else}
+										<div
+											class="flex size-11 items-center justify-center rounded-full bg-zinc-300 text-sm font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
+										>
+											{author?.name?.slice(0, 1) ?? 'U'}
+										</div>
+									{/if}
+								</button>
+							{/if}
 
 							<div class="min-w-0">
 								<div class="flex items-center gap-2">
-									<p class="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+									<p
+										class="cursor-text truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+									>
 										{author?.name ?? '用户'}
 									</p>
 								</div>
@@ -852,7 +884,7 @@
 								{#if post.author?.user_id && post.author.user_id !== currentUserId}
 									<Button
 										variant="default"
-										class="text-md min-w-20 font-bold"
+										class="text-md min-w-20 cursor-pointer font-bold"
 										disabled={isFollowingAction || isFetchingFollowing}
 										onclick={handleFollow}
 									>
@@ -994,7 +1026,9 @@
 						<!-- 标题与正文 -->
 						<div class="mt-4 space-y-3">
 							{#if post.title}
-								<h1 class="text-base leading-snug font-semibold text-zinc-900 dark:text-zinc-50">
+								<h1
+									class="cursor-text text-base leading-snug font-semibold text-zinc-900 dark:text-zinc-50"
+								>
 									{post.title}
 								</h1>
 							{/if}
@@ -1002,7 +1036,7 @@
 							{#if rawContent}
 								<div class="space-y-1">
 									<p
-										class="text-sm leading-relaxed whitespace-pre-wrap text-zinc-800 dark:text-zinc-200"
+										class="cursor-text text-sm leading-relaxed whitespace-pre-wrap text-zinc-800 dark:text-zinc-200"
 									>
 										{getDisplayedContent()}
 									</p>
@@ -1015,7 +1049,7 @@
 										</button>
 									{/if}
 								</div>
-								<p class="mt-1 text-xs text-zinc-500">
+								<p class="mt-1 cursor-text text-xs text-zinc-500">
 									{#if publishLabel}{publishLabel}{/if}
 								</p>
 							{/if}
@@ -1027,6 +1061,7 @@
 								<CommentSection
 									bind:this={commentSectionRef}
 									postId={post.post_id}
+									{currentUserId}
 									initialCount={post.stats?.comment_count}
 									useMock={useMockComments}
 									{mockComments}
@@ -1180,3 +1215,14 @@
 	autoplay={previewEditorAutoplay}
 	fullScreen={true}
 />
+
+<!-- 用户资料 Popover -->
+{#if isUserProfilePopoverOpen && pendingUserProfileUserId}
+	<UserProfilePopover
+		userId={pendingUserProfileUserId}
+		onClose={() => {
+			isUserProfilePopoverOpen = false;
+			pendingUserProfileUserId = null;
+		}}
+	/>
+{/if}
