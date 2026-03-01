@@ -31,6 +31,14 @@ export interface WaterfallConfig {
 	cardContentHeight: number;
 	skeletonCardCount: number;
 	binarySearchThreshold: number;
+	pullRefreshConfig: PullRefreshConfig;
+}
+
+export interface PullRefreshConfig {
+	maxDistance: number;
+	triggerThreshold: number;
+	triggeredDistance: number;
+	dampingFactor: number;
 }
 
 export interface CardPosition {

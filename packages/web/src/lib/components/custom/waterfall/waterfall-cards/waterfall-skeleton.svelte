@@ -1,10 +1,17 @@
 <script lang="ts">
-	let { aspectRatio }: { aspectRatio: number } = $props();
+	let { aspectRatio, style = '' }: { aspectRatio?: number; style?: string } = $props();
+
+	let ratioStyle = $derived.by(() => {
+		if (!aspectRatio) {
+			return 'height: 100%;';
+		}
+		return `aspect-ratio: ${aspectRatio};`;
+	});
 </script>
 
-<article class="bg-transparent">
+<article class="bg-transparent" {style}>
 	<figure class="relative overflow-hidden rounded-lg">
-		<div class="skeleton-bg relative w-full overflow-hidden" style="aspect-ratio: {aspectRatio};">
+		<div class="skeleton-bg relative w-full overflow-hidden" style={ratioStyle}>
 			<div
 				class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 			></div>
@@ -31,13 +38,13 @@
 						class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 					></div>
 				</div>
-				<div class="skeleton-bg relative h-3 w-[60px] overflow-hidden rounded-md">
+				<div class="skeleton-bg relative h-3 w-15 overflow-hidden rounded-md">
 					<div
 						class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 					></div>
 				</div>
 			</div>
-			<div class="skeleton-bg relative h-3 w-[50px] overflow-hidden rounded-md">
+			<div class="skeleton-bg relative h-3 w-12.5 overflow-hidden rounded-md">
 				<div
 					class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 				></div>
@@ -45,17 +52,17 @@
 		</div>
 
 		<div class="mt-2 flex items-center gap-3">
-			<div class="skeleton-bg relative h-3 w-[30px] overflow-hidden rounded-md">
+			<div class="skeleton-bg relative h-3 w-7.5 overflow-hidden rounded-md">
 				<div
 					class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 				></div>
 			</div>
-			<div class="skeleton-bg relative h-3 w-[30px] overflow-hidden rounded-md">
+			<div class="skeleton-bg relative h-3 w-7.5 overflow-hidden rounded-md">
 				<div
 					class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 				></div>
 			</div>
-			<div class="skeleton-bg relative h-3 w-[30px] overflow-hidden rounded-md">
+			<div class="skeleton-bg relative h-3 w-7.5 overflow-hidden rounded-md">
 				<div
 					class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
 				></div>

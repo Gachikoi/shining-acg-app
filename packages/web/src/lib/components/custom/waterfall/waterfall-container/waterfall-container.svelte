@@ -1,7 +1,7 @@
 <!-- 549行空的Summary -->
 <script lang="ts">
 	import { onMount, onDestroy, tick } from 'svelte';
-	import { WaterfallCard } from '../waterfall-cards';
+	import { WaterfallCard, WaterfallSkeletonCard } from '../waterfall-cards';
 	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
 	import type { V1PostPreview } from '$lib/api/types.gen';
 	import { Spinner } from '$lib/components/ui/spinner';
@@ -89,14 +89,6 @@
 	});
 	/* eslint-enable svelte/require-store-reactive-access */
 
-	// 下拉刷新配置常量
-	const PULL_REFRESH_CONFIG = {
-		MAX_DISTANCE: 120, // 最大下拉距离
-		TRIGGER_THRESHOLD: 60, // 触发刷新的阈值
-		TRIGGERED_DISTANCE: 60, // 触发刷新后的固定距离
-		DAMPING_FACTOR: 0.5 // 阻尼系数
-	} as const;
-
 	// 默认配置常量
 	const DEFAULT_CONFIG: WaterfallConfig = {
 		minCardWidth: 280, // 最小卡片宽度
@@ -106,7 +98,13 @@
 		loadingThreshold: 200, // 加载更多阈值
 		cardContentHeight: 120, // 卡片内容高度
 		skeletonCardCount: 20, // 骨架屏卡片数量
-		binarySearchThreshold: 100 // 使用二分查找的阈值
+		binarySearchThreshold: 100, // 使用二分查找的阈值
+		pullRefreshConfig: {
+			maxDistance: 120,
+			triggerThreshold: 60,
+			triggeredDistance: 60,
+			dampingFactor: 0.5
+		}
 	};
 
 	// 合并配置：默认配置 + 用户配置
@@ -132,6 +130,7 @@
 		return minIndex;
 	}
 
+	// 计算卡片的布局
 	function calculateCardPositions(reset = false): void {
 		if (containerWidth === 0 || postsRef.length === 0) return;
 
@@ -296,9 +295,9 @@
 	// 处理下拉刷新
 	async function handleRefresh(): Promise<void> {
 		if (refreshingRef) return;
-		// !NOTE: 这里会对上一轮的数据清空，产生一个白屏画面，是故意为之的，如果不喜欢，注释这两行即可。
-		cardPositions = [];
-		visibleRange = { start: 0, end: -1 };
+		// !NOTE: 对这里取消注释会产生一个白屏加载的画面，而不是骨架屏
+		// cardPositions = [];
+		// visibleRange = { start: 0, end: -1 };
 		try {
 			await data.refresh();
 			calculateCardPositions(true);
@@ -329,11 +328,9 @@
 			return;
 		}
 
-		const touchY = event.touches[0].clientY;
-		currentY = touchY;
-		const distance = currentY - startY;
+		currentY = event.touches[0].clientY;
 
-		if (distance <= 0) {
+		if (currentY - startY <= 0) {
 			resetPullRefresh();
 			return;
 		}
@@ -343,9 +340,10 @@
 		}
 
 		touchMoveFrameId = requestAnimationFrame(() => {
+			const distance = currentY - startY;
 			pullRefreshDistance = Math.min(
-				distance * PULL_REFRESH_CONFIG.DAMPING_FACTOR,
-				PULL_REFRESH_CONFIG.MAX_DISTANCE
+				distance * mergedConfig.pullRefreshConfig.dampingFactor,
+				mergedConfig.pullRefreshConfig.maxDistance
 			);
 			touchMoveFrameId = null;
 		});
@@ -357,8 +355,8 @@
 
 		isPulling = false;
 
-		if (pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) {
-			pullRefreshDistance = PULL_REFRESH_CONFIG.TRIGGERED_DISTANCE; // 触发刷新
+		if (pullRefreshDistance >= mergedConfig.pullRefreshConfig.triggerThreshold) {
+			pullRefreshDistance = mergedConfig.pullRefreshConfig.triggeredDistance; // 触发刷新
 			handleRefresh();
 		} else {
 			pullRefreshDistance = 0; // 未达到阈值，取消刷新
@@ -464,11 +462,11 @@
 				{#if refreshingRef}
 					<Spinner class="mr-2 text-primary" />
 					<span class="text-sm text-muted-foreground">正在刷新</span>
-				{:else if pullRefreshDistance >= PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD}
+				{:else if pullRefreshDistance >= mergedConfig.pullRefreshConfig.triggerThreshold}
 					<div
 						class="mr-2 text-primary"
 						style="transform: rotate({Math.min(
-							(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
+							(pullRefreshDistance / mergedConfig.pullRefreshConfig.triggerThreshold) * 360,
 							360
 						)}deg);"
 					>
@@ -479,7 +477,7 @@
 					<div
 						class="mr-2 text-primary"
 						style="transform: rotate({Math.min(
-							(pullRefreshDistance / PULL_REFRESH_CONFIG.TRIGGER_THRESHOLD) * 360,
+							(pullRefreshDistance / mergedConfig.pullRefreshConfig.triggerThreshold) * 360,
 							360
 						)}deg);"
 					>
@@ -497,29 +495,38 @@
 					style="top: {cardPositions[i]?.top + pullRefreshDistance}px; left: {cardPositions[i]
 						?.left}px; width: {cardPositions[i]?.width}px; height: {cardPositions[i]?.height}px;"
 				>
-					<WaterfallCard
-						postId={post.post_id || ''}
-						title={post.display_title || ''}
-						summary=""
-						cover={{
-							url: post.cover?.single?.url || '',
-							ratio:
-								post.cover?.single?.meta?.width && post.cover.single.meta?.height
-									? post.cover.single.meta.width / post.cover.single.meta.height
-									: 1
-						}}
-						author={{
-							avatar: post.author?.avatar || '',
-							name: post.author?.name || '',
-							id: post.author?.user_id || ''
-						}}
-						likeCount={Number(post.stats?.like_count) || 0}
-						viewCount={Number(post.stats?.view_count) || 0}
-						commentCount={Number(post.stats?.comment_count) || 0}
-						isLiked={post.relation_status?.is_liked || false}
-						isOnlyVideo={post.is_only_video || false}
-						publishTime={parseInt(post.publish_time || '0')}
-					/>
+					{#if refreshingRef}
+						<WaterfallSkeletonCard
+							aspectRatio={post.cover?.single?.meta?.width && post.cover.single.meta?.height
+								? post.cover.single.meta.width / post.cover.single.meta.height
+								: 1}
+							style="height: 100%"
+						/>
+					{:else}
+						<WaterfallCard
+							postId={post.post_id || ''}
+							title={post.display_title || ''}
+							summary=""
+							cover={{
+								url: post.cover?.single?.url || '',
+								ratio:
+									post.cover?.single?.meta?.width && post.cover.single.meta?.height
+										? post.cover.single.meta.width / post.cover.single.meta.height
+										: 1
+							}}
+							author={{
+								avatar: post.author?.avatar || '',
+								name: post.author?.name || '',
+								id: post.author?.user_id || ''
+							}}
+							likeCount={Number(post.stats?.like_count) || 0}
+							viewCount={Number(post.stats?.view_count) || 0}
+							commentCount={Number(post.stats?.comment_count) || 0}
+							isLiked={post.relation_status?.is_liked || false}
+							isOnlyVideo={post.is_only_video || false}
+							publishTime={parseInt(post.publish_time || '0')}
+						/>
+					{/if}
 				</div>
 			{/if}
 		{/each}
