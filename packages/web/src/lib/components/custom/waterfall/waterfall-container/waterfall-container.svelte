@@ -451,6 +451,27 @@
 			updateVisibleRange();
 		}
 	});
+
+	// 暴露给外部的清空方法
+	export function resetLayout() {
+		lastPostsLength = 0;
+		if (containerWidth > 0) {
+			const layout = calculateLayoutBase(containerWidth);
+			columnCount = layout.columnCount;
+			cardWidth = layout.cardWidth;
+		}
+
+		columnHeights.length = 0;
+		columnHeights.push(...Array(columnCount).fill(0));
+		cardPositions.length = 0;
+		maxHeight = 0;
+		lastCalculatedCount = 0;
+
+		if (containerElement) {
+			containerElement.style.height = `0px`;
+		}
+		updateVisibleRange();
+	}
 </script>
 
 <div class="h-full overflow-y-scroll px-2 pt-2" bind:this={scrollContainer}>
