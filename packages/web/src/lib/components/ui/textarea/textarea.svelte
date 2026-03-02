@@ -16,7 +16,8 @@
 		textareaElement.style.height = 'auto';
 
 		// 设置新高度，确保至少是最小高度
-		const minHeight = parseInt(getComputedStyle(textareaElement).minHeight) || 80;
+		const minHeightPx = parseInt(getComputedStyle(textareaElement).minHeight) || 80;
+		const minHeight = minHeightPx;
 		const newHeight = Math.max(textareaElement.scrollHeight, minHeight);
 		textareaElement.style.height = `${newHeight}px`;
 	}
@@ -60,7 +61,7 @@
 	bind:this={textareaElement}
 	{value}
 	class={cn(
-		'block min-h-[80px] w-full resize-none rounded-2xl border-0 bg-zinc-100 px-3 py-2 text-base caret-red-500 shadow-xs ring-offset-background transition-[color,box-shadow] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900',
+		'block min-h-[5rem] w-full resize-none rounded-2xl border-0 bg-zinc-100 px-3 py-2 text-base caret-red-500 shadow-xs ring-offset-background transition-[color,box-shadow] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900',
 		'overflow-y-auto',
 		'focus:ring-0 focus:outline-none',
 		'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',

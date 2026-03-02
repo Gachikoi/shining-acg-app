@@ -123,7 +123,7 @@
 
 	// 热区扩充：视觉保持 40px，触控区域扩展至 44px（README 规范）
 	const touchTargetExpandClass: ClassValue =
-		"relative after:absolute after:-inset-[2px] after:content-['']";
+		"relative after:absolute after:-inset-[0.125rem] after:content-['']";
 </script>
 
 <AlertDialog.Root bind:open onOpenChange={handleOpenChange}>

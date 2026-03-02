@@ -761,7 +761,7 @@
 					value={aboutShining}
 					maxlength={300}
 					oninput={(e) => (aboutShining = e.currentTarget.value)}
-					class="min-h-[120px] pb-16"
+					class="min-h-[7.5rem] pb-16"
 				/>
 				<div class="absolute right-3 bottom-3">
 					<CharCounter current={aboutShining.length} max={300} />
@@ -797,7 +797,7 @@
 				<Button
 					variant="block"
 					onclick={addLink}
-					class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+					class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 				>
 					<PlusCircle class="size-4" />
 					新增
@@ -831,7 +831,7 @@
 				<Button
 					variant="block"
 					onclick={addHistoryItem}
-					class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+					class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 				>
 					<PlusCircle class="size-4" />
 					新增
@@ -850,7 +850,7 @@
 					value={contactShining}
 					maxlength={300}
 					oninput={(e) => (contactShining = e.currentTarget.value)}
-					class="min-h-[120px] pb-16"
+					class="min-h-[7.5rem] pb-16"
 				/>
 				<div class="absolute right-3 bottom-3">
 					<CharCounter current={contactShining.length} max={300} />

@@ -150,7 +150,7 @@
 		</Button>
 	</Popover.PopoverTrigger>
 
-	<Popover.PopoverContent class="w-[280px] p-3">
+	<Popover.PopoverContent class="w-[17.5rem] p-3">
 		<div class="flex items-center justify-between pb-2">
 			<button
 				type="button"
