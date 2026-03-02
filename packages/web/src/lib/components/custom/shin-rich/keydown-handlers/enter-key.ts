@@ -1,4 +1,4 @@
-import { ZWSP, getRangeInTarget } from '../contenteditable-utils';
+import { ZWSP, getRangeInTarget } from '../utils/contenteditable';
 import type { KeydownHandler } from './types';
 
 /** Enter：插入 br+ZWSP 换行 */

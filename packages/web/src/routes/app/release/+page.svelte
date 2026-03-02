@@ -42,9 +42,11 @@
 	import { PlusIcon } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
-	import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
+	import {
+		ShinRichTextarea,
+		extractContentFromShinRichTextarea
+	} from '$lib/components/custom/shin-rich';
 	import * as Select from '$lib/components/ui/select';
-	import { extractContentFromShinRichTextarea } from '$lib/components/custom/shin-rich';
 	import type { V1CreatePostRequest } from '$lib/api/types.gen';
 
 	let lastSaved = $state('11:33');

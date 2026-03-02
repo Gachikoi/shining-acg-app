@@ -1,4 +1,4 @@
-import { ZWSP } from '../contenteditable-utils';
+import { ZWSP } from '../utils/contenteditable';
 import type { KeydownContext, KeydownHandler } from './types';
 
 /** Backspace 内部责任链的上下文 */

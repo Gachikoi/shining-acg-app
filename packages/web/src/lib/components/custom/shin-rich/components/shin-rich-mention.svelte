@@ -16,7 +16,7 @@
 -->
 
 <script lang="ts">
-	import type { MentionUser } from '$lib/components/custom/shin-rich/shin-rich-popover.svelte';
+	import type { MentionUser } from './shin-rich-popover.svelte';
 
 	type Props = {
 		user: MentionUser;

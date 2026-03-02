@@ -12,7 +12,7 @@
  */
 
 import { tick } from 'svelte';
-import type { MentionUser } from './shin-rich-popover.svelte';
+import type { MentionUser } from '../components/shin-rich-popover.svelte';
 import {
 	ZWSP,
 	getRangeInTarget,
@@ -24,8 +24,8 @@ import {
 	insertAtEnd,
 	tryGetCaretPosition,
 	NBSP
-} from './contenteditable-utils';
-import { createKeydownHandlerChain, type KeydownContext } from './keydown-handlers';
+} from '../utils/contenteditable';
+import { createKeydownHandlerChain, type KeydownContext } from '../keydown-handlers';
 
 /**
  * 控制器依赖注入接口
