@@ -16,7 +16,7 @@
 	let currentPath = $derived(page.url.pathname);
 </script>
 
-<nav class="scrollbar-hide flex h-[72px] items-center gap-[10px] overflow-x-auto pb-2">
+<nav class="scrollbar-hide flex h-[4.5rem] items-center gap-[0.625rem] overflow-x-auto pb-2">
 	{#each menuItems as item (item.href)}
 		{@const isActive = currentPath === item.href}
 		<a

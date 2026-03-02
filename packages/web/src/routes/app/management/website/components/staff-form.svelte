@@ -100,7 +100,7 @@
 									value={item.description ?? ''}
 									maxlength={200}
 									oninput={(e) => (staff[index].description = e.currentTarget.value)}
-									class="min-h-[120px] pb-10"
+									class="min-h-[7.5rem] pb-10"
 								/>
 								<div class="pointer-events-none absolute right-4 bottom-3">
 									<CharCounter current={(item.description ?? '').length} max={200} />
@@ -123,7 +123,7 @@
 			<Button
 				variant="block"
 				onclick={addStaff}
-				class="h-8 w-[76px] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+				class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
 				<PlusCircle class="size-4" />
 				新增

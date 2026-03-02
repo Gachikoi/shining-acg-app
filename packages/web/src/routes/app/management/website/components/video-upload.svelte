@@ -60,7 +60,7 @@
 			{#if videoUrl}
 				<div class="relative">
 					<div
-						class="relative flex h-[90px] w-[160px] items-center justify-center rounded-lg bg-zinc-900"
+						class="relative flex h-[5.625rem] w-[10rem] items-center justify-center rounded-lg bg-zinc-900"
 					>
 						<video src={videoUrl} class="h-full w-full rounded-lg object-cover"></video>
 						<div class="bg黑/30 absolute inset-0 flex items-center justify-center rounded-lg">
@@ -77,7 +77,7 @@
 				</div>
 			{:else}
 				<label
-					class="flex h-[90px] w-[160px] cursor-pointer items-center justify-center rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+					class="flex h-[5.625rem] w-[10rem] cursor-pointer items-center justify-center rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
 				>
 					<input
 						type="file"
