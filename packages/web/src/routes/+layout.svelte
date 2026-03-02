@@ -6,6 +6,7 @@
 	import { dev } from '$app/environment';
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import { Toaster } from '$lib/components/ui/sonner';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -57,6 +58,8 @@
 <svelte:head>
 	<link rel="icon" href={mode.current === 'dark' ? darkLogo : logo} />
 </svelte:head>
+
+<Toaster position="top-right" />
 
 {@render children()}
 

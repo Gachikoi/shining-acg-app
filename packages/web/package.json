@@ -20,7 +20,8 @@
 		"@internationalized/date": "^3.10.1",
 		"axios": "^1.13.4",
 		"lucide-svelte": "^0.562.0",
-		"mode-watcher": "^1.1.0"
+		"mode-watcher": "^1.1.0",
+		"svelte-sonner": "^1.0.7"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",

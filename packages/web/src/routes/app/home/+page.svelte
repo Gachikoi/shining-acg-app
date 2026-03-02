@@ -13,6 +13,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { LucideRefreshCw } from 'lucide-svelte';
+	import { toast } from 'svelte-sonner';
 
 	// 状态管理
 	let posts = $state<V1PostPreview[]>([]);
@@ -102,6 +103,13 @@
 
 			if (fetchId !== currentFetchId) return;
 
+			if (response.error) {
+				const error = response.error;
+				console.error('Fetch feed failed:', error);
+				toast.error(error.message || '获取数据失败，请稍后重试');
+				return;
+			}
+
 			if (response.data) {
 				// 注意：response.data.posts 是 PostFeedContent 对象，包含 items
 				const newPosts = response.data.posts?.items || [];
@@ -146,6 +154,7 @@
 			}
 		} catch (error) {
 			console.error('Failed to fetch feed:', error);
+			toast.error('网络请求失败，请检查您的网络连接');
 		} finally {
 			// 只有当前最新的请求才负责关闭 loading/refreshing 状态
 			if (fetchId === currentFetchId) {

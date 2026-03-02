@@ -8,6 +8,7 @@ src/lib/api/*
 swagger.swagger.json
 _headers
 .env*
+deno.lock
 
 # Miscellaneous
 /static/
