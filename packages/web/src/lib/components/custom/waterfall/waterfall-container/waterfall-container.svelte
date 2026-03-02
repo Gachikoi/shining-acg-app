@@ -47,7 +47,7 @@
 		bufferSize: 5, // 缓冲区大小（倍数）
 		bufferHeight: 600, // 缓冲区高度
 		loadingThreshold: 200, // 加载更多阈值
-		cardContentHeight: 136, // 卡片内容高度
+		cardContentHeight: 120, // 卡片内容高度
 		skeletonCardCount: 20, // 骨架屏卡片数量
 		binarySearchThreshold: 100, // 使用二分查找的阈值
 		pullRefreshConfig: {
@@ -524,7 +524,6 @@
 						<WaterfallCard
 							postId={post.post_id || ''}
 							title={post.display_title || ''}
-							summary="总结字段不存在在API中"
 							cover={{
 								url: post.cover?.single?.url || '',
 								ratio:

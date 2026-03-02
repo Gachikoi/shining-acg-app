@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { WaterfallContainer } from '$lib/components/custom/waterfall';
-	import { mockFetchFeed } from '$lib/test/waterfall-data-mock'; // 使用 Mock 数据生成函数
+	import { feedServiceGetFeed } from '$lib/api/sdk.gen';
+
+	// 单元测试接口
+	// 单元测试请求代码在 90 行
+	// import { mockFetchFeed } from '$lib/test/waterfall-data-mock';
+
 	import type { V1PostPreview } from '$lib/api/types.gen';
 	import type { WaterfallData } from '$lib/components/custom/waterfall/waterfall-container/types';
 	import { appState } from '$lib/stores/app-state.svelte';
@@ -84,10 +89,15 @@
 				if (timeRange.end) queryParams['filter.time_range.end_timestamp'] = timeRange.end;
 			}
 
-			// 使用 Mock 函数替代真实 API
-			const response = await mockFetchFeed({
-				query: queryParams,
-				url: '/v1/feed'
+			// 单元测试 API
+			// const response = await mockFetchFeed({
+			// 	query: queryParams,
+			// 	url: '/v1/feed'
+			// });
+
+			// 真实 API
+			const response = await feedServiceGetFeed({
+				query: queryParams
 			});
 
 			if (fetchId !== currentFetchId) return;

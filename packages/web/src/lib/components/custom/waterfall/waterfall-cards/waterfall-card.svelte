@@ -16,7 +16,6 @@
 	let {
 		postId,
 		title,
-		summary,
 		cover,
 		author,
 		likeCount = '0',
@@ -28,7 +27,6 @@
 	}: {
 		postId: string;
 		title: string;
-		summary: string | undefined;
 		cover: Media;
 		author: UserSummary;
 		likeCount?: string;
@@ -64,10 +62,6 @@
 		<h3 class="line-clamp-2 text-sm leading-snug font-medium text-gray-900 dark:text-gray-100">
 			{title}
 		</h3>
-		{#if summary}
-			<p class="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">{summary}</p>
-		{/if}
-
 		<div class="mt-2 flex items-center justify-between" data-author-id={author.id}>
 			<div class="flex items-center gap-1.5">
 				<img
