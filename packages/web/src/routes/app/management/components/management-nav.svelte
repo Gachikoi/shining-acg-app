@@ -18,4 +18,8 @@
 	let currentPath = $derived(page.url.pathname);
 </script>
 
-<SortableButtonGroup items={MENU_ITEMS} activePath={currentPath} storageKey={STORAGE_KEY} />
+<SortableButtonGroup
+	items={MENU_ITEMS}
+	storageKey={STORAGE_KEY}
+	isActive={(item) => currentPath === item.href || currentPath.startsWith(item.href + '/')}
+/>

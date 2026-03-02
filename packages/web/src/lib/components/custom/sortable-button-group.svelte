@@ -12,7 +12,11 @@
 
 	let {
 		items,
-		activePath,
+		/**
+		 * 自定义高亮逻辑。
+		 * 组件本身不再依赖 URL 或 pathname，只根据该函数的返回值决定按钮是否处于「激活」状态。
+		 */
+		isActive,
 		storageKey,
 		longPressDuration = 200,
 		// 默认排序触发位移阈值适当调小，方便 PC 上在按钮宽度范围内完成一次换位
@@ -21,7 +25,7 @@
 		buttonClass = ''
 	}: {
 		items: ButtonItem[];
-		activePath?: string;
+		isActive?: (item: ButtonItem) => boolean;
 		storageKey?: string;
 		longPressDuration?: number;
 		moveThreshold?: number;
@@ -82,15 +86,6 @@
 
 	let isSorting = $state(false);
 
-	function isPathActive(href: string): boolean {
-		if (!activePath) return false;
-		const resolved = resolve(
-			// @ts-expect-error - SvelteKit resolve 类型限制，实际路径存在
-			href
-		);
-		return activePath === resolved || activePath.startsWith(resolved + '/');
-	}
-
 	function openPopoverFor(href: string, e?: MouseEvent) {
 		e?.preventDefault();
 		for (const key in popoverOpenMap) {
@@ -112,10 +107,13 @@
 		enabled: !isSorting,
 		shouldPreventClick: (hasMoved) => hasMoved
 	}}
-	class={cn('scrollbar-hide flex h-[72px] items-center gap-[10px] overflow-x-auto pb-2', navClass)}
+	class={cn(
+		'scrollbar-hide flex h-[4.5rem] items-center gap-[0.625rem] overflow-x-auto pb-2',
+		navClass
+	)}
 >
 	{#each internalItems as item (item.href)}
-		{@const active = isPathActive(item.href)}
+		{@const active = isActive ? isActive(item) : false}
 		<Popover.Root bind:open={popoverOpenMap[item.href]}>
 			<PopoverTrigger>
 				<a
@@ -153,7 +151,9 @@
 						onTrigger: (event) => handleContextMenu(item, event)
 					}}
 				>
-					{item.label}
+					<slot name="item" {item} {active}>
+						{item.label}
+					</slot>
 				</a>
 			</PopoverTrigger>
 

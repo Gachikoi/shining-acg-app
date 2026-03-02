@@ -28,6 +28,7 @@
 =======
 					'min-w-[64px] rounded-full px-4 py-1.5 text-sm transition-colors',
 >>>>>>> 0a7ec2d (fix: 官网管理相关组件位置调整)
+					'min-w-[4rem] rounded-full px-4 py-1.5 text-sm transition-colors',
 					activeIndex === index
 						? 'bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
 						: 'bg-transparent font-normal text-zinc-700 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800'
