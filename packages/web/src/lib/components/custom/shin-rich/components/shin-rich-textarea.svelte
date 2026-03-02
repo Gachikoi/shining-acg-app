@@ -85,9 +85,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import ShinRichPopover, {
-		type MentionUser
-	} from './shin-rich-popover.svelte';
+	import ShinRichPopover, { type MentionUser } from './shin-rich-popover.svelte';
 	import ShinRichMention from './shin-rich-mention.svelte';
 	import logo from '$lib/assets/logo.png';
 	import { filterUsersByQuery } from '../utils/filter-users';
