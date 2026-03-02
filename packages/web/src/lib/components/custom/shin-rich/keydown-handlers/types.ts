@@ -1,4 +1,4 @@
-import type { RichTextareaControllerDeps } from '../rich-textarea-controller';
+import type { RichTextareaControllerDeps } from '../controller/rich-textarea-controller';
 
 /**
  * Keydown 处理器上下文

@@ -26,7 +26,7 @@
 	### 基础用法
 	```svelte
 	<script>
-		import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
+		import { ShinRichTextarea } from '$lib/components/custom/shin-rich';
 
 		let contentEditableRef = $state<HTMLDivElement | null>(null);
 	</script>
@@ -62,7 +62,7 @@
 	```svelte
 	<script>
 		import { goto } from '$app/navigation';
-		import ShinRichTextarea from '$lib/components/custom/shin-rich/shin-rich-textarea.svelte';
+		import { ShinRichTextarea } from '$lib/components/custom/shin-rich';
 
 		function onMentionClick(userId: string) {
 			goto(`/app/profile/${userId}`);
@@ -87,11 +87,11 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import ShinRichPopover, {
 		type MentionUser
-	} from '$lib/components/custom/shin-rich/shin-rich-popover.svelte';
-	import ShinRichMention from '$lib/components/custom/shin-rich/shin-rich-mention.svelte';
+	} from './shin-rich-popover.svelte';
+	import ShinRichMention from './shin-rich-mention.svelte';
 	import logo from '$lib/assets/logo.png';
-	import { filterUsersByQuery } from '$lib/components/custom/shin-rich/constants';
-	import { RichTextareaController } from '$lib/components/custom/shin-rich/rich-textarea-controller';
+	import { filterUsersByQuery } from '../utils/filter-users';
+	import { RichTextareaController } from '../controller/rich-textarea-controller';
 
 	type Props = {
 		contentEditableRef?: HTMLDivElement | null;
