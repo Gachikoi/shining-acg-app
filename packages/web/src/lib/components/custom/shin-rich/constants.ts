@@ -1,13 +1,5 @@
-import type { MentionUser } from './shin-rich-popover.svelte';
+/** 零宽空格，用于光标落点，解决跨浏览器换行后光标显示问题 */
+export const ZWSP = '\u200B';
 
-/** 过滤用户列表（按 qq、name、remark 搜索） */
-export function filterUsersByQuery(users: MentionUser[], query: string): MentionUser[] {
-	if (!query.trim()) return users;
-	const q = query.trim().toLowerCase();
-	return users.filter(
-		(u) =>
-			u.qq.toLowerCase().includes(q) ||
-			u.name.toLowerCase().includes(q) ||
-			(u as MentionUser & { remark?: string }).remark?.toLowerCase().includes(q)
-	);
-}
+/** 非断行空格，用于插入 mention 后的空格 */
+export const NBSP = '\u00A0';
