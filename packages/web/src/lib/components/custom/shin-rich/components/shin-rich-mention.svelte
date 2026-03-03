@@ -7,9 +7,8 @@
 	渲染单个 @ 用户标签，蓝色可点击样式。ShinRichTextarea 通过隐藏模板 + cloneNode 生成
 	插入到 contenteditable 的 mention 节点。
 
-	## 开发依赖
-	点击跳转个人资料页依赖 /app/profile/[user_id] 路由及 goto 等导航能力（见 ShinRichTextarea 注释）。
-	当前点击仅阻止默认行为，跳转逻辑待实现。
+	## 点击跳转
+	此部分在 rich-textarea-controller.ts 中进行了事件委托处理，具体见 rich-textarea-controller.ts 中的 handleContainerClick 方法；默认点击是无行为的，需要在上层组件 ShinRichTextarea 中注入 onMentionClick 回调函数，具体见 ShinRichTextarea 注释。
 
 	## Props
 	- user: MentionUser，显示 remark ?? name
