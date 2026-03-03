@@ -1,13 +1,9 @@
 <script module lang="ts">
 	// 常量定义
+	// 参考产品需求文档 6.2.5 发布 (Release)
 	import { linear } from 'svelte/easing';
+	import { CoverRatioArray, type CoverRatio } from '$lib/storage/release-draft';
 
-	const exampleImageDataURLs: string[] = ['/src/lib/assets/rectangle-logo.png'];
-
-	// 封面比例
-	const CoverRatioArray = ['1:1', '4:3', '3:4'] as const;
-	// 封面比例类型
-	type CoverRatio = (typeof CoverRatioArray)[number];
 	// 封面比例对应的宽高
 	const coverRatioToAspectRatio: Record<CoverRatio, string> = {
 		'1:1': 'w-39 h-39',
@@ -16,7 +12,7 @@
 	} as const;
 	const defaultCoverRatio: CoverRatio = '3:4';
 
-	const titleWordLimit = 20; // 标题字数限制
+	const titleWordLimit = 20; // 标题字数限制，需求 6.2.5.1-3：最大 20 个字符
 
 	// 出现然后淡出，用于封面比例标签提示
 	const appearThenFade = (_: Element, { delay = 500, duration = 400, easing = linear } = {}) => {
@@ -30,6 +26,13 @@
 </script>
 
 <script lang="ts">
+	/**
+	 * 发布页 - 产品需求 6.2.5
+	 * TODO(6.2.5.4-8): toast 提示：「已取消上传」「帖子发布成功」「帖子上传过程中发生错误，请重试」
+	 * TODO(6.2.5.4-9): iOS/Android Webview 保活，保障应用在后台时也能处理、上传图片视频
+	 */
+	import { onMount } from 'svelte';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { cn } from '$lib/utils';
@@ -42,24 +45,37 @@
 	} from '$lib/components/custom/shin-rich';
 	import * as Select from '$lib/components/ui/select';
 	import { partitionServiceListPartitions } from '$lib/api';
-	import type { V1CreatePostRequest } from '$lib/api/types.gen';
+	import type { V1CreatePostRequest, V1PostContentUnit } from '$lib/api/types.gen';
+	import {
+		saveReleaseDraft,
+		loadReleaseDraft,
+		clearReleaseDraft,
+		type ReleaseDraft
+	} from '$lib/storage/release-draft';
+	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
+	import { resolve } from '$app/paths';
 
-	let lastSaved = $state('11:33');
-	// 考虑将 exampleImageDataURLs 改为从 IndexedDB 中获取图片
-	let cachedImagesDataURLs = $state<string[]>([...exampleImageDataURLs]);
+	const DRAFT_ID = 'release-draft';
 
+	let lastSaved = $state<string | null>(null);
+	let lastSavedIsAutoSave = $state(false);
+	let lastSavedSnapshot = $state<ReleaseDraft | null>(null);
+
+	let cachedImagesDataURLs = $state<string[]>([]);
 	let selectedImageURL = $state<string | null>(null);
-
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
-
 	let titleContent = $state('');
-
 	let contenteditableRef = $state<HTMLDivElement | null>(null);
+	let initialBodyContent = $state<V1PostContentUnit[] | undefined>(undefined);
 
 	let partitions = $state<Array<{ value: string; label: string }>>([]);
 	let partitionsLoading = $state(true);
 	let partitionsError = $state<string | null>(null);
 	let selectedSection = $state('');
+
+	let showLeaveConfirm = $state(false);
+	let pendingNavigationUrl = $state<URL | null>(null);
+	let resetKey = $state(0);
 
 	let selectedSectionLabel = $derived(
 		partitionsLoading
@@ -69,12 +85,65 @@
 				: '请选择'
 	);
 
+	function buildDraft(isAutoSave: boolean): ReleaseDraft {
+		return {
+			id: DRAFT_ID,
+			updatedAt: new Date().toISOString(),
+			isAutoSave,
+			title: titleContent,
+			bodyContent: contenteditableRef ? extractContentFromShinRichTextarea(contenteditableRef) : [],
+			selectedSection,
+			coverRatio,
+			coverDataURL: selectedImageURL,
+			mediaDataURLs: [...cachedImagesDataURLs]
+		};
+	}
+
+	function draftsEqual(a: ReleaseDraft, b: ReleaseDraft): boolean {
+		return (
+			a.title === b.title &&
+			a.selectedSection === b.selectedSection &&
+			a.coverRatio === b.coverRatio &&
+			a.coverDataURL === b.coverDataURL &&
+			JSON.stringify(a.bodyContent) === JSON.stringify(b.bodyContent) &&
+			JSON.stringify(a.mediaDataURLs) === JSON.stringify(b.mediaDataURLs)
+		);
+	}
+
+	function isDirty(): boolean {
+		if (!lastSavedSnapshot) return true;
+		return !draftsEqual(buildDraft(false), lastSavedSnapshot);
+	}
+
+	async function performSave(isAutoSave: boolean) {
+		const draft = buildDraft(isAutoSave);
+		await saveReleaseDraft(draft);
+		lastSaved = draft.updatedAt;
+		lastSavedIsAutoSave = isAutoSave;
+		lastSavedSnapshot = draft;
+	}
+
+	function handleSave() {
+		if (!isDirty()) {
+			// TODO(6.2.5.2-2): 使用 toast 提示「没有需要保存的变更」，替换 alert
+			alert('没有需要保存的变更');
+			return;
+		}
+		performSave(false);
+	}
+
 	function handleReset() {
+		// TODO(6.2.5.2-1): 区分新建/编辑——编辑现有帖子时应重置为现网内容，而非清空
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
 		cachedImagesDataURLs = [];
 		selectedImageURL = null;
 		selectedSection = '';
+		initialBodyContent = [];
+		lastSaved = null;
+		lastSavedSnapshot = null;
+		resetKey += 1;
+		clearReleaseDraft(DRAFT_ID);
 	}
 
 	// 封面比例轮换
@@ -84,6 +153,7 @@
 		coverRatio = CoverRatioArray[nextIndex];
 	}
 
+	// TODO(6.2.5.4): 发布时需先处理、上传图片视频，获取 media_assets 后再调用 CreatePost
 	function createPostRequest(): V1CreatePostRequest {
 		return {
 			batch_id: undefined,
@@ -95,16 +165,20 @@
 	}
 
 	function handleSubmit() {
+		// TODO(6.2.5.1): 表单校验——封面、图片/视频、正文填任意一种即可通过
 		if (!selectedSection) {
-			// TODO: 使用 toast 提示用户
+			// TODO(6.2.5.2-3): 使用 toast 提示，替换 alert；发布前需二次确认弹窗
 			alert('请选择分区');
 			return;
 		}
 		const postRequest = createPostRequest();
 		console.log(postRequest);
+		// TODO(6.2.5.4): 确认发布后显示 App 横幅通知（封面、上传状态、进度），支持多任务叠加、隐藏/圆形状态栏、重试/删除
 	}
 
 	// 如果未选择封面，则使用第一张图片作为封面
+	// 需求 6.2.5.1-1：未设置封面时，以第 1 张图片或视频首帧作为封面
+	// TODO(6.2.5.1-1): 视频首帧兜底、无图片/视频时用正文内容生成封面
 	$effect(() => {
 		if (selectedImageURL === null && cachedImagesDataURLs.length > 0) {
 			selectedImageURL = cachedImagesDataURLs[0];
@@ -135,6 +209,70 @@
 			cancelled = true;
 		};
 	});
+
+	onMount(() => {
+		// 加载草稿
+		loadReleaseDraft(DRAFT_ID).then((draft) => {
+			if (!draft) return;
+			titleContent = draft.title;
+			selectedSection = draft.selectedSection;
+			coverRatio = draft.coverRatio as CoverRatio;
+			selectedImageURL = draft.coverDataURL;
+			cachedImagesDataURLs = [...(draft.mediaDataURLs ?? [])];
+			initialBodyContent = draft.bodyContent ?? [];
+			lastSaved = draft.updatedAt;
+			lastSavedIsAutoSave = draft.isAutoSave;
+			lastSavedSnapshot = draft;
+		});
+
+		// 每 60s 自动保存
+		const interval = setInterval(() => {
+			if (isDirty()) {
+				performSave(true);
+			}
+		}, 60_000);
+
+		// 关闭标签页/刷新时弹窗提醒
+		const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
+			if (isDirty()) {
+				e.preventDefault();
+			}
+		};
+		window.addEventListener('beforeunload', beforeUnloadHandler);
+
+		return () => {
+			clearInterval(interval);
+			window.removeEventListener('beforeunload', beforeUnloadHandler);
+		};
+	});
+
+	// 需求 6.2.5.3 意外兜底：导航离开/关闭标签页时有未保存变更则二次确认，退出前自动保存
+	beforeNavigate(({ to, cancel }) => {
+		if (!isDirty()) return;
+		if (!to?.url) return;
+		cancel();
+		pendingNavigationUrl = to.url;
+		showLeaveConfirm = true;
+	});
+
+	async function handleLeaveConfirm() {
+		if (pendingNavigationUrl) {
+			await performSave(true);
+			const url = pendingNavigationUrl;
+			pendingNavigationUrl = null;
+			showLeaveConfirm = false;
+			// @ts-expect-error - url 不会是奇怪的东西
+			const path = resolve(url.pathname + url.search + url.hash);
+			goto(path);
+		} else {
+			showLeaveConfirm = false;
+		}
+	}
+
+	function handleLeaveCancel() {
+		pendingNavigationUrl = null;
+		showLeaveConfirm = false;
+	}
 </script>
 
 <main
@@ -165,9 +303,7 @@
 					class="h-full w-full cursor-pointer object-cover"
 					draggable="false"
 				/>
-				<!-- 目前实现了封面比例切换，但未真正实现裁剪功能 -->
-				<!-- TODO: 点击封面预览图片，可以进行编辑 -->
-				<!-- TODO: 用户选择封面后强制弹出图片视频预览编辑器裁切；未设置时自动兜底逻辑 -->
+				<!-- TODO(6.2.5.1-1): 封面只能选 1 张图，选择后强制弹出图片视频预览编辑器裁切成 1:1/4:3/3:4 -->
 			{:else}
 				<span class="text-xs text-muted-foreground">比例1:1 / 4:3 / 3:4</span>
 			{/if}
@@ -182,8 +318,7 @@
 			{/key}
 		</button>
 		<!-- 选择封面 -->
-		<!-- TODO: 实现选择图片/视频 -->
-		<!-- TODO: 实现删除图片/视频 -->
+		<!-- TODO(6.2.5.1-2): 选择图片/视频，最多 20 张；选择后不弹出编辑器；支持删除 -->
 		<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 		<div class="mt-4 flex gap-2">
 			{#each cachedImagesDataURLs as imageDataURL, index (index)}
@@ -197,7 +332,7 @@
 				<PlusIcon class="size-4 text-muted-foreground" />
 			</div>
 		</div>
-		<!-- TODO: 实现正文内容编辑，依赖于富文本编辑器组件 -->
+		<!-- 正文内容：标题 20 字、描述 10000 字、@ 用户见 ShinRichTextarea -->
 		<p class="mt-6 text-lg font-bold">正文内容</p>
 		<div class="relative mt-2">
 			<Input
@@ -212,12 +347,17 @@
 				{titleContent.length}/{titleWordLimit}
 			</div>
 		</div>
-		<ShinRichTextarea
-			placeholder="添加帖子描述"
-			class="mt-5"
-			bind:contentEditableRef={contenteditableRef}
-		/>
+		{#key resetKey}
+			<!-- TODO(6.2.5.1-3): 传入 onMentionClick 使点击 @ 标识进入目标用户个人资料页 -->
+			<ShinRichTextarea
+				placeholder="添加帖子描述"
+				class="mt-5"
+				bind:contentEditableRef={contenteditableRef}
+				initialContent={initialBodyContent}
+			/>
+		{/key}
 
+		<!-- 需求 6.2.5.1-4：分区选择必填，与管理-分区编辑同步 -->
 		<p class="mt-6 text-lg font-bold">分区选择<span class="text-red-500">*</span></p>
 		<div class="mt-2">
 			{#if partitionsError}
@@ -247,9 +387,8 @@
 			{/if}
 		</div>
 	</div>
-	<!-- 底部按钮 -->
-	<!-- TODO: 实现重置按钮功能，需要弹窗让用户二次确认 -->
-	<!-- TODO: 实现保存按钮功能 -->
+	<!-- 底部按钮：需求 6.2.5.2 操作区 -->
+	<!-- 保存：无变更时 toast、有变更持久化、1min 自动保存、显示「保存于/自动保存于 xx:xx」 -->
 	<div class="flex gap-2 border-t border-zinc-100 p-4 font-medium">
 		<ConfirmDialog onConfirm={handleReset} confirmText="重置">
 			{#snippet trigger()}
@@ -263,15 +402,30 @@
 				</p>
 			{/snippet}
 		</ConfirmDialog>
-		<Button variant="tertiary" class="cursor-pointer text-muted-foreground">保存</Button>
+		<ConfirmDialog
+			bind:open={showLeaveConfirm}
+			onConfirm={handleLeaveConfirm}
+			onCancel={handleLeaveCancel}
+			confirmText="退出"
+		>
+			{#snippet description()}
+				<p>有未保存的变更，是否退出编辑？退出前将自动保存。</p>
+			{/snippet}
+		</ConfirmDialog>
+		<Button variant="tertiary" class="cursor-pointer text-muted-foreground" onclick={handleSave}
+			>保存</Button
+		>
+		<!-- TODO(6.2.5.2-3): 发布前弹出二次确认弹窗 -->
 		<Button
 			variant="default"
 			class="flex-1 cursor-pointer transition-none lg:flex-none"
 			onclick={handleSubmit}>发布帖子</Button
 		>
-		<!-- TODO: 下面目前不符合设计稿，需要后续修改 -->
-		<div class="mx-4 hidden items-center text-sm text-muted-foreground lg:flex">
-			自动保存于 {lastSaved}
-		</div>
+		{#if lastSaved}
+			<div class="mx-4 flex items-center text-sm text-muted-foreground">
+				{lastSavedIsAutoSave ? '自动保存于 ' : '保存于 '}
+				{formatTimeAccuracyFirst(lastSaved)}
+			</div>
+		{/if}
 	</div>
 </main>
