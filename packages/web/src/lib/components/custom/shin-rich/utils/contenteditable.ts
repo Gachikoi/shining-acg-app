@@ -1,6 +1,7 @@
 /**
  * contenteditable 相关纯 DOM 工具函数
  * 用于 ShinRichTextarea 的选区、文本、换行等操作
+ * 需求 6.2.5.1-3：正文描述最大 10000 字，@ 用户显示蓝色、点击进入个人资料页
  */
 
 import type { V1PostContentUnit } from '$lib/api/types.gen';
@@ -216,6 +217,39 @@ export function tryGetCaretPosition(target: HTMLElement): { left: number; top: n
 		return { left: charRect.right, top: charRect.bottom + 4 };
 	}
 	return null;
+}
+
+/** 转义 HTML 特殊字符，防止 XSS */
+function escapeHtml(text: string): string {
+	const map: Record<string, string> = {
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		'"': '&quot;',
+		"'": '&#39;'
+	};
+	return text.replace(/[&<>"']/g, (c) => map[c] ?? c);
+}
+
+/**
+ * 将 V1PostContentUnit[] 转为 contenteditable 可渲染的 HTML
+ * 用于草稿恢复时注入到 ShinRichTextarea
+ */
+export function renderUnitsToHtml(units: V1PostContentUnit[]): string {
+	const parts: string[] = [];
+	for (const unit of units) {
+		if (unit.type === 'text') {
+			const escaped = escapeHtml(unit.content);
+			const withBr = escaped.replace(/\n/g, '<br>');
+			parts.push(withBr);
+		} else if (unit.type === 'mention') {
+			const name = escapeHtml(unit.name);
+			parts.push(
+				`<span contenteditable="false" data-mention-user-id="${escapeHtml(unit.user_id)}" class="cursor-pointer text-blue-500 hover:text-blue-600">@${name}</span>`
+			);
+		}
+	}
+	return parts.join('');
 }
 
 export function extractContentFromShinRichTextarea(

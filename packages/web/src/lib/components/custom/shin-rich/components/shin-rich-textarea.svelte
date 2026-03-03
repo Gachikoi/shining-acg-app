@@ -78,7 +78,8 @@
 	```
 
 	## 依赖说明
-	- 当前用户列表为 MOCK_USERS 硬编码，待对接真实用户搜索 API 后替换
+	- TODO(6.2.5.1-3): 用户列表固定 20 人，@ 后无输入时从关注列表+现网用户获取（优先关注列表）
+	- TODO(6.2.5.1-3): 支持按 QQ 号、用户昵称、备注查找；@ 标识显示蓝色，点击进入个人资料页
 	- 点击 mention 跳转依赖 onMentionClick 回调及 /app/profile/[user_id] 路由
 -->
 
@@ -90,12 +91,20 @@
 	import logo from '$lib/assets/logo.png';
 	import { filterUsersByQuery } from '../utils/filter-users';
 	import { RichTextareaController } from '../controller/rich-textarea-controller';
+	import {
+		renderUnitsToHtml,
+		isEffectivelyEmpty,
+		getTextLengthWithNewlines
+	} from '../utils/contenteditable';
+	import type { V1PostContentUnit } from '$lib/api/types.gen';
 
 	type Props = {
 		contentEditableRef?: HTMLDivElement | null;
 		class?: string;
 		placeholder?: string;
 		maxLength?: number;
+		/** 初始内容，用于草稿恢复 */
+		initialContent?: V1PostContentUnit[];
 		/** 点击 mention 时的回调，用于跳转个人资料页等 */
 		onMentionClick?: (userId: string) => void;
 	};
@@ -105,6 +114,7 @@
 		class: className,
 		placeholder = '请输入内容',
 		maxLength = 10000,
+		initialContent,
 		onMentionClick,
 		...restProps
 	}: Props = $props();
@@ -120,6 +130,7 @@
 	let mentionTemplateRef = $state<HTMLDivElement | null>(null);
 	let mentionTemplateUser = $state<MentionUser | null>(null);
 
+	// TODO(6.2.5.1-3): 替换为从关注列表+现网用户获取的 20 人，含 user_id、QQ、昵称/备注
 	const MOCK_USERS: MentionUser[] = [
 		{ id: '1', avatar: logo, name: '张三张三张三张三张三张三张三张三张三张三', qq: '11111111' },
 		{ id: '2', avatar: logo, name: '李四李四李四李四李四李四李四李四李四李四', qq: '22222222' },
@@ -132,6 +143,18 @@
 	];
 
 	let filteredUserList = $derived(filterUsersByQuery(MOCK_USERS, searchQuery));
+
+	// 草稿恢复：contenteditableRef 就绪且有 initialContent 时注入
+	$effect(() => {
+		const el = contentEditableRef;
+		const content = initialContent;
+		if (!el || !content || content.length === 0) return;
+		// 仅当内容为空时注入，避免覆盖用户已输入内容
+		if (!isEffectivelyEmpty(el)) return;
+		el.innerHTML = renderUnitsToHtml(content);
+		isEmpty = isEffectivelyEmpty(el);
+		wordCount = getTextLengthWithNewlines(el);
+	});
 
 	// 控制器
 	const controller = new RichTextareaController({
