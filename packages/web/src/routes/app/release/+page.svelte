@@ -27,12 +27,6 @@
 			css: (t: number) => `opacity: ${1 - t};`
 		};
 	};
-
-	const MOCK_SECTIONS = [
-		{ value: 'cosplay', label: 'Cosplay' },
-		{ value: 'dance', label: '宅舞' },
-		{ value: 'ranobe', label: '轻文' }
-	];
 </script>
 
 <script lang="ts">
@@ -47,6 +41,7 @@
 		extractContentFromShinRichTextarea
 	} from '$lib/components/custom/shin-rich';
 	import * as Select from '$lib/components/ui/select';
+	import { partitionServiceListPartitions } from '$lib/api';
 	import type { V1CreatePostRequest } from '$lib/api/types.gen';
 
 	let lastSaved = $state('11:33');
@@ -61,11 +56,17 @@
 
 	let contenteditableRef = $state<HTMLDivElement | null>(null);
 
-	// TODO: 实现分区选择，目前仅支持 mock 数据
-	let selectedSection = $state<string>();
+	let partitions = $state<Array<{ value: string; label: string }>>([]);
+	let partitionsLoading = $state(true);
+	let partitionsError = $state<string | null>(null);
+	let selectedSection = $state('');
 
 	let selectedSectionLabel = $derived(
-		MOCK_SECTIONS.find((section) => section.value === selectedSection)?.label
+		partitionsLoading
+			? '加载中...'
+			: selectedSection
+				? (partitions.find((p) => p.value === selectedSection)?.label ?? '请选择')
+				: '请选择'
 	);
 
 	function handleReset() {
@@ -73,7 +74,7 @@
 		coverRatio = defaultCoverRatio;
 		cachedImagesDataURLs = [];
 		selectedImageURL = null;
-		selectedSection = MOCK_SECTIONS[0].value;
+		selectedSection = '';
 	}
 
 	// 封面比例轮换
@@ -88,12 +89,17 @@
 			batch_id: undefined,
 			title: titleContent,
 			content: extractContentFromShinRichTextarea(contenteditableRef as HTMLElement),
-			partition_id: undefined,
+			partition_id: selectedSection || undefined,
 			media_assets: undefined
 		};
 	}
 
 	function handleSubmit() {
+		if (!selectedSection) {
+			// TODO: 使用 toast 提示用户
+			alert('请选择分区');
+			return;
+		}
 		const postRequest = createPostRequest();
 		console.log(postRequest);
 	}
@@ -103,9 +109,31 @@
 		if (selectedImageURL === null && cachedImagesDataURLs.length > 0) {
 			selectedImageURL = cachedImagesDataURLs[0];
 		}
-		if (!selectedSection) {
-			selectedSection = MOCK_SECTIONS[0].value;
-		}
+	});
+
+	// 获取分区列表
+	$effect(() => {
+		let cancelled = false;
+		partitionsLoading = true;
+		partitionsError = null;
+		(async () => {
+			try {
+				const { data, error } = await partitionServiceListPartitions({ throwOnError: false });
+				if (cancelled) return;
+				if (error) {
+					partitionsError = '加载分区列表失败';
+					return;
+				}
+				partitions = (data?.partitions ?? [])
+					.filter((p) => p?.id && p?.name)
+					.map((p) => ({ value: p.id!, label: p.name! }));
+			} finally {
+				if (!cancelled) partitionsLoading = false;
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
 	});
 </script>
 
@@ -192,18 +220,31 @@
 
 		<p class="mt-6 text-lg font-bold">分区选择<span class="text-red-500">*</span></p>
 		<div class="mt-2">
-			<Select.Root type="single" name="section" bind:value={selectedSection}>
-				<Select.Trigger class="min-w-31.5 text-sm">
-					{selectedSectionLabel}
-				</Select.Trigger>
-				<Select.Content>
-					<Select.Group>
-						{#each MOCK_SECTIONS as section (section.value)}
-							<Select.Item value={section.value}>{section.label}</Select.Item>
-						{/each}
-					</Select.Group>
-				</Select.Content>
-			</Select.Root>
+			{#if partitionsError}
+				<p class="text-sm text-destructive">{partitionsError}</p>
+			{:else if !partitionsLoading && partitions.length === 0}
+				<p class="text-sm text-muted-foreground">
+					暂无分区喵。但这怎么可能？如果你看到了这段文字，请联系开发人员。
+				</p>
+			{:else}
+				<Select.Root
+					type="single"
+					name="section"
+					bind:value={selectedSection}
+					disabled={partitionsLoading}
+				>
+					<Select.Trigger class="min-w-31.5 text-sm">
+						{selectedSectionLabel}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Group>
+							{#each partitions as section (section.value)}
+								<Select.Item value={section.value}>{section.label}</Select.Item>
+							{/each}
+						</Select.Group>
+					</Select.Content>
+				</Select.Root>
+			{/if}
 		</div>
 	</div>
 	<!-- 底部按钮 -->
