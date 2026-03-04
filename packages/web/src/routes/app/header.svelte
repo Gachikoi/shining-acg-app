@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { DOMAIN_CONFIG } from '$lib/constants';
+	import { appState } from '$lib/stores/app-state.svelte';
 	import SettingPopover from './setting-popover.svelte';
 
 	let isRemoveLogo = $state(false);
@@ -17,6 +18,18 @@
 		mql.addEventListener('change', onChange);
 		return () => mql.removeEventListener('change', onChange);
 	});
+
+	let debounceTimer: ReturnType<typeof setTimeout>;
+	let localKeyword = $state(appState.searchKeyword);
+
+	$effect(() => {
+		const keywordToDebounce = localKeyword;
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			appState.searchKeyword = keywordToDebounce;
+		}, 500);
+		return () => clearTimeout(debounceTimer);
+	});
 </script>
 
 <header class="flex h-18 w-full items-center gap-4 px-6">
@@ -28,7 +41,11 @@
 		</section>
 	{/if}
 
-	<Input placeholder="搜索 Shining！" class="text-base sm:max-w-100 lg:max-w-120" />
+	<Input
+		bind:value={localKeyword}
+		placeholder="搜索 Shining！"
+		class="text-base sm:max-w-100 lg:max-w-120"
+	/>
 
 	<section class="flex shrink-0 grow items-center justify-end">
 		<!-- eslint-disable -->
