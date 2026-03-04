@@ -1,15 +1,15 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-unused-vars */
-	import { PlusCircle } from 'lucide-svelte';
+	import { CharCounter } from '$lib/components/custom/char-counter';
+	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { Button } from '$lib/components/ui/button';
-	import ImageUpload from './image-upload.svelte';
-	import VideoUpload from './video-upload.svelte';
-	import LinkItem from './link-item.svelte';
-	import CharCounter from './char-counter.svelte';
 	import type { DepartmentInfo } from '$lib/types/website';
+	import { PlusCircle } from 'lucide-svelte';
+	import ImageUpload from './image-upload.svelte';
+	import LinkItem from './link-item.svelte';
+	import VideoUpload from './video-upload.svelte';
 
 	let {
 		department = $bindable<DepartmentInfo>({
@@ -73,7 +73,7 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-6 **:text-sm">
 	<!-- Logo -->
 	<div class="space-y-2">
 		<div class="w-[6rem]">
@@ -91,7 +91,8 @@
 	<div class="space-y-2">
 		<Label class="mb-0 block">
 			宣传图<span class="text-red-500">*</span>
-			<span class="ml-2 text-sm font-normal text-zinc-500">比例最好在 16:9 左右</span>
+			<span class="ml-2 text-xs font-normal text-zinc-500">比例最好在 16:9 左右</span>
+			<span class="ml-2 text-xs font-normal text-zinc-500">比例最好在 16:9 左右</span>
 		</Label>
 		<div class="w-[10.6875rem]">
 			<ImageUpload
@@ -112,7 +113,7 @@
 		</Label>
 
 		<div class="flex items-start gap-6 pt-2">
-			<Label class="mb-0 w-20 shrink-0 pt-1">上传视频</Label>
+			<Label class="mb-0 w-20 shrink-0 pt-1 font-normal">上传视频</Label>
 			<div>
 				<VideoUpload
 					videoUrl={department.promotionalVideo}
@@ -124,7 +125,7 @@
 		</div>
 
 		<div class="flex items-center gap-6">
-			<Label class="mb-0 w-20 shrink-0">视频链接</Label>
+			<Label class="mb-0 w-20 shrink-0 font-normal">视频链接</Label>
 			<div class="relative flex-1">
 				<Input
 					placeholder="填写链接"

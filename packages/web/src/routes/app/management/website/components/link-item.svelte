@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { Minus } from 'lucide-svelte';
+	import { CharCounter } from '$lib/components/custom/char-counter';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import CharCounter from './char-counter.svelte';
+	import { Minus } from 'lucide-svelte';
 
 	let {
 		link = $bindable({ label: '', value: '' }),
@@ -17,7 +17,7 @@
 	<div class="flex items-center justify-between gap-4">
 		<div class="flex-1 space-y-4">
 			<div class="flex items-center gap-2">
-				<Label class="mb-0 w-20 shrink-0">
+				<Label class="mb-0 w-20 shrink-0 text-sm font-normal">
 					文字说明<span class="text-red-500">*</span>
 				</Label>
 				<div class="relative flex-1">
@@ -34,7 +34,7 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				<Label class="mb-0 w-20 shrink-0">
+				<Label class="mb-0 w-20 shrink-0 text-sm font-normal">
 					链接<span class="text-red-500">*</span>
 				</Label>
 				<div class="relative flex-1">

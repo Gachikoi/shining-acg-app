@@ -46,9 +46,9 @@
 				<span class="text-red-500">*</span>
 			{/if}
 			{#if aspectRatio === '16:9'}
-				<span class="ml-2 text-sm font-normal text-zinc-500">比例最好在 16:9 左右</span>
+				<span class="ml-2 text-xs font-normal text-zinc-500">比例最好在 16:9 左右</span>
 			{:else if aspectRatio === '1:1'}
-				<span class="ml-2 text-sm font-normal text-zinc-500">1:1</span>
+				<span class="ml-2 text-xs font-normal text-zinc-500">1:1</span>
 			{/if}
 		</Label>
 	{/if}

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Minus, PlusCircle } from 'lucide-svelte';
+	import { CharCounter } from '$lib/components/custom/char-counter';
+	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { Button } from '$lib/components/ui/button';
-	import CharCounter from './char-counter.svelte';
 	import type { SponsorItem } from '$lib/types/website';
+	import { Minus, PlusCircle } from 'lucide-svelte';
 
 	let {
 		sponsors = $bindable<SponsorItem[]>([])
@@ -31,14 +31,14 @@
 </script>
 
 <div class="space-y-6">
-	<h3 class="text-lg font-semibold">
+	<h3 class="text-sm font-semibold">
 		赞助感谢
 		<span class="ml-2 text-xs font-normal text-zinc-500">
 			依据 QQ 号关联的晒你App 用户信息,提取头像、cn 等用于官网展示
 		</span>
 	</h3>
 
-	<div class="space-y-4">
+	<div>
 		{#if sponsors?.length === 0}
 			<div
 				class="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700"
@@ -47,11 +47,11 @@
 			</div>
 		{:else}
 			{#each sponsors ?? [] as sponsor, index (sponsor.id || index)}
-				<div class="flex items-center justify-between gap-4">
+				<div class="flex items-center justify-between gap-4 border-y py-4">
 					<div class="flex-1 space-y-4">
 						<!-- QQ 号 -->
 						<div class="flex items-center gap-2">
-							<Label class="mb-0 w-20 shrink-0">
+							<Label class="mb-0 w-20 shrink-0 text-sm font-normal">
 								QQ 号<span class="text-red-500">*</span>
 							</Label>
 							<div class="relative flex-1">
@@ -71,7 +71,9 @@
 
 						<!-- 赞助金额 -->
 						<div class="flex items-center gap-2">
-							<Label class="mb-0 w-20 shrink-0" for={`sponsor-amount-${index}`}>赞助金额</Label>
+							<Label class="mb-0 w-20 shrink-0 text-sm font-normal" for={`sponsor-amount-${index}`}
+								>赞助金额</Label
+							>
 							<div class="relative flex-1">
 								<Input
 									id={`sponsor-amount-${index}`}
@@ -89,7 +91,10 @@
 
 						<!-- 简介 -->
 						<div class="flex items-start gap-2">
-							<Label class="mb-0 w-20 shrink-0 pt-2" for={`sponsor-intro-${index}`}>简介</Label>
+							<Label
+								class="mb-0 w-20 shrink-0 pt-2 text-sm font-normal"
+								for={`sponsor-intro-${index}`}>简介</Label
+							>
 							<div class="relative flex-1">
 								<Textarea
 									id={`sponsor-intro-${index}`}
@@ -121,7 +126,7 @@
 			<Button
 				variant="block"
 				onclick={addSponsor}
-				class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+				class="mt-2 h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
 				<PlusCircle class="size-4" />
 				新增

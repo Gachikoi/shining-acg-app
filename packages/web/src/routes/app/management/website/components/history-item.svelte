@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { Minus } from 'lucide-svelte';
+	import { CharCounter } from '$lib/components/custom/char-counter';
+	import { DatePicker } from '$lib/components/ui/date-picker';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { DatePicker } from '$lib/components/ui/date-picker';
-	import ImageUpload from './image-upload.svelte';
-	import CharCounter from './char-counter.svelte';
-	import { uploadImage } from '$lib/api/website';
 	import type { DevelopmentHistoryItem } from '$lib/types/website';
+	import { Minus } from 'lucide-svelte';
+	import ImageUpload from './image-upload.svelte';
 
 	let {
 		item = $bindable<DevelopmentHistoryItem>({ image: '', date: '', description: '' }),
@@ -20,8 +19,8 @@
 
 	async function handleImageUpload(file: File) {
 		try {
-			const url = await uploadImage(file, 'history');
-			item.image = url;
+			// const url = await uploadImage(file, 'history');
+			// item.image = url;
 		} catch (error) {
 			console.error('上传图片失败：', error);
 			// 失败时使用预览URL
@@ -44,7 +43,7 @@
 
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
 				<Label
-					class="mb-0 text-sm font-medium text-zinc-900 sm:w-20 sm:shrink-0 sm:text-right sm:[line-height:1.25rem]"
+					class="mb-0 text-sm font-medium text-zinc-900 sm:w-20 sm:shrink-0 sm:text-left sm:[line-height:1.25rem]"
 				>
 					时间<span class="text-red-500">*</span>
 				</Label>
@@ -55,7 +54,7 @@
 
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
 				<Label
-					class="mb-0 text-sm font-medium text-zinc-900 sm:w-20 sm:shrink-0 sm:text-right sm:[line-height:1.25rem]"
+					class="mb-0 text-sm font-medium text-zinc-900 sm:w-20 sm:shrink-0 sm:text-left sm:[line-height:1.25rem]"
 				>
 					描述<span class="text-red-500">*</span>
 				</Label>

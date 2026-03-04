@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { Minus, PlusCircle } from 'lucide-svelte';
+	import { CharCounter } from '$lib/components/custom/char-counter';
+	import { Button } from '$lib/components/ui/button';
+	import { DatePicker } from '$lib/components/ui/date-picker';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { DatePicker } from '$lib/components/ui/date-picker';
-	import { Button } from '$lib/components/ui/button';
-	import CharCounter from './char-counter.svelte';
 	import type { DepartmentInfo, MinisterDeclaration, MinisterInfo } from '$lib/types/website';
+	import { Minus, PlusCircle } from 'lucide-svelte';
 
 	let {
 		declaration = $bindable<MinisterDeclaration>({
@@ -40,7 +40,7 @@
 <div class="space-y-6">
 	<!-- 上任时间 -->
 	<div class="space-y-2">
-		<Label>
+		<Label class="text-sm">
 			上任时间<span class="text-red-500">*</span>
 		</Label>
 		<div class="w-[18.75rem]">
@@ -51,7 +51,7 @@
 	<!-- 各部长信息 -->
 	<div class="space-y-3">
 		<div class="space-y-1.5">
-			<Label>
+			<Label class="text-sm">
 				各部长信息<span class="text-red-500">*</span>
 			</Label>
 			<p class="text-xs text-muted-foreground">
@@ -59,7 +59,7 @@
 			</p>
 		</div>
 
-		<div class="space-y-4">
+		<div class="">
 			{#if declaration.ministers?.length === 0}
 				<p class="text-sm text-zinc-500 dark:text-zinc-400">
 					暂未添加部长信息，请点击下方「+ 新增」进行添加。
@@ -67,11 +67,11 @@
 			{/if}
 
 			{#each declaration.ministers ?? [] as minister, index (minister.id)}
-				<div class="flex items-center justify-between gap-4">
+				<div class="flex items-center justify-between gap-4 border-y py-4">
 					<div class="flex-1 space-y-4">
 						<!-- QQ 号 -->
-						<div class="items中心 flex gap-2">
-							<Label class="mb-0 w-20 shrink-0">
+						<div class="flex items-center gap-2">
+							<Label class="mb-0 w-20 shrink-0 text-sm font-normal">
 								QQ 号<span class="text-red-500">*</span>
 							</Label>
 							<div class="relative flex-1">
@@ -91,7 +91,7 @@
 
 						<!-- 统领部门 -->
 						<div class="flex items-center gap-2">
-							<Label class="mb-0 w-20 shrink-0" for={`minister-dept-${index}`}>
+							<Label class="mb-0 w-20 shrink-0 text-sm font-normal" for={`minister-dept-${index}`}>
 								统领部门<span class="text-red-500">*</span>
 							</Label>
 							<div class="w-[10.625rem]">
@@ -112,7 +112,10 @@
 
 						<!-- 简介 -->
 						<div class="flex items-start gap-2">
-							<Label class="mb-0 w-20 shrink-0 pt-2" for={`minister-intro-${index}`}>
+							<Label
+								class="mb-0 w-20 shrink-0 pt-2 text-sm font-normal"
+								for={`minister-intro-${index}`}
+							>
 								简介<span class="text-red-500">*</span>
 							</Label>
 							<div class="relative flex-1">
@@ -146,7 +149,7 @@
 			<Button
 				variant="block"
 				onclick={addMinister}
-				class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+				class="mt-2 h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
 				<PlusCircle class="size-4" />
 				新增

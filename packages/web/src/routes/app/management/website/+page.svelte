@@ -1,21 +1,9 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-unused-vars */
-	import { PlusCircle } from 'lucide-svelte';
+	import { CharCounter } from '$lib/components/custom/char-counter';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import VideoUpload from './components/video-upload.svelte';
-	import LinkItem from './components/link-item.svelte';
-	import HistoryItem from './components/history-item.svelte';
-	import DepartmentForm from './components/department-form.svelte';
-	import DepartmentTabs from './components/department-tabs.svelte';
-	import ActivityForm from './components/activity-form.svelte';
-	import ActivityTabs from './components/activity-tabs.svelte';
-	import CharCounter from './components/char-counter.svelte';
-	import MinisterForm from './components/minister-form.svelte';
-	import MinisterTabs from './components/minister-tabs.svelte';
-	import SponsorForm from './components/sponsor-form.svelte';
-	import StaffForm from './components/staff-form.svelte';
 	import type {
 		ActivityInfo,
 		DepartmentInfo,
@@ -26,7 +14,19 @@
 		StaffItem,
 		WebsiteContent
 	} from '$lib/types/website';
+	import { PlusCircle } from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import ActivityForm from './components/activity-form.svelte';
+	import ActivityTabs from './components/activity-tabs.svelte';
+	import DepartmentForm from './components/department-form.svelte';
+	import DepartmentTabs from './components/department-tabs.svelte';
+	import HistoryItem from './components/history-item.svelte';
+	import LinkItem from './components/link-item.svelte';
+	import MinisterForm from './components/minister-form.svelte';
+	import MinisterTabs from './components/minister-tabs.svelte';
+	import SponsorForm from './components/sponsor-form.svelte';
+	import StaffForm from './components/staff-form.svelte';
+	import VideoUpload from './components/video-upload.svelte';
 
 	// 表单数据
 	let homepageVideo = $state('');
@@ -742,11 +742,11 @@
 
 	<!-- 了解我们 -->
 	<div class="space-y-6">
-		<h2 class="mb-4 text-xl font-bold">了解我们</h2>
+		<h2 class="mb-4 font-bold">了解我们</h2>
 
 		<!-- 关于晒你 -->
 		<div class="space-y-2">
-			<Label>
+			<Label class="text-sm">
 				关于晒你<span class="text-red-500">*</span>
 			</Label>
 			<div class="relative">
@@ -755,9 +755,9 @@
 					value={aboutShining}
 					maxlength={300}
 					oninput={(e) => (aboutShining = e.currentTarget.value)}
-					class="min-h-[7.5rem] pb-16"
+					class="min-h-[7.5rem] pb-6"
 				/>
-				<div class="absolute right-3 bottom-3">
+				<div class="absolute right-3 bottom-1">
 					<CharCounter current={aboutShining.length} max={300} />
 				</div>
 			</div>
@@ -768,7 +768,7 @@
 			<div
 				class="flex items-center justify-between border-b border-zinc-200 pb-3 dark:border-zinc-800"
 			>
-				<Label>相关链接</Label>
+				<Label class="text-sm">相关链接</Label>
 			</div>
 			{#if relatedLinks.length === 0}
 				<div
@@ -855,7 +855,7 @@
 
 	<!-- 部门信息 -->
 	<div class="space-y-6">
-		<h2 class="mb-4 text-xl font-bold">部门信息</h2>
+		<h2 class="mb-4 font-bold">部门信息</h2>
 
 		<DepartmentTabs
 			bind:departments
@@ -870,7 +870,7 @@
 
 	<!-- 活动信息 -->
 	<div class="space-y-6">
-		<h2 class="mb-4 text-xl font-bold">活动信息</h2>
+		<h2 class="mb-4 font-bold">活动信息</h2>
 
 		<ActivityTabs bind:activities bind:activeIndex={activeActivityIndex} onAdd={addActivity} />
 
@@ -881,7 +881,7 @@
 
 	<!-- 部长宣言 -->
 	<div class="space-y-6">
-		<h2 class="mb-4 text-xl font-bold">部长宣言</h2>
+		<h2 class="mb-4 font-bold">部长宣言</h2>
 
 		<MinisterTabs
 			bind:ministerDeclarations
@@ -896,7 +896,7 @@
 
 	<!-- 关于网站 -->
 	<div class="space-y-6">
-		<h2 class="mb-4 text-xl font-bold">关于网站</h2>
+		<h2 class="mb-4 font-bold">关于网站</h2>
 
 		<div class="rounded-lg bg-white dark:bg-zinc-900">
 			<!-- 赞助感谢 -->

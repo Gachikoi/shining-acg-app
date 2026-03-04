@@ -1,7 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-unused-vars */
-	import { Plus, X, Play } from 'lucide-svelte';
 	import { Label } from '$lib/components/ui/label';
+	import { Play, Plus, X } from 'lucide-svelte';
 
 	let {
 		videoUrl = $bindable(''),
@@ -42,13 +42,12 @@
 <div>
 	{#if label}
 		<Label class="mb-4 block text-base leading-5 font-semibold text-[#18181B] dark:text-zinc-100">
-			{label}
+			<span class="text-base">{label}</span>
 			{#if required}
 				<span class="text-red-500">*</span>
 			{/if}
 			{#if aspectRatio === '16:9'}
-				<span class="ml-2 text-base leading-5 font-semibold text-[#71717A]"
-					>比例最好在 16:9 左右</span
+				<span class="ml-2 text-xs leading-5 font-semibold text-[#71717A]">比例最好在 16:9 左右</span
 				>
 			{/if}
 		</Label>

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { cn } from '$lib/utils.js';
 	import type { MinisterDeclaration } from '$lib/types/website';
+	import { cn } from '$lib/utils.js';
 
 	let {
 		ministerDeclarations = $bindable<MinisterDeclaration[]>([]),
@@ -37,7 +37,7 @@
 
 	<button
 		type="button"
-		class="flex size-8 items-center justify-center rounded-full border border-zinc-200 text-xl leading-none text-zinc-500 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+		class="flex size-8 items-center justify-center rounded-full border border-zinc-200 leading-none text-zinc-500 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
 		onclick={onAdd}
 	>
 		+
