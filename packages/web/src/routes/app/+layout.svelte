@@ -37,7 +37,7 @@
 		<SettingPopover></SettingPopover>
 	</aside>
 
-	<section class="grow px-6">
+	<section class="scrollbar-hide grow overflow-y-auto px-6">
 		{@render children()}
 	</section>
 

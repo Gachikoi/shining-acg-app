@@ -15,7 +15,7 @@
 				ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
 				link: 'text-blue-800 dark:text-blue-600 underline-offset-4 hover:underline',
 				block:
-					'rounded-[6px] text-zinc-500 bg-zinc-100 dark:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 font-normal'
+					'rounded-[0.375rem] text-zinc-500 bg-zinc-100 dark:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 font-normal'
 			},
 			size: {
 				default: 'px-4 py-2',
