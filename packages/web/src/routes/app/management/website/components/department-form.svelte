@@ -9,7 +9,6 @@
 	import VideoUpload from './video-upload.svelte';
 	import LinkItem from './link-item.svelte';
 	import CharCounter from './char-counter.svelte';
-	import { uploadImage, uploadVideo } from '$lib/api/website';
 	import type { DepartmentInfo } from '$lib/types/website';
 
 	let {
@@ -29,36 +28,36 @@
 	} = $props();
 
 	async function handleLogoUpload(file: File) {
-		try {
-			const url = await uploadImage(file, 'logo');
-			department.logo = url;
-		} catch (error) {
-			console.error('上传Logo失败：', error);
-			// 失败时使用预览URL
-			department.logo = URL.createObjectURL(file);
-		}
+		// try {
+		// const url = await uploadImage(file, 'logo');
+		// department.logo = url;
+		// } catch (error) {
+		// console.error('上传Logo失败：', error);
+		// 失败时使用预览URL
+		// department.logo = URL.createObjectURL(file);
+		// }
 	}
 
 	async function handlePromotionalImageUpload(file: File) {
-		try {
-			const url = await uploadImage(file, 'promotional');
-			department.promotionalImage = url;
-		} catch (error) {
-			console.error('上传宣传图失败：', error);
-			// 失败时使用预览URL
-			department.promotionalImage = URL.createObjectURL(file);
-		}
+		// try {
+		// const url = await uploadImage(file, 'promotional');
+		// department.promotionalImage = url;
+		// } catch (error) {
+		// console.error('上传宣传图失败：', error);
+		// 失败时使用预览URL
+		// department.promotionalImage = URL.createObjectURL(file);
+		// }
 	}
 
 	async function handleVideoUpload(file: File) {
-		try {
-			const url = await uploadVideo(file, 'promotional');
-			department.promotionalVideo = url;
-		} catch (error) {
-			console.error('上传视频失败：', error);
-			// 失败时使用预览URL
-			department.promotionalVideo = URL.createObjectURL(file);
-		}
+		// try {
+		// const url = await uploadVideo(file, 'promotional');
+		// department.promotionalVideo = url;
+		// } catch (error) {
+		// console.error('上传视频失败：', error);
+		// 失败时使用预览URL
+		// department.promotionalVideo = URL.createObjectURL(file);
+		// }
 	}
 
 	function handleVideoLinkChange(link: string) {

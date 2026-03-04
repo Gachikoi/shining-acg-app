@@ -16,12 +16,6 @@
 	import MinisterTabs from './components/minister-tabs.svelte';
 	import SponsorForm from './components/sponsor-form.svelte';
 	import StaffForm from './components/staff-form.svelte';
-	import {
-		uploadVideo,
-		getWebsiteContent,
-		saveWebsiteContent,
-		publishWebsiteContent
-	} from '$lib/api/website';
 	import type {
 		ActivityInfo,
 		DepartmentInfo,
@@ -104,8 +98,8 @@
 		try {
 			isLoading = true;
 			errorMessage = null;
-			const content = await getWebsiteContent();
-			loadWebsiteContent(content);
+			// const content = await getWebsiteContent();
+			// loadWebsiteContent(content);
 		} catch (error) {
 			console.error('加载官网内容失败：', error);
 			errorMessage = error instanceof Error ? error.message : '加载数据失败，请刷新页面重试';
@@ -192,8 +186,8 @@
 		try {
 			isLoading = true;
 			errorMessage = null;
-			const url = await uploadVideo(file, 'homepage');
-			homepageVideo = url;
+			// const url = await uploadVideo(file, 'homepage');
+			// homepageVideo = url;
 		} catch (error) {
 			console.error('上传视频失败：', error);
 			errorMessage = error instanceof Error ? error.message : '上传视频失败，请重试';
@@ -683,7 +677,7 @@
 			isSaving = true;
 			errorMessage = null;
 			const content = buildWebsiteContent();
-			await saveWebsiteContent(content);
+			// await saveWebsiteContent(content);
 
 			const now = new Date();
 			lastSaved = `${now.getHours().toString().padStart(2, '0')}:${now
@@ -715,7 +709,7 @@
 			isPublishing = true;
 			errorMessage = null;
 			const content = buildWebsiteContent();
-			await publishWebsiteContent(content);
+			// await publishWebsiteContent(content);
 
 			if (typeof window !== 'undefined') {
 				alert('发布成功！');

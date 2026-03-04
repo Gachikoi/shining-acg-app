@@ -9,7 +9,6 @@
 	import VideoUpload from './video-upload.svelte';
 	import LinkItem from './link-item.svelte';
 	import CharCounter from './char-counter.svelte';
-	import { uploadImage, uploadVideo } from '$lib/api/website';
 	import type { ActivityInfo } from '$lib/types/website';
 
 	let {
@@ -28,25 +27,25 @@
 	} = $props();
 
 	async function handlePromotionalImageUpload(file: File) {
-		try {
-			const url = await uploadImage(file, 'promotional');
-			activity.promotionalImage = url;
-		} catch (error) {
-			console.error('上传宣传图失败：', error);
-			// 失败时使用预览URL
-			activity.promotionalImage = URL.createObjectURL(file);
-		}
+		// try {
+		// 	const url = await uploadImage(file, 'promotional');
+		// 	activity.promotionalImage = url;
+		// } catch (error) {
+		// 	console.error('上传宣传图失败：', error);
+		// 	// 失败时使用预览URL
+		// 	activity.promotionalImage = URL.createObjectURL(file);
+		// }
 	}
 
 	async function handleVideoUpload(file: File) {
-		try {
-			const url = await uploadVideo(file, 'promotional');
-			activity.promotionalVideo = url;
-		} catch (error) {
-			console.error('上传视频失败：', error);
-			// 失败时使用预览URL
-			activity.promotionalVideo = URL.createObjectURL(file);
-		}
+		// try {
+		// 	const url = await uploadVideo(file, 'promotional');
+		// 	activity.promotionalVideo = url;
+		// } catch (error) {
+		// 	console.error('上传视频失败：', error);
+		// 	// 失败时使用预览URL
+		// 	activity.promotionalVideo = URL.createObjectURL(file);
+		// }
 	}
 
 	function handleVideoLinkChange(link: string) {
@@ -69,7 +68,7 @@
 			宣传图<span class="text-red-500">*</span>
 			<span class="ml-2 text-sm font-normal text-zinc-500">比例最好在 16:9 左右</span>
 		</Label>
-		<div class="w-[10.6875rem]">
+		<div class="w-42.75">
 			<ImageUpload
 				aspectRatio="16:9"
 				imageUrl={activity.promotionalImage}
@@ -192,7 +191,7 @@
 			<Button
 				variant="block"
 				onclick={addActivityLink}
-				class="h-8 w-[4.75rem] justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
+				class="h-8 w-19 justify-center gap-2 rounded-full bg-zinc-100 px-3 py-1.5 font-['Inter'] text-sm leading-5 font-medium tracking-normal text-zinc-900 hover:bg-zinc-200"
 			>
 				<PlusCircle class="size-4" />
 				新增

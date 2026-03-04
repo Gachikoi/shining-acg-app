@@ -1,6 +1,6 @@
 <!-- 带字符计数器的输入框组件：自动显示字符计数，支持最大长度限制 -->
 <script lang="ts">
-	import { Input } from '../input';
+	import { Input } from '../../ui/input';
 	import { CharCounter } from '../char-counter';
 	import { cn } from '$lib/utils';
 	import type { ComponentProps } from 'svelte';

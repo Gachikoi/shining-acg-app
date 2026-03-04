@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import SortableButtonGroup from '$lib/components/custom/sortable-button-group.svelte';
+	import SortableButtonGroup from '$lib/components/custom/sortable-button-group.svelte/sortable-button-group.svelte';
 
 	// 管理功能菜单项（从消息界面迁移过来，并改为 /management 路由）
 	const MENU_ITEMS = [
