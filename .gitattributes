@@ -3,3 +3,6 @@
 # `*.bat` only matches repo root; nested wrappers need **/ (e.g. Android Gradle).
 **/*.bat text eol=crlf
 **/gradlew text eol=lf
+
+# 标记 AGENTS.md 为自动生成的文件
+AGENTS.md linguist-generated=true
