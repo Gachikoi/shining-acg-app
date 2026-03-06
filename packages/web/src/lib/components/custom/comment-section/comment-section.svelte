@@ -147,8 +147,8 @@
 				_replies: [...replies],
 				_repliesCursor: item.cursor,
 				_repliesLoading: false,
-				// mock 或接口返回多条回复时，默认展开以便一次性展示复杂评论区
-				_repliesExpanded: replies.length > 1
+				// 默认只展示第一条回复；需要时由用户手动展开
+				_repliesExpanded: false
 			};
 		});
 	}
@@ -429,7 +429,7 @@
 		expandedContentIds = { ...expandedContentIds, [commentId]: !expandedContentIds[commentId] };
 	}
 
-	/** 点赞请求进行中时禁止重复点击，参考 post-detail */
+	/** 点赞请求进行中时禁止重复点击 */
 	let likingCommentId = $state<string | null>(null);
 
 	// 用户资料 Popover 状态
@@ -832,14 +832,14 @@
 				const top = comments[topIndex];
 				const repliesLen = top._replies?.length ?? 0;
 				removedCount = 1 + repliesLen;
-				comments = comments.toSpliced(topIndex, 1);
+				comments = [...comments.slice(0, topIndex), ...comments.slice(topIndex + 1)];
 			} else {
 				// 尝试作为某个顶层评论的回复删除
 				for (const c of comments) {
 					if (!c._replies?.length) continue;
 					const idx = c._replies.findIndex((r) => r.comment_id === commentId);
 					if (idx !== -1) {
-						c._replies = c._replies.toSpliced(idx, 1);
+						c._replies = [...c._replies.slice(0, idx), ...c._replies.slice(idx + 1)];
 						removedCount = 1;
 
 						const currentReplyCount = ensureNumber(c.stats?.reply_count);

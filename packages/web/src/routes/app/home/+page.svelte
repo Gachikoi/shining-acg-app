@@ -248,8 +248,12 @@
 		showMockDetail = true;
 	}
 
-	function closeMockDetail() {
-		showMockDetail = false;
+	function closePostDetail() {
+		if (ENABLE_POST_DETAIL_MOCK) {
+			showPostDetailMock = false;
+		} else {
+			activePostId = null;
+		}
 	}
 </script>
 
@@ -324,7 +328,22 @@
 		<LucideRefreshCw class="h-6 w-6" />
 	</Button>
 </div>
-<Button variant="default" onclick={openMockDetail}>打开 Mock 帖子详情（Stack）</Button>
-{#if showMockDetail}
-	<PostDetail post={mockPost} useMockComments={true} {mockComments} onClose={closeMockDetail} />
+{#if ENABLE_POST_DETAIL_MOCK && showPostDetailMock && postDetailMockData}
+	<!-- 帖子详情 Stack（Mock）：点击任何瀑布流卡片都展示同一份 mock 帖子 + mock 评论 -->
+	<PostDetail post={postDetailMockData.post} onClose={closePostDetail}>
+		{#snippet comments({ postId, currentUserId, initialCount, onReply, onTotalCountChange })}
+			<CommentSection
+				{postId}
+				{currentUserId}
+				{initialCount}
+				useMock={true}
+				mockComments={postDetailMockData!.mockComments}
+				{onReply}
+				{onTotalCountChange}
+			/>
+		{/snippet}
+	</PostDetail>
+{:else if !ENABLE_POST_DETAIL_MOCK && activePostId}
+	<!-- 帖子详情 Stack（真实接口）：根据瀑布流卡片的 post_id 调后端接口 -->
+	<PostDetail postId={activePostId} onClose={closePostDetail} />
 {/if}

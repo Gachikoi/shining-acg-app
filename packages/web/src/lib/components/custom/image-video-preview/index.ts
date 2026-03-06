@@ -1,1 +1,1 @@
-export { default as ImageVideoPreview } from './image-video-preview.svelte';
+export { default as ImageVideoPreview } from './index.svelte';

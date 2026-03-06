@@ -27,24 +27,13 @@
 	 * <PostDetail post={postData} onClose={() => {}} />
 	 * ```
 	 *
-	 * **3. 开发/联调模式（使用 mock 评论）**
-	 * ```svelte
-	 * <PostDetail
-	 *   post={postData}
-	 *   useMockComments={true}
-	 *   mockComments={mockComments}
-	 *   onClose={() => {}}
-	 * />
-	 * ```
-	 *
 	 * ### Props
 	 *
 	 * | 属性 | 类型 | 默认值 | 说明 |
 	 * |------|------|--------|------|
 	 * | post | V1Post | - | 直接传入的帖子数据（可选） |
 	 * | postId | string | - | 帖子 ID，从 API 获取时使用 |
-	 * | useMockComments | boolean | false | 开发/联调：是否启用评论 mock |
-	 * | mockComments | V1CommentWithReplies[] | - | 开发/联调：注入的 mock 评论数据 |
+	 * | showComments | boolean | true | 是否展示评论区 |
 	 * | onClose | () => void | - | 关闭弹窗时的回调 |
 	 *
 	 * ### 回调说明
@@ -55,10 +44,10 @@
 	import type {
 		V1Post as Post,
 		V1Comment,
-		V1CommentWithReplies,
 		V1CreateCommentRequest,
 		V1CommentTargetType
 	} from '$lib/api';
+	import type { Snippet } from 'svelte';
 	import {
 		postServiceGetPost,
 		postServiceSetPostLike,
@@ -73,39 +62,43 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Popover from '$lib/components/ui/popover';
-	import {
-		X,
-		Heart,
-		MessageCircle,
-		Star,
-		Share,
-		ChevronLeft,
-		ChevronRight,
-		LoaderCircle,
-		Play
-	} from 'lucide-svelte';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { X, Heart, MessageCircle, Star, Share, LoaderCircle } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { resolve } from '$app/paths';
-	import ImageVideoPreview from '$lib/components/custom/image-video-preview/image-video-preview.svelte';
+	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
 	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
-	import { getMediaDisplayUrl } from '$lib/media-url';
 	let {
 		post: initialPost,
 		postId,
-		useMockComments = false,
-		mockComments,
+		showComments = true,
+		comments,
 		onClose
 	}: {
-		/** 直接传入的帖子数据（可选，用于 mock 或已有数据） */
+		/** 直接传入的帖子数据（可选，用于已有数据直出渲染） */
 		post?: Post;
 		/** 帖子 ID（可选，如果提供则从 API 获取） */
 		postId?: string;
-		/** 开发/联调：是否启用评论 mock（不影响帖子本身的获取方式） */
-		useMockComments?: boolean;
-		/** 开发/联调：直接注入评论 mock 数据（类型与 CommentSection 对齐） */
-		mockComments?: V1CommentWithReplies[];
+		/** 是否展示评论区 */
+		showComments?: boolean;
+		/**
+		 * 可选：自定义评论区内容。
+		 * - 不传：组件内部渲染默认评论区（走真实 API）
+		 * - 传入：由父组件完全接管评论区渲染
+		 */
+		comments?: Snippet<
+			[
+				{
+					postId: string;
+					currentUserId: string | null;
+					initialCount: string | number | undefined;
+					onReply: (comment: V1Comment) => void;
+					onTotalCountChange: (delta: number) => void;
+				}
+			]
+		>;
 		/** 可选：点击关闭按钮/遮罩时的回调，由父组件控制是否卸载 Stack */
 		onClose?: () => void;
 	} = $props();
@@ -285,7 +278,6 @@
 		// 未登录：触发登录引导（占位）
 		if (!currentUserId) {
 			// TODO: 实现登录功能后，替换为实际的登录弹窗触发
-			console.log('未登录，引导用户登录');
 			actionError = '请先登录后再关注';
 			return;
 		}
@@ -342,30 +334,6 @@
 			actionError = '分享失败，请重试';
 		}
 	}
-
-	const mediaList = $derived(post?.media ?? []);
-	let activeIndex = $derived(mediaList.length > 0 ? 0 : -1);
-	// 图片视频预览编辑器状态
-	let isPreviewEditorOpen = $state(false);
-	let previewEditorInitialIndex = $state(0);
-	let previewEditorAutoplay = $state(false);
-
-	$effect(() => {
-		// 关闭预览时重置自动播放标记，避免下次误触发
-		if (!isPreviewEditorOpen) {
-			previewEditorAutoplay = false;
-		}
-	});
-
-	let swipeStartX: number | null = null;
-	let swipeStartY: number | null = null;
-	let swipeStartTime: number | null = null;
-	let isSwiping = $state(false);
-
-	const SWIPE_MIN_DISTANCE = 40;
-	const SWIPE_MAX_TIME = 500;
-	const TAP_MAX_MOVE = 6;
-	const TAP_MAX_TIME = 250;
 
 	const author = $derived(post?.author);
 	const departments = $derived(author?.departments ?? []);
@@ -444,124 +412,6 @@
 			commentEditorOpen = false;
 			commentReplyTo = null;
 		}
-	}
-
-	function prevMedia() {
-		if (mediaList.length <= 1 || activeIndex <= 0) return;
-		activeIndex = activeIndex - 1;
-	}
-
-	function nextMedia() {
-		if (mediaList.length <= 1 || activeIndex >= mediaList.length - 1) return;
-		activeIndex = activeIndex + 1;
-	}
-
-	function startSwipe(x: number, y: number) {
-		swipeStartX = x;
-		swipeStartY = y;
-		swipeStartTime = Date.now();
-		isSwiping = false;
-	}
-
-	function endSwipe(x: number, y: number): boolean {
-		if (swipeStartX === null || swipeStartY === null || swipeStartTime === null) {
-			return false;
-		}
-
-		const deltaX = x - swipeStartX;
-		const deltaY = y - swipeStartY;
-		const deltaTime = Date.now() - swipeStartTime;
-
-		// 判断是否是滑动：位移足够大且时间足够短
-		const isSwipe =
-			Math.abs(deltaX) >= SWIPE_MIN_DISTANCE || Math.abs(deltaY) >= SWIPE_MIN_DISTANCE;
-		const isValidSwipe = isSwipe && deltaTime < SWIPE_MAX_TIME;
-
-		// 仅在水平位移足够且明显大于垂直位移时触发「滑动切换」
-		if (
-			isValidSwipe &&
-			Math.abs(deltaX) >= SWIPE_MIN_DISTANCE &&
-			Math.abs(deltaX) > Math.abs(deltaY)
-		) {
-			isSwiping = true;
-			if (deltaX > 0) {
-				prevMedia();
-			} else {
-				nextMedia();
-			}
-		}
-
-		const wasSwiping = isSwiping;
-		swipeStartX = null;
-		swipeStartY = null;
-		swipeStartTime = null;
-		isSwiping = false;
-
-		return wasSwiping;
-	}
-
-	function handlePointerDown(event: PointerEvent | TouchEvent) {
-		const touch = 'touches' in event ? event.touches[0] : event;
-		startSwipe(touch.clientX, touch.clientY);
-	}
-
-	// touchmove 事件处理：不更新起始点，只用于节流或取消操作
-	function handleTouchMove(event: TouchEvent) {
-		// 移动时不更新起始点，保持起始点不变
-		// 这样可以正确计算滑动距离
-		event.preventDefault(); // 防止页面滚动
-	}
-
-	function handlePointerUp(event: PointerEvent | TouchEvent) {
-		if (swipeStartX === null || swipeStartY === null) return;
-		const touch = 'changedTouches' in event ? event.changedTouches[0] : event;
-
-		const endX = touch.clientX;
-		const endY = touch.clientY;
-		const startX = swipeStartX;
-		const startY = swipeStartY;
-		const startTime = swipeStartTime ?? Date.now();
-
-		const deltaX = endX - startX;
-		const deltaY = endY - startY;
-		const deltaTime = Date.now() - startTime;
-
-		const wasSwiping = endSwipe(endX, endY);
-
-		// 只有在真正的「轻点」场景（位移和时间都很小）才认为是点击，才打开预览。
-		// 这样可以避免用户做轻微的横向滑动时被误判为点击，从而触发预览，影响外层 card 的滑动手势。
-		const isTap =
-			Math.abs(deltaX) <= TAP_MAX_MOVE &&
-			Math.abs(deltaY) <= TAP_MAX_MOVE &&
-			deltaTime <= TAP_MAX_TIME;
-
-		// 如果不是滑动且是轻点，并且点击的是媒体区域，才打开预览
-		if (!wasSwiping && isTap) {
-			const target = event.target as HTMLElement;
-			// 排除按钮和控制元素
-			if (target.closest('button')) {
-				return;
-			}
-			// 检查是否点击的是媒体元素（图片或视频容器）
-			const mediaContainer = target.closest('[data-media-index]');
-			if (mediaContainer) {
-				const mediaIndex = parseInt(mediaContainer.getAttribute('data-media-index') || '-1');
-				if (mediaIndex >= 0 && mediaIndex < mediaList.length) {
-					openPreviewEditor(mediaIndex);
-				}
-			}
-		}
-	}
-
-	function handlePointerLeave(event: PointerEvent) {
-		if (swipeStartX === null || swipeStartY === null) return;
-		endSwipe(event.clientX, event.clientY);
-	}
-
-	function openPreviewEditor(index: number, autoplay = false) {
-		previewEditorInitialIndex = index;
-		isPreviewEditorOpen = true;
-		previewEditorAutoplay = autoplay;
 	}
 </script>
 
@@ -676,118 +526,8 @@
 					'rounded-none shadow-xl lg:rounded-2xl'
 				)}
 			>
-				<div
-					class={cn(
-						'group relative hidden shrink-0 items-center justify-center bg-black/80',
-						' lg:flex lg:h-auto lg:w-1/2'
-					)}
-					role="group"
-					aria-roledescription="carousel"
-					onpointerdown={handlePointerDown}
-					onpointerup={handlePointerUp}
-					onpointerleave={handlePointerLeave}
-					ontouchstart={handlePointerDown}
-					ontouchmove={handleTouchMove}
-					ontouchend={handlePointerUp}
-				>
-					{#if mediaList.length > 0 && activeIndex >= 0}
-						<!-- 媒体滑动视口 -->
-						<div class="relative h-full w-full overflow-hidden">
-							<div
-								class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
-								style={`transform: translateX(-${activeIndex * 100}%);`}
-							>
-								{#each mediaList as media, index (media.item_id ?? index)}
-									<div
-										class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
-										data-media-index={index}
-									>
-										{#if media.type === 'MEDIA_TYPE_IMAGE'}
-											<img
-												src={getMediaDisplayUrl(media)}
-												alt={post.title ?? ''}
-												class="max-h-full max-w-full cursor-pointer object-contain"
-											/>
-										{:else}
-											<!-- 视频预览：显示第一帧和播放按钮 -->
-											<div
-												class="relative flex h-full w-full cursor-pointer items-center justify-center"
-											>
-												<video
-													src={getMediaDisplayUrl(media)}
-													class="max-h-full max-w-full object-contain"
-													preload="metadata"
-													playsinline
-													muted
-												></video>
-												<!-- 播放按钮覆盖层 -->
-												<div
-													class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20"
-												>
-													<Button
-														variant="ghost"
-														size="icon"
-														class="pointer-events-auto min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
-														onclick={(e) => {
-															e.stopPropagation();
-															openPreviewEditor(index, true);
-														}}
-													>
-														<Play class="size-8" />
-													</Button>
-												</div>
-											</div>
-										{/if}
-									</div>
-								{/each}
-							</div>
-						</div>
-
-						<!-- 左右切换 -->
-						{#if mediaList.length > 1}
-							<button
-								class="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-								onclick={prevMedia}
-								aria-label="上一张"
-								type="button"
-							>
-								<ChevronLeft class="size-5" />
-							</button>
-							<button
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-								onclick={nextMedia}
-								aria-label="下一张"
-								type="button"
-							>
-								<ChevronRight class="size-5" />
-							</button>
-
-							<!-- 媒体分页圆点 + 热区 -->
-							<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
-								<div
-									class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
-								>
-									{#each mediaList as media, index (media.item_id ?? index)}
-										<button
-											type="button"
-											class={cn(
-												'h-2 w-2 cursor-pointer rounded-full transition-colors',
-												index === activeIndex
-													? 'bg-rose-500'
-													: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
-											)}
-											onclick={() => (activeIndex = index)}
-											aria-label={`查看第 ${index + 1} 张媒体`}
-										></button>
-									{/each}
-								</div>
-							</div>
-						{/if}
-					{:else}
-						<div class="flex h-full w-full items-center justify-center text-sm text-zinc-300">
-							暂无媒体内容
-						</div>
-					{/if}
+				<div class={cn('hidden shrink-0 lg:flex lg:h-auto lg:w-1/2')}>
+					<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
 				</div>
 
 				<!-- 文本与操作区：头部 + 中间滚动区（含移动端媒体区）+ 底部操作栏 -->
@@ -909,119 +649,8 @@
 						</div>
 					</div>
 					<div class="scrollbar-hide flex-1 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-4">
-						<div
-							class={cn(
-								'mb-4 lg:hidden',
-								'group relative flex items-center justify-center bg-black/80',
-								'h-[60vh]'
-							)}
-							role="group"
-							aria-roledescription="carousel"
-							onpointerdown={handlePointerDown}
-							onpointerup={handlePointerUp}
-							onpointerleave={handlePointerLeave}
-							ontouchstart={handlePointerDown}
-							ontouchmove={handleTouchMove}
-							ontouchend={handlePointerUp}
-						>
-							{#if mediaList.length > 0 && activeIndex >= 0}
-								<!-- 媒体滑动视口 -->
-								<div class="relative h-full w-full overflow-hidden">
-									<div
-										class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
-										style={`transform: translateX(-${activeIndex * 100}%);`}
-									>
-										{#each mediaList as media, index (media.item_id ?? index)}
-											<div
-												class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
-												data-media-index={index}
-											>
-												{#if media.type === 'MEDIA_TYPE_IMAGE'}
-													<img
-														src={getMediaDisplayUrl(media)}
-														alt={post.title ?? ''}
-														class="max-h-full max-w-full cursor-pointer object-contain"
-													/>
-												{:else}
-													<!-- 视频预览：显示第一帧和播放按钮 -->
-													<div
-														class="relative flex h-full w-full cursor-pointer items-center justify-center"
-													>
-														<video
-															src={getMediaDisplayUrl(media)}
-															class="max-h-full max-w-full object-contain"
-															preload="metadata"
-															playsinline
-															muted
-														></video>
-														<!-- 播放按钮覆盖层 -->
-														<div
-															class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20"
-														>
-															<Button
-																variant="ghost"
-																size="icon"
-																class="pointer-events-auto min-h-16 min-w-16 rounded-full bg-black/50 text-white hover:bg-black/70"
-																onclick={(e) => {
-																	e.stopPropagation();
-																	openPreviewEditor(index, true);
-																}}
-															>
-																<Play class="size-8" />
-															</Button>
-														</div>
-													</div>
-												{/if}
-											</div>
-										{/each}
-									</div>
-								</div>
-
-								<!-- 左右切换 -->
-								{#if mediaList.length > 1}
-									<button
-										class="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-										onclick={prevMedia}
-										aria-label="上一张"
-										type="button"
-									>
-										<ChevronLeft class="size-5" />
-									</button>
-									<button
-										class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-zinc-100 opacity-0 transition group-hover:opacity-100 hover:bg-black/60"
-										onclick={nextMedia}
-										aria-label="下一张"
-										type="button"
-									>
-										<ChevronRight class="size-5" />
-									</button>
-
-									<!-- 媒体分页圆点 + 热区 -->
-									<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
-										<div
-											class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
-										>
-											{#each mediaList as media, index (media.item_id ?? index)}
-												<button
-													type="button"
-													class={cn(
-														'h-2 w-2 cursor-pointer rounded-full transition-colors',
-														index === activeIndex
-															? 'bg-rose-500'
-															: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
-													)}
-													onclick={() => (activeIndex = index)}
-													aria-label={`查看第 ${index + 1} 张媒体`}
-												></button>
-											{/each}
-										</div>
-									</div>
-								{/if}
-							{:else}
-								<div class="flex h-full w-full items-center justify-center text-sm text-zinc-300">
-									暂无媒体内容
-								</div>
-							{/if}
+						<div class={cn('mb-4 lg:hidden', 'h-[60vh]')}>
+							<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
 						</div>
 						<!-- 标题与正文 -->
 						<div class="mt-4 space-y-3">
@@ -1056,20 +685,30 @@
 						</div>
 
 						<!-- 评论区 -->
-						<div class="mt-6" bind:this={commentSectionEl}>
-							{#if post.post_id}
-								<CommentSection
-									bind:this={commentSectionRef}
-									postId={post.post_id}
-									{currentUserId}
-									initialCount={post.stats?.comment_count}
-									useMock={useMockComments}
-									{mockComments}
-									onReply={openCommentEditor}
-									onTotalCountChange={handleCommentCountChange}
-								/>
-							{/if}
-						</div>
+						{#if showComments}
+							<div class="mt-6" bind:this={commentSectionEl}>
+								{#if post.post_id}
+									{#if comments}
+										{@render comments({
+											postId: post.post_id,
+											currentUserId,
+											initialCount: post.stats?.comment_count,
+											onReply: openCommentEditor,
+											onTotalCountChange: handleCommentCountChange
+										})}
+									{:else}
+										<CommentSection
+											bind:this={commentSectionRef}
+											postId={post.post_id}
+											{currentUserId}
+											initialCount={post.stats?.comment_count}
+											onReply={openCommentEditor}
+											onTotalCountChange={handleCommentCountChange}
+										/>
+									{/if}
+								{/if}
+							</div>
+						{/if}
 					</div>
 
 					<!-- 底部操作栏 -->
@@ -1175,46 +814,33 @@
 
 <!-- 局部错误提示（不影响整个弹窗） -->
 {#if actionError}
-	<div
-		class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white shadow-lg"
-		role="alert"
-	>
-		{actionError}
-		<button
-			class="ml-2 text-white hover:text-red-100"
-			onclick={() => (actionError = null)}
-			aria-label="关闭"
-		>
-			×
-		</button>
-	</div>
+	<AlertDialog.Root open={true} onOpenChange={(open) => !open && (actionError = null)}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>操作失败</AlertDialog.Title>
+				<AlertDialog.Description>{actionError}</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => (actionError = null)}>知道了</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 {/if}
 
 <!-- 成功提示通知 -->
 {#if notification}
-	<div
-		class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-emerald-500 px-4 py-2 text-sm text-white shadow-lg"
-		role="status"
-	>
-		{notification}
-		<button
-			class="ml-2 text-white hover:text-emerald-100"
-			onclick={() => (notification = null)}
-			aria-label="关闭"
-		>
-			×
-		</button>
-	</div>
+	<AlertDialog.Root open={true} onOpenChange={(open) => !open && (notification = null)}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>操作成功</AlertDialog.Title>
+				<AlertDialog.Description>{notification}</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => (notification = null)}>好的</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 {/if}
-
-<!-- 图片视频预览-->
-<ImageVideoPreview
-	bind:open={isPreviewEditorOpen}
-	{mediaList}
-	initialIndex={previewEditorInitialIndex}
-	autoplay={previewEditorAutoplay}
-	fullScreen={true}
-/>
 
 <!-- 用户资料 Popover -->
 {#if isUserProfilePopoverOpen && pendingUserProfileUserId}
