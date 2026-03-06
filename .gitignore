@@ -51,6 +51,8 @@ packages/harmonyos/.hvigor/
 .vscode/
 .claude/
 .idea/
+.cursor/
+.sisyphus/
 *.swp
 *.swo
 *~
