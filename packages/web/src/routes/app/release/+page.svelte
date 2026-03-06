@@ -39,6 +39,8 @@
 	import { PlusIcon } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
+	import { toast } from 'svelte-sonner';
+	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 	import {
 		ShinRichTextarea,
 		extractContentFromShinRichTextarea
@@ -76,6 +78,7 @@
 	let showLeaveConfirm = $state(false);
 	let pendingNavigationUrl = $state<URL | null>(null);
 	let resetKey = $state(0);
+	let showPublishConfirm = $state(false);
 
 	let selectedSectionLabel = $derived(
 		partitionsLoading
@@ -125,8 +128,7 @@
 
 	function handleSave() {
 		if (!isDirty()) {
-			// TODO(6.2.5.2-2): 使用 toast 提示「没有需要保存的变更」，替换 alert
-			alert('没有需要保存的变更');
+			toast.info(TOAST_MESSAGES.NO_CHANGES_TO_SAVE);
 			return;
 		}
 		performSave(false);
@@ -165,15 +167,37 @@
 	}
 
 	function handleSubmit() {
-		// TODO(6.2.5.1): 表单校验——封面、图片/视频、正文填任意一种即可通过
 		if (!selectedSection) {
-			// TODO(6.2.5.2-3): 使用 toast 提示，替换 alert；发布前需二次确认弹窗
-			alert('请选择分区');
+			toast.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
 			return;
 		}
 		const postRequest = createPostRequest();
 		console.log(postRequest);
-		// TODO(6.2.5.4): 确认发布后显示 App 横幅通知（封面、上传状态、进度），支持多任务叠加、隐藏/圆形状态栏、重试/删除
+		showPublishConfirm = false;
+	}
+
+	function handlePublishClick() {
+		if (!selectedSection) {
+			toast.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
+			return;
+		}
+		if (!validateForm()) {
+			return;
+		}
+		showPublishConfirm = true;
+	}
+
+	function validateForm(): boolean {
+		const hasContent =
+			titleContent.trim().length > 0 ||
+			(contenteditableRef && extractContentFromShinRichTextarea(contenteditableRef).length > 0) ||
+			cachedImagesDataURLs.length > 0 ||
+			selectedImageURL;
+		if (!hasContent) {
+			toast.error(TOAST_MESSAGES.CONTENT_REQUIRED);
+			return false;
+		}
+		return true;
 	}
 
 	// 如果未选择封面，则使用第一张图片作为封面
@@ -412,14 +436,18 @@
 				<p>有未保存的变更，是否退出编辑？退出前将自动保存。</p>
 			{/snippet}
 		</ConfirmDialog>
+		<ConfirmDialog bind:open={showPublishConfirm} onConfirm={handleSubmit} confirmText="发布">
+			{#snippet description()}
+				<p>确定要发布这篇帖子吗？发布后将立即对所有人可见。</p>
+			{/snippet}
+		</ConfirmDialog>
 		<Button variant="tertiary" class="cursor-pointer text-muted-foreground" onclick={handleSave}
 			>保存</Button
 		>
-		<!-- TODO(6.2.5.2-3): 发布前弹出二次确认弹窗 -->
 		<Button
 			variant="default"
 			class="flex-1 cursor-pointer transition-none lg:flex-none"
-			onclick={handleSubmit}>发布帖子</Button
+			onclick={handlePublishClick}>发布帖子</Button
 		>
 		{#if lastSaved}
 			<div class="mx-4 flex items-center text-sm text-muted-foreground">

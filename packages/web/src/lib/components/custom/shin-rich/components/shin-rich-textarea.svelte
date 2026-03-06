@@ -107,6 +107,8 @@
 		initialContent?: V1PostContentUnit[];
 		/** 点击 mention 时的回调，用于跳转个人资料页等 */
 		onMentionClick?: (userId: string) => void;
+		/** 获取用户列表的函数，用于 @ 提及功能 */
+		fetchMentionUsers?: (query: string) => Promise<MentionUser[]>;
 	};
 
 	let {
@@ -116,6 +118,7 @@
 		maxLength = 10000,
 		initialContent,
 		onMentionClick,
+		fetchMentionUsers,
 		...restProps
 	}: Props = $props();
 
@@ -130,7 +133,6 @@
 	let mentionTemplateRef = $state<HTMLDivElement | null>(null);
 	let mentionTemplateUser = $state<MentionUser | null>(null);
 
-	// TODO(6.2.5.1-3): 替换为从关注列表+现网用户获取的 20 人，含 user_id、QQ、昵称/备注
 	const MOCK_USERS: MentionUser[] = [
 		{ id: '1', avatar: logo, name: '张三张三张三张三张三张三张三张三张三张三', qq: '11111111' },
 		{ id: '2', avatar: logo, name: '李四李四李四李四李四李四李四李四李四李四', qq: '22222222' },
@@ -142,7 +144,20 @@
 		{ id: '8', avatar: logo, name: '郑十郑十郑十郑十郑十郑十郑十郑十郑十郑十', qq: '88888888' }
 	];
 
-	let filteredUserList = $derived(filterUsersByQuery(MOCK_USERS, searchQuery));
+	// TODO: 当后端 API 就绪后，替换为调用 userServiceSearchUsers
+	let userList = $state<MentionUser[]>(MOCK_USERS);
+
+	$effect(() => {
+		if (fetchMentionUsers) {
+			fetchMentionUsers(searchQuery).then((users) => {
+				userList = users;
+			});
+		} else {
+			userList = MOCK_USERS;
+		}
+	});
+
+	let filteredUserList = $derived(filterUsersByQuery(userList, searchQuery));
 
 	// 草稿恢复：contenteditableRef 就绪且有 initialContent 时注入
 	$effect(() => {
