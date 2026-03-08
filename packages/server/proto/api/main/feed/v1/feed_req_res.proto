@@ -3,6 +3,7 @@ syntax = "proto3";
 package api.main.feed.v1;
 
 import "buf/validate/validate.proto";
+import "google/api/field_behavior.proto";
 import "api/main/common/v1/common.proto";
 import "api/main/feed/v1/feed_models.proto";
 
@@ -31,15 +32,15 @@ message GetFeedResponse {
   // 内容类型（告诉前端如何渲染）
   FeedContentType content_type = 1;
 
-  // 使用oneof返回不同类型的内容
+  // 使用oneof返回不同类型的内容（三者互斥，实际只会存在一个）
   oneof content {
-    PostFeedContent posts = 2;
-    UserFeedContent users = 3;
-    FollowingAuthorFeedContent following_authors = 4;
+    PostFeedContent posts = 2 [(google.api.field_behavior) = OPTIONAL];
+    UserFeedContent users = 3 [(google.api.field_behavior) = OPTIONAL];
+    FollowingAuthorFeedContent following_authors = 4 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // 分页游标
-  string cursor = 5;
+  optional string cursor = 5;
 }
 
 // ---------------------------------------------------------

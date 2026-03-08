@@ -3,6 +3,7 @@ syntax = "proto3";
 package api.media.v1;
 
 import "buf/validate/validate.proto";
+import "google/api/field_behavior.proto";
 
 // MediaType 描述媒体资源的主类型。
 enum MediaType {
@@ -115,11 +116,12 @@ message MediaAsset {
   // 元素顺序索引（从 0 开始），用于 CreatePost/EditPost 时稳定保序。
   int32 order_index = 7;
 
+  // 两者互斥，实际只会存在一个
   oneof content {
     // 普通单文件媒体（图片或视频）。
-    MediaFile single = 5;
+    MediaFile single = 5 [(google.api.field_behavior) = OPTIONAL];
     // Live Photo 复合媒体。
-    LivePhotoAsset live_photo = 6;
+    LivePhotoAsset live_photo = 6 [(google.api.field_behavior) = OPTIONAL];
   }
 }
 
@@ -181,13 +183,14 @@ message UploadAsset {
     not_in: [0]
   }];
 
+  // 两者互斥，server 端通过 buf.validate 确保二选一；TS 类型层面各自可选
   oneof payload {
     option (buf.validate.oneof).required = true;
 
     // 普通媒体元素（单文件）。
-    UploadFile single_file = 2;
+    UploadFile single_file = 2 [(google.api.field_behavior) = OPTIONAL];
     // Live Photo 媒体元素（图片 + 视频）。
-    LivePhotoUploadPair live_photo_pair = 3;
+    LivePhotoUploadPair live_photo_pair = 3 [(google.api.field_behavior) = OPTIONAL];
   }
 }
 

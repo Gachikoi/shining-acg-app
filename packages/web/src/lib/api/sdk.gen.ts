@@ -63,7 +63,7 @@ export const departmentServiceCreateDepartments = <ThrowOnError extends boolean 
  */
 export const departmentServiceRenameDepartment = <ThrowOnError extends boolean = false>(options: Options<DepartmentServiceRenameDepartmentData, ThrowOnError>) => (options.client ?? client).put<DepartmentServiceRenameDepartmentResponses, DepartmentServiceRenameDepartmentErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/departments/{department_id}/name',
+    url: '/v1/admin/departments/{departmentId}/name',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -101,7 +101,7 @@ export const partitionServiceCreatePartitions = <ThrowOnError extends boolean = 
  */
 export const partitionServiceDeletePartition = <ThrowOnError extends boolean = false>(options: Options<PartitionServiceDeletePartitionData, ThrowOnError>) => (options.client ?? client).delete<PartitionServiceDeletePartitionResponses, PartitionServiceDeletePartitionErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/partitions/{partition_id}',
+    url: '/v1/admin/partitions/{partitionId}',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ export const partitionServiceDeletePartition = <ThrowOnError extends boolean = f
  */
 export const partitionServiceRenamePartition = <ThrowOnError extends boolean = false>(options: Options<PartitionServiceRenamePartitionData, ThrowOnError>) => (options.client ?? client).put<PartitionServiceRenamePartitionResponses, PartitionServiceRenamePartitionErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/partitions/{partition_id}/name',
+    url: '/v1/admin/partitions/{partitionId}/name',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ export const adminServiceEditAdmins = <ThrowOnError extends boolean = false>(opt
 /**
  * 获取举报列表（管理员）
  */
-export const reportServiceListReports = <ThrowOnError extends boolean = false>(options?: Options<ReportServiceListReportsData, ThrowOnError>) => (options?.client ?? client).get<ReportServiceListReportsResponses, ReportServiceListReportsErrors, ThrowOnError>({
+export const reportServiceListReports = <ThrowOnError extends boolean = false>(options: Options<ReportServiceListReportsData, ThrowOnError>) => (options.client ?? client).get<ReportServiceListReportsResponses, ReportServiceListReportsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/reports',
     ...options
@@ -161,7 +161,7 @@ export const reportServiceListReports = <ThrowOnError extends boolean = false>(o
  */
 export const reportServiceApprovalReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceApprovalReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceApprovalReportResponses, ReportServiceApprovalReportErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/reports/{report_id}/approval',
+    url: '/v1/admin/reports/{reportId}/approval',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ export const reportServiceApprovalReport = <ThrowOnError extends boolean = false
  */
 export const reportServiceListReportEvidence = <ThrowOnError extends boolean = false>(options: Options<ReportServiceListReportEvidenceData, ThrowOnError>) => (options.client ?? client).get<ReportServiceListReportEvidenceResponses, ReportServiceListReportEvidenceErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/reports/{report_id}/evidence',
+    url: '/v1/admin/reports/{reportId}/evidence',
     ...options
 });
 
@@ -183,7 +183,7 @@ export const reportServiceListReportEvidence = <ThrowOnError extends boolean = f
  */
 export const reportServiceRejectReport = <ThrowOnError extends boolean = false>(options: Options<ReportServiceRejectReportData, ThrowOnError>) => (options.client ?? client).put<ReportServiceRejectReportResponses, ReportServiceRejectReportErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/reports/{report_id}/rejection',
+    url: '/v1/admin/reports/{reportId}/rejection',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -194,7 +194,7 @@ export const reportServiceRejectReport = <ThrowOnError extends boolean = false>(
 /**
  * 获取认证申请列表（管理员）
  */
-export const verificationServiceListVerifications = <ThrowOnError extends boolean = false>(options?: Options<VerificationServiceListVerificationsData, ThrowOnError>) => (options?.client ?? client).get<VerificationServiceListVerificationsResponses, VerificationServiceListVerificationsErrors, ThrowOnError>({
+export const verificationServiceListVerifications = <ThrowOnError extends boolean = false>(options: Options<VerificationServiceListVerificationsData, ThrowOnError>) => (options.client ?? client).get<VerificationServiceListVerificationsResponses, VerificationServiceListVerificationsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/admin/verifications',
     ...options
@@ -205,7 +205,7 @@ export const verificationServiceListVerifications = <ThrowOnError extends boolea
  */
 export const verificationServiceReviewVerification = <ThrowOnError extends boolean = false>(options: Options<VerificationServiceReviewVerificationData, ThrowOnError>) => (options.client ?? client).put<VerificationServiceReviewVerificationResponses, VerificationServiceReviewVerificationErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/admin/verifications/{application_id}/review',
+    url: '/v1/admin/verifications/{applicationId}/review',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -279,7 +279,7 @@ export const commentServiceCreateComment = <ThrowOnError extends boolean = false
  */
 export const commentServiceDeleteComment = <ThrowOnError extends boolean = false>(options: Options<CommentServiceDeleteCommentData, ThrowOnError>) => (options.client ?? client).delete<CommentServiceDeleteCommentResponses, CommentServiceDeleteCommentErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/comments/{comment_id}',
+    url: '/v1/comments/{commentId}',
     ...options
 });
 
@@ -288,7 +288,7 @@ export const commentServiceDeleteComment = <ThrowOnError extends boolean = false
  */
 export const commentServiceSetCommentLike = <ThrowOnError extends boolean = false>(options: Options<CommentServiceSetCommentLikeData, ThrowOnError>) => (options.client ?? client).put<CommentServiceSetCommentLikeResponses, CommentServiceSetCommentLikeErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/comments/{comment_id}/like',
+    url: '/v1/comments/{commentId}/like',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -301,14 +301,14 @@ export const commentServiceSetCommentLike = <ThrowOnError extends boolean = fals
  */
 export const commentServiceListCommentReplies = <ThrowOnError extends boolean = false>(options: Options<CommentServiceListCommentRepliesData, ThrowOnError>) => (options.client ?? client).get<CommentServiceListCommentRepliesResponses, CommentServiceListCommentRepliesErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/comments/{comment_id}/replies',
+    url: '/v1/comments/{commentId}/replies',
     ...options
 });
 
 /**
  * 获取内容流（统一接口，支持帖子流和用户流）
  */
-export const feedServiceGetFeed = <ThrowOnError extends boolean = false>(options?: Options<FeedServiceGetFeedData, ThrowOnError>) => (options?.client ?? client).get<FeedServiceGetFeedResponses, FeedServiceGetFeedErrors, ThrowOnError>({
+export const feedServiceGetFeed = <ThrowOnError extends boolean = false>(options: Options<FeedServiceGetFeedData, ThrowOnError>) => (options.client ?? client).get<FeedServiceGetFeedResponses, FeedServiceGetFeedErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/feed',
     ...options
@@ -332,7 +332,7 @@ export const feedServiceListFeedCategories = <ThrowOnError extends boolean = fal
  */
 export const mediaServiceGetBatchMedia = <ThrowOnError extends boolean = false>(options: Options<MediaServiceGetBatchMediaData, ThrowOnError>) => (options.client ?? client).get<MediaServiceGetBatchMediaResponses, MediaServiceGetBatchMediaErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/media/batches/{batch_id}/media',
+    url: '/v1/media/batches/{batchId}/media',
     ...options
 });
 
@@ -428,7 +428,7 @@ export const mediaServiceSignMultipartPart = <ThrowOnError extends boolean = fal
  * 返回：已上传分片列表。
  * 错误：NOT_FOUND（会话不存在）；INTERNAL（存储查询失败）。
  */
-export const mediaServiceListUploadedParts = <ThrowOnError extends boolean = false>(options?: Options<MediaServiceListUploadedPartsData, ThrowOnError>) => (options?.client ?? client).get<MediaServiceListUploadedPartsResponses, MediaServiceListUploadedPartsErrors, ThrowOnError>({
+export const mediaServiceListUploadedParts = <ThrowOnError extends boolean = false>(options: Options<MediaServiceListUploadedPartsData, ThrowOnError>) => (options.client ?? client).get<MediaServiceListUploadedPartsResponses, MediaServiceListUploadedPartsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/media/multipart/parts',
     ...options
@@ -437,7 +437,7 @@ export const mediaServiceListUploadedParts = <ThrowOnError extends boolean = fal
 /**
  * 获取评论和@通知列表
  */
-export const notificationServiceListCommentMentionNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListCommentMentionNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListCommentMentionNotificationsResponses, NotificationServiceListCommentMentionNotificationsErrors, ThrowOnError>({
+export const notificationServiceListCommentMentionNotifications = <ThrowOnError extends boolean = false>(options: Options<NotificationServiceListCommentMentionNotificationsData, ThrowOnError>) => (options.client ?? client).get<NotificationServiceListCommentMentionNotificationsResponses, NotificationServiceListCommentMentionNotificationsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/notifications/comment-mentions',
     ...options
@@ -446,7 +446,7 @@ export const notificationServiceListCommentMentionNotifications = <ThrowOnError 
 /**
  * 获取新增关注通知列表
  */
-export const notificationServiceListFollowNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListFollowNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListFollowNotificationsResponses, NotificationServiceListFollowNotificationsErrors, ThrowOnError>({
+export const notificationServiceListFollowNotifications = <ThrowOnError extends boolean = false>(options: Options<NotificationServiceListFollowNotificationsData, ThrowOnError>) => (options.client ?? client).get<NotificationServiceListFollowNotificationsResponses, NotificationServiceListFollowNotificationsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/notifications/follows',
     ...options
@@ -455,7 +455,7 @@ export const notificationServiceListFollowNotifications = <ThrowOnError extends 
 /**
  * 获取赞和收藏通知列表
  */
-export const notificationServiceListLikeCollectNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListLikeCollectNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListLikeCollectNotificationsResponses, NotificationServiceListLikeCollectNotificationsErrors, ThrowOnError>({
+export const notificationServiceListLikeCollectNotifications = <ThrowOnError extends boolean = false>(options: Options<NotificationServiceListLikeCollectNotificationsData, ThrowOnError>) => (options.client ?? client).get<NotificationServiceListLikeCollectNotificationsResponses, NotificationServiceListLikeCollectNotificationsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/notifications/like-collects',
     ...options
@@ -499,7 +499,7 @@ export const notificationServiceGetNotificationStats = <ThrowOnError extends boo
 /**
  * 获取系统通知列表
  */
-export const notificationServiceListSystemNotifications = <ThrowOnError extends boolean = false>(options?: Options<NotificationServiceListSystemNotificationsData, ThrowOnError>) => (options?.client ?? client).get<NotificationServiceListSystemNotificationsResponses, NotificationServiceListSystemNotificationsErrors, ThrowOnError>({
+export const notificationServiceListSystemNotifications = <ThrowOnError extends boolean = false>(options: Options<NotificationServiceListSystemNotificationsData, ThrowOnError>) => (options.client ?? client).get<NotificationServiceListSystemNotificationsResponses, NotificationServiceListSystemNotificationsErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/notifications/system',
     ...options
@@ -523,7 +523,7 @@ export const postServiceCreatePost = <ThrowOnError extends boolean = false>(opti
  */
 export const postServiceDeletePost = <ThrowOnError extends boolean = false>(options: Options<PostServiceDeletePostData, ThrowOnError>) => (options.client ?? client).delete<PostServiceDeletePostResponses, PostServiceDeletePostErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}',
+    url: '/v1/posts/{postId}',
     ...options
 });
 
@@ -532,7 +532,7 @@ export const postServiceDeletePost = <ThrowOnError extends boolean = false>(opti
  */
 export const postServiceGetPost = <ThrowOnError extends boolean = false>(options: Options<PostServiceGetPostData, ThrowOnError>) => (options.client ?? client).get<PostServiceGetPostResponses, PostServiceGetPostErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}',
+    url: '/v1/posts/{postId}',
     ...options
 });
 
@@ -541,7 +541,7 @@ export const postServiceGetPost = <ThrowOnError extends boolean = false>(options
  */
 export const postServiceEditPost = <ThrowOnError extends boolean = false>(options: Options<PostServiceEditPostData, ThrowOnError>) => (options.client ?? client).patch<PostServiceEditPostResponses, PostServiceEditPostErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}',
+    url: '/v1/posts/{postId}',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -554,7 +554,7 @@ export const postServiceEditPost = <ThrowOnError extends boolean = false>(option
  */
 export const postServiceSetPostCollect = <ThrowOnError extends boolean = false>(options: Options<PostServiceSetPostCollectData, ThrowOnError>) => (options.client ?? client).put<PostServiceSetPostCollectResponses, PostServiceSetPostCollectErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}/collection',
+    url: '/v1/posts/{postId}/collection',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -567,7 +567,7 @@ export const postServiceSetPostCollect = <ThrowOnError extends boolean = false>(
  */
 export const commentServiceListPostComments = <ThrowOnError extends boolean = false>(options: Options<CommentServiceListPostCommentsData, ThrowOnError>) => (options.client ?? client).get<CommentServiceListPostCommentsResponses, CommentServiceListPostCommentsErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}/comments',
+    url: '/v1/posts/{postId}/comments',
     ...options
 });
 
@@ -576,7 +576,7 @@ export const commentServiceListPostComments = <ThrowOnError extends boolean = fa
  */
 export const postServiceSetPostLike = <ThrowOnError extends boolean = false>(options: Options<PostServiceSetPostLikeData, ThrowOnError>) => (options.client ?? client).put<PostServiceSetPostLikeResponses, PostServiceSetPostLikeErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/posts/{post_id}/like',
+    url: '/v1/posts/{postId}/like',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -639,7 +639,7 @@ export const syncServiceGetActiveDevices = <ThrowOnError extends boolean = false
  */
 export const syncServiceDisconnectDevice = <ThrowOnError extends boolean = false>(options: Options<SyncServiceDisconnectDeviceData, ThrowOnError>) => (options.client ?? client).delete<SyncServiceDisconnectDeviceResponses, SyncServiceDisconnectDeviceErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/sync/devices/{device_id}',
+    url: '/v1/sync/devices/{deviceId}',
     ...options
 });
 
@@ -670,7 +670,7 @@ export const syncServiceGetSyncStatus = <ThrowOnError extends boolean = false>(o
 /**
  * 根据 QQ 号查询用户 id（用于官网）
  */
-export const userServiceGetUserIdByQq = <ThrowOnError extends boolean = false>(options?: Options<UserServiceGetUserIdByQqData, ThrowOnError>) => (options?.client ?? client).get<UserServiceGetUserIdByQqResponses, UserServiceGetUserIdByQqErrors, ThrowOnError>({
+export const userServiceGetUserIdByQq = <ThrowOnError extends boolean = false>(options: Options<UserServiceGetUserIdByQqData, ThrowOnError>) => (options.client ?? client).get<UserServiceGetUserIdByQqResponses, UserServiceGetUserIdByQqErrors, ThrowOnError>({
     responseType: 'json',
     url: '/v1/users/id_by_qq',
     ...options
@@ -753,7 +753,7 @@ export const userServiceUpdateSettings = <ThrowOnError extends boolean = false>(
  */
 export const userServiceSetFollow = <ThrowOnError extends boolean = false>(options: Options<UserServiceSetFollowData, ThrowOnError>) => (options.client ?? client).put<UserServiceSetFollowResponses, UserServiceSetFollowErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/me/{user_id}/follow',
+    url: '/v1/users/me/{userId}/follow',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -766,19 +766,19 @@ export const userServiceSetFollow = <ThrowOnError extends boolean = false>(optio
  */
 export const userServiceGetUser = <ThrowOnError extends boolean = false>(options: Options<UserServiceGetUserData, ThrowOnError>) => (options.client ?? client).get<UserServiceGetUserResponses, UserServiceGetUserErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}',
+    url: '/v1/users/{userId}',
     ...options
 });
 
 export const userServiceListUserCollectedPosts = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserCollectedPostsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserCollectedPostsResponses, UserServiceListUserCollectedPostsErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/collected_posts',
+    url: '/v1/users/{userId}/collected_posts',
     ...options
 });
 
 export const userServiceListUserFollowers = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserFollowersData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserFollowersResponses, UserServiceListUserFollowersErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/followers',
+    url: '/v1/users/{userId}/followers',
     ...options
 });
 
@@ -787,19 +787,19 @@ export const userServiceListUserFollowers = <ThrowOnError extends boolean = fals
  */
 export const userServiceListUserFollowings = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserFollowingsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserFollowingsResponses, UserServiceListUserFollowingsErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/followings',
+    url: '/v1/users/{userId}/followings',
     ...options
 });
 
 export const userServiceListUserLikedPosts = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserLikedPostsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserLikedPostsResponses, UserServiceListUserLikedPostsErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/liked_posts',
+    url: '/v1/users/{userId}/liked_posts',
     ...options
 });
 
 export const userServiceListUserMutualFollowers = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserMutualFollowersData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserMutualFollowersResponses, UserServiceListUserMutualFollowersErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/mutual_followers',
+    url: '/v1/users/{userId}/mutual_followers',
     ...options
 });
 
@@ -809,7 +809,7 @@ export const userServiceListUserMutualFollowers = <ThrowOnError extends boolean 
  */
 export const userServiceListUserPosts = <ThrowOnError extends boolean = false>(options: Options<UserServiceListUserPostsData, ThrowOnError>) => (options.client ?? client).get<UserServiceListUserPostsResponses, UserServiceListUserPostsErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/posts',
+    url: '/v1/users/{userId}/posts',
     ...options
 });
 
@@ -818,7 +818,7 @@ export const userServiceListUserPosts = <ThrowOnError extends boolean = false>(o
  */
 export const userServiceChangeRemark = <ThrowOnError extends boolean = false>(options: Options<UserServiceChangeRemarkData, ThrowOnError>) => (options.client ?? client).put<UserServiceChangeRemarkResponses, UserServiceChangeRemarkErrors, ThrowOnError>({
     responseType: 'json',
-    url: '/v1/users/{user_id}/remark',
+    url: '/v1/users/{userId}/remark',
     ...options,
     headers: {
         'Content-Type': 'application/json',

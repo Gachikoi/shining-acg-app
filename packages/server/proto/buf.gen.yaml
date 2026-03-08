@@ -21,5 +21,8 @@ plugins:
     opt:
       - allow_merge=true
       - merge_file_name=swagger
-      - json_names_for_fields=false
+      - json_names_for_fields=true
       - allow_delete_body=true
+      # proto3 非 optional 字段自动加入 required 数组（PR #5278，合并于 2025-03-08）
+      # proto3 中用 optional 关键字明确声明的字段会被正确排除
+      - use_proto3_field_semantics=true
