@@ -140,7 +140,7 @@
         ]
       }
     },
-    "/v1/admin/departments/{department_id}/name": {
+    "/v1/admin/departments/{departmentId}/name": {
       "put": {
         "summary": "重命名部门\n只改变部门名称，不改变部门ID",
         "operationId": "DepartmentService_RenameDepartment",
@@ -160,7 +160,7 @@
         },
         "parameters": [
           {
-            "name": "department_id",
+            "name": "departmentId",
             "description": "部门ID",
             "in": "path",
             "required": true,
@@ -234,7 +234,7 @@
         ]
       }
     },
-    "/v1/admin/partitions/{partition_id}": {
+    "/v1/admin/partitions/{partitionId}": {
       "delete": {
         "summary": "删除分区\n删除前需要用户选择迁移目标分区，并二次确认",
         "operationId": "PartitionService_DeletePartition",
@@ -254,7 +254,7 @@
         },
         "parameters": [
           {
-            "name": "partition_id",
+            "name": "partitionId",
             "description": "要删除的分区ID",
             "in": "path",
             "required": true,
@@ -274,7 +274,7 @@
         ]
       }
     },
-    "/v1/admin/partitions/{partition_id}/name": {
+    "/v1/admin/partitions/{partitionId}/name": {
       "put": {
         "summary": "重命名分区\n只改变分区名称，不改变分区ID",
         "operationId": "PartitionService_RenamePartition",
@@ -294,7 +294,7 @@
         },
         "parameters": [
           {
-            "name": "partition_id",
+            "name": "partitionId",
             "description": "分区ID",
             "in": "path",
             "required": true,
@@ -388,10 +388,10 @@
         },
         "parameters": [
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -401,10 +401,10 @@
             "default": "REFRESH_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -421,7 +421,7 @@
         ]
       }
     },
-    "/v1/admin/reports/{report_id}/approval": {
+    "/v1/admin/reports/{reportId}/approval": {
       "put": {
         "summary": "封禁用户/删除评论/帖子（管理员）",
         "operationId": "ReportService_ApprovalReport",
@@ -441,7 +441,7 @@
         },
         "parameters": [
           {
-            "name": "report_id",
+            "name": "reportId",
             "description": "举报记录ID",
             "in": "path",
             "required": true,
@@ -461,7 +461,7 @@
         ]
       }
     },
-    "/v1/admin/reports/{report_id}/evidence": {
+    "/v1/admin/reports/{reportId}/evidence": {
       "get": {
         "summary": "查看证据列表（管理员），目前只有举报用户时会有证据（举报说明和图片）",
         "operationId": "ReportService_ListReportEvidence",
@@ -481,17 +481,17 @@
         },
         "parameters": [
           {
-            "name": "report_id",
+            "name": "reportId",
             "description": "举报记录ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -508,7 +508,7 @@
         ]
       }
     },
-    "/v1/admin/reports/{report_id}/rejection": {
+    "/v1/admin/reports/{reportId}/rejection": {
       "put": {
         "summary": "驳回举报（管理员）",
         "operationId": "ReportService_RejectReport",
@@ -528,7 +528,7 @@
         },
         "parameters": [
           {
-            "name": "report_id",
+            "name": "reportId",
             "description": "举报记录ID",
             "in": "path",
             "required": true,
@@ -568,10 +568,10 @@
         },
         "parameters": [
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -581,10 +581,10 @@
             "default": "REFRESH_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -601,7 +601,7 @@
         ]
       }
     },
-    "/v1/admin/verifications/{application_id}/review": {
+    "/v1/admin/verifications/{applicationId}/review": {
       "put": {
         "summary": "审批认证申请（管理员）",
         "operationId": "VerificationService_ReviewVerification",
@@ -621,7 +621,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -795,7 +795,7 @@
         ]
       }
     },
-    "/v1/comments/{comment_id}": {
+    "/v1/comments/{commentId}": {
       "delete": {
         "summary": "删除评论",
         "operationId": "CommentService_DeleteComment",
@@ -815,7 +815,7 @@
         },
         "parameters": [
           {
-            "name": "comment_id",
+            "name": "commentId",
             "description": "评论ID",
             "in": "path",
             "required": true,
@@ -827,7 +827,7 @@
         ]
       }
     },
-    "/v1/comments/{comment_id}/like": {
+    "/v1/comments/{commentId}/like": {
       "put": {
         "summary": "点赞/取消点赞评论（幂等操作）",
         "operationId": "CommentService_SetCommentLike",
@@ -847,7 +847,7 @@
         },
         "parameters": [
           {
-            "name": "comment_id",
+            "name": "commentId",
             "description": "评论ID",
             "in": "path",
             "required": true,
@@ -867,7 +867,7 @@
         ]
       }
     },
-    "/v1/comments/{comment_id}/replies": {
+    "/v1/comments/{commentId}/replies": {
       "get": {
         "summary": "获取某条评论的所有回复（第二层评论，打平显示）",
         "operationId": "CommentService_ListCommentReplies",
@@ -887,14 +887,14 @@
         },
         "parameters": [
           {
-            "name": "comment_id",
+            "name": "commentId",
             "description": "第一层评论ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "order_type",
+            "name": "orderType",
             "description": "排序方式（默认：最早）\n\n - COMMENT_ORDER_TYPE_UNSPECIFIED: 未指定（默认使用 LATEST）\n - COMMENT_ORDER_TYPE_LATEST: --- 按时间排序 ---\n\n最新评论（按创建时间降序）\n - COMMENT_ORDER_TYPE_EARLIEST: 最早评论（按创建时间升序）\n - COMMENT_ORDER_TYPE_MOST_LIKED: --- 按点赞数排序 ---\n\n最多点赞（按点赞数降序）\n - COMMENT_ORDER_TYPE_LEAST_LIKED: 最少点赞（按点赞数升序）\n - COMMENT_ORDER_TYPE_MOST_REPLIES: --- 按回复数排序（仅第一层评论有效） ---\n\n最多回复（按回复数降序）\n - COMMENT_ORDER_TYPE_LEAST_REPLIES: 最少回复（按回复数升序）",
             "in": "query",
             "required": false,
@@ -911,10 +911,10 @@
             "default": "COMMENT_ORDER_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -951,17 +951,17 @@
         },
         "parameters": [
           {
-            "name": "category_id",
+            "name": "categoryId",
             "description": "分类ID（来自ListFeedCategories返回的category_id）",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型：下拉刷新/上拉加载\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -978,7 +978,7 @@
             "type": "string"
           },
           {
-            "name": "filter.time_range.start_timestamp",
+            "name": "filter.timeRange.startTimestamp",
             "description": "开始时间",
             "in": "query",
             "required": false,
@@ -986,7 +986,7 @@
             "format": "int64"
           },
           {
-            "name": "filter.time_range.end_timestamp",
+            "name": "filter.timeRange.endTimestamp",
             "description": "结束时间",
             "in": "query",
             "required": false,
@@ -994,7 +994,7 @@
             "format": "int64"
           },
           {
-            "name": "filter.order_type",
+            "name": "filter.orderType",
             "description": "排序方式（根据content_type自动选择合适的排序）\n\n - FEED_ORDER_TYPE_RECOMMENDED: 推荐排序（帖子/用户通用）\n - FEED_ORDER_TYPE_LATEST: 最新排序（仅帖子）\n - FEED_ORDER_TYPE_HOT: 热门排序（仅帖子）\n - FEED_ORDER_TYPE_MOST_FOLLOWERS: 最多粉丝（仅用户）\n - FEED_ORDER_TYPE_LEAST_FOLLOWER: 最少粉丝（仅用户）\n - FEED_ORDER_TYPE_MOST_INTERACTIONS: 最多互动（仅用户）\n - FEED_ORDER_TYPE_LEAST_INTERACTIONS: 最少互动（仅用户）",
             "in": "query",
             "required": false,
@@ -1012,17 +1012,17 @@
             "default": "FEED_ORDER_TYPE_UNSPECIFIED"
           },
           {
-            "name": "filter.author_id",
+            "name": "filter.authorId",
             "description": "作者ID筛选（仅帖子流，配合\"following\"场景使用）",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -1059,7 +1059,7 @@
         },
         "parameters": [
           {
-            "name": "filter_type",
+            "name": "filterType",
             "description": "可选：只获取特定类型的分类\n\n - FEED_CONTENT_TYPE_POST: 帖子流\n - FEED_CONTENT_TYPE_USER: 用户流\n - FEED_CONTENT_TYPE_FOLLOWING_AUTHOR: 关注的作者列表（带更新状态）",
             "in": "query",
             "required": false,
@@ -1078,7 +1078,7 @@
         ]
       }
     },
-    "/v1/media/batches/{batch_id}/media": {
+    "/v1/media/batches/{batchId}/media": {
       "get": {
         "summary": "GetBatchMedia 查询批次内全部媒体元素（按顺序返回）。\n调用时机：前端准备调用 CreatePost/EditPost 前做最终拉取。\n参数：batch_id。\n返回：按服务端固定顺序排序的 media_assets。\n错误：NOT_FOUND（批次不存在）；INTERNAL（查询失败）。",
         "operationId": "MediaService_GetBatchMedia",
@@ -1098,7 +1098,7 @@
         },
         "parameters": [
           {
-            "name": "batch_id",
+            "name": "batchId",
             "description": "批次 ID。",
             "in": "path",
             "required": true,
@@ -1296,24 +1296,24 @@
         },
         "parameters": [
           {
-            "name": "task_id",
+            "name": "taskId",
             "description": "文件任务 ID。",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
-            "name": "upload_id",
+            "name": "uploadId",
             "description": "multipart upload_id。",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
-            "name": "object_key",
+            "name": "objectKey",
             "description": "上传对象键（Object Key）。",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           }
         ],
@@ -1342,10 +1342,10 @@
         },
         "parameters": [
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -1355,10 +1355,10 @@
             "default": "REFRESH_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -1395,10 +1395,10 @@
         },
         "parameters": [
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -1408,10 +1408,10 @@
             "default": "REFRESH_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -1448,10 +1448,10 @@
         },
         "parameters": [
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -1461,10 +1461,10 @@
             "default": "REFRESH_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -1590,10 +1590,10 @@
         },
         "parameters": [
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型（下拉/上拉）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -1603,10 +1603,10 @@
             "default": "REFRESH_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -1656,7 +1656,7 @@
         ]
       }
     },
-    "/v1/posts/{post_id}": {
+    "/v1/posts/{postId}": {
       "get": {
         "summary": "帖子详情",
         "operationId": "PostService_GetPost",
@@ -1676,7 +1676,7 @@
         },
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1705,7 +1705,7 @@
         },
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1734,7 +1734,7 @@
         },
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1753,7 +1753,7 @@
         ]
       }
     },
-    "/v1/posts/{post_id}/collection": {
+    "/v1/posts/{postId}/collection": {
       "put": {
         "summary": "收藏/取消收藏",
         "operationId": "PostService_SetPostCollect",
@@ -1773,7 +1773,7 @@
         },
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1792,7 +1792,7 @@
         ]
       }
     },
-    "/v1/posts/{post_id}/comments": {
+    "/v1/posts/{postId}/comments": {
       "get": {
         "summary": "获取帖子的评论列表（第一层评论，包含部分回复预览）",
         "operationId": "CommentService_ListPostComments",
@@ -1812,14 +1812,14 @@
         },
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "description": "帖子ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "order_type",
+            "name": "orderType",
             "description": "排序方式（默认：最新）\n\n - COMMENT_ORDER_TYPE_UNSPECIFIED: 未指定（默认使用 LATEST）\n - COMMENT_ORDER_TYPE_LATEST: --- 按时间排序 ---\n\n最新评论（按创建时间降序）\n - COMMENT_ORDER_TYPE_EARLIEST: 最早评论（按创建时间升序）\n - COMMENT_ORDER_TYPE_MOST_LIKED: --- 按点赞数排序 ---\n\n最多点赞（按点赞数降序）\n - COMMENT_ORDER_TYPE_LEAST_LIKED: 最少点赞（按点赞数升序）\n - COMMENT_ORDER_TYPE_MOST_REPLIES: --- 按回复数排序（仅第一层评论有效） ---\n\n最多回复（按回复数降序）\n - COMMENT_ORDER_TYPE_LEAST_REPLIES: 最少回复（按回复数升序）",
             "in": "query",
             "required": false,
@@ -1836,10 +1836,10 @@
             "default": "COMMENT_ORDER_TYPE_UNSPECIFIED"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -1851,7 +1851,7 @@
             "type": "string"
           },
           {
-            "name": "need_reply_count",
+            "name": "needReplyCount",
             "description": "每条第一层评论需要返回的第二层回复数量（默认1条）",
             "in": "query",
             "required": false,
@@ -1859,7 +1859,7 @@
             "format": "int32"
           },
           {
-            "name": "target_comment_id",
+            "name": "targetCommentId",
             "description": "从“评论和 @”、“赞和收藏”通知进入时，传入目标评论 ID。\n如果目标评论就是一级评论，则以该评论为起点展示评论列表，并且后续列表中不再展示该评论（可以将 exclude_id 编码进 cursor 以排除评论）；\n如果目标评论是二级回复，则以该回复所在的一级评论为起点展示评论列表，后续列表中不再展示一级评论的同时，一级评论展开回复到目标评论处，比目标评论早发布的评论都要展开。",
             "in": "query",
             "required": false,
@@ -1871,7 +1871,7 @@
         ]
       }
     },
-    "/v1/posts/{post_id}/like": {
+    "/v1/posts/{postId}/like": {
       "put": {
         "summary": "点赞/取消点赞",
         "operationId": "PostService_SetPostLike",
@@ -1891,7 +1891,7 @@
         },
         "parameters": [
           {
-            "name": "post_id",
+            "name": "postId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2032,7 +2032,7 @@
         ]
       }
     },
-    "/v1/sync/devices/{device_id}": {
+    "/v1/sync/devices/{deviceId}": {
       "delete": {
         "summary": "断开指定设备连接\n强制断开指定设备的 WebSocket 连接",
         "operationId": "SyncService_DisconnectDevice",
@@ -2052,7 +2052,7 @@
         },
         "parameters": [
           {
-            "name": "device_id",
+            "name": "deviceId",
             "description": "设备 ID",
             "in": "path",
             "required": true,
@@ -2140,10 +2140,10 @@
         },
         "parameters": [
           {
-            "name": "qq_number",
+            "name": "qqNumber",
             "description": "QQ 号",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           }
         ],
@@ -2339,7 +2339,7 @@
         ]
       }
     },
-    "/v1/users/me/{user_id}/follow": {
+    "/v1/users/me/{userId}/follow": {
       "put": {
         "summary": "关注/取消关注",
         "operationId": "UserService_SetFollow",
@@ -2359,7 +2359,7 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2378,7 +2378,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}": {
+    "/v1/users/{userId}": {
       "get": {
         "summary": "获取他人详细用户信息",
         "operationId": "UserService_GetUser",
@@ -2398,7 +2398,7 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2409,7 +2409,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/collected_posts": {
+    "/v1/users/{userId}/collected_posts": {
       "get": {
         "operationId": "UserService_ListUserCollectedPosts",
         "responses": {
@@ -2428,17 +2428,17 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -2455,10 +2455,10 @@
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -2475,7 +2475,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/followers": {
+    "/v1/users/{userId}/followers": {
       "get": {
         "operationId": "UserService_ListUserFollowers",
         "responses": {
@@ -2494,17 +2494,17 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -2521,10 +2521,10 @@
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -2541,7 +2541,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/followings": {
+    "/v1/users/{userId}/followings": {
       "get": {
         "summary": "获取用户相关的用户列表（关注/粉丝/互相关注）",
         "operationId": "UserService_ListUserFollowings",
@@ -2561,17 +2561,17 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -2588,10 +2588,10 @@
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -2608,7 +2608,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/liked_posts": {
+    "/v1/users/{userId}/liked_posts": {
       "get": {
         "operationId": "UserService_ListUserLikedPosts",
         "responses": {
@@ -2627,17 +2627,17 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -2654,10 +2654,10 @@
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -2674,7 +2674,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/mutual_followers": {
+    "/v1/users/{userId}/mutual_followers": {
       "get": {
         "operationId": "UserService_ListUserMutualFollowers",
         "responses": {
@@ -2693,17 +2693,17 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -2720,10 +2720,10 @@
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -2740,7 +2740,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/posts": {
+    "/v1/users/{userId}/posts": {
       "get": {
         "summary": "--- 个人资料页内容 ---\n获取用户相关的帖子列表（发布/点赞/收藏）",
         "operationId": "UserService_ListUserPosts",
@@ -2760,17 +2760,17 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "refresh_type",
+            "name": "refreshType",
             "description": "刷新类型\n\n - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据\n - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "REFRESH_TYPE_UNSPECIFIED",
@@ -2787,10 +2787,10 @@
             "type": "string"
           },
           {
-            "name": "pagination.need_num",
+            "name": "pagination.needNum",
             "description": "需要返回的帖子数量",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "integer",
             "format": "int32"
           },
@@ -2807,7 +2807,7 @@
         ]
       }
     },
-    "/v1/users/{user_id}/remark": {
+    "/v1/users/{userId}/remark": {
       "put": {
         "summary": "修改备注（不超过 12 个字符）",
         "operationId": "UserService_ChangeRemark",
@@ -2827,7 +2827,7 @@
         },
         "parameters": [
           {
-            "name": "user_id",
+            "name": "userId",
             "description": "目标用户ID",
             "in": "path",
             "required": true,
@@ -2906,42 +2906,54 @@
     "CommentServiceSetCommentLikeBody": {
       "type": "object",
       "properties": {
-        "is_liked": {
+        "isLiked": {
           "type": "boolean",
           "title": "true=点赞, false=取消点赞"
         }
       },
-      "title": "---------------------------------------------------------\nSetCommentLike - 点赞/取消点赞评论（幂等操作）\n---------------------------------------------------------"
+      "title": "---------------------------------------------------------\nSetCommentLike - 点赞/取消点赞评论（幂等操作）\n---------------------------------------------------------",
+      "required": [
+        "isLiked"
+      ]
     },
     "DepartmentServiceRenameDepartmentBody": {
       "type": "object",
       "properties": {
-        "new_name": {
+        "newName": {
           "type": "string",
           "title": "新名称，最多12个字符"
         }
       },
-      "title": "==========================================\n重命名部门\n=========================================="
+      "title": "==========================================\n重命名部门\n==========================================",
+      "required": [
+        "newName"
+      ]
     },
     "PartitionServiceDeletePartitionBody": {
       "type": "object",
       "properties": {
-        "target_partition_id": {
+        "targetPartitionId": {
           "type": "string",
           "title": "目标分区ID，将删除分区下的内容迁移到此分区"
         }
       },
-      "title": "==========================================\n删除分区\n=========================================="
+      "title": "==========================================\n删除分区\n==========================================",
+      "required": [
+        "targetPartitionId"
+      ]
     },
     "PartitionServiceRenamePartitionBody": {
       "type": "object",
       "properties": {
-        "new_name": {
+        "newName": {
           "type": "string",
           "title": "新名称，最多12个字符"
         }
       },
-      "title": "==========================================\n重命名分区\n=========================================="
+      "title": "==========================================\n重命名分区\n==========================================",
+      "required": [
+        "newName"
+      ]
     },
     "PostServiceEditPostBody": {
       "type": "object",
@@ -2963,49 +2975,64 @@
         "content": {
           "type": "string"
         },
-        "partition_id": {
+        "partitionId": {
           "type": "string"
         },
-        "update_mask": {
+        "updateMask": {
           "type": "string",
           "title": "字段掩码，用于指定本次请求需要更新哪些字段\n例如：paths: [\"title\", \"content\"]"
         }
       },
-      "title": "---------------------------------------------------------\n编辑帖子"
+      "title": "---------------------------------------------------------\n编辑帖子",
+      "required": [
+        "cover",
+        "media",
+        "partitionId",
+        "updateMask"
+      ]
     },
     "PostServiceSetPostCollectBody": {
       "type": "object",
       "properties": {
-        "is_collected": {
+        "isCollected": {
           "type": "boolean",
           "title": "true=收藏, false=取消收藏"
         }
       },
-      "title": "---------------------------------------------------------\n收藏/取消收藏"
+      "title": "---------------------------------------------------------\n收藏/取消收藏",
+      "required": [
+        "isCollected"
+      ]
     },
     "PostServiceSetPostLikeBody": {
       "type": "object",
       "properties": {
-        "is_liked": {
+        "isLiked": {
           "type": "boolean",
           "title": "true=点赞, false=取消点赞"
         }
       },
-      "title": "---------------------------------------------------------\n点赞/取消点赞"
+      "title": "---------------------------------------------------------\n点赞/取消点赞",
+      "required": [
+        "isLiked"
+      ]
     },
     "ReportServiceApprovalReportBody": {
       "type": "object",
       "properties": {
-        "approval_reason": {
+        "approvalReason": {
           "type": "string",
           "title": "封禁/删除原因"
         },
-        "ban_duration": {
+        "banDuration": {
           "$ref": "#/definitions/v1BanDurationType",
           "title": "封禁时长（仅对用户封禁有效，帖子/评论删除后不再展示）"
         }
       },
-      "title": "---------------------------------------------------------\n封禁内容（管理员）"
+      "title": "---------------------------------------------------------\n封禁内容（管理员）",
+      "required": [
+        "approvalReason"
+      ]
     },
     "ReportServiceRejectReportBody": {
       "type": "object",
@@ -3019,17 +3046,23 @@
           "title": "新的备注"
         }
       },
-      "title": "---------------------------------------------------------\n修改备注"
+      "title": "---------------------------------------------------------\n修改备注",
+      "required": [
+        "remark"
+      ]
     },
     "UserServiceSetFollowBody": {
       "type": "object",
       "properties": {
-        "is_following": {
+        "isFollowing": {
           "type": "boolean",
           "title": "true=关注, false=取关"
         }
       },
-      "title": "---------------------------------------------------------\n关注/取关"
+      "title": "---------------------------------------------------------\n关注/取关",
+      "required": [
+        "isFollowing"
+      ]
     },
     "VerificationServiceReviewVerificationBody": {
       "type": "object",
@@ -3042,7 +3075,10 @@
           "type": "string"
         }
       },
-      "title": "---------------------------------------------------------\n审批认证申请（管理员）"
+      "title": "---------------------------------------------------------\n审批认证申请（管理员）",
+      "required": [
+        "action"
+      ]
     },
     "protobufAny": {
       "type": "object",
@@ -3051,7 +3087,11 @@
           "type": "string"
         }
       },
-      "additionalProperties": {}
+      "additionalProperties": {},
+      "required": [
+        "typeUrl",
+        "value"
+      ]
     },
     "rpcStatus": {
       "type": "object",
@@ -3070,25 +3110,35 @@
             "$ref": "#/definitions/protobufAny"
           }
         }
-      }
+      },
+      "required": [
+        "code",
+        "message",
+        "details"
+      ]
     },
     "v1AbortMultipartUploadRequest": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "文件任务 ID。"
         },
-        "upload_id": {
+        "uploadId": {
           "type": "string",
           "title": "multipart upload_id。"
         },
-        "object_key": {
+        "objectKey": {
           "type": "string",
           "title": "上传对象键（Object Key）。"
         }
       },
-      "title": "------------------------------------------------------------------------------\nAbortMultipartUploadRequest 用于取消并清理未完成 multipart 会话。"
+      "title": "------------------------------------------------------------------------------\nAbortMultipartUploadRequest 用于取消并清理未完成 multipart 会话。",
+      "required": [
+        "taskId",
+        "uploadId",
+        "objectKey"
+      ]
     },
     "v1AbortMultipartUploadResponse": {
       "type": "object",
@@ -3098,37 +3148,48 @@
           "title": "true 表示已成功中断（或目标会话已不可用）。"
         }
       },
-      "title": "AbortMultipartUploadResponse 返回中断结果。"
+      "title": "AbortMultipartUploadResponse 返回中断结果。",
+      "required": [
+        "success"
+      ]
     },
     "v1ActiveDevice": {
       "type": "object",
       "properties": {
-        "device_id": {
+        "deviceId": {
           "type": "string"
         },
-        "device_name": {
+        "deviceName": {
           "type": "string"
         },
         "platform": {
           "type": "string"
         },
-        "connected_at": {
+        "connectedAt": {
           "type": "string",
           "format": "int64"
         },
-        "last_active_at": {
+        "lastActiveAt": {
           "type": "string",
           "format": "int64"
         },
-        "is_current": {
+        "isCurrent": {
           "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "deviceId",
+        "deviceName",
+        "platform",
+        "connectedAt",
+        "lastActiveAt",
+        "isCurrent"
+      ]
     },
     "v1AdminInfo": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string",
           "title": "用户ID"
         },
@@ -3140,7 +3201,7 @@
           "type": "string",
           "title": "昵称（优先显示备注）"
         },
-        "qq_number": {
+        "qqNumber": {
           "type": "string",
           "title": "QQ号"
         },
@@ -3149,12 +3210,19 @@
           "title": "当前角色"
         }
       },
-      "title": "管理员信息（用于列表展示）"
+      "title": "管理员信息（用于列表展示）",
+      "required": [
+        "userId",
+        "avatar",
+        "nickname",
+        "qqNumber",
+        "role"
+      ]
     },
     "v1AdminsByRole": {
       "type": "object",
       "properties": {
-        "super_admins": {
+        "superAdmins": {
           "type": "array",
           "items": {
             "type": "object",
@@ -3171,16 +3239,20 @@
           "title": "管理员列表"
         }
       },
-      "title": "管理员分类列表"
+      "title": "管理员分类列表",
+      "required": [
+        "superAdmins",
+        "admins"
+      ]
     },
     "v1ApplyVerificationRequest": {
       "type": "object",
       "properties": {
-        "verified_title": {
+        "verifiedTitle": {
           "type": "string",
           "title": "申请的认证头衔 (如: 23届部长, 社团负责人)"
         },
-        "verification_description": {
+        "verificationDescription": {
           "type": "string",
           "title": "申请说明 (如: 申请理由、相关经历等)"
         },
@@ -3193,7 +3265,12 @@
           "title": "证明材料"
         }
       },
-      "title": "申请身份认证"
+      "title": "申请身份认证",
+      "required": [
+        "verifiedTitle",
+        "verificationDescription",
+        "media"
+      ]
     },
     "v1ApplyVerificationResponse": {
       "type": "object"
@@ -3225,12 +3302,15 @@
     "v1ChangeAvatarRequest": {
       "type": "object",
       "properties": {
-        "avatar_url": {
+        "avatarUrl": {
           "type": "string",
           "title": "新的头像URL"
         }
       },
-      "title": "---------------------------------------------------------\n修改头像"
+      "title": "---------------------------------------------------------\n修改头像",
+      "required": [
+        "avatarUrl"
+      ]
     },
     "v1ChangeAvatarResponse": {
       "type": "object"
@@ -3243,7 +3323,10 @@
           "title": "新的昵称"
         }
       },
-      "title": "---------------------------------------------------------\n修改昵称"
+      "title": "---------------------------------------------------------\n修改昵称",
+      "required": [
+        "name"
+      ]
     },
     "v1ChangeNameResponse": {
       "type": "object"
@@ -3264,15 +3347,15 @@
     "v1Comment": {
       "type": "object",
       "properties": {
-        "comment_id": {
+        "commentId": {
           "type": "string",
           "title": "评论ID"
         },
-        "target_id": {
+        "targetId": {
           "type": "string",
           "title": "被评论对象的ID（如帖子ID）"
         },
-        "target_type": {
+        "targetType": {
           "$ref": "#/definitions/v1CommentTargetType",
           "title": "被评论对象类型"
         },
@@ -3296,26 +3379,37 @@
           "$ref": "#/definitions/v1CommentStats",
           "title": "评论统计数据"
         },
-        "relation_status": {
+        "relationStatus": {
           "$ref": "#/definitions/v1CommentRelationStatus",
           "title": "当前用户与评论的关系状态"
         },
-        "reply_context": {
+        "replyContext": {
           "$ref": "#/definitions/v1ReplyContext",
           "title": "回复上下文（仅第二层评论有意义）"
         },
-        "create_time": {
+        "createTime": {
           "type": "string",
           "format": "int64",
           "title": "创建时间（毫秒级时间戳）"
         }
       },
-      "title": "---------------------------------------------------------\n评论完整信息（用于评论详情）\n说明：Comment 统一表示评论和回复，通过 parent_comment_id 区分：\n  - parent_comment_id == null  → 第一层评论（对帖子的直接评论）\n  - parent_comment_id != null  → 第二层回复（对评论的回复）"
+      "title": "---------------------------------------------------------\n评论完整信息（用于评论详情）\n说明：Comment 统一表示评论和回复，通过 parent_comment_id 区分：\n  - parent_comment_id == null  → 第一层评论（对帖子的直接评论）\n  - parent_comment_id != null  → 第二层回复（对评论的回复）",
+      "required": [
+        "commentId",
+        "targetId",
+        "targetType",
+        "author",
+        "content",
+        "media",
+        "stats",
+        "relationStatus",
+        "createTime"
+      ]
     },
     "v1CommentMentionNotification": {
       "type": "object",
       "properties": {
-        "notification_id": {
+        "notificationId": {
           "type": "string",
           "title": "通知 ID"
         },
@@ -3327,7 +3421,7 @@
           "$ref": "#/definitions/v1UserBrief",
           "title": "触发通知的用户（昵称会返回备注如果有）"
         },
-        "created_at": {
+        "createdAt": {
           "type": "string",
           "format": "int64",
           "title": "通知产生时间戳（秒）"
@@ -3337,24 +3431,32 @@
           "description": "帖子信息（包含封面缩略图）",
           "title": "相关内容"
         },
-        "comment_content": {
+        "commentContent": {
           "type": "string",
           "title": "评论内容（带@高亮的富文本）"
         },
-        "target_comment_content": {
+        "targetCommentContent": {
           "type": "string",
           "title": "被回复的目标评论内容（如果是回复）"
         },
-        "comment_id": {
+        "commentId": {
           "type": "string",
           "title": "当前评论ID（用于定位跳转，当类型不是 MENTION_IN_POST 时存在）"
         },
-        "is_read": {
+        "isRead": {
           "type": "boolean",
           "title": "是否已读"
         }
       },
-      "title": "评论和@通知"
+      "title": "评论和@通知",
+      "required": [
+        "notificationId",
+        "type",
+        "actor",
+        "createdAt",
+        "post",
+        "isRead"
+      ]
     },
     "v1CommentMentionType": {
       "type": "string",
@@ -3387,28 +3489,34 @@
     "v1CommentRelationStatus": {
       "type": "object",
       "properties": {
-        "is_liked": {
+        "isLiked": {
           "type": "boolean",
           "title": "是否已点赞"
         }
       },
-      "title": "---------------------------------------------------------\n当前用户与评论的关系状态"
+      "title": "---------------------------------------------------------\n当前用户与评论的关系状态",
+      "required": [
+        "isLiked"
+      ]
     },
     "v1CommentStats": {
       "type": "object",
       "properties": {
-        "like_count": {
+        "likeCount": {
           "type": "string",
           "format": "int64",
           "title": "点赞数"
         },
-        "reply_count": {
+        "replyCount": {
           "type": "string",
           "format": "int64",
           "title": "回复数（仅第一层评论有意义）"
         }
       },
-      "title": "---------------------------------------------------------\n评论统计数据"
+      "title": "---------------------------------------------------------\n评论统计数据",
+      "required": [
+        "likeCount"
+      ]
     },
     "v1CommentTargetType": {
       "type": "string",
@@ -3440,16 +3548,20 @@
           "title": "第二层回复的下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了"
         }
       },
-      "title": "---------------------------------------------------------\n第一层评论 + 若干条回复的组合结构"
+      "title": "---------------------------------------------------------\n第一层评论 + 若干条回复的组合结构",
+      "required": [
+        "comment",
+        "replies"
+      ]
     },
     "v1CompleteMultipartUploadRequest": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "文件任务 ID。"
         },
-        "upload_id": {
+        "uploadId": {
           "type": "string",
           "title": "multipart upload_id。"
         },
@@ -3461,12 +3573,18 @@
           },
           "title": "客户端确认分片清单（建议按 part_number 升序）。"
         },
-        "object_key": {
+        "objectKey": {
           "type": "string",
           "title": "上传对象键（Object Key）。"
         }
       },
-      "title": "------------------------------------------------------------------------------\nCompleteMultipartUploadRequest 通知后端合并分片并进入处理流程。"
+      "title": "------------------------------------------------------------------------------\nCompleteMultipartUploadRequest 通知后端合并分片并进入处理流程。",
+      "required": [
+        "taskId",
+        "uploadId",
+        "parts",
+        "objectKey"
+      ]
     },
     "v1CompleteMultipartUploadResponse": {
       "type": "object",
@@ -3476,16 +3594,19 @@
           "title": "已进入处理流程的单文件媒体信息。"
         }
       },
-      "title": "CompleteMultipartUploadResponse 返回处理任务对应媒体信息。"
+      "title": "CompleteMultipartUploadResponse 返回处理任务对应媒体信息。",
+      "required": [
+        "media"
+      ]
     },
     "v1CreateCommentRequest": {
       "type": "object",
       "properties": {
-        "target_id": {
+        "targetId": {
           "type": "string",
           "title": "被评论对象的ID（如帖子ID）"
         },
-        "target_type": {
+        "targetType": {
           "$ref": "#/definitions/v1CommentTargetType",
           "title": "被评论对象类型"
         },
@@ -3501,13 +3622,19 @@
           },
           "title": "评论附带的媒体（图片，最多 6 张）"
         },
-        "reply_context": {
+        "replyContext": {
           "$ref": "#/definitions/v1ReplyContext",
           "description": "回复上下文（仅第二层评论有意义）",
           "title": "如果是第二层评论（回复），需要填写以下字段"
         }
       },
-      "title": "---------------------------------------------------------\nCreateComment - 创建评论\n---------------------------------------------------------"
+      "title": "---------------------------------------------------------\nCreateComment - 创建评论\n---------------------------------------------------------",
+      "required": [
+        "targetId",
+        "targetType",
+        "content",
+        "media"
+      ]
     },
     "v1CreateCommentResponse": {
       "type": "object",
@@ -3516,7 +3643,10 @@
           "$ref": "#/definitions/v1Comment",
           "title": "创建的评论"
         }
-      }
+      },
+      "required": [
+        "comment"
+      ]
     },
     "v1CreateDepartmentsRequest": {
       "type": "object",
@@ -3529,7 +3659,10 @@
           "title": "部门名称列表，每个名称最多12个字符"
         }
       },
-      "title": "==========================================\n批量新增部门\n=========================================="
+      "title": "==========================================\n批量新增部门\n==========================================",
+      "required": [
+        "names"
+      ]
     },
     "v1CreateDepartmentsResponse": {
       "type": "object",
@@ -3542,35 +3675,46 @@
           },
           "title": "更新后的部门列表"
         }
-      }
+      },
+      "required": [
+        "departments"
+      ]
     },
     "v1CreateMultipartUploadRequest": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "PrepareUploadBatch 返回的文件 task_id。"
         }
       },
-      "title": "------------------------------------------------------------------------------\nCreateMultipartUploadRequest 为指定文件任务创建 S3 multipart 上传会话。"
+      "title": "------------------------------------------------------------------------------\nCreateMultipartUploadRequest 为指定文件任务创建 S3 multipart 上传会话。",
+      "required": [
+        "taskId"
+      ]
     },
     "v1CreateMultipartUploadResponse": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "文件任务 ID（回显）。"
         },
-        "upload_id": {
+        "uploadId": {
           "type": "string",
           "title": "multipart upload_id（S3 原生概念）。"
         },
-        "object_key": {
+        "objectKey": {
           "type": "string",
           "title": "上传对象键（Object Key）。"
         }
       },
-      "title": "CreateMultipartUploadResponse 返回 multipart 会话关键参数。"
+      "title": "CreateMultipartUploadResponse 返回 multipart 会话关键参数。",
+      "required": [
+        "taskId",
+        "uploadId",
+        "objectKey"
+      ]
     },
     "v1CreatePartitionsRequest": {
       "type": "object",
@@ -3583,7 +3727,10 @@
           "title": "分区名称列表，每个名称最多12个字符"
         }
       },
-      "title": "==========================================\n批量新增分区\n=========================================="
+      "title": "==========================================\n批量新增分区\n==========================================",
+      "required": [
+        "names"
+      ]
     },
     "v1CreatePartitionsResponse": {
       "type": "object",
@@ -3596,12 +3743,15 @@
           },
           "title": "更新后的所有分区列表"
         }
-      }
+      },
+      "required": [
+        "partitions"
+      ]
     },
     "v1CreatePostRequest": {
       "type": "object",
       "properties": {
-        "batch_id": {
+        "batchId": {
           "type": "string"
         },
         "title": {
@@ -3610,10 +3760,10 @@
         "content": {
           "type": "string"
         },
-        "partition_id": {
+        "partitionId": {
           "type": "string"
         },
-        "media_assets": {
+        "mediaAssets": {
           "type": "array",
           "items": {
             "type": "object",
@@ -3622,7 +3772,12 @@
           "title": "已完成上传与处理的媒体资产列表。\n后端按每个 MediaAsset.order_index 保存，不依赖数组位置。"
         }
       },
-      "title": "---------------------------------------------------------\n发布帖子"
+      "title": "---------------------------------------------------------\n发布帖子",
+      "required": [
+        "batchId",
+        "partitionId",
+        "mediaAssets"
+      ]
     },
     "v1CreatePostResponse": {
       "type": "object"
@@ -3630,7 +3785,7 @@
     "v1CursorPagination": {
       "type": "object",
       "properties": {
-        "need_num": {
+        "needNum": {
           "type": "integer",
           "format": "int32",
           "title": "需要返回的帖子数量"
@@ -3641,7 +3796,10 @@
           "title": "游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。\n游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数\n游标时间戳：用于时间排序的分页加载，表示上次返回结果中的最后一项的发布时间"
         }
       },
-      "title": "--------------------\n分页模型\n基于游标的分页模型"
+      "title": "--------------------\n分页模型\n基于游标的分页模型",
+      "required": [
+        "needNum"
+      ]
     },
     "v1DeleteCommentResponse": {
       "type": "object",
@@ -3650,7 +3808,7 @@
     "v1DeleteDepartmentsRequest": {
       "type": "object",
       "properties": {
-        "department_ids": {
+        "departmentIds": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3658,7 +3816,10 @@
           "title": "要删除的部门ID列表"
         }
       },
-      "title": "==========================================\n批量删除部门\n=========================================="
+      "title": "==========================================\n批量删除部门\n==========================================",
+      "required": [
+        "departmentIds"
+      ]
     },
     "v1DeleteDepartmentsResponse": {
       "type": "object",
@@ -3671,7 +3832,10 @@
           },
           "title": "更新后的部门列表"
         }
-      }
+      },
+      "required": [
+        "departments"
+      ]
     },
     "v1DeletePartitionResponse": {
       "type": "object"
@@ -3691,7 +3855,11 @@
           "title": "部门名称，最多12个字符"
         }
       },
-      "title": "部门详细信息"
+      "title": "部门详细信息",
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "v1DepartmentBase": {
       "type": "object",
@@ -3705,16 +3873,20 @@
           "title": "全称 (如 \"轻音部\")"
         }
       },
-      "title": "--------------------\n部门数据，用于：用户徽章渲染"
+      "title": "--------------------\n部门数据，用于：用户徽章渲染",
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "v1DeviceInfo": {
       "type": "object",
       "properties": {
-        "device_id": {
+        "deviceId": {
           "type": "string",
           "title": "唯一设备 ID (如 UUID 或 厂商自生成 ID)"
         },
-        "device_name": {
+        "deviceName": {
           "type": "string",
           "title": "设备名 (e.g. \"iPhone 14 Pro\")"
         },
@@ -3722,19 +3894,27 @@
           "$ref": "#/definitions/v1DevicePlatform",
           "title": "平台类型"
         },
-        "os_version": {
+        "osVersion": {
           "type": "string",
           "title": "系统版本 (e.g. \"iOS 16.0\")"
         },
-        "client_version": {
+        "clientVersion": {
           "type": "string",
           "title": "App/前端版本号"
         },
-        "push_token": {
+        "pushToken": {
           "type": "string",
           "title": "推送 Token (FCM/APNS/MiPush)"
         }
-      }
+      },
+      "required": [
+        "deviceId",
+        "deviceName",
+        "platform",
+        "osVersion",
+        "clientVersion",
+        "pushToken"
+      ]
     },
     "v1DevicePlatform": {
       "type": "string",
@@ -3754,12 +3934,15 @@
           "title": "是否成功"
         }
       },
-      "title": "断开指定设备连接响应"
+      "title": "断开指定设备连接响应",
+      "required": [
+        "success"
+      ]
     },
     "v1EditAdminsRequest": {
       "type": "object",
       "properties": {
-        "user_ids": {
+        "userIds": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3770,7 +3953,11 @@
           "$ref": "#/definitions/v1Role",
           "title": "目标角色（超级管理员/管理员/普通用户）"
         }
-      }
+      },
+      "required": [
+        "userIds",
+        "role"
+      ]
     },
     "v1EditAdminsResponse": {
       "type": "object"
@@ -3787,7 +3974,10 @@
           "title": "个人链接"
         }
       },
-      "title": "---------------------------------------------------------\n编辑个人链接"
+      "title": "---------------------------------------------------------\n编辑个人链接",
+      "required": [
+        "links"
+      ]
     },
     "v1EditLinksResponse": {
       "type": "object"
@@ -3798,24 +3988,24 @@
     "v1FeedCategory": {
       "type": "object",
       "properties": {
-        "category_id": {
+        "categoryId": {
           "type": "string",
           "title": "分类ID，可以是：\"general\", \"following\", \"user_tab\", 或分区ID"
         },
-        "display_name": {
+        "displayName": {
           "type": "string",
           "title": "显示名称：\"综合\"、\"关注\"、\"用户\"、或分区名称"
         },
-        "content_type": {
+        "contentType": {
           "$ref": "#/definitions/v1FeedContentType",
           "title": "内容类型：帖子或用户"
         },
-        "sort_order": {
+        "sortOrder": {
           "type": "integer",
           "format": "int32",
           "title": "排序权重（用户可自定义）"
         },
-        "is_system": {
+        "isSystem": {
           "type": "boolean",
           "title": "是否为系统内置分类（如\"综合\"、\"关注\"、\"用户\"）"
         },
@@ -3824,7 +4014,14 @@
           "title": "可选的图标URL或名称"
         }
       },
-      "title": "Feed分类（用于button group）"
+      "title": "Feed分类（用于button group）",
+      "required": [
+        "categoryId",
+        "displayName",
+        "contentType",
+        "sortOrder",
+        "isSystem"
+      ]
     },
     "v1FeedContentType": {
       "type": "string",
@@ -3845,15 +4042,15 @@
           "type": "string",
           "title": "关键词搜索"
         },
-        "time_range": {
+        "timeRange": {
           "$ref": "#/definitions/v1TimeRange",
           "title": "时间范围筛选（仅帖子流）"
         },
-        "order_type": {
+        "orderType": {
           "$ref": "#/definitions/v1FeedOrderType",
           "title": "排序方式（根据content_type自动选择合适的排序）"
         },
-        "author_id": {
+        "authorId": {
           "type": "string",
           "title": "作者ID筛选（仅帖子流，配合\"following\"场景使用）"
         }
@@ -3879,7 +4076,7 @@
     "v1FollowNotification": {
       "type": "object",
       "properties": {
-        "notification_id": {
+        "notificationId": {
           "type": "string",
           "title": "通知 ID"
         },
@@ -3887,7 +4084,7 @@
           "$ref": "#/definitions/v1UserSummary",
           "title": "关注者信息（昵称会返回备注如果有，包含身份认证和部门徽章）"
         },
-        "created_at": {
+        "createdAt": {
           "type": "string",
           "format": "int64",
           "title": "通知产生时间戳（秒）"
@@ -3897,12 +4094,19 @@
           "description": "关系状态（用于判断显示\"私信\"或\"回关\"按钮）",
           "title": "关系状态"
         },
-        "is_read": {
+        "isRead": {
           "type": "boolean",
           "title": "是否已读"
         }
       },
-      "title": "新增关注通知"
+      "title": "新增关注通知",
+      "required": [
+        "notificationId",
+        "actor",
+        "createdAt",
+        "relation",
+        "isRead"
+      ]
     },
     "v1FollowingAuthor": {
       "type": "object",
@@ -3910,12 +4114,16 @@
         "author": {
           "$ref": "#/definitions/v1UserBrief"
         },
-        "has_unread": {
+        "hasUnread": {
           "type": "boolean",
           "title": "有未读更新"
         }
       },
-      "title": "---------------------------------------------------------\n推荐关注作者列表"
+      "title": "---------------------------------------------------------\n推荐关注作者列表",
+      "required": [
+        "author",
+        "hasUnread"
+      ]
     },
     "v1FollowingAuthorFeedContent": {
       "type": "object",
@@ -3928,12 +4136,15 @@
           }
         }
       },
-      "title": "关注的作者流内容（用于关注页顶部的横向滚动列表）"
+      "title": "关注的作者流内容（用于关注页顶部的横向滚动列表）",
+      "required": [
+        "items"
+      ]
     },
     "v1ForceSyncRequest": {
       "type": "object",
       "properties": {
-        "sync_types": {
+        "syncTypes": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1SyncDataType"
@@ -3941,7 +4152,10 @@
           "title": "要同步的数据类型，空表示全部"
         }
       },
-      "title": "强制同步请求（主动触发全量同步）"
+      "title": "强制同步请求（主动触发全量同步）",
+      "required": [
+        "syncTypes"
+      ]
     },
     "v1ForceSyncResponse": {
       "type": "object",
@@ -3955,7 +4169,11 @@
           "title": "消息"
         }
       },
-      "title": "强制同步响应"
+      "title": "强制同步响应",
+      "required": [
+        "success",
+        "message"
+      ]
     },
     "v1GetActiveDevicesResponse": {
       "type": "object",
@@ -3969,12 +4187,15 @@
           "title": "活跃设备列表"
         }
       },
-      "title": "获取活跃设备列表响应"
+      "title": "获取活跃设备列表响应",
+      "required": [
+        "devices"
+      ]
     },
     "v1GetBatchMediaResponse": {
       "type": "object",
       "properties": {
-        "media_assets": {
+        "mediaAssets": {
           "type": "array",
           "items": {
             "type": "object",
@@ -3983,12 +4204,15 @@
           "title": "批次中的媒体元素列表。"
         }
       },
-      "title": "GetBatchMediaResponse 返回批次媒体资产（按服务端固化顺序排序）。"
+      "title": "GetBatchMediaResponse 返回批次媒体资产（按服务端固化顺序排序）。",
+      "required": [
+        "mediaAssets"
+      ]
     },
     "v1GetFeedResponse": {
       "type": "object",
       "properties": {
-        "content_type": {
+        "contentType": {
           "$ref": "#/definitions/v1FeedContentType",
           "title": "内容类型（告诉前端如何渲染）"
         },
@@ -3998,14 +4222,17 @@
         "users": {
           "$ref": "#/definitions/v1UserFeedContent"
         },
-        "following_authors": {
+        "followingAuthors": {
           "$ref": "#/definitions/v1FollowingAuthorFeedContent"
         },
         "cursor": {
           "type": "string",
           "title": "分页游标"
         }
-      }
+      },
+      "required": [
+        "contentType"
+      ]
     },
     "v1GetMeResponse": {
       "type": "object",
@@ -4016,7 +4243,11 @@
         "settings": {
           "$ref": "#/definitions/v1SyncedUserSettings"
         }
-      }
+      },
+      "required": [
+        "profile",
+        "settings"
+      ]
     },
     "v1GetMyVerificationResponse": {
       "type": "object",
@@ -4034,7 +4265,10 @@
           "$ref": "#/definitions/v1NotificationStats",
           "title": "通知统计信息"
         }
-      }
+      },
+      "required": [
+        "stats"
+      ]
     },
     "v1GetPostResponse": {
       "type": "object",
@@ -4042,7 +4276,10 @@
         "post": {
           "$ref": "#/definitions/v1Post"
         }
-      }
+      },
+      "required": [
+        "post"
+      ]
     },
     "v1GetSyncStatusResponse": {
       "type": "object",
@@ -4052,16 +4289,22 @@
           "title": "同步状态"
         }
       },
-      "title": "获取同步状态响应"
+      "title": "获取同步状态响应",
+      "required": [
+        "status"
+      ]
     },
     "v1GetUserIdByQQResponse": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string",
           "title": "用户ID"
         }
-      }
+      },
+      "required": [
+        "userId"
+      ]
     },
     "v1GetUserResponse": {
       "type": "object",
@@ -4069,33 +4312,42 @@
         "user": {
           "$ref": "#/definitions/v1UserProfile"
         },
-        "relation_status": {
+        "relationStatus": {
           "$ref": "#/definitions/v1UserRelationStatus",
           "title": "当前用户与目标用户的关系状态"
         },
-        "view_capabilities": {
+        "viewCapabilities": {
           "$ref": "#/definitions/v1UserViewCapabilities",
           "title": "当前用户对目标用户的操作权限"
         }
-      }
+      },
+      "required": [
+        "user",
+        "relationStatus",
+        "viewCapabilities"
+      ]
     },
     "v1HandleReportAdmin": {
       "type": "object",
       "properties": {
-        "admin_id": {
+        "adminId": {
           "type": "string",
           "title": "处理管理员ID"
         },
-        "admin_name": {
+        "adminName": {
           "type": "string",
           "title": "处理管理员名称"
         }
-      }
+      },
+      "required": [
+        "adminId",
+        "adminName"
+      ]
     },
     "v1LikeCollectNotification": {
       "type": "object",
       "properties": {
-        "notification_id": {
+        "notificationId": {
           "type": "string",
           "title": "通知 ID"
         },
@@ -4107,7 +4359,7 @@
           "$ref": "#/definitions/v1UserBrief",
           "title": "触发通知的用户（昵称会返回备注如果有）"
         },
-        "created_at": {
+        "createdAt": {
           "type": "string",
           "format": "int64",
           "title": "通知产生时间戳（秒）"
@@ -4117,24 +4369,32 @@
           "description": "帖子信息（包含封面缩略图）",
           "title": "相关内容"
         },
-        "comment_content": {
+        "commentContent": {
           "type": "string",
           "title": "评论内容（当类型为 LIKE_COMMENT 时，带@高亮）"
         },
-        "target_comment_content": {
+        "targetCommentContent": {
           "type": "string",
           "title": "被回复的目标评论内容（如果评论是回复）"
         },
-        "comment_id": {
+        "commentId": {
           "type": "string",
           "title": "评论ID（用于定位跳转，当类型为 LIKE_COMMENT 时存在）"
         },
-        "is_read": {
+        "isRead": {
           "type": "boolean",
           "title": "是否已读"
         }
       },
-      "title": "赞和收藏通知"
+      "title": "赞和收藏通知",
+      "required": [
+        "notificationId",
+        "type",
+        "actor",
+        "createdAt",
+        "post",
+        "isRead"
+      ]
     },
     "v1LikeCollectType": {
       "type": "string",
@@ -4159,16 +4419,23 @@
           "title": "实际跳转地址"
         }
       },
-      "title": "--------------------\n外部链接结构"
+      "title": "--------------------\n外部链接结构",
+      "required": [
+        "label",
+        "url"
+      ]
     },
     "v1ListAdminsResponse": {
       "type": "object",
       "properties": {
-        "admins_by_role": {
+        "adminsByRole": {
           "$ref": "#/definitions/v1AdminsByRole",
           "title": "按角色分类的管理员列表"
         }
-      }
+      },
+      "required": [
+        "adminsByRole"
+      ]
     },
     "v1ListCommentMentionNotificationsResponse": {
       "type": "object",
@@ -4185,7 +4452,10 @@
           "type": "string",
           "title": "下一页游标（为空表示没有更多数据）"
         }
-      }
+      },
+      "required": [
+        "notifications"
+      ]
     },
     "v1ListCommentRepliesResponse": {
       "type": "object",
@@ -4202,12 +4472,16 @@
           "type": "string",
           "title": "下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了"
         },
-        "total_count": {
+        "totalCount": {
           "type": "string",
           "format": "int64",
           "title": "总回复数（方便客户端显示\"还有 X 条回复\"）"
         }
-      }
+      },
+      "required": [
+        "replies",
+        "totalCount"
+      ]
     },
     "v1ListDepartmentsResponse": {
       "type": "object",
@@ -4220,7 +4494,10 @@
           },
           "title": "部门列表"
         }
-      }
+      },
+      "required": [
+        "departments"
+      ]
     },
     "v1ListFeedCategoriesResponse": {
       "type": "object",
@@ -4232,7 +4509,10 @@
             "$ref": "#/definitions/v1FeedCategory"
           }
         }
-      }
+      },
+      "required": [
+        "categories"
+      ]
     },
     "v1ListFollowNotificationsResponse": {
       "type": "object",
@@ -4245,11 +4525,14 @@
           },
           "title": "通知列表"
         },
-        "next_cursor": {
+        "nextCursor": {
           "type": "string",
           "title": "下一页游标（为空表示没有更多数据）"
         }
-      }
+      },
+      "required": [
+        "notifications"
+      ]
     },
     "v1ListLikeCollectNotificationsResponse": {
       "type": "object",
@@ -4266,7 +4549,10 @@
           "type": "string",
           "title": "下一页游标（为空表示没有更多数据）"
         }
-      }
+      },
+      "required": [
+        "notifications"
+      ]
     },
     "v1ListPartitionsResponse": {
       "type": "object",
@@ -4279,7 +4565,10 @@
           },
           "title": "分区列表"
         }
-      }
+      },
+      "required": [
+        "partitions"
+      ]
     },
     "v1ListPostCommentsResponse": {
       "type": "object",
@@ -4296,12 +4585,15 @@
           "type": "string",
           "title": "下一页游标（用于加载更多第一层评论），为空则说明没有更多评论了"
         }
-      }
+      },
+      "required": [
+        "comments"
+      ]
     },
     "v1ListReportEvidenceResponse": {
       "type": "object",
       "properties": {
-        "report_evidence": {
+        "reportEvidence": {
           "type": "array",
           "items": {
             "type": "object",
@@ -4313,7 +4605,10 @@
           "type": "string",
           "title": "下一页游标，如果没有下一页则为空"
         }
-      }
+      },
+      "required": [
+        "reportEvidence"
+      ]
     },
     "v1ListReportsResponse": {
       "type": "object",
@@ -4330,7 +4625,10 @@
           "type": "string",
           "title": "下一页游标，如果没有下一页则为空"
         }
-      }
+      },
+      "required": [
+        "reports"
+      ]
     },
     "v1ListSystemNotificationsResponse": {
       "type": "object",
@@ -4347,7 +4645,10 @@
           "type": "string",
           "title": "下一页游标（为空表示没有更多数据）"
         }
-      }
+      },
+      "required": [
+        "notifications"
+      ]
     },
     "v1ListUploadedPartsResponse": {
       "type": "object",
@@ -4361,7 +4662,10 @@
           "title": "已上传分片明细。"
         }
       },
-      "title": "ListUploadedPartsResponse 返回已上传分片列表（用于断点续传恢复）。"
+      "title": "ListUploadedPartsResponse 返回已上传分片列表（用于断点续传恢复）。",
+      "required": [
+        "parts"
+      ]
     },
     "v1ListUserPostsResponse": {
       "type": "object",
@@ -4378,7 +4682,10 @@
           "type": "string",
           "title": "分页游标，如果为空则表示没有更多数据"
         }
-      }
+      },
+      "required": [
+        "posts"
+      ]
     },
     "v1ListUserRelatedResponse": {
       "type": "object",
@@ -4394,7 +4701,10 @@
           "type": "string",
           "title": "分页游标，如果为空则表示没有更多数据"
         }
-      }
+      },
+      "required": [
+        "users"
+      ]
     },
     "v1ListVerificationsResponse": {
       "type": "object",
@@ -4410,7 +4720,10 @@
           "type": "string",
           "title": "分页游标，如果为空则表示没有更多数据"
         }
-      }
+      },
+      "required": [
+        "applications"
+      ]
     },
     "v1LivePhotoAsset": {
       "type": "object",
@@ -4424,21 +4737,29 @@
           "title": "Live Photo 视频轨资产。"
         }
       },
-      "title": "LivePhotoAsset 表示 Live Photo 的图片与视频组合。"
+      "title": "LivePhotoAsset 表示 Live Photo 的图片与视频组合。",
+      "required": [
+        "image",
+        "video"
+      ]
     },
     "v1LivePhotoUploadPair": {
       "type": "object",
       "properties": {
-        "image_file": {
+        "imageFile": {
           "$ref": "#/definitions/v1UploadFile",
           "title": "Live Photo 图片文件。"
         },
-        "video_file": {
+        "videoFile": {
           "$ref": "#/definitions/v1UploadFile",
           "title": "Live Photo 视频文件。"
         }
       },
-      "title": "LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。"
+      "title": "LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。",
+      "required": [
+        "imageFile",
+        "videoFile"
+      ]
     },
     "v1LoginRequest": {
       "type": "object",
@@ -4451,16 +4772,20 @@
           "$ref": "#/definitions/v1DeviceInfo"
         }
       },
-      "title": "---------------------------------------------------------\n登录请求"
+      "title": "---------------------------------------------------------\n登录请求",
+      "required": [
+        "credential",
+        "device"
+      ]
     },
     "v1LoginResponse": {
       "type": "object",
       "properties": {
-        "access_token": {
+        "accessToken": {
           "type": "string",
           "title": "短期令牌 (如 2小时)，过期绝对时间戳及user_id放在payload中"
         },
-        "refresh_token": {
+        "refreshToken": {
           "type": "string",
           "title": "长期令牌 (如 30天)，过期绝对时间戳放在payload中"
         },
@@ -4468,7 +4793,12 @@
           "$ref": "#/definitions/v1UserSummary",
           "title": "用户基本信息"
         }
-      }
+      },
+      "required": [
+        "accessToken",
+        "refreshToken",
+        "user"
+      ]
     },
     "v1LogoutResponse": {
       "type": "object"
@@ -4480,7 +4810,10 @@
           "$ref": "#/definitions/v1NotificationCategory",
           "title": "通知类别"
         }
-      }
+      },
+      "required": [
+        "category"
+      ]
     },
     "v1MarkAllNotificationsReadResponse": {
       "type": "object"
@@ -4488,14 +4821,17 @@
     "v1MarkNotificationReadRequest": {
       "type": "object",
       "properties": {
-        "notification_ids": {
+        "notificationIds": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "title": "要标记为已读的通知 ID 列表"
         }
-      }
+      },
+      "required": [
+        "notificationIds"
+      ]
     },
     "v1MarkNotificationReadResponse": {
       "type": "object"
@@ -4503,7 +4839,7 @@
     "v1MediaAsset": {
       "type": "object",
       "properties": {
-        "asset_id": {
+        "assetId": {
           "type": "string",
           "title": "媒体元素 ID（数组元素级别 ID）。"
         },
@@ -4519,7 +4855,7 @@
           "$ref": "#/definitions/v1MediaStatus",
           "title": "元素状态（由元素内文件状态聚合得出）。"
         },
-        "order_index": {
+        "orderIndex": {
           "type": "integer",
           "format": "int32",
           "title": "元素顺序索引（从 0 开始），用于 CreatePost/EditPost 时稳定保序。"
@@ -4528,17 +4864,24 @@
           "$ref": "#/definitions/v1MediaFile",
           "title": "普通单文件媒体（图片或视频）。"
         },
-        "live_photo": {
+        "livePhoto": {
           "$ref": "#/definitions/v1LivePhotoAsset",
           "title": "Live Photo 复合媒体。"
         }
       },
-      "title": "MediaAsset 是业务层对“一个媒体数组元素”的统一表达。"
+      "title": "MediaAsset 是业务层对“一个媒体数组元素”的统一表达。",
+      "required": [
+        "assetId",
+        "type",
+        "scene",
+        "status",
+        "orderIndex"
+      ]
     },
     "v1MediaFile": {
       "type": "object",
       "properties": {
-        "file_id": {
+        "fileId": {
           "type": "string",
           "title": "文件媒体主键 ID（雪花 ID 字符串形式）。"
         },
@@ -4550,7 +4893,7 @@
           "type": "string",
           "title": "存储桶名称。"
         },
-        "object_key": {
+        "objectKey": {
           "type": "string",
           "title": "对象键（Object Key），用于后端精确定位对象。"
         },
@@ -4558,7 +4901,7 @@
           "type": "string",
           "title": "对外可访问 URL（CDN 或对象存储网关地址）。"
         },
-        "thumbnail_url": {
+        "thumbnailUrl": {
           "type": "string",
           "title": "缩略图 URL（图片可选，视频建议提供）。"
         },
@@ -4571,12 +4914,21 @@
           "title": "当前媒体处理状态。"
         }
       },
-      "title": "MediaFile 表示单个物理文件（图片或视频）。"
+      "title": "MediaFile 表示单个物理文件（图片或视频）。",
+      "required": [
+        "fileId",
+        "type",
+        "bucket",
+        "objectKey",
+        "url",
+        "meta",
+        "status"
+      ]
     },
     "v1MediaFileInfo": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "文件任务 ID，用于前后端对账。"
         },
@@ -4584,7 +4936,7 @@
           "$ref": "#/definitions/v1MediaFile",
           "title": "单文件媒体实体。"
         },
-        "asset_id": {
+        "assetId": {
           "type": "string",
           "title": "所属媒体元素 ID。"
         },
@@ -4593,7 +4945,13 @@
           "title": "上传场景。"
         }
       },
-      "title": "MediaFileInfo 是面向单文件 complete 响应的媒体包装。"
+      "title": "MediaFileInfo 是面向单文件 complete 响应的媒体包装。",
+      "required": [
+        "taskId",
+        "file",
+        "assetId",
+        "scene"
+      ]
     },
     "v1MediaMeta": {
       "type": "object",
@@ -4608,22 +4966,29 @@
           "format": "int32",
           "title": "媒体高度（像素）。"
         },
-        "duration_ms": {
+        "durationMs": {
           "type": "string",
           "format": "int64",
           "title": "媒体时长（毫秒），图片通常为 0。"
         },
-        "size_bytes": {
+        "sizeBytes": {
           "type": "string",
           "format": "int64",
           "title": "文件体积（字节）。"
         },
-        "mime_type": {
+        "mimeType": {
           "type": "string",
           "title": "媒体 MIME 类型，如 image/webp、application/x-mpegURL。"
         }
       },
-      "title": "MediaMeta 描述媒体基础元信息。"
+      "title": "MediaMeta 描述媒体基础元信息。",
+      "required": [
+        "width",
+        "height",
+        "durationMs",
+        "sizeBytes",
+        "mimeType"
+      ]
     },
     "v1MediaScene": {
       "type": "string",
@@ -4666,7 +5031,7 @@
     "v1ModifyDepartmentsRequest": {
       "type": "object",
       "properties": {
-        "department_ids": {
+        "departmentIds": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4674,7 +5039,10 @@
           "title": "选择的部门 ID 列表"
         }
       },
-      "title": "---------------------------------------------------------\n修改所属部门"
+      "title": "---------------------------------------------------------\n修改所属部门",
+      "required": [
+        "departmentIds"
+      ]
     },
     "v1ModifyDepartmentsResponse": {
       "type": "object"
@@ -4695,28 +5063,34 @@
     "v1NotificationStats": {
       "type": "object",
       "properties": {
-        "unread_comment_mention_count": {
+        "unreadCommentMentionCount": {
           "type": "integer",
           "format": "int32",
           "title": "未读评论和@数量"
         },
-        "unread_like_collect_count": {
+        "unreadLikeCollectCount": {
           "type": "integer",
           "format": "int32",
           "title": "未读赞和收藏数量"
         },
-        "unread_follow_count": {
+        "unreadFollowCount": {
           "type": "integer",
           "format": "int32",
           "title": "未读新增关注数量"
         },
-        "unread_system_count": {
+        "unreadSystemCount": {
           "type": "integer",
           "format": "int32",
           "title": "未读系统通知数量"
         }
       },
-      "title": "通知统计信息"
+      "title": "通知统计信息",
+      "required": [
+        "unreadCommentMentionCount",
+        "unreadLikeCollectCount",
+        "unreadFollowCount",
+        "unreadSystemCount"
+      ]
     },
     "v1Partition": {
       "type": "object",
@@ -4730,12 +5104,16 @@
           "title": "分区名称，最多12个字符"
         }
       },
-      "title": "分区详细信息"
+      "title": "分区详细信息",
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "v1Post": {
       "type": "object",
       "properties": {
-        "post_id": {
+        "postId": {
           "type": "string"
         },
         "author": {
@@ -4759,35 +5137,48 @@
         "stats": {
           "$ref": "#/definitions/v1PostStats"
         },
-        "relation_status": {
+        "relationStatus": {
           "$ref": "#/definitions/v1PostRelationStatus",
           "title": "当前用户与帖子的关系状态"
         },
-        "publish_time": {
+        "publishTime": {
           "type": "string",
           "format": "int64",
           "title": "毫秒级时间戳"
         },
-        "update_time": {
+        "updateTime": {
           "type": "string",
           "format": "int64"
         }
       },
-      "title": "---------------------------------------------------------\n帖子相关"
+      "title": "---------------------------------------------------------\n帖子相关",
+      "required": [
+        "postId",
+        "author",
+        "media",
+        "stats",
+        "relationStatus",
+        "publishTime",
+        "updateTime"
+      ]
     },
     "v1PostBrief": {
       "type": "object",
       "properties": {
-        "post_id": {
+        "postId": {
           "type": "string",
           "title": "帖子 ID"
         },
-        "cover_url": {
+        "coverUrl": {
           "type": "string",
           "title": "封面缩略图 URL"
         }
       },
-      "title": "帖子简要信息"
+      "title": "帖子简要信息",
+      "required": [
+        "postId",
+        "coverUrl"
+      ]
     },
     "v1PostFeedContent": {
       "type": "object",
@@ -4800,7 +5191,10 @@
           }
         }
       },
-      "title": "帖子流内容"
+      "title": "帖子流内容",
+      "required": [
+        "items"
+      ]
     },
     "v1PostFilter": {
       "type": "object",
@@ -4815,10 +5209,10 @@
     "v1PostPreview": {
       "type": "object",
       "properties": {
-        "post_id": {
+        "postId": {
           "type": "string"
         },
-        "display_title": {
+        "displayTitle": {
           "type": "string",
           "title": "如果用户输入了标题，则这里显示标题；如果没有输入标题，则将正文描述的前30个字作为标题传输过来；如果都没有，不传输此字段。"
         },
@@ -4834,64 +5228,84 @@
           "$ref": "#/definitions/v1PostStats",
           "title": "帖子统计数据"
         },
-        "relation_status": {
+        "relationStatus": {
           "$ref": "#/definitions/v1PostRelationStatus",
           "title": "当前用户与帖子的关系状态"
         },
-        "is_only_video": {
+        "isOnlyVideo": {
           "type": "boolean",
           "title": "UI上是否显示一个“播放”的小图标"
         },
-        "publish_time": {
+        "publishTime": {
           "type": "string",
           "format": "int64",
           "title": "毫秒级时间戳"
         },
-        "update_time": {
+        "updateTime": {
           "type": "string",
           "format": "int64"
         }
       },
-      "title": "帖子预览（卡片视图数据）"
+      "title": "帖子预览（卡片视图数据）",
+      "required": [
+        "postId",
+        "cover",
+        "author",
+        "stats",
+        "relationStatus",
+        "isOnlyVideo",
+        "publishTime",
+        "updateTime"
+      ]
     },
     "v1PostRelationStatus": {
       "type": "object",
       "properties": {
-        "is_liked": {
+        "isLiked": {
           "type": "boolean"
         },
-        "is_collected": {
+        "isCollected": {
           "type": "boolean"
         }
       },
-      "title": "当前用户与帖子的关系状态"
+      "title": "当前用户与帖子的关系状态",
+      "required": [
+        "isLiked",
+        "isCollected"
+      ]
     },
     "v1PostStats": {
       "type": "object",
       "properties": {
-        "like_count": {
+        "likeCount": {
           "type": "string",
           "format": "int64"
         },
-        "collect_count": {
+        "collectCount": {
           "type": "string",
           "format": "int64"
         },
-        "comment_count": {
+        "commentCount": {
           "type": "string",
           "format": "int64"
         },
-        "view_count": {
+        "viewCount": {
           "type": "string",
           "format": "int64"
         }
       },
-      "title": "帖子统计数据"
+      "title": "帖子统计数据",
+      "required": [
+        "likeCount",
+        "collectCount",
+        "commentCount",
+        "viewCount"
+      ]
     },
     "v1PrepareUploadBatchRequest": {
       "type": "object",
       "properties": {
-        "batch_id": {
+        "batchId": {
           "type": "string",
           "title": "业务侧生成的批次 ID（同一帖子/评论一次提交流程应稳定不变）。"
         },
@@ -4905,7 +5319,11 @@
         }
       },
       "description": "该接口只做控制面编排，不做任何分片 URL 下发。\n服务端会校验格式/大小/场景，固化顺序并分配 task_id。",
-      "title": "------------------------------------------------------------------------------\nPrepareUploadBatchRequest 在真正开始 multipart 之前批量准备上传任务。"
+      "title": "------------------------------------------------------------------------------\nPrepareUploadBatchRequest 在真正开始 multipart 之前批量准备上传任务。",
+      "required": [
+        "batchId",
+        "assets"
+      ]
     },
     "v1PrepareUploadBatchResponse": {
       "type": "object",
@@ -4919,16 +5337,19 @@
           "title": "与请求 assets 一一对应的映射结果。"
         }
       },
-      "title": "PrepareUploadBatchResponse 返回本批次媒体元素映射。"
+      "title": "PrepareUploadBatchResponse 返回本批次媒体元素映射。",
+      "required": [
+        "assets"
+      ]
     },
     "v1PreparedUploadAsset": {
       "type": "object",
       "properties": {
-        "asset_id": {
+        "assetId": {
           "type": "string",
           "title": "媒体元素 ID。"
         },
-        "order_index": {
+        "orderIndex": {
           "type": "integer",
           "format": "int32",
           "title": "元素顺序索引（从 0 开始）。"
@@ -4950,16 +5371,23 @@
           "title": "该元素下的文件任务列表（1 个或 2 个）。"
         }
       },
-      "title": "PreparedUploadAsset 描述 PrepareUploadBatch 后单个媒体元素的映射结果。"
+      "title": "PreparedUploadAsset 描述 PrepareUploadBatch 后单个媒体元素的映射结果。",
+      "required": [
+        "assetId",
+        "orderIndex",
+        "scene",
+        "type",
+        "tasks"
+      ]
     },
     "v1PreparedUploadTask": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。"
         },
-        "asset_id": {
+        "assetId": {
           "type": "string",
           "title": "所属媒体元素 ID。"
         },
@@ -4972,28 +5400,41 @@
           "title": "文件媒体类型（IMAGE/VIDEO）。"
         }
       },
-      "title": "PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。"
+      "title": "PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。",
+      "required": [
+        "taskId",
+        "assetId",
+        "scene",
+        "type"
+      ]
     },
     "v1RefreshTokenRequest": {
       "type": "object",
       "properties": {
-        "refresh_token": {
+        "refreshToken": {
           "type": "string"
         }
       },
-      "title": "---------------------------------------------------------\n刷新 token"
+      "title": "---------------------------------------------------------\n刷新 token",
+      "required": [
+        "refreshToken"
+      ]
     },
     "v1RefreshTokenResponse": {
       "type": "object",
       "properties": {
-        "access_token": {
+        "accessToken": {
           "type": "string"
         },
-        "refresh_token": {
+        "refreshToken": {
           "type": "string",
           "title": "可选：实现 RefreshToken 轮转机制时，会下发新的 RT"
         }
-      }
+      },
+      "required": [
+        "accessToken",
+        "refreshToken"
+      ]
     },
     "v1RefreshType": {
       "type": "string",
@@ -5016,7 +5457,10 @@
           "$ref": "#/definitions/v1Department",
           "title": "更新后的部门信息"
         }
-      }
+      },
+      "required": [
+        "department"
+      ]
     },
     "v1RenamePartitionResponse": {
       "type": "object",
@@ -5025,7 +5469,10 @@
           "$ref": "#/definitions/v1Partition",
           "title": "更新后的分区信息"
         }
-      }
+      },
+      "required": [
+        "partition"
+      ]
     },
     "v1Reply": {
       "type": "object",
@@ -5034,66 +5481,83 @@
           "$ref": "#/definitions/v1Comment",
           "title": "评论本体"
         },
-        "reply_to_summary": {
+        "replyToSummary": {
           "type": "string",
           "title": "回复的评论摘要（截取 100 字符）"
         }
-      }
+      },
+      "required": [
+        "comment",
+        "replyToSummary"
+      ]
     },
     "v1ReplyContext": {
       "type": "object",
       "properties": {
-        "parent_comment_id": {
+        "parentCommentId": {
           "type": "string",
           "description": "父评论ID（第二层回复必填，第一层评论为null）",
           "title": "层级信息（仅第二层回复时有值）"
         },
-        "reply_to_comment_id": {
+        "replyToCommentId": {
           "type": "string",
           "title": "回复的评论ID（第二层回复必填，指向被回复的评论）"
         },
-        "reply_to_user_id": {
+        "replyToUserId": {
           "type": "string",
           "title": "回复的用户ID（第二层回复必填，用于UI显示\"回复了@xxx\"）"
         },
-        "reply_to_user_name": {
+        "replyToUserName": {
           "type": "string",
           "title": "回复的用户名（第二层回复必填，冗余字段避免额外查询）"
         }
       },
-      "title": "---------------------------------------------------------\n回复上下文（仅第二层评论有意义）"
+      "title": "---------------------------------------------------------\n回复上下文（仅第二层评论有意义）",
+      "required": [
+        "parentCommentId",
+        "replyToCommentId",
+        "replyToUserId",
+        "replyToUserName"
+      ]
     },
     "v1ReportCommentRequest": {
       "type": "object",
       "properties": {
-        "comment_id": {
+        "commentId": {
           "type": "string",
           "title": "被举报的评论ID"
         },
-        "post_id": {
+        "postId": {
           "type": "string",
           "title": "评论所属的帖子ID"
         }
       },
-      "title": "---------------------------------------------------------\n举报评论"
+      "title": "---------------------------------------------------------\n举报评论",
+      "required": [
+        "commentId",
+        "postId"
+      ]
     },
     "v1ReportCommentResponse": {
       "type": "object",
       "properties": {
-        "report_id": {
+        "reportId": {
           "type": "string",
           "title": "举报记录ID"
         }
-      }
+      },
+      "required": [
+        "reportId"
+      ]
     },
     "v1ReportEvidenceItem": {
       "type": "object",
       "properties": {
-        "report_evidence_id": {
+        "reportEvidenceId": {
           "type": "string",
           "title": "举报证据ID"
         },
-        "report_id": {
+        "reportId": {
           "type": "string",
           "title": "举报证据所属举报记录ID"
         },
@@ -5114,12 +5578,19 @@
           "title": "举报证据图片"
         }
       },
-      "title": "---------------------------------------------------------\n举报证据（当 ReportType 为用户时，可以展示举报者提供的举报证据）"
+      "title": "---------------------------------------------------------\n举报证据（当 ReportType 为用户时，可以展示举报者提供的举报证据）",
+      "required": [
+        "reportEvidenceId",
+        "reportId",
+        "reporter",
+        "reason",
+        "media"
+      ]
     },
     "v1ReportItem": {
       "type": "object",
       "properties": {
-        "report_id": {
+        "reportId": {
           "type": "string",
           "title": "举报记录ID"
         },
@@ -5131,23 +5602,23 @@
           "$ref": "#/definitions/v1ReportStatus",
           "title": "举报状态"
         },
-        "reported_user": {
+        "reportedUser": {
           "$ref": "#/definitions/v1UserBrief",
           "title": "被举报的用户"
         },
-        "reported_post": {
+        "reportedPost": {
           "$ref": "#/definitions/v1PostPreview",
           "title": "被举报的帖子"
         },
-        "reported_comment": {
+        "reportedComment": {
           "$ref": "#/definitions/v1Comment",
           "title": "被举报的评论/回复"
         },
-        "reported_reply": {
+        "reportedReply": {
           "$ref": "#/definitions/v1Reply",
           "title": "被举报的回复（回显示评论内容和回复摘要）"
         },
-        "report_count": {
+        "reportCount": {
           "type": "string",
           "format": "int64",
           "title": "举报次数（同一对象被多次举报时的计数）"
@@ -5157,16 +5628,22 @@
           "title": "处理信息（如果已处理）"
         }
       },
-      "title": "---------------------------------------------------------\n举报列表项（用于列表展示）"
+      "title": "---------------------------------------------------------\n举报列表项（用于列表展示）",
+      "required": [
+        "reportId",
+        "type",
+        "status",
+        "reportCount"
+      ]
     },
     "v1ReportNotificationDetail": {
       "type": "object",
       "properties": {
-        "target_type": {
+        "targetType": {
           "$ref": "#/definitions/v1ReportTargetType",
           "title": "举报目标类型"
         },
-        "target_summary": {
+        "targetSummary": {
           "type": "string",
           "title": "目标摘要（用户名/帖子摘要/评论摘要）"
         },
@@ -5175,26 +5652,36 @@
           "title": "管理员处理原因"
         }
       },
-      "title": "举报通知详情"
+      "title": "举报通知详情",
+      "required": [
+        "targetType",
+        "targetSummary"
+      ]
     },
     "v1ReportPostRequest": {
       "type": "object",
       "properties": {
-        "post_id": {
+        "postId": {
           "type": "string",
           "title": "被举报的帖子ID"
         }
       },
-      "title": "---------------------------------------------------------\n举报帖子"
+      "title": "---------------------------------------------------------\n举报帖子",
+      "required": [
+        "postId"
+      ]
     },
     "v1ReportPostResponse": {
       "type": "object",
       "properties": {
-        "report_id": {
+        "reportId": {
           "type": "string",
           "title": "举报记录ID"
         }
-      }
+      },
+      "required": [
+        "reportId"
+      ]
     },
     "v1ReportStatus": {
       "type": "string",
@@ -5237,7 +5724,7 @@
     "v1ReportUserRequest": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string",
           "title": "被举报的用户ID"
         },
@@ -5254,16 +5741,24 @@
           "title": "证明材料图片ID（最多3张）"
         }
       },
-      "title": "---------------------------------------------------------\n举报用户"
+      "title": "---------------------------------------------------------\n举报用户",
+      "required": [
+        "userId",
+        "reason",
+        "media"
+      ]
     },
     "v1ReportUserResponse": {
       "type": "object",
       "properties": {
-        "report_id": {
+        "reportId": {
           "type": "string",
           "title": "举报记录ID"
         }
-      }
+      },
+      "required": [
+        "reportId"
+      ]
     },
     "v1ReviewAction": {
       "type": "string",
@@ -5283,7 +5778,10 @@
           "$ref": "#/definitions/v1VerificationApplication",
           "title": "更新后的申请详情"
         }
-      }
+      },
+      "required": [
+        "application"
+      ]
     },
     "v1Role": {
       "type": "string",
@@ -5312,34 +5810,40 @@
     "v1SignMultipartPartRequest": {
       "type": "object",
       "properties": {
-        "task_id": {
+        "taskId": {
           "type": "string",
           "title": "文件任务 ID。"
         },
-        "upload_id": {
+        "uploadId": {
           "type": "string",
           "title": "multipart upload_id。"
         },
-        "part_number": {
+        "partNumber": {
           "type": "integer",
           "format": "int32",
           "title": "分片号（从 1 开始）。"
         },
-        "object_key": {
+        "objectKey": {
           "type": "string",
           "title": "上传对象键（Object Key）。"
         }
       },
-      "title": "------------------------------------------------------------------------------\nSignMultipartPartRequest 请求服务端为单个分片生成预签名 URL。"
+      "title": "------------------------------------------------------------------------------\nSignMultipartPartRequest 请求服务端为单个分片生成预签名 URL。",
+      "required": [
+        "taskId",
+        "uploadId",
+        "partNumber",
+        "objectKey"
+      ]
     },
     "v1SignMultipartPartResponse": {
       "type": "object",
       "properties": {
-        "upload_url": {
+        "uploadUrl": {
           "type": "string",
           "title": "分片上传预签名 URL。"
         },
-        "required_headers": {
+        "requiredHeaders": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -5347,7 +5851,11 @@
           "title": "该分片上传需要携带的额外头信息。"
         }
       },
-      "title": "SignMultipartPartResponse 返回可直接 PUT 分片的签名 URL。"
+      "title": "SignMultipartPartResponse 返回可直接 PUT 分片的签名 URL。",
+      "required": [
+        "uploadUrl",
+        "requiredHeaders"
+      ]
     },
     "v1SyncDataType": {
       "type": "string",
@@ -5364,21 +5872,21 @@
     "v1SyncStatus": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string"
         },
-        "active_devices": {
+        "activeDevices": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1ActiveDevice"
           }
         },
-        "last_sync_at": {
+        "lastSyncAt": {
           "type": "string",
           "format": "int64"
         },
-        "data_versions": {
+        "dataVersions": {
           "type": "object",
           "additionalProperties": {
             "type": "string",
@@ -5386,79 +5894,104 @@
           }
         }
       },
-      "title": "SyncStatus 描述当前用户的同步状态。"
+      "title": "SyncStatus 描述当前用户的同步状态。",
+      "required": [
+        "userId",
+        "activeDevices",
+        "lastSyncAt",
+        "dataVersions"
+      ]
     },
     "v1SyncedContentCategoryOrder": {
       "type": "object",
       "properties": {
-        "category_ids": {
+        "categoryIds": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "title": "按用户偏好排序的内容分类ID列表"
         }
-      }
+      },
+      "required": [
+        "categoryIds"
+      ]
     },
     "v1SyncedNotificationSettings": {
       "type": "object",
       "properties": {
-        "app_push_enabled": {
+        "appPushEnabled": {
           "type": "boolean",
           "title": "APP 内推送总开关"
         },
-        "push_my_message": {
+        "pushMyMessage": {
           "type": "boolean",
           "title": "我的消息推送"
         },
-        "push_comment_at": {
+        "pushCommentAt": {
           "type": "boolean",
           "title": "评论与 @ 推送"
         },
-        "push_like_collect": {
+        "pushLikeCollect": {
           "type": "boolean",
           "title": "点赞与收藏推送"
         },
-        "push_new_follower": {
+        "pushNewFollower": {
           "type": "boolean",
           "title": "新粉丝推送"
         },
-        "push_shining_notification": {
+        "pushShiningNotification": {
           "type": "boolean",
           "title": "晒你通知"
         },
-        "push_post_update": {
+        "pushPostUpdate": {
           "type": "boolean",
           "title": "关注动态推送"
         },
-        "push_report": {
+        "pushReport": {
           "type": "boolean",
           "title": "举报反馈推送"
         },
-        "push_verification_request": {
+        "pushVerificationRequest": {
           "type": "boolean",
           "title": "新增身份认证申请推送"
         }
       },
-      "title": "通知设置 (仅自己可见)"
+      "title": "通知设置 (仅自己可见)",
+      "required": [
+        "appPushEnabled",
+        "pushMyMessage",
+        "pushCommentAt",
+        "pushLikeCollect",
+        "pushNewFollower",
+        "pushShiningNotification",
+        "pushPostUpdate",
+        "pushReport",
+        "pushVerificationRequest"
+      ]
     },
     "v1SyncedPrivacySettings": {
       "type": "object",
       "properties": {
-        "chat_permission": {
+        "chatPermission": {
           "$ref": "#/definitions/v1ChatPrivacyLevel",
           "title": "谁可以私信我"
         },
-        "liked_posts_visibility": {
+        "likedPostsVisibility": {
           "$ref": "#/definitions/v1BasePrivacyLevel",
           "title": "谁可以看我的点赞帖子"
         },
-        "collected_posts_visibility": {
+        "collectedPostsVisibility": {
           "$ref": "#/definitions/v1BasePrivacyLevel",
           "title": "谁可以看我的收藏帖子"
         }
       },
-      "title": "隐私设置 (仅自己可见)"
+      "title": "隐私设置 (仅自己可见)",
+      "required": [
+        "chatPermission",
+        "likedPostsVisibility",
+        "collectedPostsVisibility"
+      ]
     },
     "v1SyncedUserSettings": {
       "type": "object",
@@ -5469,17 +6002,22 @@
         "privacy": {
           "$ref": "#/definitions/v1SyncedPrivacySettings"
         },
-        "content_category_order": {
+        "contentCategoryOrder": {
           "$ref": "#/definitions/v1SyncedContentCategoryOrder",
           "title": "内容排序偏好"
         }
       },
-      "title": "---------------------------------------------------------\n用户通用设置 (仅自己可见的需要多端同步的设置选项)"
+      "title": "---------------------------------------------------------\n用户通用设置 (仅自己可见的需要多端同步的设置选项)",
+      "required": [
+        "notification",
+        "privacy",
+        "contentCategoryOrder"
+      ]
     },
     "v1SystemNotification": {
       "type": "object",
       "properties": {
-        "notification_id": {
+        "notificationId": {
           "type": "string",
           "title": "通知 ID"
         },
@@ -5487,26 +6025,32 @@
           "$ref": "#/definitions/v1SystemNotificationType",
           "title": "通知类型"
         },
-        "created_at": {
+        "createdAt": {
           "type": "string",
           "format": "int64",
           "title": "通知产生时间戳（秒）"
         },
-        "report_detail": {
+        "reportDetail": {
           "$ref": "#/definitions/v1ReportNotificationDetail",
           "description": "举报相关详情",
           "title": "根据类型，以下字段可能存在"
         },
-        "verification_detail": {
+        "verificationDetail": {
           "$ref": "#/definitions/v1VerificationNotificationDetail",
           "title": "身份认证相关详情"
         },
-        "is_read": {
+        "isRead": {
           "type": "boolean",
           "title": "是否已读"
         }
       },
-      "title": "系统通知"
+      "title": "系统通知",
+      "required": [
+        "notificationId",
+        "type",
+        "createdAt",
+        "isRead"
+      ]
     },
     "v1SystemNotificationType": {
       "type": "string",
@@ -5524,12 +6068,12 @@
     "v1TimeRange": {
       "type": "object",
       "properties": {
-        "start_timestamp": {
+        "startTimestamp": {
           "type": "string",
           "format": "int64",
           "title": "开始时间"
         },
-        "end_timestamp": {
+        "endTimestamp": {
           "type": "string",
           "format": "int64",
           "title": "结束时间"
@@ -5540,15 +6084,19 @@
     "v1UpdatePushTokenRequest": {
       "type": "object",
       "properties": {
-        "device_id": {
+        "deviceId": {
           "type": "string",
           "title": "标识是哪个设备变更了 token"
         },
-        "push_token": {
+        "pushToken": {
           "type": "string"
         }
       },
-      "title": "---------------------------------------------------------\n更新 push_token"
+      "title": "---------------------------------------------------------\n更新 push_token",
+      "required": [
+        "deviceId",
+        "pushToken"
+      ]
     },
     "v1UpdatePushTokenResponse": {
       "type": "object"
@@ -5560,11 +6108,15 @@
           "$ref": "#/definitions/v1SyncedUserSettings",
           "title": "可选：将 Privacy 和 UserSettings 分开传，或者合并"
         },
-        "update_mask": {
+        "updateMask": {
           "type": "string"
         }
       },
-      "title": "---------------------------------------------------------\n更新我的设置"
+      "title": "---------------------------------------------------------\n更新我的设置",
+      "required": [
+        "settings",
+        "updateMask"
+      ]
     },
     "v1UpdateSettingsResponse": {
       "type": "object",
@@ -5572,7 +6124,10 @@
         "settings": {
           "$ref": "#/definitions/v1SyncedUserSettings"
         }
-      }
+      },
+      "required": [
+        "settings"
+      ]
     },
     "v1UploadAsset": {
       "type": "object",
@@ -5581,16 +6136,19 @@
           "$ref": "#/definitions/v1MediaScene",
           "title": "上传场景。"
         },
-        "single_file": {
+        "singleFile": {
           "$ref": "#/definitions/v1UploadFile",
           "title": "普通媒体元素（单文件）。"
         },
-        "live_photo_pair": {
+        "livePhotoPair": {
           "$ref": "#/definitions/v1LivePhotoUploadPair",
           "title": "Live Photo 媒体元素（图片 + 视频）。"
         }
       },
-      "title": "UploadAsset 描述前端发起批量上传时的单个“媒体元素”。"
+      "title": "UploadAsset 描述前端发起批量上传时的单个“媒体元素”。",
+      "required": [
+        "scene"
+      ]
     },
     "v1UploadFile": {
       "type": "object",
@@ -5599,30 +6157,35 @@
           "type": "string",
           "title": "原始文件名。"
         },
-        "size_bytes": {
+        "sizeBytes": {
           "type": "string",
           "format": "int64",
           "title": "文件大小（字节）。"
         },
-        "mime_type": {
+        "mimeType": {
           "type": "string",
           "title": "文件 MIME 类型，由前端探测上送，后端会二次校验。"
         },
-        "file_hash": {
+        "fileHash": {
           "type": "string",
           "title": "可选文件哈希，便于去重或幂等检查。"
         },
-        "crop_cover": {
+        "cropCover": {
           "type": "boolean",
           "title": "帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。"
         }
       },
-      "title": "UploadFile 描述单个文件上传任务。"
+      "title": "UploadFile 描述单个文件上传任务。",
+      "required": [
+        "filename",
+        "sizeBytes",
+        "mimeType"
+      ]
     },
     "v1UploadedPart": {
       "type": "object",
       "properties": {
-        "part_number": {
+        "partNumber": {
           "type": "integer",
           "format": "int32",
           "title": "分片号。"
@@ -5631,18 +6194,23 @@
           "type": "string",
           "title": "分片 ETag。"
         },
-        "size_bytes": {
+        "sizeBytes": {
           "type": "string",
           "format": "int64",
           "title": "分片大小（字节）。"
         }
       },
-      "title": "UploadedPart 描述客户端已上传分片（用于 complete 请求）。"
+      "title": "UploadedPart 描述客户端已上传分片（用于 complete 请求）。",
+      "required": [
+        "partNumber",
+        "etag",
+        "sizeBytes"
+      ]
     },
     "v1UserBrief": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string",
           "title": "用户ID"
         },
@@ -5658,7 +6226,7 @@
           "type": "string",
           "title": "头像URL"
         },
-        "qq_number": {
+        "qqNumber": {
           "type": "string",
           "title": "QQ 号"
         },
@@ -5667,7 +6235,14 @@
           "title": "用户角色"
         }
       },
-      "title": "用户数据模型"
+      "title": "用户数据模型",
+      "required": [
+        "userId",
+        "name",
+        "avatar",
+        "qqNumber",
+        "role"
+      ]
     },
     "v1UserFeedContent": {
       "type": "object",
@@ -5679,12 +6254,15 @@
             "$ref": "#/definitions/v1UserSummary"
           }
         },
-        "relation_status": {
+        "relationStatus": {
           "$ref": "#/definitions/v1UserRelationStatus",
           "title": "当前用户与列表中用户的关系状态（如果适用）"
         }
       },
-      "title": "用户流内容"
+      "title": "用户流内容",
+      "required": [
+        "items"
+      ]
     },
     "v1UserFilter": {
       "type": "object",
@@ -5702,16 +6280,19 @@
         "info": {
           "$ref": "#/definitions/v1UserBrief"
         },
-        "relation_status": {
+        "relationStatus": {
           "$ref": "#/definitions/v1UserRelationStatus"
         }
       },
-      "title": "用户列表数据模型设计（用于批量接口返回）"
+      "title": "用户列表数据模型设计（用于批量接口返回）",
+      "required": [
+        "info"
+      ]
     },
     "v1UserProfile": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string"
         },
         "name": {
@@ -5724,14 +6305,14 @@
         "avatar": {
           "type": "string"
         },
-        "qq_number": {
+        "qqNumber": {
           "type": "string"
         },
         "role": {
           "$ref": "#/definitions/v1Role",
           "title": "用户角色"
         },
-        "verified_title": {
+        "verifiedTitle": {
           "type": "string",
           "title": "认证头衔（如：23届部长）"
         },
@@ -5754,57 +6335,79 @@
           },
           "title": "外部链接"
         }
-      }
+      },
+      "required": [
+        "userId",
+        "name",
+        "avatar",
+        "qqNumber",
+        "role",
+        "verifiedTitle",
+        "departments",
+        "stats",
+        "links"
+      ]
     },
     "v1UserRelationStatus": {
       "type": "object",
       "properties": {
-        "is_following": {
+        "isFollowing": {
           "type": "boolean",
           "title": "当前用户是否关注了目标用户"
         },
-        "is_followed_by": {
+        "isFollowedBy": {
           "type": "boolean",
           "title": "目标用户是否关注了当前用户"
         }
       },
-      "title": "关系状态 (仅关注关系)"
+      "title": "关系状态 (仅关注关系)",
+      "required": [
+        "isFollowing",
+        "isFollowedBy"
+      ]
     },
     "v1UserStats": {
       "type": "object",
       "properties": {
-        "follower_count": {
+        "followerCount": {
           "type": "string",
           "format": "int64",
           "title": "粉丝数"
         },
-        "following_count": {
+        "followingCount": {
           "type": "string",
           "format": "int64",
           "title": "关注数"
         },
-        "like_count_received": {
+        "likeCountReceived": {
           "type": "string",
           "format": "int64",
           "title": "获得的赞"
         },
-        "collect_count_received": {
+        "collectCountReceived": {
           "type": "string",
           "format": "int64",
           "title": "获得的收藏"
         },
-        "view_count_received": {
+        "viewCountReceived": {
           "type": "string",
           "format": "int64",
           "title": "获得浏览"
         }
       },
-      "title": "统计数据"
+      "title": "统计数据",
+      "required": [
+        "followerCount",
+        "followingCount",
+        "likeCountReceived",
+        "collectCountReceived",
+        "viewCountReceived"
+      ]
     },
     "v1UserSummary": {
       "type": "object",
       "properties": {
-        "user_id": {
+        "userId": {
           "type": "string",
           "title": "用户ID"
         },
@@ -5820,7 +6423,7 @@
           "type": "string",
           "title": "头像URL"
         },
-        "qq_number": {
+        "qqNumber": {
           "type": "string",
           "title": "QQ 号"
         },
@@ -5828,7 +6431,7 @@
           "$ref": "#/definitions/v1Role",
           "title": "用户角色"
         },
-        "verified_title": {
+        "verifiedTitle": {
           "type": "string",
           "title": "认证头衔（如：23届部长）"
         },
@@ -5843,30 +6446,45 @@
         "stats": {
           "$ref": "#/definitions/v1UserStats"
         }
-      }
+      },
+      "required": [
+        "userId",
+        "name",
+        "avatar",
+        "qqNumber",
+        "role",
+        "verifiedTitle",
+        "departments",
+        "stats"
+      ]
     },
     "v1UserViewCapabilities": {
       "type": "object",
       "properties": {
-        "can_chat": {
+        "canChat": {
           "type": "boolean",
           "title": "是否可以发送私信"
         },
-        "can_view_liked_posts": {
+        "canViewLikedPosts": {
           "type": "boolean",
           "title": "是否可以查看点赞列表"
         },
-        "can_view_collected_posts": {
+        "canViewCollectedPosts": {
           "type": "boolean",
           "title": "是否可以查看收藏列表"
         }
       },
-      "title": "隐私能力 (当前用户对目标用户的操作权限)\nCritical: 不要返回 PrivacySettings，返回计算后的 Capability"
+      "title": "隐私能力 (当前用户对目标用户的操作权限)\nCritical: 不要返回 PrivacySettings，返回计算后的 Capability",
+      "required": [
+        "canChat",
+        "canViewLikedPosts",
+        "canViewCollectedPosts"
+      ]
     },
     "v1VerificationApplication": {
       "type": "object",
       "properties": {
-        "application_id": {
+        "applicationId": {
           "type": "string",
           "title": "申请 ID"
         },
@@ -5875,12 +6493,12 @@
           "description": "申请人基本信息",
           "title": "申请人信息"
         },
-        "verified_title": {
+        "verifiedTitle": {
           "type": "string",
           "description": "申请的认证头衔",
           "title": "申请内容"
         },
-        "verification_description": {
+        "verificationDescription": {
           "type": "string",
           "title": "申请说明"
         },
@@ -5896,41 +6514,51 @@
           "$ref": "#/definitions/v1VerificationStatus",
           "title": "状态信息"
         },
-        "created_at": {
+        "createdAt": {
           "type": "string",
           "format": "int64",
           "title": "创建时间"
         },
-        "updated_at": {
+        "updatedAt": {
           "type": "string",
           "format": "int64",
           "title": "更新时间"
         },
-        "reviewed_by_user_id": {
+        "reviewedByUserId": {
           "type": "string",
           "description": "审批人 ID",
           "title": "审批信息（如果已审批）"
         },
-        "reviewed_by_username": {
+        "reviewedByUsername": {
           "type": "string",
           "title": "审批人名称"
         },
-        "reviewed_at": {
+        "reviewedAt": {
           "type": "string",
           "format": "int64",
           "title": "审批时间"
         },
-        "review_comment": {
+        "reviewComment": {
           "type": "string",
           "title": "审批意见"
         }
       },
-      "title": "---------------------------------------------------------\n认证申请详情（管理员详情视角）"
+      "title": "---------------------------------------------------------\n认证申请详情（管理员详情视角）",
+      "required": [
+        "applicationId",
+        "user",
+        "verifiedTitle",
+        "verificationDescription",
+        "media",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "v1VerificationNotificationDetail": {
       "type": "object",
       "properties": {
-        "verified_title": {
+        "verifiedTitle": {
           "type": "string",
           "title": "认证头衔（如：社长）"
         },
@@ -5939,7 +6567,10 @@
           "title": "拒绝原因（仅当认证被拒绝时）"
         }
       },
-      "title": "身份认证通知详情"
+      "title": "身份认证通知详情",
+      "required": [
+        "verifiedTitle"
+      ]
     },
     "v1VerificationStatus": {
       "type": "string",

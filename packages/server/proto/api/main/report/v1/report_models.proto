@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package api.main.report.v1;
 
+import "google/api/field_behavior.proto";
 import "api/main/comment/v1/comment_models.proto";
 import "api/main/common/v1/common.proto";
 import "api/main/post/v1/post_models.proto";
@@ -44,12 +45,12 @@ message ReportItem {
   ReportType type = 2; // 举报类型
   ReportStatus status = 3; // 举报状态
 
-  // 被举报对象详细信息
+  // 被举报对象详细信息（四者互斥，实际只会存在一个）
   oneof target {
-    api.main.common.v1.UserBrief reported_user = 4; // 被举报的用户
-    api.main.post.v1.PostPreview reported_post = 5; // 被举报的帖子
-    api.main.comment.v1.Comment reported_comment = 6; // 被举报的评论/回复
-    Reply reported_reply = 7; // 被举报的回复（回显示评论内容和回复摘要）
+    api.main.common.v1.UserBrief reported_user = 4 [(google.api.field_behavior) = OPTIONAL]; // 被举报的用户
+    api.main.post.v1.PostPreview reported_post = 5 [(google.api.field_behavior) = OPTIONAL]; // 被举报的帖子
+    api.main.comment.v1.Comment reported_comment = 6 [(google.api.field_behavior) = OPTIONAL]; // 被举报的评论/回复
+    Reply reported_reply = 7 [(google.api.field_behavior) = OPTIONAL]; // 被举报的回复（回显示评论内容和回复摘要）
   }
 
   int64 report_count = 8; // 举报次数（同一对象被多次举报时的计数）

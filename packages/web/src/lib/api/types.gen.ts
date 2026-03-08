@@ -13,7 +13,7 @@ export type CommentServiceSetCommentLikeBody = {
     /**
      * true=点赞, false=取消点赞
      */
-    is_liked?: boolean;
+    isLiked: boolean;
 };
 
 /**
@@ -25,7 +25,7 @@ export type DepartmentServiceRenameDepartmentBody = {
     /**
      * 新名称，最多12个字符
      */
-    new_name?: string;
+    newName: string;
 };
 
 /**
@@ -37,7 +37,7 @@ export type PartitionServiceDeletePartitionBody = {
     /**
      * 目标分区ID，将删除分区下的内容迁移到此分区
      */
-    target_partition_id?: string;
+    targetPartitionId: string;
 };
 
 /**
@@ -49,7 +49,7 @@ export type PartitionServiceRenamePartitionBody = {
     /**
      * 新名称，最多12个字符
      */
-    new_name?: string;
+    newName: string;
 };
 
 /**
@@ -57,16 +57,16 @@ export type PartitionServiceRenamePartitionBody = {
  * 编辑帖子
  */
 export type PostServiceEditPostBody = {
-    cover?: V1MediaAsset;
-    media?: Array<V1MediaAsset>;
+    cover: V1MediaAsset;
+    media: Array<V1MediaAsset>;
     title?: string;
     content?: string;
-    partition_id?: string;
+    partitionId: string;
     /**
      * 字段掩码，用于指定本次请求需要更新哪些字段
      * 例如：paths: ["title", "content"]
      */
-    update_mask?: string;
+    updateMask: string;
 };
 
 /**
@@ -77,7 +77,7 @@ export type PostServiceSetPostCollectBody = {
     /**
      * true=收藏, false=取消收藏
      */
-    is_collected?: boolean;
+    isCollected: boolean;
 };
 
 /**
@@ -88,7 +88,7 @@ export type PostServiceSetPostLikeBody = {
     /**
      * true=点赞, false=取消点赞
      */
-    is_liked?: boolean;
+    isLiked: boolean;
 };
 
 /**
@@ -99,8 +99,8 @@ export type ReportServiceApprovalReportBody = {
     /**
      * 封禁/删除原因
      */
-    approval_reason?: string;
-    ban_duration?: V1BanDurationType;
+    approvalReason: string;
+    banDuration?: V1BanDurationType;
 };
 
 /**
@@ -119,7 +119,7 @@ export type UserServiceChangeRemarkBody = {
     /**
      * 新的备注
      */
-    remark?: string;
+    remark: string;
 };
 
 /**
@@ -130,7 +130,7 @@ export type UserServiceSetFollowBody = {
     /**
      * true=关注, false=取关
      */
-    is_following?: boolean;
+    isFollowing: boolean;
 };
 
 /**
@@ -138,7 +138,7 @@ export type UserServiceSetFollowBody = {
  * 审批认证申请（管理员）
  */
 export type VerificationServiceReviewVerificationBody = {
-    action?: V1ReviewAction;
+    action: V1ReviewAction;
     reason?: string;
 };
 
@@ -148,9 +148,9 @@ export type ProtobufAny = {
 };
 
 export type RpcStatus = {
-    code?: number;
-    message?: string;
-    details?: Array<ProtobufAny>;
+    code: number;
+    message: string;
+    details: Array<ProtobufAny>;
 };
 
 /**
@@ -161,15 +161,15 @@ export type V1AbortMultipartUploadRequest = {
     /**
      * 文件任务 ID。
      */
-    task_id?: string;
+    taskId: string;
     /**
      * multipart upload_id。
      */
-    upload_id?: string;
+    uploadId: string;
     /**
      * 上传对象键（Object Key）。
      */
-    object_key?: string;
+    objectKey: string;
 };
 
 /**
@@ -179,16 +179,16 @@ export type V1AbortMultipartUploadResponse = {
     /**
      * true 表示已成功中断（或目标会话已不可用）。
      */
-    success?: boolean;
+    success: boolean;
 };
 
 export type V1ActiveDevice = {
-    device_id?: string;
-    device_name?: string;
-    platform?: string;
-    connected_at?: string;
-    last_active_at?: string;
-    is_current?: boolean;
+    deviceId: string;
+    deviceName: string;
+    platform: string;
+    connectedAt: string;
+    lastActiveAt: string;
+    isCurrent: boolean;
 };
 
 /**
@@ -198,20 +198,20 @@ export type V1AdminInfo = {
     /**
      * 用户ID
      */
-    user_id?: string;
+    userId: string;
     /**
      * 头像URL
      */
-    avatar?: string;
+    avatar: string;
     /**
      * 昵称（优先显示备注）
      */
-    nickname?: string;
+    nickname: string;
     /**
      * QQ号
      */
-    qq_number?: string;
-    role?: V1Role;
+    qqNumber: string;
+    role: V1Role;
 };
 
 /**
@@ -221,11 +221,11 @@ export type V1AdminsByRole = {
     /**
      * 超级管理员列表
      */
-    super_admins?: Array<V1AdminInfo>;
+    superAdmins: Array<V1AdminInfo>;
     /**
      * 管理员列表
      */
-    admins?: Array<V1AdminInfo>;
+    admins: Array<V1AdminInfo>;
 };
 
 /**
@@ -235,15 +235,15 @@ export type V1ApplyVerificationRequest = {
     /**
      * 申请的认证头衔 (如: 23届部长, 社团负责人)
      */
-    verified_title?: string;
+    verifiedTitle: string;
     /**
      * 申请说明 (如: 申请理由、相关经历等)
      */
-    verification_description?: string;
+    verificationDescription: string;
     /**
      * 证明材料
      */
-    media?: Array<V1MediaAsset>;
+    media: Array<V1MediaAsset>;
 };
 
 export type V1ApplyVerificationResponse = {
@@ -276,7 +276,7 @@ export type V1ChangeAvatarRequest = {
     /**
      * 新的头像URL
      */
-    avatar_url?: string;
+    avatarUrl: string;
 };
 
 export type V1ChangeAvatarResponse = {
@@ -291,7 +291,7 @@ export type V1ChangeNameRequest = {
     /**
      * 新的昵称
      */
-    name?: string;
+    name: string;
 };
 
 export type V1ChangeNameResponse = {
@@ -315,28 +315,28 @@ export type V1Comment = {
     /**
      * 评论ID
      */
-    comment_id?: string;
+    commentId: string;
     /**
      * 被评论对象的ID（如帖子ID）
      */
-    target_id?: string;
-    target_type?: V1CommentTargetType;
-    author?: V1UserBrief;
+    targetId: string;
+    targetType: V1CommentTargetType;
+    author: V1UserBrief;
     /**
      * 评论内容（最多 300 字）
      */
-    content?: string;
+    content: string;
     /**
      * 评论附带的媒体（图片，最多 6 张）
      */
-    media?: Array<V1MediaAsset>;
-    stats?: V1CommentStats;
-    relation_status?: V1CommentRelationStatus;
-    reply_context?: V1ReplyContext;
+    media: Array<V1MediaAsset>;
+    stats: V1CommentStats;
+    relationStatus: V1CommentRelationStatus;
+    replyContext?: V1ReplyContext;
     /**
      * 创建时间（毫秒级时间戳）
      */
-    create_time?: string;
+    createTime: string;
 };
 
 /**
@@ -346,30 +346,30 @@ export type V1CommentMentionNotification = {
     /**
      * 通知 ID
      */
-    notification_id?: string;
-    type?: V1CommentMentionType;
-    actor?: V1UserBrief;
+    notificationId: string;
+    type: V1CommentMentionType;
+    actor: V1UserBrief;
     /**
      * 通知产生时间戳（秒）
      */
-    created_at?: string;
-    post?: V1PostBrief;
+    createdAt: string;
+    post: V1PostBrief;
     /**
      * 评论内容（带@高亮的富文本）
      */
-    comment_content?: string;
+    commentContent?: string;
     /**
      * 被回复的目标评论内容（如果是回复）
      */
-    target_comment_content?: string;
+    targetCommentContent?: string;
     /**
      * 当前评论ID（用于定位跳转，当类型不是 MENTION_IN_POST 时存在）
      */
-    comment_id?: string;
+    commentId?: string;
     /**
      * 是否已读
      */
-    is_read?: boolean;
+    isRead: boolean;
 };
 
 /**
@@ -410,7 +410,7 @@ export type V1CommentRelationStatus = {
     /**
      * 是否已点赞
      */
-    is_liked?: boolean;
+    isLiked: boolean;
 };
 
 /**
@@ -421,11 +421,11 @@ export type V1CommentStats = {
     /**
      * 点赞数
      */
-    like_count?: string;
+    likeCount: string;
     /**
      * 回复数（仅第一层评论有意义）
      */
-    reply_count?: string;
+    replyCount?: string;
 };
 
 /**
@@ -442,11 +442,11 @@ export type V1CommentTargetType = 'COMMENT_TARGET_TYPE_UNSPECIFIED' | 'COMMENT_T
  * 第一层评论 + 若干条回复的组合结构
  */
 export type V1CommentWithReplies = {
-    comment?: V1Comment;
+    comment: V1Comment;
     /**
      * 第一条第二层回复（如果存在），返回数量取决于 ListPostCommentsRequest.need_reply_count 参数
      */
-    replies?: Array<V1Comment>;
+    replies: Array<V1Comment>;
     /**
      * 第二层回复的下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了
      */
@@ -461,26 +461,26 @@ export type V1CompleteMultipartUploadRequest = {
     /**
      * 文件任务 ID。
      */
-    task_id?: string;
+    taskId: string;
     /**
      * multipart upload_id。
      */
-    upload_id?: string;
+    uploadId: string;
     /**
      * 客户端确认分片清单（建议按 part_number 升序）。
      */
-    parts?: Array<V1UploadedPart>;
+    parts: Array<V1UploadedPart>;
     /**
      * 上传对象键（Object Key）。
      */
-    object_key?: string;
+    objectKey: string;
 };
 
 /**
  * CompleteMultipartUploadResponse 返回处理任务对应媒体信息。
  */
 export type V1CompleteMultipartUploadResponse = {
-    media?: V1MediaFileInfo;
+    media: V1MediaFileInfo;
 };
 
 /**
@@ -492,21 +492,21 @@ export type V1CreateCommentRequest = {
     /**
      * 被评论对象的ID（如帖子ID）
      */
-    target_id?: string;
-    target_type?: V1CommentTargetType;
+    targetId: string;
+    targetType: V1CommentTargetType;
     /**
      * 评论内容（最多 300 字）
      */
-    content?: string;
+    content: string;
     /**
      * 评论附带的媒体（图片，最多 6 张）
      */
-    media?: Array<V1MediaAsset>;
-    reply_context?: V1ReplyContext;
+    media: Array<V1MediaAsset>;
+    replyContext?: V1ReplyContext;
 };
 
 export type V1CreateCommentResponse = {
-    comment?: V1Comment;
+    comment: V1Comment;
 };
 
 /**
@@ -518,14 +518,14 @@ export type V1CreateDepartmentsRequest = {
     /**
      * 部门名称列表，每个名称最多12个字符
      */
-    names?: Array<string>;
+    names: Array<string>;
 };
 
 export type V1CreateDepartmentsResponse = {
     /**
      * 更新后的部门列表
      */
-    departments?: Array<V1Department>;
+    departments: Array<V1Department>;
 };
 
 /**
@@ -536,7 +536,7 @@ export type V1CreateMultipartUploadRequest = {
     /**
      * PrepareUploadBatch 返回的文件 task_id。
      */
-    task_id?: string;
+    taskId: string;
 };
 
 /**
@@ -546,15 +546,15 @@ export type V1CreateMultipartUploadResponse = {
     /**
      * 文件任务 ID（回显）。
      */
-    task_id?: string;
+    taskId: string;
     /**
      * multipart upload_id（S3 原生概念）。
      */
-    upload_id?: string;
+    uploadId: string;
     /**
      * 上传对象键（Object Key）。
      */
-    object_key?: string;
+    objectKey: string;
 };
 
 /**
@@ -566,14 +566,14 @@ export type V1CreatePartitionsRequest = {
     /**
      * 分区名称列表，每个名称最多12个字符
      */
-    names?: Array<string>;
+    names: Array<string>;
 };
 
 export type V1CreatePartitionsResponse = {
     /**
      * 更新后的所有分区列表
      */
-    partitions?: Array<V1Partition>;
+    partitions: Array<V1Partition>;
 };
 
 /**
@@ -581,15 +581,15 @@ export type V1CreatePartitionsResponse = {
  * 发布帖子
  */
 export type V1CreatePostRequest = {
-    batch_id?: string;
+    batchId: string;
     title?: string;
     content?: string;
-    partition_id?: string;
+    partitionId: string;
     /**
      * 已完成上传与处理的媒体资产列表。
      * 后端按每个 MediaAsset.order_index 保存，不依赖数组位置。
      */
-    media_assets?: Array<V1MediaAsset>;
+    mediaAssets: Array<V1MediaAsset>;
 };
 
 export type V1CreatePostResponse = {
@@ -605,7 +605,7 @@ export type V1CursorPagination = {
     /**
      * 需要返回的帖子数量
      */
-    need_num?: number;
+    needNum: number;
     /**
      * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
      * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -632,14 +632,14 @@ export type V1DeleteDepartmentsRequest = {
     /**
      * 要删除的部门ID列表
      */
-    department_ids?: Array<string>;
+    departmentIds: Array<string>;
 };
 
 export type V1DeleteDepartmentsResponse = {
     /**
      * 更新后的部门列表
      */
-    departments?: Array<V1Department>;
+    departments: Array<V1Department>;
 };
 
 export type V1DeletePartitionResponse = {
@@ -657,11 +657,11 @@ export type V1Department = {
     /**
      * 部门ID
      */
-    id?: string;
+    id: string;
     /**
      * 部门名称，最多12个字符
      */
-    name?: string;
+    name: string;
 };
 
 /**
@@ -672,35 +672,35 @@ export type V1DepartmentBase = {
     /**
      * ID
      */
-    id?: string;
+    id: string;
     /**
      * 全称 (如 "轻音部")
      */
-    name?: string;
+    name: string;
 };
 
 export type V1DeviceInfo = {
     /**
      * 唯一设备 ID (如 UUID 或 厂商自生成 ID)
      */
-    device_id?: string;
+    deviceId: string;
     /**
      * 设备名 (e.g. "iPhone 14 Pro")
      */
-    device_name?: string;
-    platform?: V1DevicePlatform;
+    deviceName: string;
+    platform: V1DevicePlatform;
     /**
      * 系统版本 (e.g. "iOS 16.0")
      */
-    os_version?: string;
+    osVersion: string;
     /**
      * App/前端版本号
      */
-    client_version?: string;
+    clientVersion: string;
     /**
      * 推送 Token (FCM/APNS/MiPush)
      */
-    push_token?: string;
+    pushToken: string;
 };
 
 export type V1DevicePlatform = 'DEVICE_PLATFORM_UNSPECIFIED' | 'DEVICE_PLATFORM_IOS' | 'DEVICE_PLATFORM_ANDROID' | 'DEVICE_PLATFORM_WEB';
@@ -712,15 +712,15 @@ export type V1DisconnectDeviceResponse = {
     /**
      * 是否成功
      */
-    success?: boolean;
+    success: boolean;
 };
 
 export type V1EditAdminsRequest = {
     /**
      * 要变更角色的用户ID列表
      */
-    user_ids?: Array<string>;
-    role?: V1Role;
+    userIds: Array<string>;
+    role: V1Role;
 };
 
 export type V1EditAdminsResponse = {
@@ -735,7 +735,7 @@ export type V1EditLinksRequest = {
     /**
      * 个人链接
      */
-    links?: Array<V1Link>;
+    links: Array<V1Link>;
 };
 
 export type V1EditLinksResponse = {
@@ -753,20 +753,20 @@ export type V1FeedCategory = {
     /**
      * 分类ID，可以是："general", "following", "user_tab", 或分区ID
      */
-    category_id?: string;
+    categoryId: string;
     /**
      * 显示名称："综合"、"关注"、"用户"、或分区名称
      */
-    display_name?: string;
-    content_type?: V1FeedContentType;
+    displayName: string;
+    contentType: V1FeedContentType;
     /**
      * 排序权重（用户可自定义）
      */
-    sort_order?: number;
+    sortOrder: number;
     /**
      * 是否为系统内置分类（如"综合"、"关注"、"用户"）
      */
-    is_system?: boolean;
+    isSystem: boolean;
     /**
      * 可选的图标URL或名称
      */
@@ -790,12 +790,12 @@ export type V1FeedFilter = {
      * 关键词搜索
      */
     keyword?: string;
-    time_range?: V1TimeRange;
-    order_type?: V1FeedOrderType;
+    timeRange?: V1TimeRange;
+    orderType?: V1FeedOrderType;
     /**
      * 作者ID筛选（仅帖子流，配合"following"场景使用）
      */
-    author_id?: string;
+    authorId?: string;
 };
 
 /**
@@ -818,17 +818,17 @@ export type V1FollowNotification = {
     /**
      * 通知 ID
      */
-    notification_id?: string;
-    actor?: V1UserSummary;
+    notificationId: string;
+    actor: V1UserSummary;
     /**
      * 通知产生时间戳（秒）
      */
-    created_at?: string;
-    relation?: V1UserRelationStatus;
+    createdAt: string;
+    relation: V1UserRelationStatus;
     /**
      * 是否已读
      */
-    is_read?: boolean;
+    isRead: boolean;
 };
 
 /**
@@ -836,18 +836,18 @@ export type V1FollowNotification = {
  * 推荐关注作者列表
  */
 export type V1FollowingAuthor = {
-    author?: V1UserBrief;
+    author: V1UserBrief;
     /**
      * 有未读更新
      */
-    has_unread?: boolean;
+    hasUnread: boolean;
 };
 
 /**
  * 关注的作者流内容（用于关注页顶部的横向滚动列表）
  */
 export type V1FollowingAuthorFeedContent = {
-    items?: Array<V1FollowingAuthor>;
+    items: Array<V1FollowingAuthor>;
 };
 
 /**
@@ -857,7 +857,7 @@ export type V1ForceSyncRequest = {
     /**
      * 要同步的数据类型，空表示全部
      */
-    sync_types?: Array<V1SyncDataType>;
+    syncTypes: Array<V1SyncDataType>;
 };
 
 /**
@@ -867,11 +867,11 @@ export type V1ForceSyncResponse = {
     /**
      * 是否成功
      */
-    success?: boolean;
+    success: boolean;
     /**
      * 消息
      */
-    message?: string;
+    message: string;
 };
 
 /**
@@ -881,7 +881,7 @@ export type V1GetActiveDevicesResponse = {
     /**
      * 活跃设备列表
      */
-    devices?: Array<V1ActiveDevice>;
+    devices: Array<V1ActiveDevice>;
 };
 
 /**
@@ -891,14 +891,14 @@ export type V1GetBatchMediaResponse = {
     /**
      * 批次中的媒体元素列表。
      */
-    media_assets?: Array<V1MediaAsset>;
+    mediaAssets: Array<V1MediaAsset>;
 };
 
 export type V1GetFeedResponse = {
-    content_type?: V1FeedContentType;
+    contentType: V1FeedContentType;
     posts?: V1PostFeedContent;
     users?: V1UserFeedContent;
-    following_authors?: V1FollowingAuthorFeedContent;
+    followingAuthors?: V1FollowingAuthorFeedContent;
     /**
      * 分页游标
      */
@@ -906,8 +906,8 @@ export type V1GetFeedResponse = {
 };
 
 export type V1GetMeResponse = {
-    profile?: V1UserProfile;
-    settings?: V1SyncedUserSettings;
+    profile: V1UserProfile;
+    settings: V1SyncedUserSettings;
 };
 
 export type V1GetMyVerificationResponse = {
@@ -915,42 +915,42 @@ export type V1GetMyVerificationResponse = {
 };
 
 export type V1GetNotificationStatsResponse = {
-    stats?: V1NotificationStats;
+    stats: V1NotificationStats;
 };
 
 export type V1GetPostResponse = {
-    post?: V1Post;
+    post: V1Post;
 };
 
 /**
  * 获取同步状态响应
  */
 export type V1GetSyncStatusResponse = {
-    status?: V1SyncStatus;
+    status: V1SyncStatus;
 };
 
 export type V1GetUserIdByQqResponse = {
     /**
      * 用户ID
      */
-    user_id?: string;
+    userId: string;
 };
 
 export type V1GetUserResponse = {
-    user?: V1UserProfile;
-    relation_status?: V1UserRelationStatus;
-    view_capabilities?: V1UserViewCapabilities;
+    user: V1UserProfile;
+    relationStatus: V1UserRelationStatus;
+    viewCapabilities: V1UserViewCapabilities;
 };
 
 export type V1HandleReportAdmin = {
     /**
      * 处理管理员ID
      */
-    admin_id?: string;
+    adminId: string;
     /**
      * 处理管理员名称
      */
-    admin_name?: string;
+    adminName: string;
 };
 
 /**
@@ -960,30 +960,30 @@ export type V1LikeCollectNotification = {
     /**
      * 通知 ID
      */
-    notification_id?: string;
-    type?: V1LikeCollectType;
-    actor?: V1UserBrief;
+    notificationId: string;
+    type: V1LikeCollectType;
+    actor: V1UserBrief;
     /**
      * 通知产生时间戳（秒）
      */
-    created_at?: string;
-    post?: V1PostBrief;
+    createdAt: string;
+    post: V1PostBrief;
     /**
      * 评论内容（当类型为 LIKE_COMMENT 时，带@高亮）
      */
-    comment_content?: string;
+    commentContent?: string;
     /**
      * 被回复的目标评论内容（如果评论是回复）
      */
-    target_comment_content?: string;
+    targetCommentContent?: string;
     /**
      * 评论ID（用于定位跳转，当类型为 LIKE_COMMENT 时存在）
      */
-    comment_id?: string;
+    commentId?: string;
     /**
      * 是否已读
      */
-    is_read?: boolean;
+    isRead: boolean;
 };
 
 /**
@@ -1000,22 +1000,22 @@ export type V1LikeCollectType = 'LIKE_COLLECT_TYPE_UNSPECIFIED' | 'LIKE_COLLECT_
  * 外部链接结构
  */
 export type V1Link = {
-    label?: string;
+    label: string;
     /**
      * 实际跳转地址
      */
-    url?: string;
+    url: string;
 };
 
 export type V1ListAdminsResponse = {
-    admins_by_role?: V1AdminsByRole;
+    adminsByRole: V1AdminsByRole;
 };
 
 export type V1ListCommentMentionNotificationsResponse = {
     /**
      * 通知列表
      */
-    notifications?: Array<V1CommentMentionNotification>;
+    notifications: Array<V1CommentMentionNotification>;
     /**
      * 下一页游标（为空表示没有更多数据）
      */
@@ -1026,7 +1026,7 @@ export type V1ListCommentRepliesResponse = {
     /**
      * 第二层回复列表（打平显示）
      */
-    replies?: Array<V1Comment>;
+    replies: Array<V1Comment>;
     /**
      * 下一页游标（用于加载更多第二层回复），为空则说明没有更多回复了
      */
@@ -1034,36 +1034,36 @@ export type V1ListCommentRepliesResponse = {
     /**
      * 总回复数（方便客户端显示"还有 X 条回复"）
      */
-    total_count?: string;
+    totalCount: string;
 };
 
 export type V1ListDepartmentsResponse = {
     /**
      * 部门列表
      */
-    departments?: Array<V1Department>;
+    departments: Array<V1Department>;
 };
 
 export type V1ListFeedCategoriesResponse = {
-    categories?: Array<V1FeedCategory>;
+    categories: Array<V1FeedCategory>;
 };
 
 export type V1ListFollowNotificationsResponse = {
     /**
      * 通知列表
      */
-    notifications?: Array<V1FollowNotification>;
+    notifications: Array<V1FollowNotification>;
     /**
      * 下一页游标（为空表示没有更多数据）
      */
-    next_cursor?: string;
+    nextCursor?: string;
 };
 
 export type V1ListLikeCollectNotificationsResponse = {
     /**
      * 通知列表
      */
-    notifications?: Array<V1LikeCollectNotification>;
+    notifications: Array<V1LikeCollectNotification>;
     /**
      * 下一页游标（为空表示没有更多数据）
      */
@@ -1074,14 +1074,14 @@ export type V1ListPartitionsResponse = {
     /**
      * 分区列表
      */
-    partitions?: Array<V1Partition>;
+    partitions: Array<V1Partition>;
 };
 
 export type V1ListPostCommentsResponse = {
     /**
      * 第一层评论列表（每条自动包含第一条回复）
      */
-    comments?: Array<V1CommentWithReplies>;
+    comments: Array<V1CommentWithReplies>;
     /**
      * 下一页游标（用于加载更多第一层评论），为空则说明没有更多评论了
      */
@@ -1092,7 +1092,7 @@ export type V1ListReportEvidenceResponse = {
     /**
      * 举报详情
      */
-    report_evidence?: Array<V1ReportEvidenceItem>;
+    reportEvidence: Array<V1ReportEvidenceItem>;
     /**
      * 下一页游标，如果没有下一页则为空
      */
@@ -1103,7 +1103,7 @@ export type V1ListReportsResponse = {
     /**
      * 举报列表
      */
-    reports?: Array<V1ReportItem>;
+    reports: Array<V1ReportItem>;
     /**
      * 下一页游标，如果没有下一页则为空
      */
@@ -1114,7 +1114,7 @@ export type V1ListSystemNotificationsResponse = {
     /**
      * 通知列表
      */
-    notifications?: Array<V1SystemNotification>;
+    notifications: Array<V1SystemNotification>;
     /**
      * 下一页游标（为空表示没有更多数据）
      */
@@ -1128,14 +1128,14 @@ export type V1ListUploadedPartsResponse = {
     /**
      * 已上传分片明细。
      */
-    parts?: Array<V1UploadedPart>;
+    parts: Array<V1UploadedPart>;
 };
 
 export type V1ListUserPostsResponse = {
     /**
      * 帖子列表
      */
-    posts?: Array<V1PostPreview>;
+    posts: Array<V1PostPreview>;
     /**
      * 分页游标，如果为空则表示没有更多数据
      */
@@ -1143,7 +1143,7 @@ export type V1ListUserPostsResponse = {
 };
 
 export type V1ListUserRelatedResponse = {
-    users?: Array<V1UserListItem>;
+    users: Array<V1UserListItem>;
     /**
      * 分页游标，如果为空则表示没有更多数据
      */
@@ -1151,7 +1151,7 @@ export type V1ListUserRelatedResponse = {
 };
 
 export type V1ListVerificationsResponse = {
-    applications?: Array<V1VerificationApplication>;
+    applications: Array<V1VerificationApplication>;
     /**
      * 分页游标，如果为空则表示没有更多数据
      */
@@ -1162,16 +1162,16 @@ export type V1ListVerificationsResponse = {
  * LivePhotoAsset 表示 Live Photo 的图片与视频组合。
  */
 export type V1LivePhotoAsset = {
-    image?: V1MediaFile;
-    video?: V1MediaFile;
+    image: V1MediaFile;
+    video: V1MediaFile;
 };
 
 /**
  * LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。
  */
 export type V1LivePhotoUploadPair = {
-    image_file?: V1UploadFile;
-    video_file?: V1UploadFile;
+    imageFile: V1UploadFile;
+    videoFile: V1UploadFile;
 };
 
 /**
@@ -1182,20 +1182,20 @@ export type V1LoginRequest = {
     /**
      * 凭证载荷：QQ 传 AccessToken
      */
-    credential?: string;
-    device?: V1DeviceInfo;
+    credential: string;
+    device: V1DeviceInfo;
 };
 
 export type V1LoginResponse = {
     /**
      * 短期令牌 (如 2小时)，过期绝对时间戳及user_id放在payload中
      */
-    access_token?: string;
+    accessToken: string;
     /**
      * 长期令牌 (如 30天)，过期绝对时间戳放在payload中
      */
-    refresh_token?: string;
-    user?: V1UserSummary;
+    refreshToken: string;
+    user: V1UserSummary;
 };
 
 export type V1LogoutResponse = {
@@ -1203,7 +1203,7 @@ export type V1LogoutResponse = {
 };
 
 export type V1MarkAllNotificationsReadRequest = {
-    category?: V1NotificationCategory;
+    category: V1NotificationCategory;
 };
 
 export type V1MarkAllNotificationsReadResponse = {
@@ -1214,7 +1214,7 @@ export type V1MarkNotificationReadRequest = {
     /**
      * 要标记为已读的通知 ID 列表
      */
-    notification_ids?: Array<string>;
+    notificationIds: Array<string>;
 };
 
 export type V1MarkNotificationReadResponse = {
@@ -1228,16 +1228,16 @@ export type V1MediaAsset = {
     /**
      * 媒体元素 ID（数组元素级别 ID）。
      */
-    asset_id?: string;
-    type?: V1MediaType;
-    scene?: V1MediaScene;
-    status?: V1MediaStatus;
+    assetId: string;
+    type: V1MediaType;
+    scene: V1MediaScene;
+    status: V1MediaStatus;
     /**
      * 元素顺序索引（从 0 开始），用于 CreatePost/EditPost 时稳定保序。
      */
-    order_index?: number;
+    orderIndex: number;
     single?: V1MediaFile;
-    live_photo?: V1LivePhotoAsset;
+    livePhoto?: V1LivePhotoAsset;
 };
 
 /**
@@ -1247,26 +1247,26 @@ export type V1MediaFile = {
     /**
      * 文件媒体主键 ID（雪花 ID 字符串形式）。
      */
-    file_id?: string;
-    type?: V1MediaType;
+    fileId: string;
+    type: V1MediaType;
     /**
      * 存储桶名称。
      */
-    bucket?: string;
+    bucket: string;
     /**
      * 对象键（Object Key），用于后端精确定位对象。
      */
-    object_key?: string;
+    objectKey: string;
     /**
      * 对外可访问 URL（CDN 或对象存储网关地址）。
      */
-    url?: string;
+    url: string;
     /**
      * 缩略图 URL（图片可选，视频建议提供）。
      */
-    thumbnail_url?: string;
-    meta?: V1MediaMeta;
-    status?: V1MediaStatus;
+    thumbnailUrl?: string;
+    meta: V1MediaMeta;
+    status: V1MediaStatus;
 };
 
 /**
@@ -1276,13 +1276,13 @@ export type V1MediaFileInfo = {
     /**
      * 文件任务 ID，用于前后端对账。
      */
-    task_id?: string;
-    file?: V1MediaFile;
+    taskId: string;
+    file: V1MediaFile;
     /**
      * 所属媒体元素 ID。
      */
-    asset_id?: string;
-    scene?: V1MediaScene;
+    assetId: string;
+    scene: V1MediaScene;
 };
 
 /**
@@ -1292,23 +1292,23 @@ export type V1MediaMeta = {
     /**
      * 媒体宽度（像素）。
      */
-    width?: number;
+    width: number;
     /**
      * 媒体高度（像素）。
      */
-    height?: number;
+    height: number;
     /**
      * 媒体时长（毫秒），图片通常为 0。
      */
-    duration_ms?: string;
+    durationMs: string;
     /**
      * 文件体积（字节）。
      */
-    size_bytes?: string;
+    sizeBytes: string;
     /**
      * 媒体 MIME 类型，如 image/webp、application/x-mpegURL。
      */
-    mime_type?: string;
+    mimeType: string;
 };
 
 /**
@@ -1351,7 +1351,7 @@ export type V1ModifyDepartmentsRequest = {
     /**
      * 选择的部门 ID 列表
      */
-    department_ids?: Array<string>;
+    departmentIds: Array<string>;
 };
 
 export type V1ModifyDepartmentsResponse = {
@@ -1375,19 +1375,19 @@ export type V1NotificationStats = {
     /**
      * 未读评论和@数量
      */
-    unread_comment_mention_count?: number;
+    unreadCommentMentionCount: number;
     /**
      * 未读赞和收藏数量
      */
-    unread_like_collect_count?: number;
+    unreadLikeCollectCount: number;
     /**
      * 未读新增关注数量
      */
-    unread_follow_count?: number;
+    unreadFollowCount: number;
     /**
      * 未读系统通知数量
      */
-    unread_system_count?: number;
+    unreadSystemCount: number;
 };
 
 /**
@@ -1397,11 +1397,11 @@ export type V1Partition = {
     /**
      * 分区ID
      */
-    id?: string;
+    id: string;
     /**
      * 分区名称，最多12个字符
      */
-    name?: string;
+    name: string;
 };
 
 /**
@@ -1409,8 +1409,8 @@ export type V1Partition = {
  * 帖子相关
  */
 export type V1Post = {
-    post_id?: string;
-    author?: V1UserSummary;
+    postId: string;
+    author: V1UserSummary;
     /**
      * 帖子标题
      */
@@ -1419,14 +1419,14 @@ export type V1Post = {
      * 帖子正文描述
      */
     content?: string;
-    media?: Array<V1MediaAsset>;
-    stats?: V1PostStats;
-    relation_status?: V1PostRelationStatus;
+    media: Array<V1MediaAsset>;
+    stats: V1PostStats;
+    relationStatus: V1PostRelationStatus;
     /**
      * 毫秒级时间戳
      */
-    publish_time?: string;
-    update_time?: string;
+    publishTime: string;
+    updateTime: string;
 };
 
 /**
@@ -1436,18 +1436,18 @@ export type V1PostBrief = {
     /**
      * 帖子 ID
      */
-    post_id?: string;
+    postId: string;
     /**
      * 封面缩略图 URL
      */
-    cover_url?: string;
+    coverUrl: string;
 };
 
 /**
  * 帖子流内容
  */
 export type V1PostFeedContent = {
-    items?: Array<V1PostPreview>;
+    items: Array<V1PostPreview>;
 };
 
 /**
@@ -1465,42 +1465,42 @@ export type V1PostFilter = {
  * 帖子预览（卡片视图数据）
  */
 export type V1PostPreview = {
-    post_id?: string;
+    postId: string;
     /**
      * 如果用户输入了标题，则这里显示标题；如果没有输入标题，则将正文描述的前30个字作为标题传输过来；如果都没有，不传输此字段。
      */
-    display_title?: string;
-    cover?: V1MediaAsset;
-    author?: V1UserBrief;
-    stats?: V1PostStats;
-    relation_status?: V1PostRelationStatus;
+    displayTitle?: string;
+    cover: V1MediaAsset;
+    author: V1UserBrief;
+    stats: V1PostStats;
+    relationStatus: V1PostRelationStatus;
     /**
      * UI上是否显示一个“播放”的小图标
      */
-    is_only_video?: boolean;
+    isOnlyVideo: boolean;
     /**
      * 毫秒级时间戳
      */
-    publish_time?: string;
-    update_time?: string;
+    publishTime: string;
+    updateTime: string;
 };
 
 /**
  * 当前用户与帖子的关系状态
  */
 export type V1PostRelationStatus = {
-    is_liked?: boolean;
-    is_collected?: boolean;
+    isLiked: boolean;
+    isCollected: boolean;
 };
 
 /**
  * 帖子统计数据
  */
 export type V1PostStats = {
-    like_count?: string;
-    collect_count?: string;
-    comment_count?: string;
-    view_count?: string;
+    likeCount: string;
+    collectCount: string;
+    commentCount: string;
+    viewCount: string;
 };
 
 /**
@@ -1514,11 +1514,11 @@ export type V1PrepareUploadBatchRequest = {
     /**
      * 业务侧生成的批次 ID（同一帖子/评论一次提交流程应稳定不变）。
      */
-    batch_id?: string;
+    batchId: string;
     /**
      * 本次批量准备的媒体元素，数组顺序即最终返回顺序来源。
      */
-    assets?: Array<V1UploadAsset>;
+    assets: Array<V1UploadAsset>;
 };
 
 /**
@@ -1528,7 +1528,7 @@ export type V1PrepareUploadBatchResponse = {
     /**
      * 与请求 assets 一一对应的映射结果。
      */
-    assets?: Array<V1PreparedUploadAsset>;
+    assets: Array<V1PreparedUploadAsset>;
 };
 
 /**
@@ -1538,17 +1538,17 @@ export type V1PreparedUploadAsset = {
     /**
      * 媒体元素 ID。
      */
-    asset_id?: string;
+    assetId: string;
     /**
      * 元素顺序索引（从 0 开始）。
      */
-    order_index?: number;
-    scene?: V1MediaScene;
-    type?: V1MediaType;
+    orderIndex: number;
+    scene: V1MediaScene;
+    type: V1MediaType;
     /**
      * 该元素下的文件任务列表（1 个或 2 个）。
      */
-    tasks?: Array<V1PreparedUploadTask>;
+    tasks: Array<V1PreparedUploadTask>;
 };
 
 /**
@@ -1558,13 +1558,13 @@ export type V1PreparedUploadTask = {
     /**
      * 服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。
      */
-    task_id?: string;
+    taskId: string;
     /**
      * 所属媒体元素 ID。
      */
-    asset_id?: string;
-    scene?: V1MediaScene;
-    type?: V1MediaType;
+    assetId: string;
+    scene: V1MediaScene;
+    type: V1MediaType;
 };
 
 /**
@@ -1572,15 +1572,15 @@ export type V1PreparedUploadTask = {
  * 刷新 token
  */
 export type V1RefreshTokenRequest = {
-    refresh_token?: string;
+    refreshToken: string;
 };
 
 export type V1RefreshTokenResponse = {
-    access_token?: string;
+    accessToken: string;
     /**
      * 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
      */
-    refresh_token?: string;
+    refreshToken: string;
 };
 
 /**
@@ -1597,19 +1597,19 @@ export type V1RejectReportResponse = {
 };
 
 export type V1RenameDepartmentResponse = {
-    department?: V1Department;
+    department: V1Department;
 };
 
 export type V1RenamePartitionResponse = {
-    partition?: V1Partition;
+    partition: V1Partition;
 };
 
 export type V1Reply = {
-    comment?: V1Comment;
+    comment: V1Comment;
     /**
      * 回复的评论摘要（截取 100 字符）
      */
-    reply_to_summary?: string;
+    replyToSummary: string;
 };
 
 /**
@@ -1622,19 +1622,19 @@ export type V1ReplyContext = {
      *
      * 父评论ID（第二层回复必填，第一层评论为null）
      */
-    parent_comment_id?: string;
+    parentCommentId: string;
     /**
      * 回复的评论ID（第二层回复必填，指向被回复的评论）
      */
-    reply_to_comment_id?: string;
+    replyToCommentId: string;
     /**
      * 回复的用户ID（第二层回复必填，用于UI显示"回复了@xxx"）
      */
-    reply_to_user_id?: string;
+    replyToUserId: string;
     /**
      * 回复的用户名（第二层回复必填，冗余字段避免额外查询）
      */
-    reply_to_user_name?: string;
+    replyToUserName: string;
 };
 
 /**
@@ -1645,18 +1645,18 @@ export type V1ReportCommentRequest = {
     /**
      * 被举报的评论ID
      */
-    comment_id?: string;
+    commentId: string;
     /**
      * 评论所属的帖子ID
      */
-    post_id?: string;
+    postId: string;
 };
 
 export type V1ReportCommentResponse = {
     /**
      * 举报记录ID
      */
-    report_id?: string;
+    reportId: string;
 };
 
 /**
@@ -1667,20 +1667,20 @@ export type V1ReportEvidenceItem = {
     /**
      * 举报证据ID
      */
-    report_evidence_id?: string;
+    reportEvidenceId: string;
     /**
      * 举报证据所属举报记录ID
      */
-    report_id?: string;
-    reporter?: V1UserBrief;
+    reportId: string;
+    reporter: V1UserBrief;
     /**
      * 举报说明
      */
-    reason?: string;
+    reason: string;
     /**
      * 举报证据图片
      */
-    media?: Array<V1MediaAsset>;
+    media: Array<V1MediaAsset>;
 };
 
 /**
@@ -1691,17 +1691,17 @@ export type V1ReportItem = {
     /**
      * 举报记录ID
      */
-    report_id?: string;
-    type?: V1ReportType;
-    status?: V1ReportStatus;
-    reported_user?: V1UserBrief;
-    reported_post?: V1PostPreview;
-    reported_comment?: V1Comment;
-    reported_reply?: V1Reply;
+    reportId: string;
+    type: V1ReportType;
+    status: V1ReportStatus;
+    reportedUser?: V1UserBrief;
+    reportedPost?: V1PostPreview;
+    reportedComment?: V1Comment;
+    reportedReply?: V1Reply;
     /**
      * 举报次数（同一对象被多次举报时的计数）
      */
-    report_count?: string;
+    reportCount: string;
     admin?: V1HandleReportAdmin;
 };
 
@@ -1709,11 +1709,11 @@ export type V1ReportItem = {
  * 举报通知详情
  */
 export type V1ReportNotificationDetail = {
-    target_type?: V1ReportTargetType;
+    targetType: V1ReportTargetType;
     /**
      * 目标摘要（用户名/帖子摘要/评论摘要）
      */
-    target_summary?: string;
+    targetSummary: string;
     /**
      * 管理员处理原因
      */
@@ -1728,14 +1728,14 @@ export type V1ReportPostRequest = {
     /**
      * 被举报的帖子ID
      */
-    post_id?: string;
+    postId: string;
 };
 
 export type V1ReportPostResponse = {
     /**
      * 举报记录ID
      */
-    report_id?: string;
+    reportId: string;
 };
 
 /**
@@ -1779,22 +1779,22 @@ export type V1ReportUserRequest = {
     /**
      * 被举报的用户ID
      */
-    user_id?: string;
+    userId: string;
     /**
      * 举报说明（必填）
      */
-    reason?: string;
+    reason: string;
     /**
      * 证明材料图片ID（最多3张）
      */
-    media?: Array<V1MediaAsset>;
+    media: Array<V1MediaAsset>;
 };
 
 export type V1ReportUserResponse = {
     /**
      * 举报记录ID
      */
-    report_id?: string;
+    reportId: string;
 };
 
 /**
@@ -1807,7 +1807,7 @@ export type V1ReportUserResponse = {
 export type V1ReviewAction = 'REVIEW_ACTION_UNSPECIFIED' | 'REVIEW_ACTION_APPROVE' | 'REVIEW_ACTION_REJECT';
 
 export type V1ReviewVerificationResponse = {
-    application?: V1VerificationApplication;
+    application: V1VerificationApplication;
 };
 
 /**
@@ -1844,19 +1844,19 @@ export type V1SignMultipartPartRequest = {
     /**
      * 文件任务 ID。
      */
-    task_id?: string;
+    taskId: string;
     /**
      * multipart upload_id。
      */
-    upload_id?: string;
+    uploadId: string;
     /**
      * 分片号（从 1 开始）。
      */
-    part_number?: number;
+    partNumber: number;
     /**
      * 上传对象键（Object Key）。
      */
-    object_key?: string;
+    objectKey: string;
 };
 
 /**
@@ -1866,11 +1866,11 @@ export type V1SignMultipartPartResponse = {
     /**
      * 分片上传预签名 URL。
      */
-    upload_url?: string;
+    uploadUrl: string;
     /**
      * 该分片上传需要携带的额外头信息。
      */
-    required_headers?: {
+    requiredHeaders: {
         [key: string]: string;
     };
 };
@@ -1884,10 +1884,10 @@ export type V1SyncDataType = 'SYNC_DATA_TYPE_UNSPECIFIED' | 'SYNC_DATA_TYPE_USER
  * SyncStatus 描述当前用户的同步状态。
  */
 export type V1SyncStatus = {
-    user_id?: string;
-    active_devices?: Array<V1ActiveDevice>;
-    last_sync_at?: string;
-    data_versions?: {
+    userId: string;
+    activeDevices: Array<V1ActiveDevice>;
+    lastSyncAt: string;
+    dataVersions: {
         [key: string]: string;
     };
 };
@@ -1896,7 +1896,7 @@ export type V1SyncedContentCategoryOrder = {
     /**
      * 按用户偏好排序的内容分类ID列表
      */
-    category_ids?: Array<string>;
+    categoryIds: Array<string>;
 };
 
 /**
@@ -1906,48 +1906,48 @@ export type V1SyncedNotificationSettings = {
     /**
      * APP 内推送总开关
      */
-    app_push_enabled?: boolean;
+    appPushEnabled: boolean;
     /**
      * 我的消息推送
      */
-    push_my_message?: boolean;
+    pushMyMessage: boolean;
     /**
      * 评论与 @ 推送
      */
-    push_comment_at?: boolean;
+    pushCommentAt: boolean;
     /**
      * 点赞与收藏推送
      */
-    push_like_collect?: boolean;
+    pushLikeCollect: boolean;
     /**
      * 新粉丝推送
      */
-    push_new_follower?: boolean;
+    pushNewFollower: boolean;
     /**
      * 晒你通知
      */
-    push_shining_notification?: boolean;
+    pushShiningNotification: boolean;
     /**
      * 关注动态推送
      */
-    push_post_update?: boolean;
+    pushPostUpdate: boolean;
     /**
      * 举报反馈推送
      */
-    push_report?: boolean;
+    pushReport: boolean;
     /**
      * 新增身份认证申请推送
      */
-    push_verification_request?: boolean;
+    pushVerificationRequest: boolean;
 };
 
 /**
  * 隐私设置 (仅自己可见)
  */
 export type V1SyncedPrivacySettings = {
-    chat_permission?: V1ChatPrivacyLevel;
-    liked_posts_visibility?: V1BasePrivacyLevel;
-    collected_posts_visibility?: V1BasePrivacyLevel;
+    chatPermission: V1ChatPrivacyLevel;
+    likedPostsVisibility: V1BasePrivacyLevel;
+    collectedPostsVisibility: V1BasePrivacyLevel;
 };
 
 /**
@@ -1955,9 +1955,9 @@ export type V1SyncedPrivacySettings = {
  * 用户通用设置 (仅自己可见的需要多端同步的设置选项)
  */
 export type V1SyncedUserSettings = {
-    notification?: V1SyncedNotificationSettings;
-    privacy?: V1SyncedPrivacySettings;
-    content_category_order?: V1SyncedContentCategoryOrder;
+    notification: V1SyncedNotificationSettings;
+    privacy: V1SyncedPrivacySettings;
+    contentCategoryOrder: V1SyncedContentCategoryOrder;
 };
 
 /**
@@ -1967,18 +1967,18 @@ export type V1SystemNotification = {
     /**
      * 通知 ID
      */
-    notification_id?: string;
-    type?: V1SystemNotificationType;
+    notificationId: string;
+    type: V1SystemNotificationType;
     /**
      * 通知产生时间戳（秒）
      */
-    created_at?: string;
-    report_detail?: V1ReportNotificationDetail;
-    verification_detail?: V1VerificationNotificationDetail;
+    createdAt: string;
+    reportDetail?: V1ReportNotificationDetail;
+    verificationDetail?: V1VerificationNotificationDetail;
     /**
      * 是否已读
      */
-    is_read?: boolean;
+    isRead: boolean;
 };
 
 /**
@@ -1999,11 +1999,11 @@ export type V1TimeRange = {
     /**
      * 开始时间
      */
-    start_timestamp?: string;
+    startTimestamp?: string;
     /**
      * 结束时间
      */
-    end_timestamp?: string;
+    endTimestamp?: string;
 };
 
 /**
@@ -2014,8 +2014,8 @@ export type V1UpdatePushTokenRequest = {
     /**
      * 标识是哪个设备变更了 token
      */
-    device_id?: string;
-    push_token?: string;
+    deviceId: string;
+    pushToken: string;
 };
 
 export type V1UpdatePushTokenResponse = {
@@ -2027,21 +2027,21 @@ export type V1UpdatePushTokenResponse = {
  * 更新我的设置
  */
 export type V1UpdateSettingsRequest = {
-    settings?: V1SyncedUserSettings;
-    update_mask?: string;
+    settings: V1SyncedUserSettings;
+    updateMask: string;
 };
 
 export type V1UpdateSettingsResponse = {
-    settings?: V1SyncedUserSettings;
+    settings: V1SyncedUserSettings;
 };
 
 /**
  * UploadAsset 描述前端发起批量上传时的单个“媒体元素”。
  */
 export type V1UploadAsset = {
-    scene?: V1MediaScene;
-    single_file?: V1UploadFile;
-    live_photo_pair?: V1LivePhotoUploadPair;
+    scene: V1MediaScene;
+    singleFile?: V1UploadFile;
+    livePhotoPair?: V1LivePhotoUploadPair;
 };
 
 /**
@@ -2051,23 +2051,23 @@ export type V1UploadFile = {
     /**
      * 原始文件名。
      */
-    filename?: string;
+    filename: string;
     /**
      * 文件大小（字节）。
      */
-    size_bytes?: string;
+    sizeBytes: string;
     /**
      * 文件 MIME 类型，由前端探测上送，后端会二次校验。
      */
-    mime_type?: string;
+    mimeType: string;
     /**
      * 可选文件哈希，便于去重或幂等检查。
      */
-    file_hash?: string;
+    fileHash?: string;
     /**
      * 帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。
      */
-    crop_cover?: boolean;
+    cropCover?: boolean;
 };
 
 /**
@@ -2077,15 +2077,15 @@ export type V1UploadedPart = {
     /**
      * 分片号。
      */
-    part_number?: number;
+    partNumber: number;
     /**
      * 分片 ETag。
      */
-    etag?: string;
+    etag: string;
     /**
      * 分片大小（字节）。
      */
-    size_bytes?: string;
+    sizeBytes: string;
 };
 
 /**
@@ -2095,11 +2095,11 @@ export type V1UserBrief = {
     /**
      * 用户ID
      */
-    user_id?: string;
+    userId: string;
     /**
      * 用户名
      */
-    name?: string;
+    name: string;
     /**
      * 用户备注
      */
@@ -2107,20 +2107,20 @@ export type V1UserBrief = {
     /**
      * 头像URL
      */
-    avatar?: string;
+    avatar: string;
     /**
      * QQ 号
      */
-    qq_number?: string;
-    role?: V1Role;
+    qqNumber: string;
+    role: V1Role;
 };
 
 /**
  * 用户流内容
  */
 export type V1UserFeedContent = {
-    items?: Array<V1UserSummary>;
-    relation_status?: V1UserRelationStatus;
+    items: Array<V1UserSummary>;
+    relationStatus?: V1UserRelationStatus;
 };
 
 /**
@@ -2137,33 +2137,33 @@ export type V1UserFilter = {
  * 用户列表数据模型设计（用于批量接口返回）
  */
 export type V1UserListItem = {
-    info?: V1UserBrief;
-    relation_status?: V1UserRelationStatus;
+    info: V1UserBrief;
+    relationStatus?: V1UserRelationStatus;
 };
 
 export type V1UserProfile = {
-    user_id?: string;
-    name?: string;
+    userId: string;
+    name: string;
     /**
      * 用户备注
      */
     remark?: string;
-    avatar?: string;
-    qq_number?: string;
-    role?: V1Role;
+    avatar: string;
+    qqNumber: string;
+    role: V1Role;
     /**
      * 认证头衔（如：23届部长）
      */
-    verified_title?: string;
+    verifiedTitle: string;
     /**
      * 所所属部门
      */
-    departments?: Array<V1DepartmentBase>;
-    stats?: V1UserStats;
+    departments: Array<V1DepartmentBase>;
+    stats: V1UserStats;
     /**
      * 外部链接
      */
-    links?: Array<V1Link>;
+    links: Array<V1Link>;
 };
 
 /**
@@ -2173,11 +2173,11 @@ export type V1UserRelationStatus = {
     /**
      * 当前用户是否关注了目标用户
      */
-    is_following?: boolean;
+    isFollowing: boolean;
     /**
      * 目标用户是否关注了当前用户
      */
-    is_followed_by?: boolean;
+    isFollowedBy: boolean;
 };
 
 /**
@@ -2187,34 +2187,34 @@ export type V1UserStats = {
     /**
      * 粉丝数
      */
-    follower_count?: string;
+    followerCount: string;
     /**
      * 关注数
      */
-    following_count?: string;
+    followingCount: string;
     /**
      * 获得的赞
      */
-    like_count_received?: string;
+    likeCountReceived: string;
     /**
      * 获得的收藏
      */
-    collect_count_received?: string;
+    collectCountReceived: string;
     /**
      * 获得浏览
      */
-    view_count_received?: string;
+    viewCountReceived: string;
 };
 
 export type V1UserSummary = {
     /**
      * 用户ID
      */
-    user_id?: string;
+    userId: string;
     /**
      * 用户名
      */
-    name?: string;
+    name: string;
     /**
      * 用户备注
      */
@@ -2222,21 +2222,21 @@ export type V1UserSummary = {
     /**
      * 头像URL
      */
-    avatar?: string;
+    avatar: string;
     /**
      * QQ 号
      */
-    qq_number?: string;
-    role?: V1Role;
+    qqNumber: string;
+    role: V1Role;
     /**
      * 认证头衔（如：23届部长）
      */
-    verified_title?: string;
+    verifiedTitle: string;
     /**
      * 所所属部门
      */
-    departments?: Array<V1DepartmentBase>;
-    stats?: V1UserStats;
+    departments: Array<V1DepartmentBase>;
+    stats: V1UserStats;
 };
 
 /**
@@ -2247,15 +2247,15 @@ export type V1UserViewCapabilities = {
     /**
      * 是否可以发送私信
      */
-    can_chat?: boolean;
+    canChat: boolean;
     /**
      * 是否可以查看点赞列表
      */
-    can_view_liked_posts?: boolean;
+    canViewLikedPosts: boolean;
     /**
      * 是否可以查看收藏列表
      */
-    can_view_collected_posts?: boolean;
+    canViewCollectedPosts: boolean;
 };
 
 /**
@@ -2266,49 +2266,49 @@ export type V1VerificationApplication = {
     /**
      * 申请 ID
      */
-    application_id?: string;
-    user?: V1UserBrief;
+    applicationId: string;
+    user: V1UserBrief;
     /**
      * 申请内容
      *
      * 申请的认证头衔
      */
-    verified_title?: string;
+    verifiedTitle: string;
     /**
      * 申请说明
      */
-    verification_description?: string;
+    verificationDescription: string;
     /**
      * 证明材料
      */
-    media?: Array<V1MediaAsset>;
-    status?: V1VerificationStatus;
+    media: Array<V1MediaAsset>;
+    status: V1VerificationStatus;
     /**
      * 创建时间
      */
-    created_at?: string;
+    createdAt: string;
     /**
      * 更新时间
      */
-    updated_at?: string;
+    updatedAt: string;
     /**
      * 审批信息（如果已审批）
      *
      * 审批人 ID
      */
-    reviewed_by_user_id?: string;
+    reviewedByUserId?: string;
     /**
      * 审批人名称
      */
-    reviewed_by_username?: string;
+    reviewedByUsername?: string;
     /**
      * 审批时间
      */
-    reviewed_at?: string;
+    reviewedAt?: string;
     /**
      * 审批意见
      */
-    review_comment?: string;
+    reviewComment?: string;
 };
 
 /**
@@ -2318,7 +2318,7 @@ export type V1VerificationNotificationDetail = {
     /**
      * 认证头衔（如：社长）
      */
-    verified_title?: string;
+    verifiedTitle: string;
     /**
      * 拒绝原因（仅当认证被拒绝时）
      */
@@ -2417,10 +2417,10 @@ export type DepartmentServiceRenameDepartmentData = {
         /**
          * 部门ID
          */
-        department_id: string;
+        departmentId: string;
     };
     query?: never;
-    url: '/v1/admin/departments/{department_id}/name';
+    url: '/v1/admin/departments/{departmentId}/name';
 };
 
 export type DepartmentServiceRenameDepartmentErrors = {
@@ -2497,10 +2497,10 @@ export type PartitionServiceDeletePartitionData = {
         /**
          * 要删除的分区ID
          */
-        partition_id: string;
+        partitionId: string;
     };
     query?: never;
-    url: '/v1/admin/partitions/{partition_id}';
+    url: '/v1/admin/partitions/{partitionId}';
 };
 
 export type PartitionServiceDeletePartitionErrors = {
@@ -2527,10 +2527,10 @@ export type PartitionServiceRenamePartitionData = {
         /**
          * 分区ID
          */
-        partition_id: string;
+        partitionId: string;
     };
     query?: never;
-    url: '/v1/admin/partitions/{partition_id}/name';
+    url: '/v1/admin/partitions/{partitionId}/name';
 };
 
 export type PartitionServiceRenamePartitionErrors = {
@@ -2604,18 +2604,18 @@ export type AdminServiceEditAdminsResponse = AdminServiceEditAdminsResponses[key
 export type ReportServiceListReportsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 刷新类型
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -2652,10 +2652,10 @@ export type ReportServiceApprovalReportData = {
         /**
          * 举报记录ID
          */
-        report_id: string;
+        reportId: string;
     };
     query?: never;
-    url: '/v1/admin/reports/{report_id}/approval';
+    url: '/v1/admin/reports/{reportId}/approval';
 };
 
 export type ReportServiceApprovalReportErrors = {
@@ -2682,13 +2682,13 @@ export type ReportServiceListReportEvidenceData = {
         /**
          * 举报记录ID
          */
-        report_id: string;
+        reportId: string;
     };
-    query?: {
+    query: {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -2698,7 +2698,7 @@ export type ReportServiceListReportEvidenceData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/admin/reports/{report_id}/evidence';
+    url: '/v1/admin/reports/{reportId}/evidence';
 };
 
 export type ReportServiceListReportEvidenceErrors = {
@@ -2725,10 +2725,10 @@ export type ReportServiceRejectReportData = {
         /**
          * 举报记录ID
          */
-        report_id: string;
+        reportId: string;
     };
     query?: never;
-    url: '/v1/admin/reports/{report_id}/rejection';
+    url: '/v1/admin/reports/{reportId}/rejection';
 };
 
 export type ReportServiceRejectReportErrors = {
@@ -2752,18 +2752,18 @@ export type ReportServiceRejectReportResponse = ReportServiceRejectReportRespons
 export type VerificationServiceListVerificationsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 刷新类型
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -2797,10 +2797,10 @@ export type VerificationServiceListVerificationsResponse = VerificationServiceLi
 export type VerificationServiceReviewVerificationData = {
     body: VerificationServiceReviewVerificationBody;
     path: {
-        application_id: string;
+        applicationId: string;
     };
     query?: never;
-    url: '/v1/admin/verifications/{application_id}/review';
+    url: '/v1/admin/verifications/{applicationId}/review';
 };
 
 export type VerificationServiceReviewVerificationErrors = {
@@ -2952,10 +2952,10 @@ export type CommentServiceDeleteCommentData = {
         /**
          * 评论ID
          */
-        comment_id: string;
+        commentId: string;
     };
     query?: never;
-    url: '/v1/comments/{comment_id}';
+    url: '/v1/comments/{commentId}';
 };
 
 export type CommentServiceDeleteCommentErrors = {
@@ -2982,10 +2982,10 @@ export type CommentServiceSetCommentLikeData = {
         /**
          * 评论ID
          */
-        comment_id: string;
+        commentId: string;
     };
     query?: never;
-    url: '/v1/comments/{comment_id}/like';
+    url: '/v1/comments/{commentId}/like';
 };
 
 export type CommentServiceSetCommentLikeErrors = {
@@ -3012,9 +3012,9 @@ export type CommentServiceListCommentRepliesData = {
         /**
          * 第一层评论ID
          */
-        comment_id: string;
+        commentId: string;
     };
-    query?: {
+    query: {
         /**
          * 排序方式（默认：最早）
          *
@@ -3032,11 +3032,11 @@ export type CommentServiceListCommentRepliesData = {
          * 最多回复（按回复数降序）
          * - COMMENT_ORDER_TYPE_LEAST_REPLIES: 最少回复（按回复数升序）
          */
-        order_type?: 'COMMENT_ORDER_TYPE_UNSPECIFIED' | 'COMMENT_ORDER_TYPE_LATEST' | 'COMMENT_ORDER_TYPE_EARLIEST' | 'COMMENT_ORDER_TYPE_MOST_LIKED' | 'COMMENT_ORDER_TYPE_LEAST_LIKED' | 'COMMENT_ORDER_TYPE_MOST_REPLIES' | 'COMMENT_ORDER_TYPE_LEAST_REPLIES';
+        orderType?: 'COMMENT_ORDER_TYPE_UNSPECIFIED' | 'COMMENT_ORDER_TYPE_LATEST' | 'COMMENT_ORDER_TYPE_EARLIEST' | 'COMMENT_ORDER_TYPE_MOST_LIKED' | 'COMMENT_ORDER_TYPE_LEAST_LIKED' | 'COMMENT_ORDER_TYPE_MOST_REPLIES' | 'COMMENT_ORDER_TYPE_LEAST_REPLIES';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3046,7 +3046,7 @@ export type CommentServiceListCommentRepliesData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/comments/{comment_id}/replies';
+    url: '/v1/comments/{commentId}/replies';
 };
 
 export type CommentServiceListCommentRepliesErrors = {
@@ -3070,18 +3070,18 @@ export type CommentServiceListCommentRepliesResponse = CommentServiceListComment
 export type FeedServiceGetFeedData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 分类ID（来自ListFeedCategories返回的category_id）
          */
-        category_id?: string;
+        categoryId: string;
         /**
          * 刷新类型：下拉刷新/上拉加载
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -3089,11 +3089,11 @@ export type FeedServiceGetFeedData = {
         /**
          * 开始时间
          */
-        'filter.time_range.start_timestamp'?: string;
+        'filter.timeRange.startTimestamp'?: string;
         /**
          * 结束时间
          */
-        'filter.time_range.end_timestamp'?: string;
+        'filter.timeRange.endTimestamp'?: string;
         /**
          * 排序方式（根据content_type自动选择合适的排序）
          *
@@ -3105,15 +3105,15 @@ export type FeedServiceGetFeedData = {
          * - FEED_ORDER_TYPE_MOST_INTERACTIONS: 最多互动（仅用户）
          * - FEED_ORDER_TYPE_LEAST_INTERACTIONS: 最少互动（仅用户）
          */
-        'filter.order_type'?: 'FEED_ORDER_TYPE_UNSPECIFIED' | 'FEED_ORDER_TYPE_RECOMMENDED' | 'FEED_ORDER_TYPE_LATEST' | 'FEED_ORDER_TYPE_HOT' | 'FEED_ORDER_TYPE_MOST_FOLLOWERS' | 'FEED_ORDER_TYPE_LEAST_FOLLOWER' | 'FEED_ORDER_TYPE_MOST_INTERACTIONS' | 'FEED_ORDER_TYPE_LEAST_INTERACTIONS';
+        'filter.orderType'?: 'FEED_ORDER_TYPE_UNSPECIFIED' | 'FEED_ORDER_TYPE_RECOMMENDED' | 'FEED_ORDER_TYPE_LATEST' | 'FEED_ORDER_TYPE_HOT' | 'FEED_ORDER_TYPE_MOST_FOLLOWERS' | 'FEED_ORDER_TYPE_LEAST_FOLLOWER' | 'FEED_ORDER_TYPE_MOST_INTERACTIONS' | 'FEED_ORDER_TYPE_LEAST_INTERACTIONS';
         /**
          * 作者ID筛选（仅帖子流，配合"following"场景使用）
          */
-        'filter.author_id'?: string;
+        'filter.authorId'?: string;
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3155,7 +3155,7 @@ export type FeedServiceListFeedCategoriesData = {
          * - FEED_CONTENT_TYPE_USER: 用户流
          * - FEED_CONTENT_TYPE_FOLLOWING_AUTHOR: 关注的作者列表（带更新状态）
          */
-        filter_type?: 'FEED_CONTENT_TYPE_UNSPECIFIED' | 'FEED_CONTENT_TYPE_POST' | 'FEED_CONTENT_TYPE_USER' | 'FEED_CONTENT_TYPE_FOLLOWING_AUTHOR';
+        filterType?: 'FEED_CONTENT_TYPE_UNSPECIFIED' | 'FEED_CONTENT_TYPE_POST' | 'FEED_CONTENT_TYPE_USER' | 'FEED_CONTENT_TYPE_FOLLOWING_AUTHOR';
     };
     url: '/v1/feed/categories';
 };
@@ -3184,10 +3184,10 @@ export type MediaServiceGetBatchMediaData = {
         /**
          * 批次 ID。
          */
-        batch_id: string;
+        batchId: string;
     };
     query?: never;
-    url: '/v1/media/batches/{batch_id}/media';
+    url: '/v1/media/batches/{batchId}/media';
 };
 
 export type MediaServiceGetBatchMediaErrors = {
@@ -3340,19 +3340,19 @@ export type MediaServiceSignMultipartPartResponse = MediaServiceSignMultipartPar
 export type MediaServiceListUploadedPartsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 文件任务 ID。
          */
-        task_id?: string;
+        taskId: string;
         /**
          * multipart upload_id。
          */
-        upload_id?: string;
+        uploadId: string;
         /**
          * 上传对象键（Object Key）。
          */
-        object_key?: string;
+        objectKey: string;
     };
     url: '/v1/media/multipart/parts';
 };
@@ -3378,18 +3378,18 @@ export type MediaServiceListUploadedPartsResponse = MediaServiceListUploadedPart
 export type NotificationServiceListCommentMentionNotificationsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 刷新类型（下拉/上拉）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3423,18 +3423,18 @@ export type NotificationServiceListCommentMentionNotificationsResponse = Notific
 export type NotificationServiceListFollowNotificationsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 刷新类型（下拉/上拉）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3468,18 +3468,18 @@ export type NotificationServiceListFollowNotificationsResponse = NotificationSer
 export type NotificationServiceListLikeCollectNotificationsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 刷新类型（下拉/上拉）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3588,18 +3588,18 @@ export type NotificationServiceGetNotificationStatsResponse = NotificationServic
 export type NotificationServiceListSystemNotificationsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * 刷新类型（下拉/上拉）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3658,10 +3658,10 @@ export type PostServiceCreatePostResponse = PostServiceCreatePostResponses[keyof
 export type PostServiceDeletePostData = {
     body?: never;
     path: {
-        post_id: string;
+        postId: string;
     };
     query?: never;
-    url: '/v1/posts/{post_id}';
+    url: '/v1/posts/{postId}';
 };
 
 export type PostServiceDeletePostErrors = {
@@ -3685,10 +3685,10 @@ export type PostServiceDeletePostResponse = PostServiceDeletePostResponses[keyof
 export type PostServiceGetPostData = {
     body?: never;
     path: {
-        post_id: string;
+        postId: string;
     };
     query?: never;
-    url: '/v1/posts/{post_id}';
+    url: '/v1/posts/{postId}';
 };
 
 export type PostServiceGetPostErrors = {
@@ -3712,10 +3712,10 @@ export type PostServiceGetPostResponse = PostServiceGetPostResponses[keyof PostS
 export type PostServiceEditPostData = {
     body: PostServiceEditPostBody;
     path: {
-        post_id: string;
+        postId: string;
     };
     query?: never;
-    url: '/v1/posts/{post_id}';
+    url: '/v1/posts/{postId}';
 };
 
 export type PostServiceEditPostErrors = {
@@ -3739,10 +3739,10 @@ export type PostServiceEditPostResponse = PostServiceEditPostResponses[keyof Pos
 export type PostServiceSetPostCollectData = {
     body: PostServiceSetPostCollectBody;
     path: {
-        post_id: string;
+        postId: string;
     };
     query?: never;
-    url: '/v1/posts/{post_id}/collection';
+    url: '/v1/posts/{postId}/collection';
 };
 
 export type PostServiceSetPostCollectErrors = {
@@ -3769,9 +3769,9 @@ export type CommentServiceListPostCommentsData = {
         /**
          * 帖子ID
          */
-        post_id: string;
+        postId: string;
     };
-    query?: {
+    query: {
         /**
          * 排序方式（默认：最新）
          *
@@ -3789,11 +3789,11 @@ export type CommentServiceListPostCommentsData = {
          * 最多回复（按回复数降序）
          * - COMMENT_ORDER_TYPE_LEAST_REPLIES: 最少回复（按回复数升序）
          */
-        order_type?: 'COMMENT_ORDER_TYPE_UNSPECIFIED' | 'COMMENT_ORDER_TYPE_LATEST' | 'COMMENT_ORDER_TYPE_EARLIEST' | 'COMMENT_ORDER_TYPE_MOST_LIKED' | 'COMMENT_ORDER_TYPE_LEAST_LIKED' | 'COMMENT_ORDER_TYPE_MOST_REPLIES' | 'COMMENT_ORDER_TYPE_LEAST_REPLIES';
+        orderType?: 'COMMENT_ORDER_TYPE_UNSPECIFIED' | 'COMMENT_ORDER_TYPE_LATEST' | 'COMMENT_ORDER_TYPE_EARLIEST' | 'COMMENT_ORDER_TYPE_MOST_LIKED' | 'COMMENT_ORDER_TYPE_LEAST_LIKED' | 'COMMENT_ORDER_TYPE_MOST_REPLIES' | 'COMMENT_ORDER_TYPE_LEAST_REPLIES';
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -3805,15 +3805,15 @@ export type CommentServiceListPostCommentsData = {
         /**
          * 每条第一层评论需要返回的第二层回复数量（默认1条）
          */
-        need_reply_count?: number;
+        needReplyCount?: number;
         /**
          * 从“评论和 @”、“赞和收藏”通知进入时，传入目标评论 ID。
          * 如果目标评论就是一级评论，则以该评论为起点展示评论列表，并且后续列表中不再展示该评论（可以将 exclude_id 编码进 cursor 以排除评论）；
          * 如果目标评论是二级回复，则以该回复所在的一级评论为起点展示评论列表，后续列表中不再展示一级评论的同时，一级评论展开回复到目标评论处，比目标评论早发布的评论都要展开。
          */
-        target_comment_id?: string;
+        targetCommentId?: string;
     };
-    url: '/v1/posts/{post_id}/comments';
+    url: '/v1/posts/{postId}/comments';
 };
 
 export type CommentServiceListPostCommentsErrors = {
@@ -3837,10 +3837,10 @@ export type CommentServiceListPostCommentsResponse = CommentServiceListPostComme
 export type PostServiceSetPostLikeData = {
     body: PostServiceSetPostLikeBody;
     path: {
-        post_id: string;
+        postId: string;
     };
     query?: never;
-    url: '/v1/posts/{post_id}/like';
+    url: '/v1/posts/{postId}/like';
 };
 
 export type PostServiceSetPostLikeErrors = {
@@ -3967,10 +3967,10 @@ export type SyncServiceDisconnectDeviceData = {
         /**
          * 设备 ID
          */
-        device_id: string;
+        deviceId: string;
     };
     query?: never;
-    url: '/v1/sync/devices/{device_id}';
+    url: '/v1/sync/devices/{deviceId}';
 };
 
 export type SyncServiceDisconnectDeviceErrors = {
@@ -4044,11 +4044,11 @@ export type SyncServiceGetSyncStatusResponse = SyncServiceGetSyncStatusResponses
 export type UserServiceGetUserIdByQqData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
         /**
          * QQ 号
          */
-        qq_number?: string;
+        qqNumber: string;
     };
     url: '/v1/users/id_by_qq';
 };
@@ -4224,10 +4224,10 @@ export type UserServiceUpdateSettingsResponse = UserServiceUpdateSettingsRespons
 export type UserServiceSetFollowData = {
     body: UserServiceSetFollowBody;
     path: {
-        user_id: string;
+        userId: string;
     };
     query?: never;
-    url: '/v1/users/me/{user_id}/follow';
+    url: '/v1/users/me/{userId}/follow';
 };
 
 export type UserServiceSetFollowErrors = {
@@ -4251,10 +4251,10 @@ export type UserServiceSetFollowResponse = UserServiceSetFollowResponses[keyof U
 export type UserServiceGetUserData = {
     body?: never;
     path: {
-        user_id: string;
+        userId: string;
     };
     query?: never;
-    url: '/v1/users/{user_id}';
+    url: '/v1/users/{userId}';
 };
 
 export type UserServiceGetUserErrors = {
@@ -4281,16 +4281,16 @@ export type UserServiceListUserCollectedPostsData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
-    query?: {
+    query: {
         /**
          * 刷新类型
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -4298,7 +4298,7 @@ export type UserServiceListUserCollectedPostsData = {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -4308,7 +4308,7 @@ export type UserServiceListUserCollectedPostsData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/users/{user_id}/collected_posts';
+    url: '/v1/users/{userId}/collected_posts';
 };
 
 export type UserServiceListUserCollectedPostsErrors = {
@@ -4335,16 +4335,16 @@ export type UserServiceListUserFollowersData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
-    query?: {
+    query: {
         /**
          * 刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -4352,7 +4352,7 @@ export type UserServiceListUserFollowersData = {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -4362,7 +4362,7 @@ export type UserServiceListUserFollowersData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/users/{user_id}/followers';
+    url: '/v1/users/{userId}/followers';
 };
 
 export type UserServiceListUserFollowersErrors = {
@@ -4389,16 +4389,16 @@ export type UserServiceListUserFollowingsData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
-    query?: {
+    query: {
         /**
          * 刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -4406,7 +4406,7 @@ export type UserServiceListUserFollowingsData = {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -4416,7 +4416,7 @@ export type UserServiceListUserFollowingsData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/users/{user_id}/followings';
+    url: '/v1/users/{userId}/followings';
 };
 
 export type UserServiceListUserFollowingsErrors = {
@@ -4443,16 +4443,16 @@ export type UserServiceListUserLikedPostsData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
-    query?: {
+    query: {
         /**
          * 刷新类型
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -4460,7 +4460,7 @@ export type UserServiceListUserLikedPostsData = {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -4470,7 +4470,7 @@ export type UserServiceListUserLikedPostsData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/users/{user_id}/liked_posts';
+    url: '/v1/users/{userId}/liked_posts';
 };
 
 export type UserServiceListUserLikedPostsErrors = {
@@ -4497,16 +4497,16 @@ export type UserServiceListUserMutualFollowersData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
-    query?: {
+    query: {
         /**
          * 刷新类型：下拉刷新（返回最新数据）/上拉加载更多（返回历史数据）
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -4514,7 +4514,7 @@ export type UserServiceListUserMutualFollowersData = {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -4524,7 +4524,7 @@ export type UserServiceListUserMutualFollowersData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/users/{user_id}/mutual_followers';
+    url: '/v1/users/{userId}/mutual_followers';
 };
 
 export type UserServiceListUserMutualFollowersErrors = {
@@ -4551,16 +4551,16 @@ export type UserServiceListUserPostsData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
-    query?: {
+    query: {
         /**
          * 刷新类型
          *
          * - REFRESH_TYPE_PULL_DOWN: 下拉刷新，获取最新数据
          * - REFRESH_TYPE_PULL_UP: 上拉加载，获取历史数据
          */
-        refresh_type?: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
+        refreshType: 'REFRESH_TYPE_UNSPECIFIED' | 'REFRESH_TYPE_PULL_DOWN' | 'REFRESH_TYPE_PULL_UP';
         /**
          * 关键词搜索
          */
@@ -4568,7 +4568,7 @@ export type UserServiceListUserPostsData = {
         /**
          * 需要返回的帖子数量
          */
-        'pagination.need_num'?: number;
+        'pagination.needNum': number;
         /**
          * 游标分数、时间戳或其他标识符，用于推荐、热度、时间排序的瀑布流分页加载。
          * 游标分数：用于推荐/热度算法的分页加载，表示上次返回结果中的最后一项的分数
@@ -4578,7 +4578,7 @@ export type UserServiceListUserPostsData = {
          */
         'pagination.cursor'?: string;
     };
-    url: '/v1/users/{user_id}/posts';
+    url: '/v1/users/{userId}/posts';
 };
 
 export type UserServiceListUserPostsErrors = {
@@ -4605,10 +4605,10 @@ export type UserServiceChangeRemarkData = {
         /**
          * 目标用户ID
          */
-        user_id: string;
+        userId: string;
     };
     query?: never;
-    url: '/v1/users/{user_id}/remark';
+    url: '/v1/users/{userId}/remark';
 };
 
 export type UserServiceChangeRemarkErrors = {

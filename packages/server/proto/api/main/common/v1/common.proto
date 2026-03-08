@@ -26,8 +26,8 @@ enum RefreshType {
 //--------------------
 // 时间范围结构（毫秒级时间戳）
 message TimeRange {
-  int64 start_timestamp = 1; // 开始时间
-  int64 end_timestamp = 2; // 结束时间
+  optional int64 start_timestamp = 1; // 开始时间
+  optional int64 end_timestamp = 2; // 结束时间
 }
 
 //--------------------
