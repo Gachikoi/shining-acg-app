@@ -31,7 +31,8 @@ export default defineConfig(
 			// 本项目使用基于域名的 reroute 路由（hooks.ts），而非 paths.base 路径前缀，
 			// 因此 href 不需要经过 resolve() 处理
 			'svelte/no-href-without-base': 'off',
-			'svelte/no-navigation-without-resolve': 'off'
+			'svelte/no-navigation-without-resolve': 'off',
+			'svelte/prefer-svelte-reactivity': 'off'
 		}
 	},
 	{

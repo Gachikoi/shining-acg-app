@@ -1,91 +1,30 @@
-import type { V1PostPreview } from '$lib/api/types.gen';
+/**
+ * @file 瀑布流组件类型定义
+ */
 
-export interface WaterfallData {
-	posts: V1PostPreview[];
-	loading: boolean;
-	refreshing: boolean;
-	hasMore: boolean;
-	cursor: string | null;
-	loadMore: () => Promise<void>;
-	refresh: () => Promise<void>;
-}
+import type { PullRefreshConfig } from '$lib/modules/gesture';
 
-export type WaterfallConfigKey =
-	| 'minCardWidth'
-	| 'gap'
-	| 'bufferSize'
-	| 'bufferHeight'
-	| 'loadingThreshold'
-	| 'cardContentHeight'
-	| 'scene'
-	| 'skeletonCardCount'
-	| 'binarySearchThreshold';
+// 重新导出本地布局模块的 CardPosition 类型，保持向后兼容
+export type { CardPosition } from './waterfall-layout';
 
+/**
+ * 瀑布流配置项
+ */
 export interface WaterfallConfig {
+	/** 最小卡片宽度（px），用于计算列数 */
 	minCardWidth: number;
+	/** 卡片间距（px），设为 0 时使用响应式间距 */
 	gap: number;
+	/** 虚拟列表缓冲区大小倍数 */
 	bufferSize: number;
+	/** 虚拟列表缓冲区基础高度（px） */
 	bufferHeight: number;
+	/** 触发加载更多的滚动距离阈值（px） */
 	loadingThreshold: number;
-	cardContentHeight: number;
+	/** 骨架屏卡片数量 */
 	skeletonCardCount: number;
+	/** 使用二分查找的卡片数量阈值 */
 	binarySearchThreshold: number;
+	/** 下拉刷新配置 */
 	pullRefreshConfig: PullRefreshConfig;
-}
-
-export interface PullRefreshConfig {
-	maxDistance: number;
-	triggerThreshold: number;
-	triggeredDistance: number;
-	dampingFactor: number;
-	functionalRefreshDuration: number;
-}
-
-export interface CardPosition {
-	top: number;
-	left: number;
-	width: number;
-	height: number;
-}
-
-export function isValidWaterfallData(data: unknown): data is WaterfallData {
-	if (typeof data !== 'object' || data === null) return false;
-
-	const d = data as Record<string, unknown>;
-
-	return (
-		Array.isArray(d.posts) &&
-		typeof d.loading === 'boolean' &&
-		typeof d.refreshing === 'boolean' &&
-		typeof d.hasMore === 'boolean' &&
-		(d.cursor === null || typeof d.cursor === 'string') &&
-		typeof d.loadMore === 'function' &&
-		typeof d.refresh === 'function'
-	);
-}
-
-export function isValidWaterfallConfig(config: unknown): config is WaterfallConfig {
-	if (typeof config !== 'object' || config === null) return false;
-
-	const c = config as Record<string, unknown>;
-
-	return (
-		typeof c.minCardWidth === 'number' &&
-		c.minCardWidth > 0 &&
-		typeof c.gap === 'number' &&
-		c.gap >= 0 &&
-		typeof c.bufferSize === 'number' &&
-		c.bufferSize > 0 &&
-		typeof c.bufferHeight === 'number' &&
-		c.bufferHeight > 0 &&
-		typeof c.loadingThreshold === 'number' &&
-		c.loadingThreshold >= 0 &&
-		typeof c.cardContentHeight === 'number' &&
-		c.cardContentHeight >= 0 &&
-		typeof c.scene === 'string' &&
-		typeof c.skeletonCardCount === 'number' &&
-		c.skeletonCardCount >= 0 &&
-		typeof c.binarySearchThreshold === 'number' &&
-		c.binarySearchThreshold > 0
-	);
 }

@@ -17,7 +17,7 @@
 
 {@render children()}
 <div
-	class="selection:bg-brand-500 relative min-h-screen w-full overflow-hidden bg-[#f8f9fa] font-sans text-gray-800 selection:text-white"
+	class="selection:bg-brand-500 relative min-h-screen w-full overflow-hidden bg-[#f8f9fa] font-sans text-zinc-800 selection:text-white"
 >
 	<Background />
 	<Navbar />
@@ -31,7 +31,7 @@
 
 	<div class="fixed right-6 bottom-32 z-50 lg:hidden">
 		<button
-			class="shadow-brand-500/20 text-brand-500 rounded-full border border-gray-100 bg-white p-4 shadow-xl"
+			class="shadow-brand-500/20 text-brand-500 rounded-full border border-zinc-100 bg-white p-4 shadow-xl"
 		>
 			<Menu />
 		</button>

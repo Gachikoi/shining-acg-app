@@ -1,223 +1,256 @@
-<!-- 549行空的Summary -->
+<!--
+  @component WaterfallContainer
+  虚拟滚动瀑布流容器，负责布局计算、虚拟滚动和下拉刷新手势。
+
+  职责：
+  - 瀑布流布局：贪心最短列算法分配卡片位置
+  - 虚拟滚动：仅渲染视口内的卡片，支持线性/二分查找
+  - 下拉刷新：通过 pullRefresh action 处理 touch/wheel 手势
+  - 卡片高度实测：ResizeObserver 实时监听 DOM 高度并修正布局
+
+  数据由外部通过 props 传入，组件不负责数据获取逻辑。
+-->
 <script lang="ts">
-	import { onMount, onDestroy, tick } from 'svelte';
-	import { WaterfallCard, WaterfallSkeletonCard } from '../waterfall-cards';
-	import type { WaterfallData, WaterfallConfig, CardPosition } from './types';
+	import { DEFAULT_PULL_REFRESH_CONFIG, pullRefresh } from '$lib/modules/gesture';
+	import type { V1PostPreview } from '$lib/api/types.gen';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import { formatNumber } from '../util';
+	import { breakpoint, remToPx } from '$lib/modules/device';
+	import { calculateVisibleRange } from '$lib/modules/virtual-feed';
+	import { onDestroy, onMount } from 'svelte';
+	import type { Action } from 'svelte/action';
+	import { Spring } from 'svelte/motion';
+	import { WaterfallCard, WaterfallSkeletonCard } from '../waterfall-cards';
+	import {
+		calculateBatchPositions,
+		calculateLayoutBase,
+		type CardPosition,
+		type LayoutItem
+	} from './waterfall-layout';
+	import type { WaterfallConfig } from './types';
+	import { formatStat } from '$lib/utils';
+	import { resolveCacheUrl } from '$lib/modules/cache';
 
-	// 组件属性：接收瀑布流数据和配置
-	let { data, config }: { data: WaterfallData; config?: WaterfallConfig } = $props();
+	// ─── Props ─────────────────────────────────────────────────────
 
-	// DOM 元素引用
-	let containerElement: HTMLElement; // 容器元素
-	let resizeObserver: ResizeObserver; // 容器尺寸变化观察器
-	let scrollContainer: HTMLElement; // 滚动容器元素
+	let {
+		posts,
+		loading = false,
+		hasMore = true,
+		showSkeleton = false,
+		refreshing = false,
+		categoryId = '',
+		onLoadMore,
+		onRefresh,
+		config
+	}: {
+		/** 帖子数据列表 */
+		posts: V1PostPreview[];
+		/** 是否正在加载更多 */
+		loading?: boolean;
+		/** 是否还有更多数据 */
+		hasMore?: boolean;
+		/** 是否显示骨架屏 */
+		showSkeleton?: boolean;
+		/** 是否正在刷新（由外部控制） */
+		refreshing?: boolean;
+		/** 当前分类 ID（用于清除媒体缓存） */
+		categoryId?: string;
+		/** 加载更多回调 */
+		onLoadMore?: () => void;
+		/** 刷新回调，action 会 await 此函数 */
+		onRefresh?: () => Promise<void>;
+		/** 布局配置（可选，不传则使用默认值） */
+		config?: Partial<WaterfallConfig>;
+	} = $props();
 
-	// 布局相关状态
-	let containerWidth = $state(0); // 容器宽度
-	let columnCount = $state(1); // 列数
-	let cardWidth = $state(0); // 卡片宽度
-	let columnHeights: number[] = $state([]); // 各列高度数组
-	let cardPositions: CardPosition[] = $state([]); // 卡片位置信息数组
-	let visibleRange = $state({ start: 0, end: 0 }); // 可见范围（起始和结束索引）
-	let maxHeight = $state(0); // 最大高度
-	let lastCalculatedCount = 0; // 已计算布局的卡片数量
+	// ─── DOM 元素引用 ──────────────────────────────────────────────
 
-	// 下拉刷新相关状态
-	let pullRefreshDistance = $state(0); // 下拉距离
-	let isPulling = $state(false); // 是否正在下拉
-	let startY = $state(0); // 触摸起始Y坐标
-	let currentY = $state(0); // 当前触摸Y坐标
-	let touchMoveFrameId: number | null = $state(null); // 触摸移动动画帧ID
-	let scrollFrameId: number | null = $state(null); // 滚动动画帧ID
+	/** 卡片容器元素（用于设置高度） */
+	let containerElement: HTMLElement;
+	/**
+	 * 容器宽度 ResizeObserver：仅观察 scrollContainer，负责感知视口宽度变化。
+	 * 故意不观察 containerElement，避免写 containerElement.style.height 时产生
+	 * ResizeObserver 反馈循环（"loop completed with undelivered notifications"）。
+	 */
+	let containerObserver: ResizeObserver;
+	/**
+	 * 卡片高度 ResizeObserver：仅观察各卡片内层 div，负责感知卡片实际渲染高度。
+	 * 单一职责：只做高度测量，不关心容器宽度。
+	 */
+	let cardObserver: ResizeObserver;
+	/** 滚动容器元素 */
+	let scrollContainer: HTMLElement;
 
-	// 帖子数据引用
-	let postsRef = $derived(data.posts);
-	let visiblePosts = $derived(postsRef.slice(visibleRange.start, visibleRange.end + 1));
-	let loadingRef = $derived(data.loading);
-	let refreshingRef = $derived(data.refreshing);
-	let hasMoreRef = $derived(data.hasMore);
-	let lastPostsLength = 0;
+	// ─── 布局状态 ──────────────────────────────────────────────────
 
-	// 默认配置常量
+	/** 容器宽度（px） */
+	let containerWidth = $state(0);
+	/** 各列高度数组 */
+	let columnHeights: number[] = $state([]);
+	/** 所有卡片的绝对定位信息 */
+	let cardPositions: CardPosition[] = $state([]);
+	/** 当前虚拟滚动可见范围 */
+	let visibleRange = $state({ start: 0, end: 0 });
+	/** 瀑布流最大高度（px） */
+	let maxHeight = $state(0);
+	/** 已计算布局的卡片数量（用于增量计算） */
+	let lastCalculatedCount = 0;
+	/**
+	 * loadMore Pass 1 前的卡片数量快照。
+	 * 供 cardObserver Pass 2 回滚用：回到此数量后再做增量重算，避免全量。
+	 * 刷新时清零，使 cardObserver 走全量重算路径。
+	 */
+	let snapshotCount = 0;
+	/**
+	 * loadMore Pass 1 前的列高度快照。
+	 * 与 snapshotCount 配套，回滚列高度后再做增量重算。
+	 */
+	let snapshotColumnHeights: number[] = [];
+
+	// ─── 下拉刷新 ──────────────────────────────────────────────────
+
+	/** 下拉视觉偏移距离，由 pullRefresh action 驱动 */
+	const pullDistance = new Spring(0, { stiffness: 0.1, damping: 0.8 });
+
+	// ─── 滚动节流 ──────────────────────────────────────────────────
+
+	/** 滚动事件 RAF 帧 ID */
+	let scrollFrameId: number | null = null;
+
+	// ─── DOM 相关 ──────────────────────────────────────────────
+
+	/** 卡片 DOM 实测高度缓存：key = postId，value = 内层 div 高度（不含 gap） */
+	const measuredHeights = new Map<string, number>();
+
+	// ─── 派生数据 ──────────────────────────────────────────────────
+
+	/** 当前可见的帖子切片 */
+	let visiblePosts = $derived(posts.slice(visibleRange.start, visibleRange.end + 1));
+
+	// ─── 默认配置 ──────────────────────────────────────────────────
+
 	const DEFAULT_CONFIG: WaterfallConfig = {
-		minCardWidth: 280, // 最小卡片宽度
-		gap: 16, // 卡片间距
-		bufferSize: 5, // 缓冲区大小（倍数）
-		bufferHeight: 600, // 缓冲区高度
-		loadingThreshold: 200, // 加载更多阈值
-		cardContentHeight: 120, // 卡片内容高度
-		skeletonCardCount: 20, // 骨架屏卡片数量
-		binarySearchThreshold: 100, // 使用二分查找的阈值
-		pullRefreshConfig: {
-			maxDistance: 120,
-			triggerThreshold: 60,
-			triggeredDistance: 60,
-			dampingFactor: 0.5,
-			functionalRefreshDuration: 300
-		}
+		minCardWidth: 280,
+		gap: 8,
+		bufferSize: 8,
+		bufferHeight: 800,
+		loadingThreshold: 200,
+		skeletonCardCount: 20,
+		binarySearchThreshold: 100,
+		pullRefreshConfig: { ...DEFAULT_PULL_REFRESH_CONFIG }
 	};
 
-	// 合并配置：默认配置 + 用户配置
+	/** 合并后的配置 */
 	let mergedConfig = $derived({ ...DEFAULT_CONFIG, ...config });
 
-	// 计算布局基础参数：根据容器宽度计算列数和卡片宽度
-	function calculateLayoutBase(width: number): { columnCount: number; cardWidth: number } {
-		const columnCount = Math.max(1, Math.floor(width / mergedConfig.minCardWidth));
-		const cardWidth = (width - (columnCount - 1) * mergedConfig.gap) / columnCount;
-		return { columnCount, cardWidth };
-	}
+	// ─── 布局计算 ──────────────────────────────────────────────────
 
-	// 找到列高度最低的那一列的索引
-	function findMinColumnIndex(columnHeights: number[]): number {
-		let minHeight = columnHeights[0]; // 最小高度
-		let minIndex = 0; // 最小高度对应的索引
-		for (let i = 1; i < columnHeights.length; i++) {
-			if (columnHeights[i] < minHeight) {
-				minHeight = columnHeights[i];
-				minIndex = i;
-			}
-		}
-		return minIndex;
-	}
+	/**
+	 * 重新计算瀑布流布局
+	 *
+	 * 2 种模式：
+	 * - `recalculateLayout()`: 增量计算，仅处理新增的卡片
+	 * - `recalculateLayout(true)`: 全量重置，清空位置和列高度后从头计算
+	 *
+	 * @param reset - 是否全量重置布局状态
+	 */
 
-	// 计算卡片的布局
-	function calculateCardPositions(reset = false): void {
-		if (containerWidth === 0 || postsRef.length === 0) return;
+	function recalculateLayout(reset = false): void {
+		console.log(reset ? '全量重置布局' : '增量计算布局');
+		// 响应式间距
+		const gap =
+			typeof config?.gap === 'number'
+				? remToPx(config.gap)
+				: breakpoint.isLg
+					? remToPx(1.5)
+					: breakpoint.isMd
+						? remToPx(1)
+						: remToPx(0.5);
 
-		const layout = calculateLayoutBase(containerWidth);
-		columnCount = layout.columnCount;
-		cardWidth = layout.cardWidth;
-
+		// ── 重置阶段：清空所有布局状态 ──
 		if (reset || columnHeights.length === 0) {
-			columnHeights.length = 0;
-			columnHeights.push(...Array(columnCount).fill(0));
-			cardPositions.length = 0;
-			maxHeight = 0;
 			lastCalculatedCount = 0;
+			cardPositions.length = 0;
+			columnHeights.length = 0;
+			maxHeight = 0;
+			if (containerElement) containerElement.style.height = '0px';
 		}
 
-		for (let i = lastCalculatedCount; i < postsRef.length; i++) {
-			const post = postsRef[i];
-			let coverRatio = 1;
+		if (containerWidth === 0 || posts.length === 0) return;
 
-			if (
-				post.cover?.single?.meta?.width &&
-				post.cover.single.meta.height &&
-				typeof post.cover.single.meta.width === 'number' &&
-				typeof post.cover.single.meta.height === 'number' &&
-				post.cover.single.meta.width > 0 &&
-				post.cover.single.meta.height > 0
-			) {
-				const ratio = post.cover.single.meta.height / post.cover.single.meta.width;
-				if (isFinite(ratio) && ratio > 0) {
-					coverRatio = ratio;
-				}
-			}
+		// ── 计算基础布局（列数、卡宽）——只调用一次 ──
+		const layout = calculateLayoutBase(containerWidth, mergedConfig.minCardWidth, gap);
 
-			const coverHeight = cardWidth * coverRatio;
-			const cardHeight = coverHeight + mergedConfig.cardContentHeight;
-
-			const minIndex = findMinColumnIndex(columnHeights);
-
-			const left = minIndex * (cardWidth + mergedConfig.gap);
-			const top = columnHeights[minIndex];
-
-			cardPositions.push({ top, left, width: cardWidth, height: cardHeight });
-
-			columnHeights[minIndex] = top + cardHeight;
-			maxHeight = Math.max(maxHeight, columnHeights[minIndex]);
+		// 重置后需要初始化列高度数组
+		if (columnHeights.length === 0) {
+			columnHeights.push(...Array(layout.columnCount).fill(0));
 		}
 
-		lastCalculatedCount = postsRef.length;
+		// ── 增量计算：仅处理 lastCalculatedCount 之后的新增卡片 ──
+		const items: LayoutItem[] = [];
+		for (let i = lastCalculatedCount; i < posts.length; i++) {
+			items.push({ id: posts[i].postId || '' });
+		}
+
+		if (items.length > 0) {
+			const result = calculateBatchPositions(items, layout, columnHeights, measuredHeights);
+			cardPositions.push(...result.positions);
+			maxHeight = result.maxHeight;
+		}
+
+		lastCalculatedCount = posts.length;
 
 		if (containerElement) {
 			containerElement.style.height = `${maxHeight}px`;
 		}
 	}
 
-	// 更新可见范围（虚拟滚动优化）
+	/**
+	 * 更新虚拟滚动可见范围
+	 * 根据当前滚动位置计算应渲染哪些卡片
+	 */
 	function updateVisibleRange(): void {
 		if (!scrollContainer || !containerElement) return;
 
-		const scrollTop = scrollContainer.scrollTop;
-		const viewportHeight = scrollContainer.clientHeight;
-		const visibleBuffer = mergedConfig.bufferSize * mergedConfig.bufferHeight;
+		const result = calculateVisibleRange({
+			items: cardPositions,
+			scrollTop: scrollContainer.scrollTop,
+			viewportHeight: scrollContainer.clientHeight,
+			bufferSize: mergedConfig.bufferSize,
+			bufferHeight: mergedConfig.bufferHeight,
+			binarySearchThreshold: mergedConfig.binarySearchThreshold
+		});
 
-		const startBuffer = Math.max(0, scrollTop - visibleBuffer);
-		const endBuffer = scrollTop + viewportHeight + visibleBuffer;
-
-		let start = cardPositions.length;
-		let end = 0;
-
-		if (cardPositions.length > mergedConfig.binarySearchThreshold) {
-			// 卡片数量超过阈值时使用二分查找
-			start = findVisibleRangeStart(startBuffer);
-			end = findVisibleRangeEnd(endBuffer);
-		} else {
-			// 卡片数量较少时使用线性查找
-			for (let i = 0; i < cardPositions.length; i++) {
-				const pos = cardPositions[i];
-				if (pos.top + pos.height >= startBuffer && pos.top <= endBuffer) {
-					start = Math.min(start, i);
-					end = Math.max(end, i);
-				}
-			}
-		}
-
-		if (start === cardPositions.length) start = 0;
-		if (end < start) end = start;
-		visibleRange = { start, end }; // 更新可见范围
+		visibleRange = result;
 	}
 
-	// 使用二分查找找到可见范围的起始索引
-	function findVisibleRangeStart(target: number): number {
-		let left = 0;
-		let right = cardPositions.length - 1;
-		let result = cardPositions.length;
+	// ─── 卡片高度测量 ──────────────────────────────────────────────
 
-		while (left <= right) {
-			const mid = Math.floor((left + right) / 2);
-			const pos = cardPositions[mid];
+	/**
+	 * Svelte action：通过 cardObserver 实时监听卡片内层 div 高度。
+	 * cardObserver 检测到高度变化后，会触发 Pass 2（实测修正）布局重算。
+	 */
+	const measureCardHeight: Action<HTMLElement, string> = (node, postId) => {
+		$effect(() => {
+			node.dataset.postId = postId;
+			cardObserver.observe(node);
 
-			if (pos.top + pos.height >= target) {
-				result = mid;
-				right = mid - 1;
-			} else {
-				left = mid + 1;
-			}
-		}
+			return () => {
+				cardObserver.unobserve(node);
+			};
+		});
+	};
 
-		return result;
-	}
+	// ─── 滚动事件 ──────────────────────────────────────────────────
 
-	// 使用二分查找找到可见范围的结束索引
-	function findVisibleRangeEnd(target: number): number {
-		let left = 0;
-		let right = cardPositions.length - 1;
-		let result = 0;
+	/**
+	 * 处理滚动事件（RAF 节流）
+	 * 更新虚拟滚动范围并检查是否需要加载更多
+	 */
+	function handleScroll() {
+		if (scrollFrameId !== null) return;
 
-		while (left <= right) {
-			const mid = Math.floor((left + right) / 2);
-			const pos = cardPositions[mid];
-
-			if (pos.top <= target) {
-				result = mid;
-				left = mid + 1;
-			} else {
-				right = mid - 1;
-			}
-		}
-
-		return result;
-	}
-
-	// 处理滚动事件（节流优化）
-	function handleScroll(): void {
-		if (scrollFrameId !== null) return; // 防止重复触发
-
-		scrollFrameId = requestAnimationFrame(() => {
+		scrollFrameId = requestAnimationFrame(async () => {
 			updateVisibleRange();
 
 			if (!scrollContainer) {
@@ -225,286 +258,218 @@
 				return;
 			}
 
-			const scrollTop = scrollContainer.scrollTop;
-			const scrollHeight = scrollContainer.scrollHeight;
-			const clientHeight = scrollContainer.clientHeight;
+			const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
 
-			// 检查是否需要加载更多
+			// 接近底部时触发加载更多
 			if (
 				scrollHeight - scrollTop - clientHeight < mergedConfig.loadingThreshold &&
-				hasMoreRef &&
-				!loadingRef
+				hasMore &&
+				!loading
 			) {
-				data.loadMore().catch((error) => {
-					console.error('Failed to load more posts:', error);
-				});
+				await onLoadMore?.();
+				// 保存 Pass 1 前的快照，供 cardObserver Pass 2 回滚增量用
+				snapshotCount = lastCalculatedCount;
+				snapshotColumnHeights = [...columnHeights];
+				// Pass 1：新卡片尚无实测高度，用占位值先算一次，让卡片立即可见
+				// Pass 2 由 cardObserver 在新卡片实测完毕后自动触发（增量修正）
+				recalculateLayout();
+				updateVisibleRange();
 			}
 
 			scrollFrameId = null;
 		});
 	}
 
-	// 处理下拉刷新
-	async function handleRefresh(): Promise<void> {
-		if (refreshingRef) return;
-		// !NOTE: 对这里取消注释会产生一个白屏加载的画面，而不是骨架屏
-		// cardPositions = [];
-		// visibleRange = { start: 0, end: -1 };
-		try {
-			await data.refresh();
-			calculateCardPositions(true);
+	const refreshDataAndLayout = async (): Promise<void> => {
+		// 刷新前清除媒体缓存（添加 feed 前缀以避免缓存桶命名冲突）
+		caches.delete(`feed-${categoryId}`);
+
+		// 清空旧测量值，确保新卡片从零开始实测
+		measuredHeights.clear();
+		// 清除 loadMore 快照：刷新后新卡片的首次测量不应走增量路径，
+		// cardObserver 会因 snapshotCount === 0 自动走全量重算
+		snapshotCount = 0;
+		snapshotColumnHeights = [];
+
+		await onRefresh?.();
+		pullDistance.target = 0;
+		// 布局重算由 cardObserver 在新卡片首次测量时自动触发（全量重算，因无快照）
+	};
+
+	// ─── 生命周期 ──────────────────────────────────────────────────
+
+	onMount(() => {
+		if (!containerElement || !scrollContainer) return;
+
+		// ── containerObserver：仅监听滚动容器宽度 ──────────────────────────────
+		// 挂在 scrollContainer（外层），不挂 containerElement（内层）。
+		// 原因：recalculateLayout 会写 containerElement.style.height，若同时观察它，
+		// 高度写入会触发新一轮通知，形成反馈循环，导致
+		// "ResizeObserver loop completed with undelivered notifications" 错误。
+		// iOS WKWebView 会将此作为未捕获错误抛出。
+		// 改为观察外层 scrollContainer 后，写内层高度不影响外层宽度，循环天然断开。
+		containerObserver = new ResizeObserver(([entry]) => {
+			const w = entry.contentRect.width;
+			if (w === containerWidth) return; // 宽度未变，跳过
+			containerWidth = w;
+			recalculateLayout(true);
 			updateVisibleRange();
-			if (scrollContainer) {
-				scrollContainer.scrollTop = 0;
-			}
-			pullRefreshDistance = 0;
-		} catch (error) {
-			console.error('Failed to refresh posts:', error);
-			pullRefreshDistance = 0;
-		}
-	}
-
-	// 处理触摸开始事件
-	function handleTouchStart(event: TouchEvent): void {
-		if (scrollContainer.scrollTop > 1) return;
-		startY = event.touches[0].clientY;
-		isPulling = true;
-	}
-
-	// 处理触摸移动事件
-	function handleTouchMove(event: TouchEvent): void {
-		if (!isPulling) return;
-
-		if (scrollContainer.scrollTop > 0) {
-			resetPullRefresh();
-			return;
-		}
-
-		currentY = event.touches[0].clientY;
-
-		if (currentY - startY <= 0) {
-			resetPullRefresh();
-			return;
-		}
-
-		if (touchMoveFrameId !== null) {
-			return;
-		}
-
-		touchMoveFrameId = requestAnimationFrame(() => {
-			const distance = currentY - startY;
-			pullRefreshDistance = Math.min(
-				distance * mergedConfig.pullRefreshConfig.dampingFactor,
-				mergedConfig.pullRefreshConfig.maxDistance
-			);
-			touchMoveFrameId = null;
 		});
-	}
 
-	// 处理触摸结束事件
-	function handleTouchEnd(): void {
-		if (!isPulling) return;
+		// ── cardObserver：仅监听卡片实测高度（两步布局流程的 Pass 2）──────────
+		//
+		// Pass 1 由业务逻辑显式触发（handleScroll / refreshDataAndLayout），
+		//        用占位高度先让卡片快速出现；
+		// Pass 2（本回调）在卡片渲染完毕后自动触发，用真实高度修正布局。
+		//
+		// 高度变化分两类，处理策略不同：
+		//   ① 新卡片首次测量（prev === undefined）：
+		//        - 有快照（loadMore 触发）→ 回滚快照 + 增量重算（只算新增卡片）
+		//        - 无快照（刷新 / 首次加载）  → 全量重算
+		//   ② 已有卡片高度变化（prev !== undefined，如骨架屏→真实内容）：
+		//        → 该卡片后续所有卡片列位置均受影响，必须全量重算
+		//
+		// 高度守卫（prev === h → skip）保证高度稳定后不再触发，自然收敛。
+		cardObserver = new ResizeObserver((entries) => {
+			let hasNewCard = false; // 首次测量（prev === undefined）
+			let hasChangedCard = false; // 已有高度更新（prev 有值但变了）
 
-		isPulling = false;
+			for (const entry of entries) {
+				const postId = (entry.target as HTMLElement).dataset.postId;
+				if (!postId) continue;
+				const h = entry.contentRect.height;
+				const prev = measuredHeights.get(postId);
+				// 高度守卫：值未变则跳过，切断反馈环
+				if (prev !== h) {
+					measuredHeights.set(postId, h);
+					if (prev === undefined) {
+						hasNewCard = true;
+					} else {
+						hasChangedCard = true;
+					}
+				}
+			}
 
-		if (pullRefreshDistance >= mergedConfig.pullRefreshConfig.triggerThreshold) {
-			pullRefreshDistance = mergedConfig.pullRefreshConfig.triggeredDistance; // 触发刷新
-			handleRefresh();
-		} else {
-			pullRefreshDistance = 0; // 未达到阈值，取消刷新
-		}
-	}
+			if (!hasNewCard && !hasChangedCard) return;
 
-	// 处理触摸取消事件
-	function handleTouchCancel(): void {
-		resetPullRefresh();
-	}
+			if (hasChangedCard) {
+				// ② 已有卡片高度变化 → 全量重算
+				recalculateLayout(true);
+				updateVisibleRange();
+				return;
+			}
 
-	// 重置下拉刷新状态
-	function resetPullRefresh(): void {
-		isPulling = false;
-		pullRefreshDistance = 0;
-		if (touchMoveFrameId !== null) {
-			cancelAnimationFrame(touchMoveFrameId);
-			touchMoveFrameId = null;
-		}
-	}
+			// hasNewCard
+			// ① 新卡片首次测量
+			if (snapshotCount > 0) {
+				// loadMore Pass 2：回滚到 Pass 1 前的快照，用实测高度做增量重算
+				// 只重算新增卡片（snapshotCount 之后），性能优于全量
+				cardPositions.length = snapshotCount;
+				columnHeights = [...snapshotColumnHeights];
+				lastCalculatedCount = snapshotCount;
+				maxHeight = snapshotColumnHeights.length > 0 ? Math.max(...snapshotColumnHeights) : 0;
+				snapshotCount = 0;
+				snapshotColumnHeights = [];
+				recalculateLayout(); // 增量：从快照位置开始计算新卡片
+				updateVisibleRange();
+			} else {
+				// 无快照：刷新后 / 首次加载的首次测量 → 全量重算
+				recalculateLayout(true);
+				updateVisibleRange();
+			}
+		});
 
-	// 清理动画帧
-	function cleanup(): void {
-		if (touchMoveFrameId !== null) {
-			cancelAnimationFrame(touchMoveFrameId);
-			touchMoveFrameId = null;
-		}
+		containerObserver.observe(scrollContainer);
+		scrollContainer.addEventListener('scroll', handleScroll);
+	});
+
+	onDestroy(() => {
+		containerObserver?.disconnect();
+		cardObserver?.disconnect();
+		scrollContainer?.removeEventListener('scroll', handleScroll);
 		if (scrollFrameId !== null) {
 			cancelAnimationFrame(scrollFrameId);
 			scrollFrameId = null;
 		}
-	}
-
-	// 组件挂载时初始化
-	onMount(() => {
-		if (!containerElement || !scrollContainer) return;
-
-		// 监听容器尺寸变化
-		resizeObserver = new ResizeObserver((entries) => {
-			for (const entry of entries) {
-				const newWidth = entry.contentRect.width;
-				if (newWidth !== containerWidth) {
-					containerWidth = newWidth;
-					calculateCardPositions(true);
-					updateVisibleRange();
-				}
-			}
-		});
-
-		resizeObserver.observe(containerElement);
-
-		// 注册事件监听器
-		scrollContainer.addEventListener('scroll', handleScroll);
-		scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
-		scrollContainer.addEventListener('touchmove', handleTouchMove, { passive: true });
-		scrollContainer.addEventListener('touchend', handleTouchEnd);
-		scrollContainer.addEventListener('touchcancel', handleTouchCancel);
-
-		// 初始化布局
-		tick().then(() => {
-			if (containerElement) {
-				containerWidth = containerElement.clientWidth;
-				calculateCardPositions();
-				updateVisibleRange();
-			}
-		});
 	});
 
-	// 组件卸载时清理
-	onDestroy(() => {
-		if (resizeObserver) {
-			resizeObserver.disconnect();
-		}
-		if (scrollContainer) {
-			// 移除事件监听器
-			scrollContainer.removeEventListener('scroll', handleScroll);
-			scrollContainer.removeEventListener('touchstart', handleTouchStart);
-			scrollContainer.removeEventListener('touchmove', handleTouchMove);
-			scrollContainer.removeEventListener('touchend', handleTouchEnd);
-			scrollContainer.removeEventListener('touchcancel', handleTouchCancel);
-		}
-		cleanup();
-	});
+	// ─── 暴露给外部的方法 ──────────────────────────────────────────
 
-	// 监听帖子数据变化，重新计算布局
-	$effect(() => {
-		const currentLength = postsRef.length;
-		if (currentLength > 0 && currentLength !== lastPostsLength) {
-			lastPostsLength = currentLength;
-			calculateCardPositions();
-			updateVisibleRange();
-		}
-	});
-
-	// 暴露给外部的清空方法
-	export function resetLayout() {
-		lastPostsLength = 0;
-		if (containerWidth > 0) {
-			const layout = calculateLayoutBase(containerWidth);
-			columnCount = layout.columnCount;
-			cardWidth = layout.cardWidth;
-		}
-
-		columnHeights.length = 0;
-		columnHeights.push(...Array(columnCount).fill(0));
-		cardPositions.length = 0;
-		maxHeight = 0;
-		lastCalculatedCount = 0;
-
-		if (containerElement) {
-			containerElement.style.height = `0px`;
-		}
-		updateVisibleRange();
-	}
-
-	// 暴露给外部的回顶刷新方法
-	export function scrollToTopAndRefresh() {
+	/**
+	 * 滚动到顶部并触发下拉刷新动画
+	 * 用于外部程序化触发刷新（如点击刷新按钮、首页 Tab 二次点击）
+	 */
+	export function scrollToTopAndRefresh(): void {
 		if (scrollContainer) {
 			scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
 
-			const checkScrollParams = () => {
+			const checkScrollAndRefresh = () => {
+				// 组件可能在 rAF 回调触发前已被销毁，scrollContainer 会被 bind:this 置为 null
+				if (!scrollContainer) return;
+
 				if (scrollContainer.scrollTop <= 0) {
-					// 确保已经停止滚动
-					updateVisibleRange();
-
-					// 模拟下拉动作动画
-					const targetDistance = mergedConfig.pullRefreshConfig.triggeredDistance;
-					const duration = mergedConfig.pullRefreshConfig.functionalRefreshDuration; // 动画持续时间 ms
-					const startTime = performance.now();
-
-					const animatePull = (currentTime: number) => {
-						const elapsed = currentTime - startTime;
-						const progress = Math.min(elapsed / duration, 1);
-						// easeOutCubic 缓动函数
-						const easeProgress = 1 - Math.pow(1 - progress, 3);
-
-						pullRefreshDistance = targetDistance * easeProgress;
-
-						if (progress < 1) {
-							requestAnimationFrame(animatePull);
-						} else {
-							// 动画结束后触发刷新
-							handleRefresh();
-						}
-					};
-
-					requestAnimationFrame(animatePull);
+					pullDistance.target = mergedConfig.pullRefreshConfig.triggeredDistance;
+					refreshDataAndLayout();
 				} else {
-					requestAnimationFrame(checkScrollParams);
+					requestAnimationFrame(checkScrollAndRefresh);
 				}
 			};
-			requestAnimationFrame(checkScrollParams);
+			requestAnimationFrame(checkScrollAndRefresh);
 		} else {
-			handleRefresh();
+			refreshDataAndLayout();
 		}
 	}
 </script>
 
-<div class="hidden-scroll-bar h-full overflow-y-scroll px-2 pt-2" bind:this={scrollContainer}>
-	<div class="relative h-full w-full" bind:this={containerElement}>
-		{#if pullRefreshDistance > 0}
-			<div
-				class="absolute top-0 right-0 left-0 flex items-center justify-center transition-all duration-200"
-				style="height: {pullRefreshDistance}px;"
-			>
-				{#if refreshingRef}
-					<Spinner class="mr-2 text-primary" />
-					<span class="text-sm text-muted-foreground">正在刷新</span>
-				{:else if pullRefreshDistance >= mergedConfig.pullRefreshConfig.triggerThreshold}
-					<div
-						class="mr-2 text-primary"
-						style="transform: rotate({Math.min(
-							(pullRefreshDistance / mergedConfig.pullRefreshConfig.triggerThreshold) * 360,
-							360
-						)}deg);"
-					>
-						<Spinner class="animate-none!" />
-					</div>
-					<span class="text-sm text-muted-foreground">释放刷新</span>
-				{:else}
-					<div
-						class="mr-2 text-primary"
-						style="transform: rotate({Math.min(
-							(pullRefreshDistance / mergedConfig.pullRefreshConfig.triggerThreshold) * 360,
-							360
-						)}deg);"
-					>
-						<Spinner class="animate-none!" />
-					</div>
-					<span class="text-sm text-muted-foreground">下拉刷新</span>
-				{/if}
-			</div>
-		{/if}
+<!-- 滚动容器 + 下拉刷新 action -->
+<div
+	class="h-full overflow-y-scroll px-2 md:px-4 lg:px-6"
+	bind:this={scrollContainer}
+	use:pullRefresh={{
+		pullDistance,
+		config: mergedConfig.pullRefreshConfig,
+		onRefresh: refreshDataAndLayout
+	}}
+>
+	<!-- 内容区域：通过 translateY 跟随下拉距离移动 -->
+	<div
+		class="h-full w-full"
+		style="transform: translateY({pullDistance.current - 16 - 12}px); will-change: transform;"
+		bind:this={containerElement}
+	>
+		<!-- 下拉刷新指示器 -->
+		<div class="flex h-4 items-end justify-center">
+			{#if refreshing}
+				<Spinner class="mr-2 text-primary" />
+				<span class="text-sm text-muted-foreground">正在刷新</span>
+			{:else if pullDistance.current >= mergedConfig.pullRefreshConfig.triggerThreshold}
+				<div
+					class="mr-2 text-primary"
+					style="transform: rotate({Math.min(
+						(pullDistance.current / mergedConfig.pullRefreshConfig.triggerThreshold) * 360,
+						360
+					)}deg);"
+				>
+					<Spinner class="animate-none!" />
+				</div>
+				<span class="text-sm text-muted-foreground">释放刷新</span>
+			{:else}
+				<div
+					class="mr-2 text-primary"
+					style="transform: rotate({Math.min(
+						(pullDistance.current / mergedConfig.pullRefreshConfig.triggerThreshold) * 360,
+						360
+					)}deg);"
+				>
+					<Spinner class="animate-none!" />
+				</div>
+				<span class="text-sm text-muted-foreground">下拉刷新</span>
+			{/if}
+		</div>
 
-		<div style="transform: translateY({pullRefreshDistance}px); will-change: transform;">
-			{#each visiblePosts as post, i (post.post_id)}
+		<!-- 瀑布流卡片区域 -->
+		<div class="relative mt-3 h-full w-full">
+			{#each visiblePosts as post, i (post.postId)}
 				{@const absoluteIndex = visibleRange.start + i}
 				<div
 					class="absolute"
@@ -513,41 +478,42 @@
 						absoluteIndex
 					]?.height}px;"
 				>
-					{#if refreshingRef}
-						<WaterfallSkeletonCard
-							aspectRatio={post.cover?.single?.meta?.width && post.cover.single.meta?.height
-								? post.cover.single.meta.width / post.cover.single.meta.height
-								: 1}
-							style="height: 100%"
-						/>
-					{:else}
-						<WaterfallCard
-							postId={post.post_id || ''}
-							title={post.display_title || ''}
-							cover={{
-								url: post.cover?.single?.url || '',
-								ratio:
-									post.cover?.single?.meta?.width && post.cover.single.meta?.height
-										? post.cover.single.meta.width / post.cover.single.meta.height
-										: 1
-							}}
-							author={{
-								avatar: post.author?.avatar || '',
-								name: post.author?.name || '',
-								id: post.author?.user_id || ''
-							}}
-							likeCount={formatNumber(Number(post.stats?.like_count)) || '0'}
-							viewCount={formatNumber(Number(post.stats?.view_count)) || '0'}
-							commentCount={formatNumber(Number(post.stats?.comment_count)) || '0'}
-							isLiked={post.relation_status?.is_liked || false}
-							isOnlyVideo={post.is_only_video || false}
-							publishTime={parseInt(post.publish_time || '0')}
-						/>
-					{/if}
+					<div use:measureCardHeight={post.postId || ''}>
+						{#if showSkeleton}
+							<WaterfallSkeletonCard
+								aspectRatio={post.cover?.single?.meta?.width && post.cover.single.meta?.height
+									? post.cover.single.meta.width / post.cover.single.meta.height
+									: 1}
+							/>
+						{:else}
+							<WaterfallCard
+								postId={post.postId || ''}
+								title={post.displayTitle || ''}
+								cover={{
+									url: resolveCacheUrl(post.cover?.single?.url || '', `feed-${categoryId}`), // 添加 feed 前缀以避免缓存桶命名冲突
+									ratio:
+										post.cover?.single?.meta?.width && post.cover.single.meta?.height
+											? post.cover.single.meta.width / post.cover.single.meta.height
+											: 1
+								}}
+								author={{
+									avatar: resolveCacheUrl(post.author?.avatar, `feed-${categoryId}`),
+									name: post.author?.name || '',
+									id: post.author?.userId || ''
+								}}
+								likeCount={formatStat(post.stats?.likeCount) || '0'}
+								viewCount={formatStat(post.stats?.viewCount) || '0'}
+								isLiked={post.relationStatus?.isLiked || false}
+								isOnlyVideo={post.isOnlyVideo || false}
+								publishTime={parseInt(post.publishTime || '0')}
+							/>
+						{/if}
+					</div>
 				</div>
 			{/each}
 
-			{#if loadingRef && postsRef.length > 0}
+			<!-- 底部加载更多指示器 -->
+			{#if loading && posts.length > 0}
 				<div
 					class="absolute right-0 left-0 flex items-center justify-center py-4"
 					style="top: {maxHeight}px;"
@@ -557,7 +523,8 @@
 				</div>
 			{/if}
 
-			{#if !hasMoreRef && postsRef.length > 0}
+			<!-- 底部没有更多数据提示 -->
+			{#if !hasMore && posts.length > 0}
 				<div
 					class="absolute right-0 left-0 py-4 text-center text-sm text-muted-foreground"
 					style="top: {maxHeight}px;"
@@ -568,15 +535,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	.hidden-scroll-bar {
-		overflow: auto;
-		scrollbar-width: none;
-		-ms-overflow-style: none;
-	}
-
-	.hidden-scroll-bar::-webkit-scrollbar {
-		display: none;
-	}
-</style>

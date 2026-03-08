@@ -7,7 +7,7 @@
 
 	let { ref = $bindable(null), class: className, value, ...restProps }: Props = $props();
 
-	let textareaElement: HTMLTextareaElement | null = $state(null);
+	let textareaElement: HTMLTextAreaElement | null = $state(null);
 
 	function adjustHeight() {
 		if (!textareaElement) return;

@@ -3,7 +3,7 @@
 </script>
 
 <nav
-	class="fixed top-0 left-0 z-50 flex h-20 w-full items-center justify-between border-b border-gray-100 bg-white/80 px-8 backdrop-blur-md transition-all duration-300"
+	class="fixed top-0 left-0 z-50 flex h-20 w-full items-center justify-between border-b border-zinc-100 bg-white/80 px-8 backdrop-blur-md transition-all duration-300"
 >
 	<!-- Logo Area -->
 	<div class="group flex cursor-pointer items-center gap-2">
@@ -12,7 +12,7 @@
 		>
 			M
 		</div>
-		<span class="font-tech text-2xl font-bold tracking-wider text-gray-800"> miHoYo </span>
+		<span class="font-tech text-2xl font-bold tracking-wider text-zinc-800"> miHoYo </span>
 	</div>
 
 	<!-- Center Links -->
@@ -23,7 +23,7 @@
 				href={item.href}
 				class="relative py-2 text-sm font-medium tracking-wide transition-colors {item.active
 					? 'text-brand-500'
-					: 'text-gray-500 hover:text-gray-900'}"
+					: 'text-zinc-500 hover:text-zinc-900'}"
 			>
 				<!-- eslint-enable -->
 				{item.label}

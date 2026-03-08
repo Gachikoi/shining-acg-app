@@ -6,6 +6,6 @@
 	></div>
 
 	<!-- 装饰线 -->
-	<div class="absolute bottom-0 left-25 h-1/2 w-px bg-gray-200"></div>
-	<div class="absolute top-0 right-25 h-1/3 w-px bg-gray-200"></div>
+	<div class="absolute bottom-0 left-25 h-1/2 w-px bg-zinc-200"></div>
+	<div class="absolute top-0 right-25 h-1/3 w-px bg-zinc-200"></div>
 </div>

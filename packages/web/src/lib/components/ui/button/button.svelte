@@ -21,7 +21,7 @@
 				default: 'px-4 py-2',
 				sm: 'px-4 py-1',
 				fix: 'w-24 h-10',
-				'fix-sm': 'w-20 h-8',
+				'fix-sm': 'w-20 h-8 text-sm',
 				icon: 'size-9',
 				'icon-sm': 'size-8',
 				'icon-lg': 'size-10'

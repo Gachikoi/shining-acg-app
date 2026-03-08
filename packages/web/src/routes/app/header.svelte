@@ -32,7 +32,7 @@
 	});
 </script>
 
-<header class="flex h-18 w-full items-center gap-4 px-6">
+<header class="flex h-18 w-full items-center gap-2 px-4 lg:gap-4 lg:px-6">
 	{#if isRemoveLogo}
 		<section class="flex shrink-0 grow items-center justify-start lg:ml-4">
 			<a class="shrink-0" href={resolve('/')}>
