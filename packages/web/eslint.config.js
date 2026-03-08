@@ -27,7 +27,11 @@ export default defineConfig(
 		rules: {
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
-			'no-undef': 'off'
+			'no-undef': 'off',
+			// 本项目使用基于域名的 reroute 路由（hooks.ts），而非 paths.base 路径前缀，
+			// 因此 href 不需要经过 resolve() 处理
+			'svelte/no-href-without-base': 'off',
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{
