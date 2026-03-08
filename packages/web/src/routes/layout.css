@@ -115,7 +115,7 @@
 
 @layer base {
 	* {
-		@apply border-border outline-ring/50;
+		@apply scrollbar-hidden border-border outline-ring/50;
 	}
 
 	html,
@@ -133,7 +133,7 @@
 		/* === 字体渲染优化 === */
 		/* macOS / iOS: 开启抗锯齿，使字体更清晰、纤细，符合现代 App 设计风格 */
 		-webkit-font-smoothing: antialiased;
-		-moz-osx-font-smoothing: grayscale;
+		-moz-osx-font-smoothing: zincscale;
 
 		/* 通用:启用几何精度，改善字距和连字 (这对中文排版也有微妙提升) */
 		text-rendering: optimizeLegibility;
@@ -147,14 +147,28 @@
 		/* 去除移动端点击高亮 (打造原生 App 质感) */
 		-webkit-tap-highlight-color: transparent;
 	}
+}
 
+/* 该项目全局默认开启了隐藏滚动条功能 */
+@utility scrollbar-hidden {
 	/* 隐藏滚动条但保持滚动功能 */
-	.scrollbar-hide {
+	& {
 		-ms-overflow-style: none; /* IE and Edge */
 		scrollbar-width: none; /* Firefox */
 	}
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
 
-	.scrollbar-hide::-webkit-scrollbar {
-		display: none; /* Chrome, Safari and Opera */
+/* 开启滚动条 */
+@utility scrollbar-display {
+	/* 隐藏滚动条但保持滚动功能 */
+	& {
+		-ms-overflow-style: auto; /* IE and Edge */
+		scrollbar-width: auto; /* Firefox */
+	}
+	&::-webkit-scrollbar {
+		display: auto;
 	}
 }
