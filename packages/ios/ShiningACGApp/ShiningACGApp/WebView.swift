@@ -50,7 +50,20 @@ struct WebView: UIViewRepresentable {
 
     let configuration = WKWebViewConfiguration()
     configuration.userContentController = userContentController
+
+    // 开启 App-Bound Domains 以获得更好的 Service Worker 支持和持久化
+    // 这可以将 Web 内容标记为 App 的一部分，避免 WebKit 的 ITP (Intelligent Tracking Prevention) 机制误删 Service Worker 和存储数据（通常 7 天未使用会被清理）
+    // 注意：Info.plist 中必须包含 App 涉及的所有域名（shiningacg.club）
     configuration.limitsNavigationsToAppBoundDomains = true
+
+    // 明确指定使用默认的持久化数据存储（虽然是默认值，但强调其重要性）
+    configuration.websiteDataStore = WKWebsiteDataStore.default()
+
+    // 允许内联媒体播放
+    configuration.allowsInlineMediaPlayback = true
+
+    // 允许画中画
+    configuration.allowsPictureInPictureMediaPlayback = true
 
     let wkwebView = WKWebView(frame: .zero, configuration: configuration)
     wkwebView.navigationDelegate = context.coordinator
