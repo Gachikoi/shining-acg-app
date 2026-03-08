@@ -17,9 +17,10 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-cloudflare": "^7.2.4",
-		"@internationalized/date": "^3.10.1",
 		"axios": "^1.13.4",
+		"idb-keyval": "^6.2.2",
 		"lucide-svelte": "^0.562.0",
+		"mitt": "^3.0.1",
 		"mode-watcher": "^1.1.0",
 		"svelte-sonner": "^1.0.7"
 	},

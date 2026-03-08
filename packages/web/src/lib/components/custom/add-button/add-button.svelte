@@ -1,7 +1,7 @@
 <!-- 新增按钮组件：统一的"新增"按钮样式，包含加号图标 -->
 <script lang="ts">
 	import { PlusCircle } from 'lucide-svelte';
-	import { Button, type ButtonProps } from '../button';
+	import { Button, type ButtonProps } from '$lib/components/ui/button';
 	import type { Snippet } from 'svelte';
 
 	let {

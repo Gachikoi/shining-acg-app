@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -13,6 +12,7 @@
 		img,
 		href,
 		type,
+		onclick,
 		icon: Icon
 	}: {
 		class?: string;
@@ -21,6 +21,7 @@
 		img?: string;
 		href?: string;
 		type?: string;
+		onclick?: (event: MouseEvent) => void;
 		icon?: ComponentType<SvelteComponent>;
 	} = $props();
 
@@ -30,7 +31,8 @@
 {#if href}
 	<a
 		title={href}
-		href={resolve(href as ResolvePath)}
+		{href}
+		{onclick}
 		data-sveltekit-preload-code="eager"
 		data-sveltekit-replacestate
 		data-sveltekit-preload-data="tap">{@render button(type)}</a
@@ -59,8 +61,9 @@
 		</div>
 	{:else}
 		<Button
+			{onclick}
 			class={cn(
-				'h-12 w-46 justify-between rounded-full px-4 xl:w-56',
+				'h-12 w-56 justify-between rounded-full px-4',
 				className,
 				isSelected && 'bg-zinc-100 dark:bg-zinc-900'
 			)}

@@ -1,5 +1,4 @@
-import type { WaterfallData } from '$lib/components/custom/waterfall/waterfall-container/types';
-import type { V1PostPreview, FeedServiceGetFeedData } from '$lib/api/types.gen';
+import type { V1PostPreview, V1UserSummary, FeedServiceGetFeedData } from '$lib/api/types.gen';
 
 const TITLES = [
 	'春日樱花盛开',
@@ -20,11 +19,11 @@ const TITLES = [
 ];
 
 const AUTHORS = [
-	{ user_id: '1', name: '摄影师小王', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1' },
-	{ user_id: '2', name: '旅行达人', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2' },
-	{ user_id: '3', name: '美食家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3' },
-	{ user_id: '4', name: '艺术家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=4' },
-	{ user_id: '5', name: '科技博主', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=5' }
+	{ userId: '1', name: '摄影师小王', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1' },
+	{ userId: '2', name: '旅行达人', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2' },
+	{ userId: '3', name: '美食家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3' },
+	{ userId: '4', name: '艺术家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=4' },
+	{ userId: '5', name: '科技博主', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=5' }
 ];
 
 const ASPECT_RATIOS = [
@@ -36,7 +35,7 @@ const ASPECT_RATIOS = [
 	{ width: 400, height: 450 }
 ];
 
-function generatePost(id: number): V1PostPreview {
+function generatePost(id: string): V1PostPreview {
 	const author = AUTHORS[Math.floor(Math.random() * AUTHORS.length)];
 	const aspectRatio = ASPECT_RATIOS[Math.floor(Math.random() * ASPECT_RATIOS.length)];
 	const title = TITLES[Math.floor(Math.random() * TITLES.length)];
@@ -48,98 +47,137 @@ function generatePost(id: number): V1PostPreview {
 	const publishTime = Math.floor(Date.now() / 1000 - Math.random() * 86400 * 30).toString();
 
 	return {
-		post_id: `post_${id}`,
-		display_title: `${title} #${id}`,
+		postId: `post_${id}`,
+		displayTitle: `${title} #${id}`,
 		cover: {
 			type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
 			status: 'MEDIA_STATUS_UNSPECIFIED',
 			single: {
+				fileId: `file_${id}`,
+				status: 'MEDIA_STATUS_COMPLETED',
 				type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
 				bucket: 'test-bucket',
-				object_key: `test/image_${id}.jpg`,
+				objectKey: `test/image_${id}.jpg`,
 				url: `https://picsum.photos/400/${aspectRatio.height}?random=${id}`,
 				meta: {
 					width: aspectRatio.width,
 					height: aspectRatio.height,
-					mime_type: 'image/jpeg'
+					durationMs: '0',
+					sizeBytes: '0',
+					mimeType: 'image/jpeg'
 				}
 			}
 		},
 		author: {
-			user_id: author.user_id,
+			userId: author.userId,
 			name: author.name,
-			avatar: author.avatar
+			avatar: author.avatar,
+			qqNumber: '1234567890',
+			role: 'ROLE_USER'
 		},
 		stats: {
-			like_count: likeCount.toString(),
-			view_count: viewCount.toString(),
-			comment_count: commentCount.toString(),
-			collect_count: Math.floor(likeCount * 0.3).toString()
+			likeCount: likeCount.toString(),
+			viewCount: viewCount.toString(),
+			commentCount: commentCount.toString(),
+			collectCount: Math.floor(likeCount * 0.3).toString()
 		},
-		relation_status: {
-			is_liked: isLiked,
-			is_collected: Math.random() > 0.8
+		relationStatus: {
+			isLiked,
+			isCollected: Math.random() > 0.8
 		},
-		is_only_video: isOnlyVideo,
-		publish_time: publishTime,
-		update_time: publishTime
+		isOnlyVideo,
+		publishTime,
+		updateTime: publishTime
 	};
 }
 
-function generatePosts(count: number, startIndex: number): V1PostPreview[] {
+export function generatePosts(count: number): V1PostPreview[] {
 	const posts: V1PostPreview[] = [];
 	for (let i = 0; i < count; i++) {
-		posts.push(generatePost(startIndex + i));
+		posts.push(generatePost(crypto.randomUUID()));
 	}
 	return posts;
 }
 
-export function createMockWaterfallData(): WaterfallData {
-	let posts = generatePosts(50, 0);
-	let cursor: string | null = '50';
-	let loading = false;
-	let refreshing = false;
-	let hasMore = true;
+/** @deprecated 已被 FeedStore 替代，保留仅供旧测试代码参考 */
+export const data = { posts: generatePosts(50) };
 
-	const result: WaterfallData = {
-		posts,
-		loading,
-		refreshing,
-		hasMore,
-		cursor,
-		loadMore: async () => {
-			loading = true;
-			result.loading = loading;
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			const newPosts = generatePosts(20, posts.length);
-			posts = [...posts, ...newPosts];
-			cursor = posts.length.toString();
-			hasMore = posts.length < 200;
-			loading = false;
-			result.posts = posts;
-			result.cursor = cursor;
-			result.hasMore = hasMore;
-			result.loading = loading;
-		},
-		refresh: async () => {
-			refreshing = true;
-			result.refreshing = refreshing;
-			await new Promise((resolve) => setTimeout(resolve, 1500));
-			posts = generatePosts(30, 0);
-			cursor = '30';
-			hasMore = true;
-			refreshing = false;
-			result.posts = posts;
-			result.cursor = cursor;
-			result.hasMore = hasMore;
-			result.refreshing = refreshing;
+// ─── 用户 Mock 数据 ───────────────────────────────────────────────
+
+const USER_NAMES = [
+	'康熙',
+	'旅行达人',
+	'美食家小李',
+	'艺术家阿花',
+	'科技博主',
+	'设计师小张',
+	'音乐人老赵',
+	'健身教练',
+	'读书笔记',
+	'动漫爱好者'
+] as const;
+
+const DEPARTMENTS = [
+	{ id: 'wota', name: 'WOTA 艺组' },
+	{ id: 'video', name: '视频组' },
+	{ id: 'cos', name: 'COS 部' },
+	{ id: 'music', name: '轻音部' },
+	{ id: 'dance', name: '舞蹈部' },
+	{ id: 'art', name: '美术组' },
+	{ id: 'tech', name: '技术部' }
+] as const;
+
+const VERIFIED_TITLES = ['社刊 vol.9 编辑', '23届部长', '24届副部长', '社团创始人'] as const;
+
+/**
+ * 生成单个用户摘要 mock 数据
+ *
+ * @param id - 用户序号
+ * @returns V1UserSummary mock 数据
+ */
+function generateUser(id: string): V1UserSummary {
+	const name = USER_NAMES[Math.floor(Math.random() * USER_NAMES.length)];
+	const followerCount = Math.floor(Math.random() * 5000);
+	const likeReceived = Math.floor(Math.random() * 100000000);
+	const collectReceived = Math.floor(Math.random() * 10000000);
+
+	// 随机分配 2~5 个部门
+	const deptCount = 2 + Math.floor(Math.random() * 4);
+	const shuffled = [...DEPARTMENTS].sort(() => Math.random() - 0.5);
+	const departments = shuffled.slice(0, deptCount);
+
+	return {
+		userId: `user_${id}`,
+		name: `${name}`,
+		avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+		qqNumber: `${1100000000 + Math.floor(Math.random() * 90000000)}`,
+		role: Math.random() > 0.8 ? 'ROLE_ADMIN' : 'ROLE_USER',
+		verifiedTitle: VERIFIED_TITLES[Math.floor(Math.random() * VERIFIED_TITLES.length)],
+		departments,
+		stats: {
+			followerCount: followerCount.toString(),
+			followingCount: Math.floor(Math.random() * 500).toString(),
+			likeCountReceived: likeReceived.toString(),
+			collectCountReceived: collectReceived.toString(),
+			viewCountReceived: Math.floor(Math.random() * 1000000).toString()
 		}
 	};
-
-	return result;
 }
 
-export const data = createMockWaterfallData();
+/**
+ * 批量生成用户摘要 mock 数据（用于骨架屏占位）
+ *
+ * @param count - 生成数量
+ * @param startIndex - 起始序号
+ * @returns V1UserSummary[] mock 数据列表
+ */
+export function generateUsers(count: number): V1UserSummary[] {
+	const users: V1UserSummary[] = [];
+	for (let i = 0; i < count; i++) {
+		users.push(generateUser(crypto.randomUUID()));
+	}
+	return users;
+}
 
 /**
  * 模拟 API 请求
@@ -147,95 +185,65 @@ export const data = createMockWaterfallData();
 export async function mockFetchFeed(
 	params: FeedServiceGetFeedData
 ): Promise<{ data: { posts: { items: V1PostPreview[] }; cursor: string } }> {
-	// 模拟网络延迟
 	await new Promise((resolve) => setTimeout(resolve, 800));
 	const query = params.query || {};
 
-	// 根据 params 生成数据
-	// 1. 获取当前 cursor (模拟分页)
 	const currentOffset = query['pagination.cursor'] ? parseInt(query['pagination.cursor']) : 0;
-	// 稍微多生成一点以便过滤
-	const limit = query['pagination.need_num'] || 20;
+	const limit = query['pagination.needNum'] || 20;
 
-	// 2. 生成原始数据 (这里我们简单地基于 offset 生成，保证每次生成的 ID 不同)
-	// 在真实的场景中，瀑布流数据是动态的。
-	// 为了模拟筛选效果，我们生成较多数据然后进行客户端过滤（在 mock 函数内部）
-	let candidates = generatePosts(100, currentOffset);
+	let candidates = generatePosts(100);
+	const scene = query.categoryId || '';
 
-	// 模拟场景逻辑
-	const scene = query['category_id'] || '';
-
-	// 模拟 "关注" 场景 (mock logic)
 	if (scene === 'following') {
-		// 假设关注了 ID 为 '1' 和 '2' 的用户
-		// 过滤出这两个作者的帖子
-		candidates = candidates.filter((p) => ['1', '2'].includes(p.author?.user_id || ''));
-
-		// 如果有 specific author_id filter
-		if (query['filter.author_id']) {
-			candidates = candidates.filter((p) => p.author?.user_id === query['filter.author_id']);
+		candidates = candidates.filter((p) => ['1', '2'].includes(p.author?.userId || ''));
+		if (query['filter.authorId']) {
+			candidates = candidates.filter((p) => p.author?.userId === query['filter.authorId']);
 		}
 	}
 
-	// 模拟 "个人" 场景
 	if (['self_post', 'self_like', 'self_collect'].includes(scene)) {
-		// 假设当前用户是 user_id '1' (mock)
-		// 简单模拟: 假设所有 author.user_id='1' 的帖子是 self_post
-		// 对于 like/collect 无法直接从 generatePosts 模拟，这里不做深究，仅返回 id=1 的帖子
-		// 在真实 API 中，后端会根据 token 判断 "self"
-		candidates = candidates.filter((p) => p.author?.user_id === '1');
+		candidates = candidates.filter((p) => p.author?.userId === '1');
 	}
 
-	// 3. 模拟筛选 (Keyword)
 	if (query['filter.keyword']) {
 		const kw = query['filter.keyword'].toLowerCase();
-		// 在 Mock 数据中，title 是随机的。
-		// 为了演示搜索效果，如果关键词匹配不到，我们就强制修改一些数据的 title
-		// 仅对前几个数据修改，确保能搜到东西
 		if (candidates.length > 0) {
 			let matchCount = 0;
 			candidates.forEach((p) => {
 				if (matchCount < 5) {
-					p.display_title = `${kw} - ${p.display_title}`;
+					p.displayTitle = `${kw} - ${p.displayTitle}`;
 					matchCount++;
 				}
 			});
 		}
-
-		candidates = candidates.filter((p) => p.display_title?.toLowerCase().includes(kw));
+		candidates = candidates.filter((p) => p.displayTitle?.toLowerCase().includes(kw));
 	}
 
-	// 4. 模拟时间筛选
-	if (query['filter.time_range.start_timestamp']) {
-		const start = parseInt(query['filter.time_range.start_timestamp']);
-		candidates = candidates.filter((p) => parseInt(p.publish_time || '0') >= start);
+	if (query['filter.timeRange.startTimestamp']) {
+		const start = parseInt(query['filter.timeRange.startTimestamp']);
+		candidates = candidates.filter((p) => parseInt(p.publishTime || '0') >= start);
 	}
-	if (query['filter.time_range.end_timestamp']) {
-		const end = parseInt(query['filter.time_range.end_timestamp']);
-		candidates = candidates.filter((p) => parseInt(p.publish_time || '0') <= end);
+	if (query['filter.timeRange.endTimestamp']) {
+		const end = parseInt(query['filter.timeRange.endTimestamp']);
+		candidates = candidates.filter((p) => parseInt(p.publishTime || '0') <= end);
 	}
 
-	// 5. 模拟排序 (OrderType)
-	// Mock 数据本身是随机的，这里难以体现真实排序，但我们可以根据 OrderType 修改一些字段来体现
-	if (query['filter.order_type'] === 'FEED_ORDER_TYPE_HOT') {
+	if (query['filter.orderType'] === 'FEED_ORDER_TYPE_HOT') {
 		candidates.sort((a, b) => {
-			const likeA = parseInt(a.stats?.like_count || '0');
-			const likeB = parseInt(b.stats?.like_count || '0');
+			const likeA = parseInt(a.stats?.likeCount || '0');
+			const likeB = parseInt(b.stats?.likeCount || '0');
 			return likeB - likeA;
 		});
-	} else if (query['filter.order_type'] === 'FEED_ORDER_TYPE_LATEST') {
+	} else if (query['filter.orderType'] === 'FEED_ORDER_TYPE_LATEST') {
 		candidates.sort((a, b) => {
-			const timeA = parseInt(a.publish_time || '0');
-			const timeB = parseInt(b.publish_time || '0');
+			const timeA = parseInt(a.publishTime || '0');
+			const timeB = parseInt(b.publishTime || '0');
 			return timeB - timeA;
 		});
 	}
 
-	// 6. 分页切片
 	const resultItems = candidates.slice(0, limit);
-	// 简单模拟 cursor：如果是最新排序，cursor 应该是时间戳，但为了 mock 方便，一直使用 offset
-	// 只要保证前端传回来的 cursor 能解析回 offset 即可
-	const nextCursor = (currentOffset + limit).toString(); // Mock: 总是推进 offset，防止 filter 导致 cursor 不动
+	const nextCursor = (currentOffset + limit).toString();
 
 	return {
 		data: {

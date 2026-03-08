@@ -12,7 +12,7 @@
 	<div class="group relative flex h-[50vh] w-full items-center justify-center lg:h-[70vh] lg:w-3/5">
 		<!-- Abstract Background behind image -->
 		<div
-			class="absolute inset-0 scale-90 -rotate-3 overflow-hidden rounded-[3rem] border border-white bg-gray-100 shadow-2xl shadow-gray-200/50 transition-transform duration-700 ease-out group-hover:scale-100 group-hover:rotate-0 lg:scale-95"
+			class="absolute inset-0 scale-90 -rotate-3 overflow-hidden rounded-[3rem] border border-white bg-zinc-100 shadow-2xl shadow-zinc-200/50 transition-transform duration-700 ease-out group-hover:scale-100 group-hover:rotate-0 lg:scale-95"
 		>
 			<!-- Subtle pattern inside the card -->
 			<div
@@ -58,11 +58,11 @@
 				<div class="animate-slide-in-right">
 					<!-- Title Area -->
 					<h1
-						class="relative mb-2 text-6xl leading-[0.9] font-black tracking-tighter text-gray-900 uppercase italic lg:text-7xl"
+						class="relative mb-2 text-6xl leading-[0.9] font-black tracking-tighter text-zinc-900 uppercase italic lg:text-7xl"
 					>
 						{item.name}
 						<div
-							class="font-tech pointer-events-none absolute -top-10 -left-10 -z-10 text-[8rem] font-bold whitespace-nowrap text-gray-100 opacity-50 select-none"
+							class="font-tech pointer-events-none absolute -top-10 -left-10 -z-10 text-[8rem] font-bold whitespace-nowrap text-zinc-100 opacity-50 select-none"
 						>
 							{item.enName}
 						</div>
@@ -77,18 +77,18 @@
 					</div>
 
 					<!-- Divider Graphic -->
-					<div class="relative mb-8 h-px w-full overflow-hidden bg-gray-200">
-						<div class="absolute top-0 left-0 h-full w-1/3 bg-gray-800"></div>
+					<div class="relative mb-8 h-px w-full overflow-hidden bg-zinc-200">
+						<div class="absolute top-0 left-0 h-full w-1/3 bg-zinc-800"></div>
 					</div>
 
 					<!-- Description -->
-					<p class="mb-10 max-w-md text-sm leading-relaxed text-gray-500 lg:text-base">
+					<p class="mb-10 max-w-md text-sm leading-relaxed text-zinc-500 lg:text-base">
 						{item.description}
 					</p>
 
 					<!-- Meta/Links -->
 					<div
-						class="flex flex-wrap items-center gap-6 text-sm font-bold tracking-wider text-gray-800 uppercase"
+						class="flex flex-wrap items-center gap-6 text-sm font-bold tracking-wider text-zinc-800 uppercase"
 					>
 						<a
 							href="#site"

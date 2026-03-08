@@ -1,5 +1,7 @@
 <script lang="ts">
 	// import { startRealtimeAppManager, stopRealtimeAppManager } from '$lib/models/realtime';
+	import { page } from '$app/state';
+	import { appBus } from '$lib/events/app-bus';
 	import { Bell, House, SquarePen, UserCogIcon } from 'lucide-svelte';
 	import { ModeWatcher } from 'mode-watcher';
 	import { onDestroy, onMount } from 'svelte';
@@ -8,6 +10,13 @@
 	import TabButton from './tab-button.svelte';
 
 	let { children } = $props();
+
+	function handleHomeClick(event: MouseEvent) {
+		if (page.url.pathname.includes('/home')) {
+			event.preventDefault();
+			appBus.emit('home:refresh');
+		}
+	}
 
 	onMount(() => {
 		// startRealtimeAppManager();
@@ -28,7 +37,7 @@
 >
 	<aside class="m-4 mr-0 hidden flex-col justify-between lg:flex">
 		<div class="flex flex-col gap-2">
-			<TabButton text="首页" icon={House} href="/home" />
+			<TabButton onclick={handleHomeClick} text="首页" icon={House} href="/home" />
 			<TabButton badgeText="1" text="消息" icon={Bell} href="/notification" />
 			<TabButton text="发布" icon={SquarePen} href="/release" />
 			<TabButton badgeText="99+" text="管理" icon={UserCogIcon} href="/management" />
@@ -37,12 +46,14 @@
 		<SettingPopover></SettingPopover>
 	</aside>
 
-	<section class="scrollbar-hide grow overflow-y-auto px-6">
+	<section
+		class="h-[calc(100vh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-3rem)] grow lg:h-[calc(100vh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]"
+	>
 		{@render children()}
 	</section>
 
 	<footer class="flex h-12 shrink-0 items-center justify-around lg:hidden">
-		<TabButton text="首页" type="mobile" href="/home" />
+		<TabButton onclick={handleHomeClick} text="首页" type="mobile" href="/home" />
 		<TabButton badgeText="1" text="消息" type="mobile" href="/notification" />
 		<TabButton text="发布" type="mobile" href="/release" />
 		<TabButton badgeText="99+" text="管理" type="mobile" href="/management" />

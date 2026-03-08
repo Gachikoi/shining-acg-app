@@ -1,233 +1,236 @@
+<!--
+  @component Home 页面
+  Feed 流首页，通过 SwipeablePane 实现分类之间的滑动切换。
+
+  核心架构：
+  - CategoryTabs：顶部分类按钮组
+  - SwipeablePane：3 面板虚拟窗口，支持手势滑动和非相邻跳转
+  - FeedStore<T>：泛型数据 store，按 contentType 创建不同类型的实例
+  - WaterfallContainer（V1PostPreview）/ FeedList（V1UserSummary）：根据分类渲染
+
+  API 请求逻辑、缓存适配器等已提取至 feed-api.ts，页面只负责：
+  - 筛选状态管理
+  - 容器尺寸感知（getDynamicNeedNum）
+  - 组件编排和路由
+-->
 <script lang="ts">
 	import { WaterfallContainer } from '$lib/components/custom/waterfall';
-	import { feedServiceGetFeed } from '$lib/api/sdk.gen';
-
-	// 单元测试接口
-	// 单元测试请求代码在 90 行
-	// import { mockFetchFeed } from '$lib/test/waterfall-data-mock';
-
-	import type { V1PostPreview } from '$lib/api/types.gen';
-	import type { WaterfallData } from '$lib/components/custom/waterfall/waterfall-container/types';
-	import { appState } from '$lib/stores/app-state.svelte';
-	import { untrack } from 'svelte';
+	import { FeedList } from '$lib/components/custom/feed-list';
+	import { SwipeablePane, type CategoryOption } from '$lib/components/custom/swipeable-pane';
 	import { Button } from '$lib/components/ui/button';
-	import { SvelteSet } from 'svelte/reactivity';
+	import { appBus } from '$lib/events/app-bus';
+	import { createDbCache } from '$lib/modules/cache';
+	import {
+		createFeedStore,
+		type FeedStore,
+		POST_CACHE_ADAPTER,
+		USER_CACHE_ADAPTER,
+		createPostFetchFn,
+		createUserFetchFn,
+		getPostId,
+		getUserId,
+		generatePostSkeletons,
+		generateUserSkeletons
+	} from '$lib/stores/feed';
+	import { appState } from '$lib/stores/app-state.svelte';
 	import { LucideRefreshCw } from 'lucide-svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
-	// 状态管理
-	let posts = $state<V1PostPreview[]>([]);
-	let loading = $state(false);
-	let refreshing = $state(false);
-	let hasMore = $state(true);
-	let cursor = $state<string | null>(null);
-	let waterfallRef: ReturnType<typeof WaterfallContainer> | undefined = $state();
+	import type {
+		V1FeedFilter,
+		V1FeedOrderType,
+		V1GetFeedResponse,
+		V1PostPreview,
+		V1TimeRange,
+		V1UserSummary
+	} from '$lib/api/types.gen';
+	import { estimateNeedNum } from '$lib/modules/virtual-feed';
+	import { breakpoint, remToPx } from '$lib/modules/device';
+	import { feedServiceListFeedCategories } from '$lib/api';
+	import { cn } from '$lib/utils';
 
-	// 筛选状态
-	let scene = $state('general');
-	let keyword = $derived(appState.searchKeyword); // 从全局状态派生
-	let orderType = $state<
-		'FEED_ORDER_TYPE_RECOMMENDED' | 'FEED_ORDER_TYPE_LATEST' | 'FEED_ORDER_TYPE_HOT'
-	>('FEED_ORDER_TYPE_RECOMMENDED');
-	let timeRange = $state<{ start?: string; end?: string }>({});
-	let selectedAuthorId = $state<string | undefined>(undefined);
+	// ─── 缓存 ──────────────────────────────────────────────────────
 
-	// 去重 Set
-	let seenIds = new SvelteSet<string>();
-	let currentFetchId = 0;
+	const feedCache = createDbCache<V1GetFeedResponse>('feed', { defaultTtl: 5 * 60 * 1000 });
 
-	const NEED_NUM = 20;
+	// ─── 分类配置 ──────────────────────────────────────────────────
 
-	const SCENE_OPTIONS = [
-		{ label: '推荐', value: 'general' },
-		{ label: '关注', value: 'following' }
+	const CATEGORY_OPTIONS: CategoryOption[] = [
+		{ label: '综合', value: 'general', contentType: 'waterfall' },
+		{ label: '关注', value: 'following', contentType: 'waterfall' },
+		{ label: '用户', value: 'user', contentType: 'list' },
+		{ label: '1', value: 'shining', contentType: 'waterfall' },
+		{ label: '2', value: 'search', contentType: 'waterfall' },
+		{ label: '3', value: 'message', contentType: 'waterfall' },
+		{ label: '4', value: 'profile', contentType: 'waterfall' },
+		{ label: '5', value: 'setting', contentType: 'waterfall' }
 	];
 
+	/** 内容区容器 DOM 引用 */
+	let contentAreaEl: HTMLElement | undefined = $state();
+
+	// ─── 分类状态 ──────────────────────────────────────────────────
+
+	let categoryIndex = $state(0);
+	let currentCategoryId = $derived(CATEGORY_OPTIONS[categoryIndex]?.value ?? 'general');
+
+	// ─── 筛选状态（页面级，跨分类共享） ──────────────────────────────
+
+	let keyword = $derived(appState.searchKeyword);
+	let orderType = $state<V1FeedOrderType>('FEED_ORDER_TYPE_RECOMMENDED');
+	let timeRange = $state<V1TimeRange>({});
+	let authorId = $state<string | undefined>(undefined);
+
+	/** 筛选上下文 getter——注入到 feed-api 的 fetch 工厂中 */
+	function getFilters(): V1FeedFilter {
+		return { keyword, orderType, timeRange, authorId };
+	}
+
+	// ─── FeedStore 管理 ─────────────────────────────────────────────
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const feedStores = new Map<string, FeedStore<any>>();
+
 	/**
-	 * 获取数据核心逻辑
+	 * 获取或创建指定分类的 FeedStore
+	 *
+	 * @param categoryId - 分类 ID
+	 * @returns FeedStore 实例
 	 */
-	async function fetchPosts(isRefresh: boolean = false) {
-		// 允许刷新操作打断当前的加载或刷新
-		if (!isRefresh && (loading || refreshing)) return;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function getOrCreateStore(categoryId: string): FeedStore<any> {
+		let store = feedStores.get(categoryId);
+		if (store) return store;
 
-		const fetchId = ++currentFetchId;
+		const contentType =
+			CATEGORY_OPTIONS.find((c) => c.value === categoryId)?.contentType ?? 'waterfall';
+		const onError = (_error: unknown, context: 'init' | 'refresh' | 'loadMore') => {
+			if (context === 'refresh') toast.error('网络请求失败，请检查您的网络连接');
+		};
 
-		// 设置状态
-		if (isRefresh) {
-			refreshing = true;
+		if (contentType === 'list') {
+			store = createFeedStore<V1UserSummary>(categoryId, {
+				needNum: estimateNeedNum('list', {
+					containerWidth: contentAreaEl?.clientWidth ?? 0,
+					containerHeight: contentAreaEl?.clientHeight ?? 0,
+					minCardWidth: contentAreaEl?.clientWidth ?? 0,
+					avgCardRatio: remToPx(13) / (contentAreaEl?.clientWidth ?? 0) // 用户列表项的高度通常为 100
+				}),
+				cache: feedCache,
+				cacheAdapter: USER_CACHE_ADAPTER,
+				getItemId: getUserId,
+				generateSkeleton: generateUserSkeletons,
+				fetchFn: createUserFetchFn(getFilters),
+				onError
+			});
 		} else {
-			loading = true;
+			store = createFeedStore<V1PostPreview>(categoryId, {
+				needNum: estimateNeedNum('waterfall', {
+					containerWidth: contentAreaEl?.clientWidth ?? 0,
+					containerHeight: contentAreaEl?.clientHeight ?? 0,
+					gap: breakpoint.isLg ? remToPx(1.5) : breakpoint.isMd ? remToPx(16) : remToPx(8)
+				}),
+				cache: feedCache,
+				cacheAdapter: POST_CACHE_ADAPTER,
+				getItemId: getPostId,
+				generateSkeleton: generatePostSkeletons,
+				fetchFn: createPostFetchFn(getFilters),
+				onError
+			});
 		}
 
-		try {
-			const currentCursor = isRefresh ? undefined : cursor || undefined;
+		store.init();
+		feedStores.set(categoryId, store);
+		return store;
+	}
 
-			// 构建查询参数
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const queryParams: any = {
-				'pagination.cursor': currentCursor,
-				'pagination.need_num': NEED_NUM,
-				refresh_type: isRefresh ? 'REFRESH_TYPE_PULL_DOWN' : 'REFRESH_TYPE_PULL_UP',
-				category_id: scene === 'general' ? undefined : scene
-			};
+	// ─── SwipeablePane 引用 ──────────────────────────────────────
 
-			// 根据场景应用不同的筛选逻辑
-			if (scene === 'following') {
-				// 1. ”首页-关注“只支持按照作者id筛选
-				if (selectedAuthorId) {
-					queryParams['filter.author_id'] = selectedAuthorId;
-				}
-			} else if (['self_post', 'self_like', 'self_collect'].includes(scene)) {
-				// 2. 个人的帖子/收藏/点赞处只支持按照搜索框的keyword筛选
-				if (keyword) {
-					queryParams['filter.keyword'] = keyword;
-				}
-			} else {
-				// 3. 其他场景支持 keyword、发布时间、排序依据筛选
-				if (keyword) queryParams['filter.keyword'] = keyword;
-				if (orderType) queryParams['filter.order_type'] = orderType;
-				if (timeRange.start) queryParams['filter.time_range.start_timestamp'] = timeRange.start;
-				if (timeRange.end) queryParams['filter.time_range.end_timestamp'] = timeRange.end;
-			}
+	let swipeablePaneRef: ReturnType<typeof SwipeablePane> | undefined = $state();
+	let waterfallRefs = $state<Record<string, ReturnType<typeof WaterfallContainer> | undefined>>({});
 
-			// 单元测试 API
-			// const response = await mockFetchFeed({
-			// 	query: queryParams,
-			// 	url: '/v1/feed'
-			// });
+	function handleCategoryChange(targetIndex: number): void {
+		if (targetIndex === categoryIndex) {
+			waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
+			return;
+		}
+		const targetCategory = CATEGORY_OPTIONS[targetIndex];
+		getOrCreateStore(targetCategory.value);
+		swipeablePaneRef?.jumpToIndex(targetIndex);
+	}
 
-			// 真实 API
-			const response = await feedServiceGetFeed({
-				query: queryParams
+	function onPaneIndexChange(newIndex: number): void {
+		categoryIndex = newIndex;
+		const category = CATEGORY_OPTIONS[newIndex];
+		getOrCreateStore(category.value);
+
+		if (newIndex > 0) getOrCreateStore(CATEGORY_OPTIONS[newIndex - 1].value);
+		if (newIndex < CATEGORY_OPTIONS.length - 1)
+			getOrCreateStore(CATEGORY_OPTIONS[newIndex + 1].value);
+	}
+
+	// ─── 生命周期 ───────────────────────────────────────────────────
+	const handleHomeRefresh = () => {
+		waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
+	};
+
+	onMount(() => {
+		// 获取内容分类目录后，发送给 sw，以创建后续的 cacheName
+		feedServiceListFeedCategories()
+			.then((res) => {
+				navigator.serviceWorker?.controller?.postMessage({
+					type: 'GET_MEDIA_CACHE_CATEGORIES',
+					data: {
+						mediaCategories: res.data?.categories?.map((category) => category.categoryId) || []
+					}
+				});
+			})
+			.catch((e) => {
+				console.error('获取 feed 流内容分类失败：', e);
 			});
 
-			if (fetchId !== currentFetchId) return;
-
-			if (response.error) {
-				const error = response.error;
-				console.error('Fetch feed failed:', error);
-				toast.error(error.message || '获取数据失败，请稍后重试');
-				return;
-			}
-
-			if (response.data) {
-				// 注意：response.data.posts 是 PostFeedContent 对象，包含 items
-				const newPosts = response.data.posts?.items || [];
-				const newCursor = response.data.cursor || null;
-
-				if (isRefresh) {
-					// 刷新：清空旧数据
-					posts = [];
-					seenIds.clear();
-					hasMore = true; // 重置 hasMore
-
-					// 手动清理瀑布流组件内部状态
-					if (waterfallRef) {
-						waterfallRef.resetLayout();
-					}
-				}
-
-				// 过滤重复数据
-				const uniqueNewPosts: V1PostPreview[] = [];
-				for (const post of newPosts) {
-					if (post.post_id && !seenIds.has(post.post_id)) {
-						seenIds.add(post.post_id);
-						uniqueNewPosts.push(post);
-					}
-				}
-
-				if (uniqueNewPosts.length > 0) {
-					// 使用扩展运算符追加新数据
-					posts = [...posts, ...uniqueNewPosts];
-				}
-
-				// 更新游标
-				cursor = newCursor;
-
-				// 判断是否还有更多数据 (模拟：如果总数超过 200 则停止)
-				// 这里我们简单判断本次返回是否为空，实际 Mock 中可以设置上限
-				if (newPosts.length < NEED_NUM || (cursor && parseInt(cursor) > 200)) {
-					hasMore = false;
-				}
-			} else {
-				hasMore = false;
-			}
-		} catch (error) {
-			console.error('Failed to fetch feed:', error);
-			toast.error('网络请求失败，请检查您的网络连接');
-		} finally {
-			// 只有当前最新的请求才负责关闭 loading/refreshing 状态
-			if (fetchId === currentFetchId) {
-				loading = false;
-				refreshing = false;
-			}
-		}
-	}
-
-	/**
-	 * 加载更多
-	 */
-	async function loadMore() {
-		if (!hasMore) return;
-		await fetchPosts(false);
-	}
-
-	/**
-	 * 刷新
-	 */
-	async function refresh() {
-		await fetchPosts(true);
-	}
-
-	// 构造传递给 WaterfallContainer 的数据对象
-	// 通过 $derived 确保响应性，WaterfallContainer 会响应 prop 变化
-	let waterfallData: WaterfallData = $derived({
-		posts: posts,
-		loading: loading,
-		refreshing: refreshing,
-		hasMore: hasMore,
-		cursor: cursor,
-		loadMore: loadMore,
-		refresh: refresh
+		getOrCreateStore(currentCategoryId);
+		appBus.on('home:refresh', handleHomeRefresh);
 	});
 
-	/**
-	 * 统一刷新入口，处理依赖和去重
-	 */
-	function triggerRefresh() {
-		// 重置状态
-		seenIds.clear(); // 刷新时清空去重Set
-		fetchPosts(true);
-	}
+	onDestroy(() => {
+		appBus.off('home:refresh', handleHomeRefresh);
+		for (const store of feedStores.values()) {
+			store.destroy();
+		}
+		feedStores.clear();
+	});
 
-	// 监听筛选条件变化，自动刷新
 	$effect(() => {
-		// 显式读取依赖，确保 effect 在这些状态变化时重新运行
-		void scene;
-		void keyword;
-		void orderType;
-		void timeRange.start;
-		void timeRange.end;
-		void selectedAuthorId;
-
-		// 使用 untrack 包裹副作用函数，防止 fetchPosts 内部读取的状态（如 loading）导致死循环
-		untrack(() => {
-			triggerRefresh();
-		});
+		const store = getOrCreateStore(currentCategoryId);
+		// 如果当前分类的 store 处于 skeleton 阶段，则刷新瀑布流
+		// 在这里刷新可以获得“下拉效果”
+		if (store.phase === 'skeleton') {
+			if (waterfallRefs[currentCategoryId]) {
+				waterfallRefs[currentCategoryId].scrollToTopAndRefresh();
+			} else {
+				// TODO 兼容目前的 feed-list 实现
+				store.refresh();
+			}
+		}
 	});
 </script>
 
 <div class="flex h-full w-full flex-col">
 	<!-- 顶部 Tab 切换 -->
-	<div class="flex w-full shrink-0 items-center border-b bg-background px-4 py-2">
+	<div class="flex w-full shrink-0 items-center bg-background px-4 py-2">
 		<div class="flex space-x-2">
-			{#each SCENE_OPTIONS as option (option)}
+			{#each CATEGORY_OPTIONS as option, index (option.value)}
 				<Button
-					variant={scene === option.value ? 'default' : 'ghost'}
+					variant="ghost"
+					class={cn(
+						categoryIndex === index
+							? 'bg-zinc-100 dark:bg-zinc-900'
+							: 'text-zinc-500 dark:text-zinc-400'
+					)}
 					size="sm"
-					onclick={() => {
-						scene = option.value;
-					}}
+					onclick={() => handleCategoryChange(index)}
 				>
 					{option.label}
 				</Button>
@@ -235,16 +238,48 @@
 		</div>
 	</div>
 
-	<!-- 瀑布流容器 -->
-	<div class="flex-1 overflow-hidden">
-		<WaterfallContainer bind:this={waterfallRef} data={waterfallData} />
+	<!-- 内容区域 -->
+	<div class="flex-1 overflow-hidden" bind:this={contentAreaEl}>
+		<SwipeablePane
+			bind:this={swipeablePaneRef}
+			categories={CATEGORY_OPTIONS}
+			currentIndex={categoryIndex}
+			onIndexChange={onPaneIndexChange}
+		>
+			{#snippet children(category)}
+				{@const store = getOrCreateStore(category.value)}
+				{#if category.contentType === 'list'}
+					<FeedList
+						items={store.items}
+						loading={store.loadingMore}
+						hasMore={store.hasMore}
+						showSkeleton={store.showSkeleton}
+						onLoadMore={() => store.loadMore()}
+					/>
+				{:else}
+					<WaterfallContainer
+						bind:this={waterfallRefs[category.value]}
+						posts={store.items}
+						loading={store.loadingMore}
+						hasMore={store.hasMore}
+						showSkeleton={store.showSkeleton}
+						refreshing={store.refreshing}
+						categoryId={category.value}
+						onLoadMore={store.loadMore}
+						onRefresh={store.refresh}
+					/>
+				{/if}
+			{/snippet}
+		</SwipeablePane>
 	</div>
 
-	<!-- 悬浮按钮 - 仅在 md (平板/电脑) 以上屏幕显示 -->
+	<!-- 悬浮刷新按钮 -->
 	<Button
 		size="icon"
 		class="absolute right-4 bottom-8 z-50 hidden h-12 w-12 rounded-md shadow-lg md:flex"
-		onclick={() => waterfallRef?.scrollToTopAndRefresh()}
+		onclick={() => {
+			waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
+		}}
 	>
 		<LucideRefreshCw class="h-6 w-6" />
 	</Button>
