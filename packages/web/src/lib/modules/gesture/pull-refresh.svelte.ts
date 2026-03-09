@@ -1,51 +1,30 @@
 /**
- * @file 下拉刷新 Svelte Action
+ * @file 下拉刷新 Svelte Action（Pointer Events + wheel 双通道）
  * @description
- * 从 waterfall-container 提取的可复用下拉刷新手势处理。
- * 同时支持触摸（移动端）和滚轮/触控板（桌面端）两种交互方式。
+ * 应用于可滚动容器，在容器滚动到顶部时启用下拉刷新手势。
  *
  * 核心特性：
- * - iOS Rubber Banding 弹性位移公式
- * - pullDistance 驱动的视觉回弹动画
- * - RAF 节流避免掉帧
- * - 滚轮"意图锁定"策略防止惯性误触
- * - 异步刷新回调，action 自动管理锁和回弹
+ * - **Pointer 通道**：pointerdown → 判定 scrollTop≤0 且向下拉 → arena 竞争 → 弹性跟手
+ * - **Wheel 通道**：在 scrollTop=0 时检测负 deltaY（trackpad 下拉），防抖判定序列结束
+ * - **弹性位移**：iOS Rubber Banding 公式，渐近线保证不会拉过头
+ * - **方向锁定**：|dy| > |dx| 才进入下拉模式，横向意图立即退出
+ * - **刷新动画**：interruptible: false，刷新期间所有手势被阻塞
+ * - **Safari 兼容**：touchmove { passive: false } 阻止浏览器原生橡皮筋效果
  *
  * @example
  * ```svelte
- * <div
- *   use:pullRefresh={{
- *     pullDistance: pullDistance,
- *     config: pullRefreshConfig,
- *     onRefresh: () => store.refresh(),
- *   }}
- * >
+ * <div use:pullRefresh={{ pullDistance, onRefresh: () => store.refresh() }}>
  *   <!-- 可滚动内容 -->
  * </div>
  * ```
  */
 
-import { createGestureController, GestureType } from '$lib/modules/gesture';
 import type { Action } from 'svelte/action';
-import type { Spring } from 'svelte/motion';
+import { tryAcquire, release } from './arena.svelte';
+import type { PullRefreshConfig, PullRefreshOptions } from './types';
+import { calculateElasticDistance, generateId, normalizeWheelDelta } from './utils';
 
-// ─── 类型定义 ──────────────────────────────────────────────────────
-
-/** 下拉刷新配置 */
-export interface PullRefreshConfig {
-	/** 最大下拉视觉距离（px） */
-	maxDistance: number;
-	/** 触发刷新的弹性位移阈值（px） */
-	triggerThreshold: number;
-	/** 触发后 pullDistance 固定到的距离（px），用于显示刷新指示器 */
-	triggeredDistance: number;
-	/** iOS Rubber Banding 弹性系数 c：越小起步阻力越大（推荐 0.1~0.5） */
-	elasticCoefficient: number;
-	/** 弹性饱和上限倍数：d = maxDistance × elasticDimensionMultiplier */
-	elasticDimensionMultiplier: number;
-}
-
-// ─── 默认配置 ──────────────────────────────────────────────────────
+// ─── 默认配置 ────────────────────────────────────────────────────
 
 /** 默认下拉刷新配置 */
 export const DEFAULT_PULL_REFRESH_CONFIG: PullRefreshConfig = {
@@ -56,305 +35,435 @@ export const DEFAULT_PULL_REFRESH_CONFIG: PullRefreshConfig = {
 	elasticDimensionMultiplier: 2.0
 };
 
+// ─── 手势阶段 ────────────────────────────────────────────────────
+
+type PointerPhase = 'idle' | 'pending' | 'active' | 'rejected';
+type WheelPhase = 'idle' | 'pulling' | 'scrolling';
+
 // ─── Action 实现 ──────────────────────────────────────────────────
 
 /**
  * 下拉刷新 Svelte Action
  *
- * 应用于可滚动容器元素（需有 overflow-y: scroll/auto）。
- * 监听 touch 和 wheel 事件，在容器滚动到顶部时启用下拉刷新手势。
- *
- * @param node - 滚动容器 DOM 元素
- * @param options - 配置选项
- * @returns Svelte action 返回值
+ * @param node - 滚动容器 DOM 元素（需有 overflow-y: scroll/auto）
+ * @param initialOptions - 配置选项
+ * @returns Svelte Action 返回值（update / destroy）
  */
-export const pullRefresh: Action<
-	HTMLElement,
-	{
-		pullDistance: Spring<number>;
-		config?: PullRefreshConfig;
-		onRefresh: () => Promise<void>;
-		onPullingChange?: (isPulling: boolean) => void;
-	}
-> = (
-	node: HTMLElement,
-	{ pullDistance, config = DEFAULT_PULL_REFRESH_CONFIG, onRefresh, onPullingChange }
-) => {
-	// ─── Touch 相关状态 ─────────────────────────────────────────
+export const pullRefresh: Action<HTMLElement, PullRefreshOptions> = (node, initialOptions) => {
+	const id = generateId('pull-refresh');
+	const GESTURE_TYPE = 'pull-refresh';
 
-	/** 是否正处于触摸下拉过程中 */
-	let isPulling = false;
-	/** 刷新操作同步锁，防止并发重复触发 */
+	let opts: PullRefreshOptions = { ...initialOptions };
+	const config = () => opts.config ?? DEFAULT_PULL_REFRESH_CONFIG;
+
+	/** 刷新同步锁，防止并发重复触发 */
 	let isRefreshLocked = false;
-	/** 触摸起始 Y 坐标 */
+
+	// ═══════════════════════════════════════════════════════════════
+	// Pointer 通道
+	// ═══════════════════════════════════════════════════════════════
+
+	let pointerPhase: PointerPhase = 'idle';
+	let pointerId: number | null = null;
+	let startX = 0;
 	let startY = 0;
-	/** touchmove RAF 帧 ID */
-	let touchMoveFrameId: number | null = null;
+	let pointerTarget: HTMLElement = node;
+	let pointerRafId: number | null = null;
+	let shouldPreventScroll = false;
+	/** 当前触摸周期内是否已使用过一次自动恢复，防止 reject → recover → reject 无限循环 */
+	let autoRecoveryUsed = false;
 
-	// ─── Wheel 相关状态 ─────────────────────────────────────────
+	function onPointerDown(e: PointerEvent) {
+		autoRecoveryUsed = false;
+		if (isRefreshLocked) return;
+		if (pointerId !== null) return;
+		if (node.scrollTop > 1) return;
 
-	/** 累计原始滚动量（px），wheel 停止后归零 */
-	let wheelRawDistance = 0;
-	/** 回弹/等待定时器 ID */
-	let wheelBounceTimeout: ReturnType<typeof setTimeout> | null = null;
-	/** wheel RAF 帧 ID */
-	let wheelFrameId: number | null = null;
-	/** 待处理的 wheel deltaY */
-	let pendingWheelDeltaY = 0;
-	/** 滚轮交互状态机：idle=静止, pulling=在顶部下拉, scrolling=正常滚动 */
-	let wheelSequenceState: 'idle' | 'pulling' | 'scrolling' = 'idle';
+		pointerId = e.pointerId;
+		startX = e.clientX;
+		startY = e.clientY;
+		pointerTarget = (e.target as HTMLElement) ?? node;
+		pointerPhase = 'pending';
+	}
 
-	const { canHandleGesture, lockGesture, unlockGesture } = createGestureController(
-		GestureType.PULL_REFRESH
-	);
+	function onPointerMove(e: PointerEvent) {
+		// ── 指针自动恢复（每个触摸周期最多一次） ─────────────────
+		// 场景：onPointerDown 在 isRefreshLocked 期间被跳过，
+		// 或方向判定后被重置，用户手指仍在屏幕上。
+		// 当阻塞条件解除后，pointermove 从当前位置补救追踪。
+		// autoRecoveryUsed 防止 reject → recover → reject 无限循环。
+		if (
+			pointerId === null &&
+			!isRefreshLocked &&
+			pointerPhase === 'idle' &&
+			(e.buttons & 1) !== 0 &&
+			node.scrollTop <= 1 &&
+			!autoRecoveryUsed
+		) {
+			pointerId = e.pointerId;
+			startX = e.clientX;
+			startY = e.clientY;
+			pointerTarget = (e.target as HTMLElement) ?? node;
+			pointerPhase = 'pending';
+			autoRecoveryUsed = true;
+		}
 
-	// ─── 通用辅助函数 ───────────────────────────────────────────
+		if (e.pointerId !== pointerId) return;
+		if (pointerPhase === 'idle' || pointerPhase === 'rejected') return;
 
-	/**
-	 * 弹性位移计算：iOS UIScrollView "Rubber Banding" 公式
-	 * y = (1.0 - (1.0 / ((x * c / d) + 1.0))) * d
-	 * 渐近线为 d，随 x 增加 y 逼近 d 但不超过
-	 *
-	 * @param rawDistance - 原始拖动距离（px）
-	 * @returns 弹性映射后的视觉位移（px）
-	 */
-	function calculateElasticDistance(rawDistance: number): number {
-		const { maxDistance, elasticCoefficient: c, elasticDimensionMultiplier } = config;
-		const d = maxDistance * elasticDimensionMultiplier;
-		return (1.0 - 1.0 / ((rawDistance * c) / d + 1.0)) * d;
+		const dx = e.clientX - startX;
+		const dy = e.clientY - startY;
+
+		// ── 方向判定阶段 ─────────────────────────────────────────
+		if (pointerPhase === 'pending') {
+			// 未达到判定阈值
+			if (Math.abs(dy) < 10 && Math.abs(dx) < 10) return;
+
+			if (Math.abs(dx) > Math.abs(dy)) {
+				resetPointerState();
+				return;
+			}
+
+			if (dy <= 0) {
+				resetPointerState();
+				return;
+			}
+
+			if (node.scrollTop > 1) {
+				resetPointerState();
+				return;
+			}
+
+			// 向 arena 竞争
+			const granted = tryAcquire({
+				id,
+				type: GESTURE_TYPE,
+				node,
+				axis: 'y',
+				direction: 1,
+				pointerTarget
+			});
+
+			if (!granted) {
+				resetPointerState();
+				return;
+			}
+
+			pointerPhase = 'active';
+			shouldPreventScroll = true;
+			node.setPointerCapture(e.pointerId);
+			opts.onPullingChange?.(true);
+		}
+
+		// ── 弹性跟手 ────────────────────────────────────────────
+		if (pointerPhase === 'active') {
+			// 拖动过程中容器发生了滚动（如惯性） → 取消
+			if (node.scrollTop > 1) {
+				resetPointerAndBounce();
+				return;
+			}
+
+			const currentDy = e.clientY - startY;
+			if (currentDy <= 0) {
+				resetPointerAndBounce();
+				return;
+			}
+
+			// rAF 节流
+			if (pointerRafId !== null) return;
+			pointerRafId = requestAnimationFrame(() => {
+				pointerRafId = null;
+				if (pointerPhase !== 'active') return;
+
+				const rawDy = e.clientY - startY;
+				if (rawDy <= 0) return;
+				const elasticDist = calculateElasticDistance(rawDy, config());
+				opts.pullDistance.set(elasticDist, { instant: true });
+			});
+		}
+	}
+
+	function onPointerUp(e: PointerEvent) {
+		if (e.pointerId !== pointerId) return;
+
+		if (pointerPhase === 'active') {
+			opts.onPullingChange?.(false);
+			finishPullGesture();
+		} else {
+			release(id);
+		}
+
+		resetPointerState();
+	}
+
+	function onPointerCancel(e: PointerEvent) {
+		if (e.pointerId !== pointerId) return;
+
+		if (pointerPhase === 'active') {
+			opts.onPullingChange?.(false);
+			opts.pullDistance.target = 0;
+			release(id);
+		} else {
+			release(id);
+		}
+
+		resetPointerState();
 	}
 
 	/**
-	 * 执行刷新：锁定 → 调用 onRefresh → 解锁 → 回弹 pullDistance
+	 * 指针捕获丢失回调
+	 *
+	 * 关键：lostpointercapture 会冒泡。触摸设备上，浏览器在 pointerdown 时
+	 * 对触摸目标元素做"隐式捕获"。当我们 setPointerCapture 把捕获转移到本节点时，
+	 * 子元素的隐式捕获被释放 → lostpointercapture 在子元素触发并冒泡到这里。
+	 * 必须通过 e.target !== node 过滤掉这类冒泡事件。
+	 */
+	function onLostPointerCapture(e: PointerEvent) {
+		if (e.pointerId !== pointerId) return;
+		// 忽略子元素失去隐式捕获后冒泡上来的事件
+		if (e.target !== node) return;
+
+		if (pointerPhase === 'active') {
+			opts.onPullingChange?.(false);
+			opts.pullDistance.target = 0;
+			release(id);
+		}
+		resetPointerState();
+	}
+
+	/** 评估是否触发刷新并执行回弹 */
+	function finishPullGesture() {
+		const currentDist = opts.pullDistance.current;
+		const cfg = config();
+
+		release(id);
+
+		if (currentDist >= cfg.triggerThreshold) {
+			opts.pullDistance.target = cfg.triggeredDistance;
+			executeRefresh();
+		} else {
+			opts.pullDistance.target = 0;
+		}
+	}
+
+	/**
+	 * 执行刷新：await onRefresh → 立即解锁 → 回弹自然播放
+	 *
+	 * isRefreshLocked 仅在数据请求期间为 true，数据到达后立即解锁。
+	 * 回弹动画（Spring → 0）不阻塞任何交互——用户在回弹期间触碰屏幕时，
+	 * onPointerMove 的自动恢复逻辑可以立即捡起指针并开始新手势。
+	 *
+	 * 不注册 arena AnimationToken，不阻塞异轴手势（swipe / scroll 等）。
 	 */
 	async function executeRefresh(): Promise<void> {
 		if (isRefreshLocked) return;
 		isRefreshLocked = true;
 
 		try {
-			await onRefresh();
+			await opts.onRefresh();
 		} catch (error) {
 			console.error('[pullRefresh] 刷新回调失败:', error);
-		} finally {
-			isRefreshLocked = false;
-			pullDistance.target = 0;
+		}
+
+		// 回弹 + 立即解锁：回弹是纯视觉动画，不应阻塞用户交互
+		opts.pullDistance.target = 0;
+		isRefreshLocked = false;
+	}
+
+	/** 重置 pointer 状态并回弹 pullDistance */
+	function resetPointerAndBounce() {
+		opts.onPullingChange?.(false);
+		shouldPreventScroll = false;
+		if (pointerRafId !== null) {
+			cancelAnimationFrame(pointerRafId);
+			pointerRafId = null;
+		}
+		opts.pullDistance.target = 0;
+		release(id);
+		pointerPhase = 'idle';
+		pointerId = null;
+	}
+
+	/** 仅重置 pointer 跟踪变量（不触发回弹） */
+	function resetPointerState() {
+		pointerPhase = 'idle';
+		pointerId = null;
+		startX = 0;
+		startY = 0;
+		shouldPreventScroll = false;
+		if (pointerRafId !== null) {
+			cancelAnimationFrame(pointerRafId);
+			pointerRafId = null;
 		}
 	}
 
 	/**
-	 * 重置触摸下拉状态
+	 * touchmove 滚动阻止（Safari 兼容 + 移动端 pointercancel 防御）
+	 *
+	 * 移动端浏览器会在前几次 touchmove 中决定是否接管滚动手势。
+	 * 一旦接管，所有后续 pointer 事件被 pointercancel 取消，手势识别器来不及判定方向。
+	 *
+	 * 防御策略：
+	 * - active 阶段：始终 preventDefault，阻止浏览器原生橡皮筋效果
+	 * - pending 阶段（scrollTop ≤ 1 且触摸向下时）：
+	 *     · 位移不足方向判定阈值 → preventDefault 延缓浏览器接管
+	 *     · 位移足够且明确横向（dx > dy）→ 放行，让 swipe/浏览器处理
+	 *     · 位移足够且纵向下拉 → preventDefault 保护 pullRefresh 手势
 	 */
-	function resetPullState(): void {
-		if (isPulling) {
-			isPulling = false;
-			onPullingChange?.(false);
-		}
-		if (touchMoveFrameId !== null) {
-			cancelAnimationFrame(touchMoveFrameId);
-			touchMoveFrameId = null;
-		}
-		pullDistance.target = 0;
-		// 解除手势锁，确保在取消操作时释放锁
-		unlockGesture();
-	}
+	function onTouchMove(e: TouchEvent) {
+		if (!e.cancelable) return;
 
-	// ─── Touch 事件处理 ─────────────────────────────────────────
-
-	function handleTouchStart(event: TouchEvent): void {
-		if (node.scrollTop > 1 || isPulling || isRefreshLocked || !canHandleGesture()) return;
-
-		startY = event.touches[0].clientY;
-		isPulling = true;
-		onPullingChange?.(true);
-	}
-
-	function handleTouchMove(event: TouchEvent): void {
-		if (!isPulling || !canHandleGesture()) return;
-
-		const touchY = event.touches[0].clientY;
-		const distance = touchY - startY;
-
-		// 未达到处理阈值
-		if (Math.abs(distance) < 10) {
+		// active 阶段：始终阻止
+		if (shouldPreventScroll) {
+			e.preventDefault();
 			return;
 		}
 
-		// 防止其他手势干扰
-		lockGesture();
+		// pending 阶段：在滚动容器顶部且触摸向下时阻止
+		if (pointerPhase === 'pending' && node.scrollTop <= 1 && e.touches.length === 1) {
+			const dx = Math.abs(e.touches[0].clientX - startX);
+			const dy = e.touches[0].clientY - startY;
 
-		// 仅向下拖动时阻止默认滚动（防止浏览器原生橡皮筋效果叠加）
-		if (distance > 0 && event.cancelable) {
-			event.preventDefault();
-		}
-
-		if (touchMoveFrameId !== null) return;
-
-		touchMoveFrameId = requestAnimationFrame(() => {
-			touchMoveFrameId = null;
-			if (!isPulling) return;
-
-			// 如果在拖动过程中容器发生了滚动，取消下拉
-			if (node.scrollTop > 0) {
-				resetPullState();
+			// 明确横向意图 → 放行给 swipe 或浏览器
+			if (Math.max(dx, Math.abs(dy)) >= 10 && dx > Math.abs(dy)) {
 				return;
 			}
 
-			const currentDistance = event.touches[0].clientY - startY;
-			if (currentDistance <= 0) {
-				resetPullState();
-				return;
+			if (dy > 0) {
+				e.preventDefault();
 			}
-
-			const elasticDistance = calculateElasticDistance(currentDistance);
-			pullDistance.set(elasticDistance, { instant: true });
-		});
-	}
-
-	function handleTouchEnd(): void {
-		if (!isPulling || !canHandleGesture()) return;
-
-		isPulling = false;
-		onPullingChange?.(false);
-
-		if (touchMoveFrameId !== null) {
-			cancelAnimationFrame(touchMoveFrameId);
-			touchMoveFrameId = null;
 		}
-
-		const currentDist = pullDistance.current;
-
-		if (currentDist >= config.triggerThreshold) {
-			pullDistance.target = config.triggeredDistance;
-			executeRefresh();
-		} else {
-			pullDistance.target = 0;
-		}
-
-		unlockGesture();
 	}
 
-	function handleTouchCancel(): void {
-		if (!canHandleGesture()) return;
-		resetPullState();
-	}
+	// ═══════════════════════════════════════════════════════════════
+	// Wheel 通道
+	// ═══════════════════════════════════════════════════════════════
 
-	// ─── Wheel 事件处理 ─────────────────────────────────────────
+	let wheelPhase: WheelPhase = 'idle';
+	/** 累计原始下拉量 */
+	let wheelRawDistance = 0;
+	let wheelBounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let wheelRafId: number | null = null;
+	let pendingWheelDeltaY = 0;
 
-	/**
-	 * 标准化 wheel 事件的 deltaY
-	 * 处理 DOM_DELTA_LINE 和 DOM_DELTA_PAGE 模式
-	 */
-	function normalizeWheelDelta(event: WheelEvent): number {
-		let deltaY = event.deltaY;
-		if (event.deltaMode === 1) deltaY *= 40;
-		else if (event.deltaMode === 2) deltaY *= 800;
-		return deltaY;
-	}
+	function onWheel(e: WheelEvent) {
+		if (isRefreshLocked) return;
 
-	/**
-	 * 处理滚轮/触控板事件
-	 * 采用"意图锁定"策略：新滚动序列的首个事件决定是下拉还是正常滚动，
-	 * 后续事件锁定在同一意图，直到序列结束（60ms 无事件）
-	 */
-	function handleWheel(event: WheelEvent): void {
-		if (isPulling || isRefreshLocked || !canHandleGesture()) return;
+		const { deltaY } = normalizeWheelDelta(e);
 
-		const deltaY = normalizeWheelDelta(event);
-
-		// 意图判断：新序列的首个事件
-		if (wheelSequenceState === 'idle') {
+		// 意图判断：新序列首个事件
+		if (wheelPhase === 'idle') {
 			if (node.scrollTop <= 1 && deltaY < 0) {
-				wheelSequenceState = 'pulling';
+				// 在顶部且向下拉 → 尝试获取控制权
+				const granted = tryAcquire({
+					id,
+					type: GESTURE_TYPE,
+					node,
+					axis: 'y',
+					direction: 1,
+					pointerTarget: (e.target as HTMLElement) ?? node
+				});
+
+				if (!granted) {
+					wheelPhase = 'scrolling';
+				} else {
+					wheelPhase = 'pulling';
+				}
 			} else {
-				wheelSequenceState = 'scrolling';
+				wheelPhase = 'scrolling';
 			}
-			// 防止其他手势干扰
-			lockGesture();
 		}
 
-		// 仅"下拉"意图时累加 deltaY 并阻止浏览器默认行为
-		if (wheelSequenceState === 'pulling') {
-			if (event.cancelable) event.preventDefault();
+		if (wheelPhase === 'pulling') {
+			if (e.cancelable) e.preventDefault();
 			pendingWheelDeltaY += deltaY;
-		} else {
-			pendingWheelDeltaY = 0;
 		}
 
-		// 防抖定时器：60ms 无事件视为序列结束
-		if (wheelBounceTimeout !== null) clearTimeout(wheelBounceTimeout);
+		// 防抖：60ms 无事件视为序列结束
+		if (wheelBounceTimer !== null) clearTimeout(wheelBounceTimer);
+		wheelBounceTimer = setTimeout(() => {
+			wheelBounceTimer = null;
 
-		wheelBounceTimeout = setTimeout(() => {
-			wheelBounceTimeout = null;
-
-			if (wheelSequenceState === 'pulling') {
-				const totalDragDistance = wheelRawDistance;
+			if (wheelPhase === 'pulling') {
+				const totalDrag = wheelRawDistance;
 				wheelRawDistance = 0;
 				pendingWheelDeltaY = 0;
 
-				const PHYSICAL_TRIGGER_THRESHOLD = 200;
-				if (totalDragDistance >= PHYSICAL_TRIGGER_THRESHOLD) {
-					pullDistance.target = config.triggeredDistance;
+				const PHYSICAL_TRIGGER = 200;
+				if (totalDrag >= PHYSICAL_TRIGGER) {
+					opts.pullDistance.target = config().triggeredDistance;
 					executeRefresh();
 				} else {
-					pullDistance.target = 0;
+					opts.pullDistance.target = 0;
 				}
+				release(id);
 			}
 
-			wheelSequenceState = 'idle';
-			// 解除手势锁
-			unlockGesture();
+			wheelPhase = 'idle';
 		}, 60);
 
-		// RAF 更新 UI
-		if (wheelFrameId === null && wheelSequenceState === 'pulling') {
-			wheelFrameId = requestAnimationFrame(() => {
-				wheelFrameId = null;
-				if (wheelSequenceState !== 'pulling') return;
+		// rAF 更新
+		if (wheelRafId === null && wheelPhase === 'pulling') {
+			wheelRafId = requestAnimationFrame(() => {
+				wheelRafId = null;
+				if (wheelPhase !== 'pulling') return;
 
 				const dy = pendingWheelDeltaY;
 				pendingWheelDeltaY = 0;
 
-				// deltaY < 0 是下拉，反转符号并调整灵敏度
+				// deltaY < 0 是下拉，反转并调整灵敏度
 				wheelRawDistance += dy * -0.5;
 				if (wheelRawDistance < 0) wheelRawDistance = 0;
 
-				const targetDistance = calculateElasticDistance(wheelRawDistance);
-				pullDistance.set(targetDistance, { instant: true });
+				const elasticDist = calculateElasticDistance(wheelRawDistance, config());
+				opts.pullDistance.set(elasticDist, { instant: true });
 			});
 		}
 	}
 
-	// ─── 清理 ───────────────────────────────────────────────────
-
-	function cleanup(): void {
-		if (touchMoveFrameId !== null) {
-			cancelAnimationFrame(touchMoveFrameId);
-			touchMoveFrameId = null;
+	/** 清理 wheel 通道状态 */
+	function resetWheel() {
+		wheelPhase = 'idle';
+		wheelRawDistance = 0;
+		pendingWheelDeltaY = 0;
+		if (wheelRafId !== null) {
+			cancelAnimationFrame(wheelRafId);
+			wheelRafId = null;
 		}
-		if (wheelFrameId !== null) {
-			cancelAnimationFrame(wheelFrameId);
-			wheelFrameId = null;
-		}
-		if (wheelBounceTimeout !== null) {
-			clearTimeout(wheelBounceTimeout);
-			wheelBounceTimeout = null;
+		if (wheelBounceTimer !== null) {
+			clearTimeout(wheelBounceTimer);
+			wheelBounceTimer = null;
 		}
 	}
 
-	$effect(() => {
-		node.addEventListener('touchstart', handleTouchStart, { passive: true });
-		node.addEventListener('touchmove', handleTouchMove, { passive: false });
-		node.addEventListener('touchend', handleTouchEnd);
-		node.addEventListener('touchcancel', handleTouchCancel);
-		node.addEventListener('wheel', handleWheel, { passive: false });
+	// ═══════════════════════════════════════════════════════════════
+	// 事件绑定与生命周期
+	// ═══════════════════════════════════════════════════════════════
 
-		return () => {
-			node.removeEventListener('touchstart', handleTouchStart);
-			node.removeEventListener('touchmove', handleTouchMove);
-			node.removeEventListener('touchend', handleTouchEnd);
-			node.removeEventListener('touchcancel', handleTouchCancel);
-			node.removeEventListener('wheel', handleWheel);
-			cleanup();
-		};
-	});
+	node.addEventListener('pointerdown', onPointerDown);
+	node.addEventListener('pointermove', onPointerMove);
+	node.addEventListener('pointerup', onPointerUp);
+	node.addEventListener('pointercancel', onPointerCancel);
+	node.addEventListener('lostpointercapture', onLostPointerCapture);
+	node.addEventListener('wheel', onWheel, { passive: false });
+	node.addEventListener('touchmove', onTouchMove, { passive: false });
+
+	return {
+		update(newOptions: PullRefreshOptions) {
+			opts = { ...newOptions };
+		},
+		destroy() {
+			if (pointerPhase === 'active') release(id);
+			resetPointerState();
+			resetWheel();
+
+			node.removeEventListener('pointerdown', onPointerDown);
+			node.removeEventListener('pointermove', onPointerMove);
+			node.removeEventListener('pointerup', onPointerUp);
+			node.removeEventListener('pointercancel', onPointerCancel);
+			node.removeEventListener('lostpointercapture', onLostPointerCapture);
+			node.removeEventListener('wheel', onWheel);
+			node.removeEventListener('touchmove', onTouchMove);
+		}
+	};
 };
