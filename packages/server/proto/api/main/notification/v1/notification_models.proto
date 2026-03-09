@@ -3,6 +3,7 @@ syntax = "proto3";
 package api.main.notification.v1;
 
 import "api/main/common/v1/common.proto";
+import "api/main/report/v1/report_models.proto";
 
 // 通知类别枚举
 enum NotificationCategory {
@@ -41,22 +42,6 @@ enum SystemNotificationType {
   SYSTEM_NOTIFICATION_TYPE_REPORT_APPROVED = 2; // 举报已处理
   SYSTEM_NOTIFICATION_TYPE_VERIFICATION_APPROVED = 3; // 身份认证通过
   SYSTEM_NOTIFICATION_TYPE_VERIFICATION_REJECTED = 4; // 身份认证被拒绝
-}
-
-// 举报目标类型
-enum ReportTargetType {
-  REPORT_TARGET_TYPE_UNSPECIFIED = 0;
-  REPORT_TARGET_TYPE_USER = 1; // 用户
-  REPORT_TARGET_TYPE_POST = 2; // 帖子
-  REPORT_TARGET_TYPE_COMMENT = 3; // 评论
-}
-
-// 举报处理动作
-enum ReportAction {
-  REPORT_ACTION_UNSPECIFIED = 0;
-  REPORT_ACTION_USER_BANNED = 1; // 用户已封禁
-  REPORT_ACTION_POST_DELETED = 2; // 帖子已删除
-  REPORT_ACTION_COMMENT_DELETED = 3; // 评论已删除
 }
 
 //--------------------
@@ -114,17 +99,19 @@ message SystemNotification {
   int64 created_at = 3; // 通知产生时间戳（秒）
 
   // 根据类型，以下字段可能存在
-  optional ReportNotificationDetail report_detail = 4; // 举报相关详情
-  optional VerificationNotificationDetail verification_detail = 5; // 身份认证相关详情
+  oneof detail {
+    ReportNotificationDetail report_detail = 4; // 举报相关详情
+    VerificationNotificationDetail verification_detail = 5; // 身份认证相关详情
+  }
 
   bool is_read = 7; // 是否已读
 }
 
 // 举报通知详情
 message ReportNotificationDetail {
-  ReportTargetType target_type = 1; // 举报目标类型
+  api.main.report.v1.ReportType target_type = 1; // 举报目标类型
   string target_summary = 2; // 目标摘要（用户名/帖子摘要/评论摘要）
-  optional string reason = 4; // 管理员处理原因
+  optional string reason = 3; // 管理员处理原因
 }
 
 // 身份认证通知详情

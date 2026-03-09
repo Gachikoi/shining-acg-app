@@ -8,7 +8,7 @@ import "api/media/v1/media_models.proto";
 import "google/protobuf/field_mask.proto";
 
 // ---------------------------------------------------------
-// 获取帖子详情
+// 获取帖子详情（可以据此增加帖子查看数量）
 message GetPostRequest {
   string post_id = 1 [(buf.validate.field).string.pattern = "\\S"];
 }

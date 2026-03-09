@@ -147,8 +147,6 @@ message UploadFile {
   string mime_type = 4 [(buf.validate.field).string.pattern = "\\S"];
   // 可选文件哈希，便于去重或幂等检查。
   optional string file_hash = 5 [(buf.validate.field).string.pattern = "\\S"];
-  // 帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。
-  optional bool crop_cover = 6;
 }
 
 // LivePhotoUploadPair 描述 Live Photo 元素中的两条文件。
@@ -160,6 +158,7 @@ message LivePhotoUploadPair {
 }
 
 // UploadAsset 描述前端发起批量上传时的单个“媒体元素”。
+// CEL 中的 MIME 白名单须与 pkg/mediapolicy 保持一致，修改时请同步 mediapolicy 与此处。
 message UploadAsset {
   option (buf.validate.message).cel = {
     id: "upload_asset.single_file.mime_type"
@@ -192,16 +191,17 @@ message UploadAsset {
     // Live Photo 媒体元素（图片 + 视频）。
     LivePhotoUploadPair live_photo_pair = 3 [(google.api.field_behavior) = OPTIONAL];
   }
+
+  // 帖子封面是否裁剪为 3:4。
+  // 属于元素级属性（裁剪比例由展示需求决定，与文件本身无关），
+  // 仅 MEDIA_SCENE_POST_COVER 场景下有效，其余场景忽略。
+  optional bool crop_cover = 4;
 }
 
 // PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。
 message PreparedUploadTask {
   // 服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。
   string task_id = 2;
-  // 所属媒体元素 ID。
-  string asset_id = 3;
-  // 文件上传场景（回显）。
-  MediaScene scene = 5;
   // 文件媒体类型（IMAGE/VIDEO）。
   MediaType type = 6;
 }
@@ -210,8 +210,6 @@ message PreparedUploadTask {
 message PreparedUploadAsset {
   // 媒体元素 ID。
   string asset_id = 1;
-  // 元素顺序索引（从 0 开始）。
-  int32 order_index = 2;
   // 元素场景。
   MediaScene scene = 3;
   // 元素类型（IMAGE/VIDEO/LIVE_PHOTO）。
@@ -226,8 +224,6 @@ message UploadedPart {
   int32 part_number = 1 [(buf.validate.field).int32.gt = 0];
   // 分片 ETag。
   string etag = 2;
-  // 分片大小（字节）。
-  int64 size_bytes = 3 [(buf.validate.field).int64.gt = 0];
 }
 
 // BatchProgress 表示批次级处理进度（服务端通过 WS 推送）。
