@@ -1539,10 +1539,6 @@ export type V1PreparedUploadAsset = {
      * 媒体元素 ID。
      */
     assetId: string;
-    /**
-     * 元素顺序索引（从 0 开始）。
-     */
-    orderIndex: number;
     scene: V1MediaScene;
     type: V1MediaType;
     /**
@@ -1559,11 +1555,6 @@ export type V1PreparedUploadTask = {
      * 服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。
      */
     taskId: string;
-    /**
-     * 所属媒体元素 ID。
-     */
-    assetId: string;
-    scene: V1MediaScene;
     type: V1MediaType;
 };
 
@@ -1709,7 +1700,7 @@ export type V1ReportItem = {
  * 举报通知详情
  */
 export type V1ReportNotificationDetail = {
-    targetType: V1ReportTargetType;
+    targetType: V1ReportType;
     /**
      * 目标摘要（用户名/帖子摘要/评论摘要）
      */
@@ -1749,15 +1740,6 @@ export type V1ReportPostResponse = {
  * - REPORT_STATUS_REJECTED: 已驳回
  */
 export type V1ReportStatus = 'REPORT_STATUS_UNSPECIFIED' | 'REPORT_STATUS_PENDING' | 'REPORT_STATUS_PROCESSING' | 'REPORT_STATUS_RESOLVED' | 'REPORT_STATUS_REJECTED';
-
-/**
- * 举报目标类型
- *
- * - REPORT_TARGET_TYPE_USER: 用户
- * - REPORT_TARGET_TYPE_POST: 帖子
- * - REPORT_TARGET_TYPE_COMMENT: 评论
- */
-export type V1ReportTargetType = 'REPORT_TARGET_TYPE_UNSPECIFIED' | 'REPORT_TARGET_TYPE_USER' | 'REPORT_TARGET_TYPE_POST' | 'REPORT_TARGET_TYPE_COMMENT';
 
 /**
  * ---------------------------------------------------------
@@ -1973,8 +1955,8 @@ export type V1SystemNotification = {
      * 通知产生时间戳（秒）
      */
     createdAt: string;
-    reportDetail?: V1ReportNotificationDetail;
-    verificationDetail?: V1VerificationNotificationDetail;
+    reportDetail: V1ReportNotificationDetail;
+    verificationDetail: V1VerificationNotificationDetail;
     /**
      * 是否已读
      */
@@ -2037,11 +2019,18 @@ export type V1UpdateSettingsResponse = {
 
 /**
  * UploadAsset 描述前端发起批量上传时的单个“媒体元素”。
+ * CEL 中的 MIME 白名单须与 pkg/mediapolicy 保持一致，修改时请同步 mediapolicy 与此处。
  */
 export type V1UploadAsset = {
     scene: V1MediaScene;
     singleFile?: V1UploadFile;
     livePhotoPair?: V1LivePhotoUploadPair;
+    /**
+     * 帖子封面是否裁剪为 3:4。
+     * 属于元素级属性（裁剪比例由展示需求决定，与文件本身无关），
+     * 仅 MEDIA_SCENE_POST_COVER 场景下有效，其余场景忽略。
+     */
+    cropCover?: boolean;
 };
 
 /**
@@ -2064,10 +2053,6 @@ export type V1UploadFile = {
      * 可选文件哈希，便于去重或幂等检查。
      */
     fileHash?: string;
-    /**
-     * 帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。
-     */
-    cropCover?: boolean;
 };
 
 /**
@@ -2082,10 +2067,6 @@ export type V1UploadedPart = {
      * 分片 ETag。
      */
     etag: string;
-    /**
-     * 分片大小（字节）。
-     */
-    sizeBytes: string;
 };
 
 /**
