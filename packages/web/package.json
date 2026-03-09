@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"build:analyze": "ANALYZE=1 vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -44,6 +45,7 @@
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.7.1",
+		"rollup-plugin-visualizer": "^5.12.0",
 		"svelte": "^5.43.8",
 		"svelte-check": "^4.3.4",
 		"tailwind-merge": "^3.4.0",
