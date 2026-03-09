@@ -40,7 +40,7 @@
     "npm:tw-animate-css@^1.4.0": "1.4.0",
     "npm:typescript-eslint@^8.47.0": "8.49.0_eslint@9.39.1_typescript@5.9.3_@typescript-eslint+parser@8.49.0__eslint@9.39.1__typescript@5.9.3",
     "npm:typescript@^5.9.3": "5.9.3",
-    "npm:vite@^7.2.2": "7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3"
+    "npm:vite@^7.2.2": "7.2.7_@types+node@24.10.3_lightningcss@1.31.1"
   },
   "npm": {
     "@cloudflare/kv-asset-handler@0.4.1": {
@@ -97,9 +97,6 @@
     },
     "@cspotcode/source-map-support@0.8.1": {
       "integrity": "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==",
-      "dependencies": [
-        "@jridgewell/trace-mapping@0.3.9"
-      ],
       "tarball": "https://registry.npmmirror.com/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz"
     },
     "@emnapi/runtime@1.8.1": {
@@ -688,7 +685,7 @@
       "integrity": "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==",
       "dependencies": [
         "@jridgewell/sourcemap-codec",
-        "@jridgewell/trace-mapping@0.3.31"
+        "@jridgewell/trace-mapping"
       ],
       "tarball": "https://registry.npmmirror.com/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz"
     },
@@ -696,7 +693,7 @@
       "integrity": "sha512-LI9u/+laYG4Ds1TDKSJW2YPrIlcVYOwi2fUC6xB43lueCjgxV4lffOCZCtYFiH6TNOX+tQKXx97T4IKHbhyHEQ==",
       "dependencies": [
         "@jridgewell/gen-mapping",
-        "@jridgewell/trace-mapping@0.3.31"
+        "@jridgewell/trace-mapping"
       ],
       "tarball": "https://registry.npmmirror.com/@jridgewell/remapping/-/remapping-2.3.5.tgz"
     },
@@ -715,14 +712,6 @@
         "@jridgewell/sourcemap-codec"
       ],
       "tarball": "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz"
-    },
-    "@jridgewell/trace-mapping@0.3.9": {
-      "integrity": "sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==",
-      "dependencies": [
-        "@jridgewell/resolve-uri",
-        "@jridgewell/sourcemap-codec"
-      ],
-      "tarball": "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.9.tgz"
     },
     "@lucide/svelte@0.561.0_svelte@5.45.8__acorn@8.15.0": {
       "integrity": "sha512-vofKV2UFVrKE6I4ewKJ3dfCXSV6iP6nWVmiM83MLjsU91EeJcEg7LoWUABLp/aOTxj1HQNbJD1f3g3L0JQgH9A==",
@@ -746,8 +735,7 @@
       "integrity": "sha512-NBdYIb90J7LfOI32dOewKI1r7wnkiH6m920puQ3qHUeZkxNkQiFnXVWoE6YtFSv6QOiPPf7ys6i+HWWecDz7sw==",
       "dependencies": [
         "@poppinss/colors",
-        "@sindresorhus/is",
-        "supports-color@10.2.2"
+        "@sindresorhus/is"
       ],
       "tarball": "https://registry.npmmirror.com/@poppinss/dumper/-/dumper-0.6.5.tgz"
     },
@@ -946,7 +934,7 @@
     "@sveltejs/acorn-typescript@1.0.8_acorn@8.15.0": {
       "integrity": "sha512-esgN+54+q0NjB0Y/4BomT9samII7jGwNy/2a3wNZbT2A2RpmXsXwUt24LvLhx6jUq2gVk4cWEvcRO6MFQbOfNA==",
       "dependencies": [
-        "acorn@8.15.0"
+        "acorn"
       ],
       "tarball": "https://registry.npmmirror.com/@sveltejs/acorn-typescript/-/acorn-typescript-1.0.8.tgz"
     },
@@ -967,8 +955,8 @@
         "@sveltejs/acorn-typescript",
         "@sveltejs/vite-plugin-svelte",
         "@types/cookie",
-        "acorn@8.15.0",
-        "cookie@0.6.0",
+        "acorn",
+        "cookie",
         "devalue",
         "esm-env",
         "kleur",
@@ -978,7 +966,7 @@
         "set-cookie-parser",
         "sirv",
         "svelte",
-        "vite"
+        "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3"
       ],
       "bin": true,
       "tarball": "https://registry.npmmirror.com/@sveltejs/kit/-/kit-2.49.2.tgz"
@@ -989,7 +977,7 @@
         "@sveltejs/vite-plugin-svelte",
         "debug",
         "svelte",
-        "vite"
+        "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3"
       ],
       "tarball": "https://registry.npmmirror.com/@sveltejs/vite-plugin-svelte-inspector/-/vite-plugin-svelte-inspector-5.0.1.tgz"
     },
@@ -1001,7 +989,7 @@
         "deepmerge",
         "magic-string",
         "svelte",
-        "vite",
+        "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1",
         "vitefu"
       ],
       "tarball": "https://registry.npmmirror.com/@sveltejs/vite-plugin-svelte/-/vite-plugin-svelte-6.2.1.tgz"
@@ -1137,7 +1125,7 @@
         "@tailwindcss/node",
         "@tailwindcss/oxide",
         "tailwindcss",
-        "vite"
+        "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3"
       ],
       "tarball": "https://registry.npmmirror.com/@tailwindcss/vite/-/vite-4.1.18.tgz"
     },
@@ -1336,18 +1324,13 @@
     "acorn-jsx@5.3.2_acorn@8.15.0": {
       "integrity": "sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==",
       "dependencies": [
-        "acorn@8.15.0"
+        "acorn"
       ],
       "tarball": "https://registry.npmmirror.com/acorn-jsx/-/acorn-jsx-5.3.2.tgz"
     },
     "acorn-walk@8.3.2": {
       "integrity": "sha512-cjkyv4OtNCIeqhHrfS81QWXoCBPExR/J62oyEqepVw8WaQeSqpW2uhuLPh1m9eWhDuOo/jUXVTlifvesOWp/4A==",
       "tarball": "https://registry.npmmirror.com/acorn-walk/-/acorn-walk-8.3.2.tgz"
-    },
-    "acorn@8.14.0": {
-      "integrity": "sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==",
-      "bin": true,
-      "tarball": "https://registry.npmmirror.com/acorn/-/acorn-8.14.0.tgz"
     },
     "acorn@8.15.0": {
       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
@@ -1413,7 +1396,7 @@
         "esm-env",
         "runed@0.35.1_@sveltejs+kit@2.49.2__@sveltejs+vite-plugin-svelte@6.2.1___svelte@5.45.8____acorn@8.15.0___vite@7.2.7____@types+node@24.10.3____lightningcss@1.31.1____picomatch@4.0.3___@types+node@24.10.3___lightningcss@1.31.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__acorn@8.15.0__@types+node@24.10.3__lightningcss@1.31.1_svelte@5.45.8__acorn@8.15.0_@sveltejs+vite-plugin-svelte@6.2.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__@types+node@24.10.3__lightningcss@1.31.1_vite@7.2.7__@types+node@24.10.3__lightningcss@1.31.1__picomatch@4.0.3_@types+node@24.10.3_lightningcss@1.31.1",
         "svelte",
-        "svelte-toolbelt@0.10.6_svelte@5.45.8__acorn@8.15.0_@sveltejs+kit@2.49.2__@sveltejs+vite-plugin-svelte@6.2.1___svelte@5.45.8____acorn@8.15.0___vite@7.2.7____@types+node@24.10.3____lightningcss@1.31.1____picomatch@4.0.3___@types+node@24.10.3___lightningcss@1.31.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__acorn@8.15.0__@types+node@24.10.3__lightningcss@1.31.1_@sveltejs+vite-plugin-svelte@6.2.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__@types+node@24.10.3__lightningcss@1.31.1_vite@7.2.7__@types+node@24.10.3__lightningcss@1.31.1__picomatch@4.0.3_@types+node@24.10.3_lightningcss@1.31.1",
+        "svelte-toolbelt@0.10.6_svelte@5.45.8__acorn@8.15.0_@sveltejs+kit@2.49.2__@sveltejs+vite-plugin-svelte@6.2.1___svelte@5.45.8____acorn@8.15.0___vite@7.2.7____@types+node@24.10.3____lightningcss@1.31.1____picomatch@4.0.3___@types+node@24.10.3___lightningcss@1.31.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__acorn@8.15.0__@types+node@24.10.3__lightningcss@1.31.1_lightningcss@1.31.1",
         "tabbable"
       ],
       "tarball": "https://registry.npmmirror.com/bits-ui/-/bits-ui-2.15.4.tgz"
@@ -1465,7 +1448,7 @@
       "integrity": "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==",
       "dependencies": [
         "ansi-styles",
-        "supports-color@7.2.0"
+        "supports-color"
       ],
       "tarball": "https://registry.npmmirror.com/chalk/-/chalk-4.1.2.tgz"
     },
@@ -1538,10 +1521,6 @@
     "cookie@0.6.0": {
       "integrity": "sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==",
       "tarball": "https://registry.npmmirror.com/cookie/-/cookie-0.6.0.tgz"
-    },
-    "cookie@1.1.1": {
-      "integrity": "sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==",
-      "tarball": "https://registry.npmmirror.com/cookie/-/cookie-1.1.1.tgz"
     },
     "cross-spawn@7.0.6": {
       "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
@@ -1645,70 +1624,40 @@
     "esbuild@0.25.12": {
       "integrity": "sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg==",
       "optionalDependencies": [
-        "@esbuild/aix-ppc64@0.25.12",
-        "@esbuild/android-arm@0.25.12",
-        "@esbuild/android-arm64@0.25.12",
-        "@esbuild/android-x64@0.25.12",
-        "@esbuild/darwin-arm64@0.25.12",
-        "@esbuild/darwin-x64@0.25.12",
-        "@esbuild/freebsd-arm64@0.25.12",
-        "@esbuild/freebsd-x64@0.25.12",
-        "@esbuild/linux-arm@0.25.12",
-        "@esbuild/linux-arm64@0.25.12",
-        "@esbuild/linux-ia32@0.25.12",
-        "@esbuild/linux-loong64@0.25.12",
-        "@esbuild/linux-mips64el@0.25.12",
-        "@esbuild/linux-ppc64@0.25.12",
-        "@esbuild/linux-riscv64@0.25.12",
-        "@esbuild/linux-s390x@0.25.12",
-        "@esbuild/linux-x64@0.25.12",
-        "@esbuild/netbsd-arm64@0.25.12",
-        "@esbuild/netbsd-x64@0.25.12",
-        "@esbuild/openbsd-arm64@0.25.12",
-        "@esbuild/openbsd-x64@0.25.12",
-        "@esbuild/openharmony-arm64@0.25.12",
-        "@esbuild/sunos-x64@0.25.12",
-        "@esbuild/win32-arm64@0.25.12",
-        "@esbuild/win32-ia32@0.25.12",
-        "@esbuild/win32-x64@0.25.12"
+        "@esbuild/aix-ppc64",
+        "@esbuild/android-arm",
+        "@esbuild/android-arm64",
+        "@esbuild/android-x64",
+        "@esbuild/darwin-arm64",
+        "@esbuild/darwin-x64",
+        "@esbuild/freebsd-arm64",
+        "@esbuild/freebsd-x64",
+        "@esbuild/linux-arm",
+        "@esbuild/linux-arm64",
+        "@esbuild/linux-ia32",
+        "@esbuild/linux-loong64",
+        "@esbuild/linux-mips64el",
+        "@esbuild/linux-ppc64",
+        "@esbuild/linux-riscv64",
+        "@esbuild/linux-s390x",
+        "@esbuild/linux-x64",
+        "@esbuild/netbsd-arm64",
+        "@esbuild/netbsd-x64",
+        "@esbuild/openbsd-arm64",
+        "@esbuild/openbsd-x64",
+        "@esbuild/openharmony-arm64",
+        "@esbuild/sunos-x64",
+        "@esbuild/win32-arm64",
+        "@esbuild/win32-ia32",
+        "@esbuild/win32-x64"
       ],
       "scripts": true,
       "bin": true,
       "tarball": "https://registry.npmmirror.com/esbuild/-/esbuild-0.25.12.tgz"
     },
-    "esbuild@0.27.0": {
-      "integrity": "sha512-jd0f4NHbD6cALCyGElNpGAOtWxSq46l9X/sWB0Nzd5er4Kz2YTm+Vl0qKFT9KUJvD8+fiO8AvoHhFvEatfVixA==",
-      "optionalDependencies": [
-        "@esbuild/aix-ppc64@0.27.0",
-        "@esbuild/android-arm@0.27.0",
-        "@esbuild/android-arm64@0.27.0",
-        "@esbuild/android-x64@0.27.0",
-        "@esbuild/darwin-arm64@0.27.0",
-        "@esbuild/darwin-x64@0.27.0",
-        "@esbuild/freebsd-arm64@0.27.0",
-        "@esbuild/freebsd-x64@0.27.0",
-        "@esbuild/linux-arm@0.27.0",
-        "@esbuild/linux-arm64@0.27.0",
-        "@esbuild/linux-ia32@0.27.0",
-        "@esbuild/linux-loong64@0.27.0",
-        "@esbuild/linux-mips64el@0.27.0",
-        "@esbuild/linux-ppc64@0.27.0",
-        "@esbuild/linux-riscv64@0.27.0",
-        "@esbuild/linux-s390x@0.27.0",
-        "@esbuild/linux-x64@0.27.0",
-        "@esbuild/netbsd-arm64@0.27.0",
-        "@esbuild/netbsd-x64@0.27.0",
-        "@esbuild/openbsd-arm64@0.27.0",
-        "@esbuild/openbsd-x64@0.27.0",
-        "@esbuild/openharmony-arm64@0.27.0",
-        "@esbuild/sunos-x64@0.27.0",
-        "@esbuild/win32-arm64@0.27.0",
-        "@esbuild/win32-ia32@0.27.0",
-        "@esbuild/win32-x64@0.27.0"
-      ],
-      "scripts": true,
-      "bin": true,
-      "tarball": "https://registry.npmmirror.com/esbuild/-/esbuild-0.27.0.tgz"
+    "escalade@3.2.0": {
+      "integrity": "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==",
+      "tarball": "https://registry.npmmirror.com/escalade/-/escalade-3.2.0.tgz"
     },
     "escalade@3.2.0": {
       "integrity": "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==",
@@ -1811,7 +1760,7 @@
     "espree@10.4.0_acorn@8.15.0": {
       "integrity": "sha512-j6PAQ2uUr79PZhBjP5C5fhl8e39FmRnOjsD5lGnWrFU8i2G776tBK7+nP8KuQUTTyAZUwfQqXAgrVH5MbH9CYQ==",
       "dependencies": [
-        "acorn@8.15.0",
+        "acorn",
         "acorn-jsx",
         "eslint-visitor-keys@4.2.1"
       ],
@@ -2385,7 +2334,6 @@
       "integrity": "sha512-X93sXczqbBq9ixoM6jnesmdTqp+4baVC/aM/DuPpRS0LK0XtcqaO75qPzNEvDEzBAHxwMAWRIum/9hg32YB8iA==",
       "dependencies": [
         "@cspotcode/source-map-support",
-        "acorn@8.14.0",
         "acorn-walk",
         "exit-hook",
         "glob-to-regexp",
@@ -2861,10 +2809,6 @@
       ],
       "tarball": "https://registry.npmmirror.com/style-to-object/-/style-to-object-1.0.14.tgz"
     },
-    "supports-color@10.2.2": {
-      "integrity": "sha512-SS+jx45GF1QjgEXQx4NJZV9ImqmO2NPz5FNsIHrsDjh2YsHnawpan7SNQ1o8NuhrbHZy9AZhIoCUiCeaW/C80g==",
-      "tarball": "https://registry.npmmirror.com/supports-color/-/supports-color-10.2.2.tgz"
-    },
     "supports-color@7.2.0": {
       "integrity": "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==",
       "dependencies": [
@@ -2875,7 +2819,7 @@
     "svelte-check@4.3.4_svelte@5.45.8__acorn@8.15.0_typescript@5.9.3": {
       "integrity": "sha512-DVWvxhBrDsd+0hHWKfjP99lsSXASeOhHJYyuKOFYJcP7ThfSCKgjVarE8XfuMWpS5JV3AlDf+iK1YGGo2TACdw==",
       "dependencies": [
-        "@jridgewell/trace-mapping@0.3.31",
+        "@jridgewell/trace-mapping",
         "chokidar",
         "fdir",
         "picocolors",
@@ -2910,7 +2854,7 @@
       ],
       "tarball": "https://registry.npmmirror.com/svelte-sonner/-/svelte-sonner-1.0.7.tgz"
     },
-    "svelte-toolbelt@0.10.6_svelte@5.45.8__acorn@8.15.0_@sveltejs+kit@2.49.2__@sveltejs+vite-plugin-svelte@6.2.1___svelte@5.45.8____acorn@8.15.0___vite@7.2.7____@types+node@24.10.3____lightningcss@1.31.1____picomatch@4.0.3___@types+node@24.10.3___lightningcss@1.31.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__acorn@8.15.0__@types+node@24.10.3__lightningcss@1.31.1_@sveltejs+vite-plugin-svelte@6.2.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__@types+node@24.10.3__lightningcss@1.31.1_vite@7.2.7__@types+node@24.10.3__lightningcss@1.31.1__picomatch@4.0.3_@types+node@24.10.3_lightningcss@1.31.1": {
+    "svelte-toolbelt@0.10.6_svelte@5.45.8__acorn@8.15.0_@sveltejs+kit@2.49.2__@sveltejs+vite-plugin-svelte@6.2.1___svelte@5.45.8____acorn@8.15.0___vite@7.2.7____@types+node@24.10.3____lightningcss@1.31.1____picomatch@4.0.3___@types+node@24.10.3___lightningcss@1.31.1__svelte@5.45.8___acorn@8.15.0__vite@7.2.7___@types+node@24.10.3___lightningcss@1.31.1___picomatch@4.0.3__acorn@8.15.0__@types+node@24.10.3__lightningcss@1.31.1_lightningcss@1.31.1": {
       "integrity": "sha512-YWuX+RE+CnWYx09yseAe4ZVMM7e7GRFZM6OYWpBKOb++s+SQ8RBIMMe+Bs/CznBMc0QPLjr+vDBxTAkozXsFXQ==",
       "dependencies": [
         "clsx",
@@ -2937,7 +2881,7 @@
         "@jridgewell/sourcemap-codec",
         "@sveltejs/acorn-typescript",
         "@types/estree",
-        "acorn@8.15.0",
+        "acorn",
         "aria-query",
         "axobject-query",
         "clsx",
@@ -3055,11 +2999,11 @@
       "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
       "tarball": "https://registry.npmmirror.com/util-deprecate/-/util-deprecate-1.0.2.tgz"
     },
-    "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3": {
+    "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1": {
       "integrity": "sha512-ITcnkFeR3+fI8P1wMgItjGrR10170d8auB4EpMLPqmx6uxElH3a/hHGQabSHKdqd4FXWO1nFIp9rRn7JQ34ACQ==",
       "dependencies": [
         "@types/node",
-        "esbuild@0.25.12",
+        "esbuild",
         "fdir",
         "lightningcss@1.31.1",
         "picomatch",
@@ -3077,13 +3021,33 @@
       "bin": true,
       "tarball": "https://registry.npmmirror.com/vite/-/vite-7.2.7.tgz"
     },
+    "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3": {
+      "integrity": "sha512-ITcnkFeR3+fI8P1wMgItjGrR10170d8auB4EpMLPqmx6uxElH3a/hHGQabSHKdqd4FXWO1nFIp9rRn7JQ34ACQ==",
+      "dependencies": [
+        "@types/node",
+        "esbuild",
+        "fdir",
+        "picomatch",
+        "postcss",
+        "rollup",
+        "tinyglobby"
+      ],
+      "optionalDependencies": [
+        "fsevents"
+      ],
+      "optionalPeers": [
+        "@types/node"
+      ],
+      "bin": true,
+      "tarball": "https://registry.npmmirror.com/vite/-/vite-7.2.7.tgz"
+    },
     "vitefu@1.1.1_vite@7.2.7__@types+node@24.10.3__lightningcss@1.31.1__picomatch@4.0.3_@types+node@24.10.3_lightningcss@1.31.1": {
       "integrity": "sha512-B/Fegf3i8zh0yFbpzZ21amWzHmuNlLlmJT6n7bu5e+pCHUKQIfXSYokrqOBGEMMe9UG2sostKQF9mml/vYaWJQ==",
       "dependencies": [
-        "vite"
+        "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3"
       ],
       "optionalPeers": [
-        "vite"
+        "vite@7.2.7_@types+node@24.10.3_lightningcss@1.31.1_picomatch@4.0.3"
       ],
       "tarball": "https://registry.npmmirror.com/vitefu/-/vitefu-1.1.1.tgz"
     },
@@ -3131,7 +3095,6 @@
         "@cloudflare/unenv-preset",
         "@cloudflare/workers-types",
         "blake3-wasm",
-        "esbuild@0.27.0",
         "miniflare",
         "path-to-regexp",
         "unenv",
@@ -3202,7 +3165,6 @@
         "@poppinss/colors",
         "@poppinss/dumper",
         "@speed-highlight/core",
-        "cookie@1.1.1",
         "youch-core"
       ],
       "tarball": "https://registry.npmmirror.com/youch/-/youch-4.1.0-beta.10.tgz"

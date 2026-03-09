@@ -2,7 +2,7 @@
 	// 常量定义
 	// 参考产品需求文档 6.2.5 发布 (Release)
 	import { linear } from 'svelte/easing';
-	import { CoverRatioArray, type CoverRatio } from '$lib/storage/release-draft';
+	import { CoverRatioArray, type CoverRatio } from '$lib/stores/release';
 
 	// 封面比例对应的宽高
 	const coverRatioToAspectRatio: Record<CoverRatio, string> = {
@@ -28,7 +28,6 @@
 <script lang="ts">
 	/**
 	 * 发布页 - 产品需求 6.2.5
-	 * TODO(6.2.5.4-8): toast 提示：「已取消上传」「帖子发布成功」「帖子上传过程中发生错误，请重试」
 	 * TODO(6.2.5.4-9): iOS/Android Webview 保活，保障应用在后台时也能处理、上传图片视频
 	 */
 	import { onMount } from 'svelte';
@@ -36,7 +35,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { cn } from '$lib/utils';
-	import { PlusIcon } from 'lucide-svelte';
+	import { PlusIcon, XIcon } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
 	import { toast } from 'svelte-sonner';
@@ -46,16 +45,22 @@
 		extractContentFromShinRichTextarea
 	} from '$lib/components/custom/shin-rich';
 	import * as Select from '$lib/components/ui/select';
-	import { partitionServiceListPartitions } from '$lib/api';
-	import type { V1CreatePostRequest, V1PostContentUnit } from '$lib/api/types.gen';
+	import { partitionServiceListPartitions, postServiceCreatePost } from '$lib/api';
+	import type { V1PostContentUnit } from '$lib/api/types.gen';
 	import {
 		saveReleaseDraft,
 		loadReleaseDraft,
 		clearReleaseDraft,
 		type ReleaseDraft
-	} from '$lib/storage/release-draft';
+	} from '$lib/stores/release';
 	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
 	import { resolve } from '$app/paths';
+	import {
+		uploadMediaBatch,
+		dataURLToFile,
+		UploadAbortController,
+		type UploadProgress
+	} from '$lib/utils/media-upload';
 
 	const DRAFT_ID = 'release-draft';
 
@@ -64,6 +69,9 @@
 	let lastSavedSnapshot = $state<ReleaseDraft | null>(null);
 
 	let cachedImagesDataURLs = $state<string[]>([]);
+	// 与 cachedImagesDataURLs 一一对应，保存原始 File 对象用于上传
+	// 从草稿恢复时此数组为空，上传前会通过 dataURLToFile 重新生成
+	let cachedFiles = $state<File[]>([]);
 	let selectedImageURL = $state<string | null>(null);
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
 	let titleContent = $state('');
@@ -79,6 +87,14 @@
 	let pendingNavigationUrl = $state<URL | null>(null);
 	let resetKey = $state(0);
 	let showPublishConfirm = $state(false);
+
+	// 上传状态
+	let isUploading = $state(false);
+	let uploadProgress = $state<UploadProgress>({ uploadedFiles: 0, totalFiles: 0 });
+	let uploadAbortController = $state<UploadAbortController | null>(null);
+
+	// 隐藏的文件 input 引用，由"+"按钮触发点击
+	let mediaFileInputRef = $state<HTMLInputElement | null>(null);
 
 	let selectedSectionLabel = $derived(
 		partitionsLoading
@@ -139,6 +155,7 @@
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
 		cachedImagesDataURLs = [];
+		cachedFiles = [];
 		selectedImageURL = null;
 		selectedSection = '';
 		initialBodyContent = [];
@@ -155,28 +172,153 @@
 		coverRatio = CoverRatioArray[nextIndex];
 	}
 
-	// TODO(6.2.5.4): 发布时需先处理、上传图片视频，获取 media_assets 后再调用 CreatePost
-	function createPostRequest(): V1CreatePostRequest {
-		return {
-			batch_id: undefined,
-			title: titleContent,
-			content: extractContentFromShinRichTextarea(contenteditableRef as HTMLElement),
-			partition_id: selectedSection || undefined,
-			media_assets: undefined
-		};
+	// ── 图片/视频选择器 ────────────────────────────────────────────────
+
+	const MAX_MEDIA_COUNT = 20; // 需求 6.2.5.1-2：最多 20 张
+
+	/** 用户点击"+"时触发隐藏文件 input 的点击。 */
+	function handleAddMediaClick() {
+		mediaFileInputRef?.click();
 	}
 
-	function handleSubmit() {
-		if (!selectedSection) {
-			toast.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
+	/** 处理文件选择，读取 data URL 用于预览，同时保存 File 对象用于上传。 */
+	async function handleFileSelect(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const newFiles = Array.from(input.files ?? []);
+		if (!newFiles.length) return;
+
+		const remaining = MAX_MEDIA_COUNT - cachedImagesDataURLs.length;
+		if (remaining <= 0) {
+			toast.error(`最多只能选择 ${MAX_MEDIA_COUNT} 张图片/视频`);
+			input.value = '';
 			return;
 		}
-		const postRequest = createPostRequest();
-		console.log(postRequest);
+
+		// 如果本次选择超出剩余配额，截断并提示
+		const selected = newFiles.slice(0, remaining);
+		if (newFiles.length > remaining) {
+			toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
+		}
+
+		// 用 FileReader 并行生成所有 data URL
+		const dataURLs = await Promise.all(selected.map(readFileAsDataURL));
+
+		cachedFiles = [...cachedFiles, ...selected];
+		cachedImagesDataURLs = [...cachedImagesDataURLs, ...dataURLs];
+
+		// 重置 input，允许重复选择相同文件
+		input.value = '';
+	}
+
+	/** 读取单个 File 为 data URL（Promise 封装 FileReader）。 */
+	function readFileAsDataURL(file: File): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result as string);
+			reader.onerror = () => reject(new Error(`读取文件失败: ${file.name}`));
+			reader.readAsDataURL(file);
+		});
+	}
+
+	/** 删除指定索引的媒体，同步更新 cachedFiles 和 cachedImagesDataURLs。 */
+	function handleRemoveMedia(index: number) {
+		cachedImagesDataURLs = cachedImagesDataURLs.filter((_, i) => i !== index);
+		cachedFiles = cachedFiles.filter((_, i) => i !== index);
+		// 若当前封面恰好是被删除的那张，重置封面
+		// 后续 $effect 会自动将封面重置为新的第一张（如果还有的话）
+		if (selectedImageURL === (cachedImagesDataURLs[index] ?? null)) {
+			selectedImageURL = null;
+		}
+	}
+
+	// ── 上传 & 发布流程 ────────────────────────────────────────────────
+
+	/**
+	 * 确认发布后执行：上传媒体文件，然后调用 CreatePost。
+	 * 需求 6.2.5.4：用户确认发布后才开始真正上传。
+	 */
+	async function handleSubmit() {
 		showPublishConfirm = false;
+
+		// 如果没有任何媒体文件，直接创建帖子（纯文字帖）
+		if (cachedImagesDataURLs.length === 0) {
+			await doCreatePost([]);
+			return;
+		}
+
+		// 准备 File 对象：从草稿恢复时 cachedFiles 可能为空，需要从 data URL 重建
+		let filesToUpload: File[];
+		if (cachedFiles.length === cachedImagesDataURLs.length) {
+			filesToUpload = cachedFiles;
+		} else {
+			// 草稿恢复场景：data URL → Blob → File（文件名和 MIME 均从 data URL 中推断）
+			filesToUpload = await Promise.all(
+				cachedImagesDataURLs.map((url, i) => dataURLToFile(url, `media-${i}`))
+			);
+		}
+
+		isUploading = true;
+		uploadProgress = { uploadedFiles: 0, totalFiles: filesToUpload.length };
+		const batchId = crypto.randomUUID();
+		const controller = new UploadAbortController();
+		uploadAbortController = controller;
+
+		try {
+			const mediaAssets = await uploadMediaBatch(
+				filesToUpload,
+				batchId,
+				(p) => {
+					uploadProgress = p;
+				},
+				controller
+			);
+
+			if (controller.aborted) return; // 已在 handleCancelUpload 中处理
+
+			await doCreatePost(mediaAssets);
+		} catch {
+			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+		} finally {
+			isUploading = false;
+			uploadAbortController = null;
+		}
+	}
+
+	/** 调用 CreatePost 接口，成功后清草稿并跳转。 */
+	async function doCreatePost(mediaAssets: import('$lib/api/types.gen').V1MediaAsset[]) {
+		try {
+			await postServiceCreatePost({
+				body: {
+					batchId: mediaAssets.length > 0 ? crypto.randomUUID() : '',
+					title: titleContent || undefined,
+					content: contenteditableRef
+						? extractContentFromShinRichTextarea(contenteditableRef)
+						: undefined,
+					partitionId: selectedSection,
+					mediaAssets
+				},
+				throwOnError: true
+			});
+			clearReleaseDraft(DRAFT_ID);
+			toast.success(TOAST_MESSAGES.POST_PUBLISHED_SUCCESS);
+			// TODO(6.2.5.4): 发布成功后跳转到帖子详情页或 feed，等路由就绪后补充
+			goto('/');
+		} catch {
+			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+		}
+	}
+
+	/** 用户主动取消上传。 */
+	async function handleCancelUpload() {
+		if (!uploadAbortController) return;
+		await uploadAbortController.abort();
+		isUploading = false;
+		uploadAbortController = null;
+		toast.info(TOAST_MESSAGES.UPLOAD_CANCELLED);
 	}
 
 	function handlePublishClick() {
+		if (isUploading) return;
 		if (!selectedSection) {
 			toast.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
 			return;
@@ -341,20 +483,52 @@
 				</div>
 			{/key}
 		</button>
-		<!-- 选择封面 -->
-		<!-- TODO(6.2.5.1-2): 选择图片/视频，最多 20 张；选择后不弹出编辑器；支持删除 -->
+		<!-- 图片/视频选择器 - 需求 6.2.5.1-2 -->
 		<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
-		<div class="mt-4 flex gap-2">
+		<p class="text-sm text-muted-foreground">
+			最多 {MAX_MEDIA_COUNT} 张，已选 {cachedImagesDataURLs.length} 张
+		</p>
+
+		<!-- 隐藏文件 input：accept 同时支持图片和视频 -->
+		<input
+			bind:this={mediaFileInputRef}
+			type="file"
+			accept="image/*,video/*"
+			multiple
+			class="hidden"
+			onchange={handleFileSelect}
+		/>
+
+		<div class="mt-3 flex flex-wrap gap-2">
 			{#each cachedImagesDataURLs as imageDataURL, index (index)}
-				<div class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-xl bg-muted">
-					<img src={imageDataURL} alt="封面" class="h-full w-full object-cover" />
+				<!-- 缩略图 + 删除按钮叠层 -->
+				<div class="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
+					<img
+						src={imageDataURL}
+						alt={`媒体 ${index + 1}`}
+						class="h-full w-full object-cover"
+						draggable="false"
+					/>
+					<!-- 删除按钮覆盖在右上角 -->
+					<button
+						class="absolute top-1 right-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-zinc-900/60 text-zinc-100 hover:bg-zinc-900/80"
+						onclick={() => handleRemoveMedia(index)}
+						aria-label="删除"
+					>
+						<XIcon class="size-3" />
+					</button>
 				</div>
 			{/each}
-			<div
-				class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-			>
-				<PlusIcon class="size-4 text-muted-foreground" />
-			</div>
+			<!-- 仅在未达上限时显示添加按钮 -->
+			{#if cachedImagesDataURLs.length < MAX_MEDIA_COUNT}
+				<button
+					class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
+					onclick={handleAddMediaClick}
+					aria-label="添加图片/视频"
+				>
+					<PlusIcon class="size-4 text-muted-foreground" />
+				</button>
+			{/if}
 		</div>
 		<!-- 正文内容：标题 20 字、描述 10000 字、@ 用户见 ShinRichTextarea -->
 		<p class="mt-6 text-lg font-bold">正文内容</p>
@@ -416,7 +590,11 @@
 	<div class="flex gap-2 border-t border-zinc-100 p-4 font-medium">
 		<ConfirmDialog onConfirm={handleReset} confirmText="重置">
 			{#snippet trigger()}
-				<Button variant="tertiary" class="cursor-pointer text-muted-foreground">重置</Button>
+				<Button
+					variant="tertiary"
+					class="cursor-pointer text-muted-foreground"
+					disabled={isUploading}>重置</Button
+				>
 			{/snippet}
 			{#snippet description()}
 				<p>
@@ -441,15 +619,38 @@
 				<p>确定要发布这篇帖子吗？发布后将立即对所有人可见。</p>
 			{/snippet}
 		</ConfirmDialog>
-		<Button variant="tertiary" class="cursor-pointer text-muted-foreground" onclick={handleSave}
-			>保存</Button
-		>
 		<Button
-			variant="default"
-			class="flex-1 cursor-pointer transition-none lg:flex-none"
-			onclick={handlePublishClick}>发布帖子</Button
+			variant="tertiary"
+			class="cursor-pointer text-muted-foreground"
+			onclick={handleSave}
+			disabled={isUploading}>保存</Button
 		>
-		{#if lastSaved}
+
+		{#if isUploading}
+			<!-- 上传中：显示进度 + 取消按钮 -->
+			<!-- TODO(6.2.5.4-1): 完整实现需求中的 App 横幅通知进度条（等横幅通知组件就绪后替换） -->
+			<div class="flex flex-1 items-center gap-3">
+				<span class="text-sm text-muted-foreground">
+					上传中 {uploadProgress.uploadedFiles}/{uploadProgress.totalFiles}…
+				</span>
+				<ConfirmDialog onConfirm={handleCancelUpload} confirmText="取消上传">
+					{#snippet trigger()}
+						<Button variant="tertiary" class="cursor-pointer text-destructive">取消</Button>
+					{/snippet}
+					{#snippet description()}
+						<p>确定要取消上传吗？已上传的内容将被清理。</p>
+					{/snippet}
+				</ConfirmDialog>
+			</div>
+		{:else}
+			<Button
+				variant="default"
+				class="flex-1 cursor-pointer transition-none lg:flex-none"
+				onclick={handlePublishClick}>发布帖子</Button
+			>
+		{/if}
+
+		{#if lastSaved && !isUploading}
 			<div class="mx-4 flex items-center text-sm text-muted-foreground">
 				{lastSavedIsAutoSave ? '自动保存于 ' : '保存于 '}
 				{formatTimeAccuracyFirst(lastSaved)}
