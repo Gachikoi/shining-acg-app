@@ -2911,6 +2911,7 @@
         "npm:prettier-plugin-svelte@^3.4.0",
         "npm:prettier-plugin-tailwindcss@~0.7.1",
         "npm:prettier@^3.6.2",
+        "npm:rollup-plugin-visualizer@^5.12.0",
         "npm:svelte-check@^4.3.4",
         "npm:svelte-sonner@^1.0.7",
         "npm:svelte@^5.43.8",

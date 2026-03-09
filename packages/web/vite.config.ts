@@ -1,9 +1,17 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()],
+	plugins: [
+		tailwindcss(),
+		sveltekit(),
+		// 仅当 ANALYZE=1 时生成 bundle 分析报告，便于排查主线程 JS 体积
+		...(process.env.ANALYZE === '1'
+			? [visualizer({ filename: 'stats.html', open: false }) as PluginOption]
+			: [])
+	],
 	server: {
 		allowedHosts: [
 			'app.shiningacg.club',
