@@ -55,9 +55,15 @@ package.json              # 项目依赖及脚本
 whistle 配置：
 
 ```
-app.shiningacg.club http://127.0.0.1:5173/
-www.shiningacg.club http://127.0.0.1:5173/
-shiningacg.club http://127.0.0.1:5173/
+# 本地启动后端服务测试
+**api.shiningacg.club       127.0.0.1:8000
+**gach1koi.site 			127.0.0.1:8000
+
+# 本地开发
+**shiningacg.club         	127.0.0.1:5173
+
+# 需要测试生产构建时，注释掉上面的 5173 规则，解开下面的注释
+# **shiningacg.club         127.0.0.1:4173
 ```
 
 配置作用解释：
@@ -222,3 +228,9 @@ shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库
 
 - QQ：1131997238
 - 邮箱：1131997238@qq.com
+
+# 注意事项
+
+## 文件上传
+
+Cloudflare 单次上传限制为 100MB，由于我们最大上传文件 2 GB，因此分片上传 1 片肯定不会超过 100 MB，不用担心。

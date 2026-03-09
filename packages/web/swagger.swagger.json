@@ -5349,11 +5349,6 @@
           "type": "string",
           "title": "媒体元素 ID。"
         },
-        "orderIndex": {
-          "type": "integer",
-          "format": "int32",
-          "title": "元素顺序索引（从 0 开始）。"
-        },
         "scene": {
           "$ref": "#/definitions/v1MediaScene",
           "title": "元素场景。"
@@ -5374,7 +5369,6 @@
       "title": "PreparedUploadAsset 描述 PrepareUploadBatch 后单个媒体元素的映射结果。",
       "required": [
         "assetId",
-        "orderIndex",
         "scene",
         "type",
         "tasks"
@@ -5387,14 +5381,6 @@
           "type": "string",
           "title": "服务端分配的文件任务 ID，后续 create/sign/list/complete/abort 均基于该字段。"
         },
-        "assetId": {
-          "type": "string",
-          "title": "所属媒体元素 ID。"
-        },
-        "scene": {
-          "$ref": "#/definitions/v1MediaScene",
-          "title": "文件上传场景（回显）。"
-        },
         "type": {
           "$ref": "#/definitions/v1MediaType",
           "title": "文件媒体类型（IMAGE/VIDEO）。"
@@ -5403,8 +5389,6 @@
       "title": "PreparedUploadTask 描述 PrepareUploadBatch 后单个文件的服务端映射结果。",
       "required": [
         "taskId",
-        "assetId",
-        "scene",
         "type"
       ]
     },
@@ -5640,7 +5624,7 @@
       "type": "object",
       "properties": {
         "targetType": {
-          "$ref": "#/definitions/v1ReportTargetType",
+          "$ref": "#/definitions/v1ReportType",
           "title": "举报目标类型"
         },
         "targetSummary": {
@@ -5695,18 +5679,6 @@
       "default": "REPORT_STATUS_UNSPECIFIED",
       "description": "- REPORT_STATUS_UNSPECIFIED: 未指定\n - REPORT_STATUS_PENDING: 待处理\n - REPORT_STATUS_PROCESSING: 处理中\n - REPORT_STATUS_RESOLVED: 已处理（已采纳）\n - REPORT_STATUS_REJECTED: 已驳回",
       "title": "---------------------------------------------------------\n举报状态枚举"
-    },
-    "v1ReportTargetType": {
-      "type": "string",
-      "enum": [
-        "REPORT_TARGET_TYPE_UNSPECIFIED",
-        "REPORT_TARGET_TYPE_USER",
-        "REPORT_TARGET_TYPE_POST",
-        "REPORT_TARGET_TYPE_COMMENT"
-      ],
-      "default": "REPORT_TARGET_TYPE_UNSPECIFIED",
-      "description": "- REPORT_TARGET_TYPE_USER: 用户\n - REPORT_TARGET_TYPE_POST: 帖子\n - REPORT_TARGET_TYPE_COMMENT: 评论",
-      "title": "举报目标类型"
     },
     "v1ReportType": {
       "type": "string",
@@ -6032,8 +6004,7 @@
         },
         "reportDetail": {
           "$ref": "#/definitions/v1ReportNotificationDetail",
-          "description": "举报相关详情",
-          "title": "根据类型，以下字段可能存在"
+          "title": "举报相关详情"
         },
         "verificationDetail": {
           "$ref": "#/definitions/v1VerificationNotificationDetail",
@@ -6049,6 +6020,8 @@
         "notificationId",
         "type",
         "createdAt",
+        "reportDetail",
+        "verificationDetail",
         "isRead"
       ]
     },
@@ -6143,9 +6116,13 @@
         "livePhotoPair": {
           "$ref": "#/definitions/v1LivePhotoUploadPair",
           "title": "Live Photo 媒体元素（图片 + 视频）。"
+        },
+        "cropCover": {
+          "type": "boolean",
+          "title": "帖子封面是否裁剪为 3:4。\n属于元素级属性（裁剪比例由展示需求决定，与文件本身无关），\n仅 MEDIA_SCENE_POST_COVER 场景下有效，其余场景忽略。"
         }
       },
-      "title": "UploadAsset 描述前端发起批量上传时的单个“媒体元素”。",
+      "title": "UploadAsset 描述前端发起批量上传时的单个“媒体元素”。\nCEL 中的 MIME 白名单须与 pkg/mediapolicy 保持一致，修改时请同步 mediapolicy 与此处。",
       "required": [
         "scene"
       ]
@@ -6169,10 +6146,6 @@
         "fileHash": {
           "type": "string",
           "title": "可选文件哈希，便于去重或幂等检查。"
-        },
-        "cropCover": {
-          "type": "boolean",
-          "title": "帖子封面是否裁剪为 3:4（仅 POST_COVER + single_file 场景有效）。"
         }
       },
       "title": "UploadFile 描述单个文件上传任务。",
@@ -6193,18 +6166,12 @@
         "etag": {
           "type": "string",
           "title": "分片 ETag。"
-        },
-        "sizeBytes": {
-          "type": "string",
-          "format": "int64",
-          "title": "分片大小（字节）。"
         }
       },
       "title": "UploadedPart 描述客户端已上传分片（用于 complete 请求）。",
       "required": [
         "partNumber",
-        "etag",
-        "sizeBytes"
+        "etag"
       ]
     },
     "v1UserBrief": {
