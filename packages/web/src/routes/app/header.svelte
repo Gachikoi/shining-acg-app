@@ -4,36 +4,43 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { DOMAIN_CONFIG } from '$lib/constants';
-	import { appState } from '$lib/stores/app-state.svelte';
+	import { breakpoint } from '$lib/modules/device';
+	import { homeFeedRouteState } from '$lib/stores/feed';
+	import { onDestroy } from 'svelte';
 	import SettingPopover from './setting-popover.svelte';
 
-	let isRemoveLogo = $state(false);
-
-	$effect(() => {
-		const mql = window.matchMedia('(min-width: 40rem)');
-		isRemoveLogo = mql.matches;
-		const onChange = () => {
-			isRemoveLogo = mql.matches;
-		};
-		mql.addEventListener('change', onChange);
-		return () => mql.removeEventListener('change', onChange);
-	});
-
 	let debounceTimer: ReturnType<typeof setTimeout>;
-	let localKeyword = $state(appState.searchKeyword);
+	let localKeyword = $state(homeFeedRouteState.keyword);
+	let lastCommittedKeyword = $state(homeFeedRouteState.keyword);
+
+	/**
+	 * 当搜索词从页面快照恢复、外部逻辑重置等“非输入框 typing”来源发生变化时，
+	 * 需要把全局状态重新同步回输入框本地状态，否则 UI 会停留在旧值。
+	 */
+	$effect(() => {
+		const externalKeyword = homeFeedRouteState.keyword;
+		if (externalKeyword === lastCommittedKeyword) return;
+		localKeyword = externalKeyword;
+		lastCommittedKeyword = externalKeyword;
+	});
 
 	$effect(() => {
 		const keywordToDebounce = localKeyword;
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			appState.searchKeyword = keywordToDebounce;
+			homeFeedRouteState.keyword = keywordToDebounce;
+			lastCommittedKeyword = keywordToDebounce;
 		}, 500);
 		return () => clearTimeout(debounceTimer);
 	});
+
+	onDestroy(() => {
+		clearTimeout(debounceTimer);
+	});
 </script>
 
-<header class="flex h-18 w-full items-center gap-2 px-4 lg:gap-4 lg:px-6">
-	{#if isRemoveLogo}
+<header class="relative flex h-18 w-full items-center gap-2 pr-2 pl-6 lg:px-6">
+	{#if breakpoint.isLg}
 		<section class="flex shrink-0 grow items-center justify-start lg:ml-4">
 			<a class="shrink-0" href={resolve('/')}>
 				<img src={rectangleLogo} alt="Shining!" width="110" height="33" />
@@ -41,13 +48,19 @@
 		</section>
 	{/if}
 
-	<Input
-		bind:value={localKeyword}
-		placeholder="搜索 Shining！"
-		class="text-base sm:max-w-100 lg:max-w-120"
-	/>
+	<!-- `md` 及以上断点时，让搜索框脱离 flex 流并以整个 header 为基准绝对居中。 -->
+	<div
+		class="max-w-full min-w-0 flex-1 md:pointer-events-none md:absolute md:left-1/2 md:w-full md:max-w-100 md:-translate-x-1/2 lg:max-w-120"
+	>
+		<!-- 保持输入框自身可交互，同时在移动端继续占据主内容区域。 -->
+		<Input
+			bind:value={localKeyword}
+			placeholder="搜索 Shining！"
+			class="text-base md:pointer-events-auto"
+		/>
+	</div>
 
-	<section class="flex shrink-0 grow items-center justify-end">
+	<section class="flex items-center justify-end">
 		<!-- eslint-disable -->
 		<a
 			title="晒你官网"
@@ -64,7 +77,7 @@
 				>晒你官网</Button
 			></a
 		>
-		<div class="lg:hidden">
+		<div class="md:absolute md:right-2 lg:hidden">
 			<SettingPopover />
 		</div>
 	</section>

@@ -49,9 +49,11 @@
 
 <article
 	data-post-id={postId}
-	class="group cursor-pointer overflow-hidden rounded-xl border border-border"
+	class="group cursor-pointer overflow-hidden rounded-sm border border-zinc-100 sm:rounded-md md:rounded-xl lg:rounded-2xl"
 >
-	<figure class="relative overflow-hidden rounded-t-xl bg-zinc-100 dark:bg-zinc-900">
+	<figure
+		class="relative overflow-hidden rounded-t-sm bg-zinc-100 sm:rounded-t-md md:rounded-t-xl lg:rounded-t-2xl dark:bg-zinc-900"
+	>
 		<img
 			class="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"
 			src={cover.url}

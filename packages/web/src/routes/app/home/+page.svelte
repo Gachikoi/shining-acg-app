@@ -22,6 +22,9 @@
 	import { createDbCache } from '$lib/modules/cache';
 	import {
 		createFeedStore,
+		feedStores,
+		homeFeedRouteState,
+		setHomeFeedRouteState,
 		type FeedStore,
 		POST_CACHE_ADAPTER,
 		USER_CACHE_ADAPTER,
@@ -30,29 +33,38 @@
 		getPostId,
 		getUserId,
 		generatePostSkeletons,
-		generateUserSkeletons
+		generateUserSkeletons,
+		estimateNeedNum
 	} from '$lib/stores/feed';
-	import { appState } from '$lib/stores/app-state.svelte';
 	import { LucideRefreshCw } from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	import type {
 		V1FeedFilter,
-		V1FeedOrderType,
 		V1GetFeedResponse,
 		V1PostPreview,
-		V1TimeRange,
 		V1UserSummary
 	} from '$lib/api/types.gen';
-	import { estimateNeedNum } from '$lib/modules/virtual-feed';
-	import { breakpoint, remToPx } from '$lib/modules/device';
+	import { remToPx } from '$lib/modules/device';
 	import { feedServiceListFeedCategories } from '$lib/api';
 	import { cn } from '$lib/utils';
 
+	/**
+	 * 保存 Home 页面对应 history entry 的路由级快照。
+	 *
+	 * 虽然页面状态已提升到模块级单例中，但这里仍保留 SvelteKit snapshot：
+	 * 这样在浏览器前进/后退时，仍能按 history entry 维度恢复当时的筛选状态，
+	 * 而不仅仅是复用“最近一次”的全局单例值。
+	 */
+	// export const snapshot: Snapshot<HomeFeedRouteStateSnapshot> = {
+	// 	capture: captureHomeFeedRouteState,
+	// 	restore: restoreHomeFeedRouteState
+	// };
+
 	// ─── 缓存 ──────────────────────────────────────────────────────
 
-	const feedCache = createDbCache<V1GetFeedResponse>('feed', { defaultTtl: 5 * 60 * 1000 });
+	const feedCache = createDbCache<V1GetFeedResponse>('feed');
 
 	// ─── 分类配置 ──────────────────────────────────────────────────
 
@@ -70,27 +82,15 @@
 	/** 内容区容器 DOM 引用 */
 	let contentAreaEl: HTMLElement | undefined = $state();
 
-	// ─── 分类状态 ──────────────────────────────────────────────────
-
-	let categoryIndex = $state(0);
-	let currentCategoryId = $derived(CATEGORY_OPTIONS[categoryIndex]?.value ?? 'general');
-
-	// ─── 筛选状态（页面级，跨分类共享） ──────────────────────────────
-
-	let keyword = $derived(appState.searchKeyword);
-	let orderType = $state<V1FeedOrderType>('FEED_ORDER_TYPE_RECOMMENDED');
-	let timeRange = $state<V1TimeRange>({});
-	let authorId = $state<string | undefined>(undefined);
-
 	/** 筛选上下文 getter——注入到 feed-api 的 fetch 工厂中 */
 	function getFilters(): V1FeedFilter {
-		return { keyword, orderType, timeRange, authorId };
+		return {
+			keyword: homeFeedRouteState.keyword,
+			orderType: homeFeedRouteState.orderType,
+			timeRange: homeFeedRouteState.timeRange,
+			authorId: homeFeedRouteState.authorId
+		};
 	}
-
-	// ─── FeedStore 管理 ─────────────────────────────────────────────
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const feedStores = new Map<string, FeedStore<any>>();
 
 	/**
 	 * 获取或创建指定分类的 FeedStore
@@ -101,6 +101,7 @@
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function getOrCreateStore(categoryId: string): FeedStore<any> {
 		let store = feedStores.get(categoryId);
+		console.log('store:', store, categoryId);
 		if (store) return store;
 
 		const contentType =
@@ -114,8 +115,9 @@
 				needNum: estimateNeedNum('list', {
 					containerWidth: contentAreaEl?.clientWidth ?? 0,
 					containerHeight: contentAreaEl?.clientHeight ?? 0,
-					minCardWidth: contentAreaEl?.clientWidth ?? 0,
-					avgCardRatio: remToPx(13) / (contentAreaEl?.clientWidth ?? 0)
+					minItemWidth: contentAreaEl?.clientWidth ?? 0,
+					avgItemRatio: remToPx(13) / (contentAreaEl?.clientWidth ?? 0), // 13 为用户列表项高度大致的 rem 值
+					gap: 0
 				}),
 				cache: feedCache,
 				cacheAdapter: USER_CACHE_ADAPTER,
@@ -129,7 +131,8 @@
 				needNum: estimateNeedNum('waterfall', {
 					containerWidth: contentAreaEl?.clientWidth ?? 0,
 					containerHeight: contentAreaEl?.clientHeight ?? 0,
-					gap: breakpoint.isLg ? remToPx(1.5) : breakpoint.isMd ? remToPx(16) : remToPx(8)
+					gap: waterfallRefs[categoryId]?.resolveGapPx() ?? 8,
+					minItemWidth: waterfallRefs[categoryId]?.DEFAULT_CONFIG.minCardWidth ?? 280
 				}),
 				cache: feedCache,
 				cacheAdapter: POST_CACHE_ADAPTER,
@@ -157,16 +160,30 @@
 	 * @param targetIndex - 目标分类索引
 	 */
 	function handleCategoryChange(targetIndex: number): void {
-		if (targetIndex === categoryIndex) {
-			waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
+		const targetValue = CATEGORY_OPTIONS[targetIndex]?.value;
+		// 使用单例路由状态中的 currentCategoryId 判断，避免动画中途重复跳转。
+		if (targetValue === homeFeedRouteState.currentCategoryId) {
+			waterfallRefs[homeFeedRouteState.currentCategoryId]?.scrollToTopAndRefresh();
 			return;
 		}
 		swipeablePaneRef?.jumpToIndex(targetIndex);
 	}
 
 	/**
+	 * SwipeablePane 手势意图确认回调（动画开始前）
+	 * 职责：立即更新 currentCategoryId 以反映用户选择意图
+	 *
+	 * @param targetIndex - 目标分类索引
+	 */
+	function onPaneCommit(targetIndex: number): void {
+		setHomeFeedRouteState({
+			currentCategoryId: CATEGORY_OPTIONS[targetIndex]?.value ?? 'general'
+		});
+	}
+
+	/**
 	 * SwipeablePane 动画完成后的索引更新回调
-	 * 职责：仅更新 categoryIndex，不负责 store 创建
+	 * 职责：更新 categoryIndex（驱动面板虚拟窗口切换）+ currentCategoryId（兜底）
 	 *
 	 * store 创建由两个来源自然驱动：
 	 * 1. snippet 中的 getOrCreateStore(category.value) —— 面板渲染时自动创建
@@ -175,12 +192,15 @@
 	 * @param newIndex - 新的分类索引
 	 */
 	function onPaneIndexChange(newIndex: number): void {
-		categoryIndex = newIndex;
+		setHomeFeedRouteState({
+			categoryIndex: newIndex,
+			currentCategoryId: CATEGORY_OPTIONS[newIndex]?.value ?? 'general'
+		});
 	}
 
 	// ─── 生命周期 ───────────────────────────────────────────────────
 	const handleHomeRefresh = () => {
-		waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
+		waterfallRefs[homeFeedRouteState.currentCategoryId]?.scrollToTopAndRefresh();
 	};
 
 	onMount(() => {
@@ -205,14 +225,13 @@
 		for (const store of feedStores.values()) {
 			store.destroy();
 		}
-		feedStores.clear();
 	});
 
 	/**
 	 * 骨架屏阶段自动触发首次数据加载
 	 */
 	$effect(() => {
-		const categoryId = currentCategoryId;
+		const categoryId = homeFeedRouteState.currentCategoryId;
 		const store = feedStores.get(categoryId);
 		if (!store) return;
 
@@ -228,13 +247,13 @@
 
 <div class="flex h-full w-full flex-col">
 	<!-- 顶部 Tab 切换 -->
-	<div class="flex w-full shrink-0 items-center bg-background px-4 py-2">
+	<div class="flex w-full shrink-0 items-center bg-background px-1 py-2 sm:px-2 md:px-4 lg:px-6">
 		<div class="flex space-x-2">
 			{#each CATEGORY_OPTIONS as option, index (option.value)}
 				<Button
 					variant="ghost"
 					class={cn(
-						categoryIndex === index
+						option.value === homeFeedRouteState.currentCategoryId
 							? 'bg-zinc-100 dark:bg-zinc-900'
 							: 'text-zinc-500 dark:text-zinc-400'
 					)}
@@ -252,7 +271,8 @@
 		<SwipeablePane
 			bind:this={swipeablePaneRef}
 			categories={CATEGORY_OPTIONS}
-			currentIndex={categoryIndex}
+			currentIndex={homeFeedRouteState.categoryIndex}
+			onCommit={onPaneCommit}
 			onIndexChange={onPaneIndexChange}
 		>
 			{#snippet children(category)}
@@ -287,7 +307,7 @@
 		size="icon"
 		class="absolute right-4 bottom-8 z-50 hidden h-12 w-12 rounded-md shadow-lg md:flex"
 		onclick={() => {
-			waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
+			waterfallRefs[homeFeedRouteState.currentCategoryId]?.scrollToTopAndRefresh();
 		}}
 	>
 		<LucideRefreshCw class="h-6 w-6" />

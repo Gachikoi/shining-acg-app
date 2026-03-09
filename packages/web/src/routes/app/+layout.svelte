@@ -8,6 +8,7 @@
 	import Header from './header.svelte';
 	import SettingPopover from './setting-popover.svelte';
 	import TabButton from './tab-button.svelte';
+	import { StackContainer } from '$lib/components/custom/stack';
 
 	let { children } = $props();
 
@@ -62,3 +63,4 @@
 </div>
 
 <ModeWatcher></ModeWatcher>
+<StackContainer maxVisible={2} />

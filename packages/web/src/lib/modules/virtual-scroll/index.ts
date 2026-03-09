@@ -6,8 +6,6 @@
  * 不依赖任何 UI 框架，可独立复用。
  */
 
-import { calculateLayoutBase } from '$lib/components/custom/waterfall/waterfall-container/waterfall-layout';
-
 // ─── 类型定义 ──────────────────────────────────────────────────────
 
 /** 元素的纵向位置信息（用于虚拟滚动计算） */
@@ -35,12 +33,21 @@ export interface VirtualScrollParams {
 	/** 视口可见高度（px） */
 	viewportHeight: number;
 	/** 缓冲区大小倍数（扩大可见范围以减少快速滚动时的白屏） */
-	bufferSize: number;
+	bufferSize?: number;
 	/** 缓冲区基础高度（px） */
-	bufferHeight: number;
+	bufferHeight?: number;
 	/** 使用二分查找的元素数量阈值 */
-	binarySearchThreshold: number;
+	binarySearchThreshold?: number;
 }
+
+const DEFAULT_CONFIG = {
+	// 缓冲区大小倍数
+	bufferSize: 4,
+	// 缓冲区高度
+	bufferHeight: 400,
+	// 使用二分查找的元素数量阈值
+	binarySearchThreshold: 100
+};
 
 // ─── 核心函数 ──────────────────────────────────────────────────────
 
@@ -58,8 +65,10 @@ export interface VirtualScrollParams {
  * @returns 可见范围（闭区间）
  */
 export function calculateVisibleRange(params: VirtualScrollParams): VisibleRange {
-	const { items, scrollTop, viewportHeight, bufferSize, bufferHeight, binarySearchThreshold } =
-		params;
+	const { items, scrollTop, viewportHeight, bufferSize, bufferHeight, binarySearchThreshold } = {
+		...DEFAULT_CONFIG,
+		...params
+	};
 
 	if (items.length === 0) return { start: 0, end: 0 };
 
@@ -146,74 +155,4 @@ function binarySearchRangeEnd(items: ItemPosition[], target: number): number {
 	}
 
 	return result;
-}
-
-// ─── 首屏数据量估算 ──────────────────────────────────────────────
-
-/** estimateNeedNum 的参数 */
-export interface EstimateNeedNumParams {
-	/** 容器可用宽度（px） */
-	containerWidth: number;
-	/** 容器可用高度（px）——即滚动视口高度 */
-	containerHeight: number;
-	/** 最小卡片宽度（px）；默认 160，覆盖此参数可模拟单列列表场景 */
-	minCardWidth?: number;
-	/** 卡片间距（px）；默认 8 */
-	gap?: number;
-	/**
-	 * 卡片总高度与宽度的比例（height / width）
-	 * 包含封面 + 卡片 footer，用于估算每行高度。
-	 * 默认 1.6（封面约 1:1 + footer 约 60px）
-	 */
-	avgCardRatio?: number;
-	/** 缓冲倍数（额外加载视口外的数据），默认 1.5 */
-	bufferMultiplier?: number;
-	/** 最小返回值，默认 10 */
-	min?: number;
-	/** 最大返回值，默认 100 */
-	max?: number;
-}
-/**
- * 估算首屏所需的数据条数
- *
- * 基于容器尺寸、列数和卡片比例进行粗略估算，
- * 用于在 FeedStore 发起首次请求前计算合适的 needNum，
- * 避免请求过少导致白屏、过多导致带宽浪费。
- *
- * 实际卡片高度将由 ResizeObserver 实测并修正，
- * 此函数仅负责"足够好"的初始估算。
- *
- * @param params - 估算参数
- * @returns 建议的请求数量
- */
-export function estimateNeedNum(
-	contentType: 'waterfall' | 'list',
-	params: EstimateNeedNumParams
-): number {
-	const {
-		containerWidth,
-		containerHeight,
-		minCardWidth = 160,
-		gap: gapInput = 8,
-		avgCardRatio = 1.6,
-		bufferMultiplier = 1.5,
-		min = 10,
-		max = 100
-	} = params;
-
-	if (containerWidth <= 0 || containerHeight <= 0) return min;
-
-	const gap = contentType === 'waterfall' ? gapInput : 0;
-	const { columnCount, cardWidth } =
-		contentType === 'waterfall'
-			? calculateLayoutBase(containerWidth, minCardWidth, gap)
-			: { columnCount: 1, cardWidth: containerWidth };
-	// 单张卡片的平均总高度（含 gap）
-	const avgCardHeight = cardWidth * avgCardRatio + gap;
-	// 视口内可见行数
-	const visibleRows = Math.ceil(containerHeight / avgCardHeight);
-	// 含缓冲区的总估算量
-	const raw = visibleRows * columnCount * bufferMultiplier;
-
-	return Math.max(min, Math.min(max, Math.ceil(raw)));
 }
