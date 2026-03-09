@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Eye, Heart, PlayIcon } from 'lucide-svelte';
 	import { formatTime } from '$lib/utils';
+	import { breakpoint } from '$lib/modules/device';
 
 	interface UserSummary {
 		avatar: string;
@@ -14,6 +15,7 @@
 	}
 
 	let {
+		index,
 		postId,
 		title,
 		cover,
@@ -26,6 +28,7 @@
 		isShowTime = true,
 		publishTime
 	}: {
+		index: number;
 		postId: string;
 		title: string;
 		cover: Media;
@@ -38,6 +41,10 @@
 		isShowTime?: boolean;
 		publishTime: number;
 	} = $props();
+
+	const getFetchPriority = $derived(
+		index < (breakpoint.isLg ? 20 : breakpoint.isMd ? 10 : 5) ? 'high' : 'auto'
+	);
 </script>
 
 <article
@@ -52,6 +59,7 @@
 			loading="eager"
 			decoding="async"
 			style="--aspect-ratio: {cover.ratio};"
+			fetchpriority={getFetchPriority}
 		/>
 		{#if isOnlyVideo}
 			<div class="absolute top-2 right-2 rounded-full bg-black/40 p-1.5 backdrop-blur-sm">
@@ -79,6 +87,7 @@
 					class="size-5 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-700"
 					src={author.avatar}
 					alt={author.name}
+					fetchpriority={getFetchPriority}
 				/>
 				<div class="flex min-w-0 flex-col">
 					<span class="truncate text-xs text-zinc-600 dark:text-zinc-400">{author.name}</span>

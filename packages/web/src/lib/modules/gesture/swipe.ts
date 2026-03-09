@@ -87,12 +87,14 @@ export function swipe(
 	/** 触摸起始位置 */
 	let startX = 0;
 	let startY = 0;
-	/** 当前触摸位置 */
-	// let lastX = 0;
 	/** 触摸起始时间（用于速度计算） */
 	let startTime = 0;
 	/** 活跃的触摸点 ID（支持多点触控消歧） */
 	let activePointerId: number | null = null;
+	/** rAF 节流 ID，避免在同一帧内多次调用 onSwipeMove */
+	let rafId: number | null = null;
+	/** rAF 节流期间暂存的最新 deltaX */
+	let pendingDeltaX = 0;
 
 	const { canHandleGesture, lockGesture, unlockGesture } = createGestureController(
 		GestureType.SWIPE
@@ -108,7 +110,6 @@ export function swipe(
 		activePointerId = touch.identifier;
 		startX = touch.clientX;
 		startY = touch.clientY;
-		lastX = touch.clientX;
 		startTime = Date.now();
 		gesturePhase = 'pending';
 	}
@@ -144,13 +145,20 @@ export function swipe(
 
 		// 水平滑动中
 		if (gesturePhase === 'swiping') {
-			// 防止其他手势干扰
 			lockGesture();
 
-			// 阻止垂直滚动和浏览器 overscroll
+			// 阻止垂直滚动和浏览器 overscroll（必须同步调用，不能延迟到 rAF）
 			if (event.cancelable) event.preventDefault();
-			lastX = touch.clientX;
-			opts.onSwipeMove?.(deltaX);
+
+			// rAF 节流：每帧最多回调一次 onSwipeMove，
+			// 在 120Hz ProMotion 等高刷设备上避免冗余 Svelte 更新
+			pendingDeltaX = deltaX;
+			if (rafId === null) {
+				rafId = requestAnimationFrame(() => {
+					rafId = null;
+					opts.onSwipeMove?.(pendingDeltaX);
+				});
+			}
 		}
 	}
 
@@ -182,9 +190,6 @@ export function swipe(
 		}
 
 		resetGesture();
-
-		// 解除手势锁
-		unlockGesture();
 	}
 
 	function handleTouchCancel(): void {
@@ -193,9 +198,6 @@ export function swipe(
 			opts.onSwipeCancel?.();
 		}
 		resetGesture();
-
-		// 解除手势锁
-		unlockGesture();
 	}
 
 	// ─── 辅助函数 ───────────────────────────────────────────────
@@ -216,14 +218,19 @@ export function swipe(
 		return null;
 	}
 
-	/** 重置手势状态 */
+	/** 重置手势状态，清理 rAF 节流 */
 	function resetGesture(): void {
 		gesturePhase = 'idle';
 		activePointerId = null;
 		startX = 0;
 		startY = 0;
-		lastX = 0;
 		startTime = 0;
+		if (rafId !== null) {
+			cancelAnimationFrame(rafId);
+			rafId = null;
+		}
+		// 解除手势锁
+		unlockGesture();
 	}
 
 	// ─── 注册事件监听器 ─────────────────────────────────────────
