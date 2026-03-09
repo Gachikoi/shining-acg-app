@@ -13,9 +13,10 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, type ButtonProps } from '$lib/components/ui/button';
 	import { breakpoint } from '$lib/modules/device';
-	import { scroll } from '$lib/modules/gesture';
+	import { scrollBoundary } from '$lib/modules/gesture';
 	import { formatStat } from '$lib/utils';
 	import { onMount, onDestroy } from 'svelte';
+	import { stackController } from '../stack';
 
 	/** 关注关系状态枚举（模拟，后续从 API 获取） */
 	type RelationState = 'none' | 'following' | 'followed_by' | 'mutual';
@@ -47,17 +48,8 @@
 	let scrollContainer: HTMLElement | undefined = $state();
 	/** 底部哨兵元素引用 */
 	let sentinelEl: HTMLElement | undefined = $state();
-	let badgeContainer: HTMLElement | undefined = $state();
 	/** IntersectionObserver 实例 */
 	let observer: IntersectionObserver | undefined;
-
-	const handleTouchMove = (e: TouchEvent) => {
-		e.stopPropagation();
-	};
-
-	// const refreshDataAndLayout = async (): Promise<void> => {
-	// 	await onRefresh?.();
-	// };
 
 	onMount(() => {
 		if (sentinelEl) {
@@ -71,14 +63,10 @@
 			);
 			observer.observe(sentinelEl);
 		}
-
-		badgeContainer?.addEventListener('touchmove', handleTouchMove);
 	});
 
 	onDestroy(() => {
 		observer?.disconnect();
-
-		badgeContainer?.removeEventListener('touchmove', handleTouchMove);
 	});
 
 	/**
@@ -127,7 +115,13 @@
 				class:animate-pulse={showSkeleton}
 			>
 				<!-- 头像 -->
-				<div class="shrink-0">
+				<div
+					class="shrink-0"
+					onclick={() =>
+						stackController.push({
+							loader: () => import('../../../../routes/app/home/+page.svelte')
+						})}
+				>
 					{#if showSkeleton}
 						<div class="size-10 rounded-full bg-muted sm:size-12"></div>
 					{:else}
@@ -152,9 +146,8 @@
 								{user.name}
 							</span>
 							<div
-								bind:this={badgeContainer}
 								class="flex min-w-0 flex-1 items-center gap-2 overflow-x-scroll overscroll-x-contain"
-								use:scroll
+								use:scrollBoundary={{ axis: 'x' }}
 								role="region"
 								aria-label="徽章"
 							>
@@ -210,7 +203,7 @@
 							role="region"
 							aria-label="用户统计数据"
 							class="mt-0.5 flex min-w-0 flex-1 overflow-x-scroll text-sm text-zinc-500 dark:text-zinc-400"
-							use:scroll
+							use:scrollBoundary={{ axis: 'x' }}
 						>
 							<span class="shrink-0">粉丝：{formatStat(user.stats?.followerCount)}</span>
 							<span class="mx-1">|</span>
@@ -220,7 +213,7 @@
 				</div>
 
 				<!-- 操作按钮 -->
-				<div class="shrink-0">
+				<div class="shrink-0" onclick={() => stackController.pop()}>
 					{#if showSkeleton}
 						<div class="h-8 w-20 rounded-md bg-muted"></div>
 					{:else}

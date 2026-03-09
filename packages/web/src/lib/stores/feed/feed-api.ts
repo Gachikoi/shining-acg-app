@@ -14,6 +14,7 @@ import type {
 	V1UserSummary,
 	FeedServiceGetFeedData
 } from '$lib/api/types.gen';
+import { calculateLayoutBase } from '$lib/components/custom/waterfall/waterfall-container/waterfall-layout';
 import { generatePosts, generateUsers, mockFetchFeed } from '$lib/test/waterfall-data-mock';
 // import { feedServiceGetFeed } from '$lib/api/sdk.gen';
 import type { FeedCacheAdapter, FeedFetchFn } from './types';
@@ -157,3 +158,81 @@ export const generatePostSkeletons = (count: number): V1PostPreview[] => generat
  * @returns 用户占位数据
  */
 export const generateUserSkeletons = (count: number): V1UserSummary[] => generateUsers(count);
+
+// ─── 首屏数据量估算 ──────────────────────────────────────────────
+
+/** estimateNeedNum 的参数 */
+export interface EstimateNeedNumParams {
+	/** 容器可用宽度（px） */
+	containerWidth: number;
+	/** 容器可用高度（px）——即滚动视口高度 */
+	containerHeight: number;
+	/** 最小单项宽度（px） */
+	minItemWidth: number;
+	/** 卡片间距（px）；默认 8 */
+	gap: number;
+	/**
+	 * 卡片总高度与宽度的比例（height / width）
+	 * 包含封面 + 卡片 footer，用于估算每行高度。
+	 * 默认 1.6（封面约 1:1 + footer 约 60px）
+	 */
+	avgItemRatio?: number;
+	/** 缓冲倍数（额外加载视口外的数据），默认 1.5 */
+	bufferMultiplier?: number;
+	/** 最小返回值，默认 10 */
+	min?: number;
+	/** 最大返回值，默认 100 */
+	max?: number;
+}
+
+export const DEFAULT_CONFIG = {
+	bufferMultiplier: 1.5,
+	avgItemRatio: 1.6,
+	min: 10,
+	max: 10
+};
+
+/**
+ * 估算首屏所需的数据条数
+ *
+ * 基于容器尺寸、列数和卡片比例进行粗略估算，
+ * 用于在 FeedStore 发起首次请求前计算合适的 needNum，
+ * 避免请求过少导致白屏、过多导致带宽浪费。
+ *
+ * 实际卡片高度将由 ResizeObserver 实测并修正，
+ * 此函数仅负责"足够好"的初始估算。
+ *
+ * @param params - 估算参数
+ * @returns 建议的请求数量
+ */
+export function estimateNeedNum(
+	contentType: 'waterfall' | 'list',
+	params: EstimateNeedNumParams
+): number {
+	const {
+		containerWidth,
+		containerHeight,
+		minItemWidth,
+		gap: gapInput,
+		avgItemRatio,
+		bufferMultiplier,
+		min,
+		max
+	} = { ...DEFAULT_CONFIG, ...params };
+
+	if (containerWidth <= 0 || containerHeight <= 0) return min;
+
+	const gap = contentType === 'waterfall' ? gapInput : 0;
+	const { columnCount, cardWidth: itemWidth } =
+		contentType === 'waterfall'
+			? calculateLayoutBase(containerWidth, minItemWidth, gap)
+			: { columnCount: 1, cardWidth: containerWidth };
+	// 单张卡片的平均总高度（含 gap）
+	const avgItemHeight = itemWidth * avgItemRatio + gap;
+	// 视口内可见行数
+	const visibleRows = Math.ceil(containerHeight / avgItemHeight);
+	// 含缓冲区的总估算量
+	const raw = visibleRows * columnCount * bufferMultiplier;
+
+	return Math.max(min, Math.min(max, Math.ceil(raw)));
+}

@@ -11,6 +11,7 @@
  * 通过 getter 暴露只读的响应式接口，闭包天然封装了所有私有状态。
  */
 
+import type { V1FeedOrderType, V1TimeRange } from '$lib/api/types.gen';
 import type { FeedPhase, FeedStoreConfig } from './types';
 
 /**
@@ -161,7 +162,8 @@ export function createFeedStore<T>(categoryId: string, config: FeedStoreConfig<T
 		const fetchId = ++currentFetchId;
 		refreshing = true;
 
-		await config.cache.delete(categoryId);
+		// 删掉对应的 indexedDB 缓存和 Cache 缓存
+		await Promise.all([config.cache.delete(categoryId), caches.delete(`feed-${categoryId}`)]);
 
 		try {
 			const result = await config.fetchFn({
@@ -301,6 +303,124 @@ export function createFeedStore<T>(categoryId: string, config: FeedStoreConfig<T
 		reset,
 		destroy
 	};
+}
+
+// ─── FeedStore 管理 ─────────────────────────────────────────────
+// 不放在 home/+page.svelte 中，因为那样会导致每次路由切换时都重新创建 feedStores，导致数据丢失。
+// 不过这无法达到 snapshot 在页面导航时的数据恢复效果。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const feedStores = new Map<string, FeedStore<any>>();
+console.log('feedStores', feedStores);
+
+/**
+ * @typedef HomeFeedRouteStateSnapshot
+ * @description
+ * Home 页面需要跨路由保留的状态快照。
+ *
+ * 这份数据放在模块级单例中，而不是放在 `home/+page.svelte` 组件实例内部，
+ * 这样页面被卸载再重新挂载时，状态仍然存在。
+ */
+export type HomeFeedRouteStateSnapshot = {
+	/** 当前分类索引，用于驱动 `SwipeablePane` 的当前页。 */
+	categoryIndex: number;
+	/** 当前分类 ID，用于顶部 Tab 高亮、刷新目标定位等。 */
+	currentCategoryId: string;
+	/** 当前搜索关键词。 */
+	keyword: string;
+	/** Feed 排序方式。 */
+	orderType: V1FeedOrderType;
+	/** Feed 时间范围筛选。 */
+	timeRange: V1TimeRange;
+	/** 作者筛选 ID。 */
+	authorId: string | undefined;
+};
+
+/**
+ * Home 路由状态默认值。
+ *
+ * 单独抽成常量的目的：
+ * 1. 让初始化和重置逻辑共享同一份默认配置，避免魔法字面量散落。
+ * 2. 便于后续扩展更多路由级筛选字段时统一维护。
+ */
+const HOME_FEED_ROUTE_STATE_DEFAULTS: HomeFeedRouteStateSnapshot = {
+	categoryIndex: 0,
+	currentCategoryId: 'general',
+	keyword: '',
+	orderType: 'FEED_ORDER_TYPE_LATEST',
+	timeRange: {},
+	authorId: undefined
+};
+
+/**
+ * Home 页面跨路由共享的单例状态。
+ *
+ * 之所以直接导出模块级 `$state`：
+ * 1. 它和 `feedStores` 一样，天然具备“模块只初始化一次”的单例特性。
+ * 2. 组件重新创建时会重新订阅这份状态，而不会丢失上一次页面交互结果。
+ * 3. 相比再包一层 class，这种函数式/模块式状态更轻量，也更符合当前项目风格。
+ */
+export const homeFeedRouteState = $state<HomeFeedRouteStateSnapshot>({
+	...HOME_FEED_ROUTE_STATE_DEFAULTS
+});
+
+/**
+ * 捕获 Home 路由状态的纯数据快照。
+ *
+ * @returns 当前 Home 路由状态对应的非代理纯对象
+ */
+export function captureHomeFeedRouteState(): HomeFeedRouteStateSnapshot {
+	return $state.snapshot(homeFeedRouteState);
+}
+
+/**
+ * 恢复 Home 路由状态。
+ *
+ * 注意这里采用逐字段赋值，而不是整体替换引用：
+ * 这样可以保留现有 `$state` 代理对象本身，确保所有已订阅该状态的组件继续响应更新。
+ *
+ * @param snapshot - 待恢复的 Home 路由状态快照
+ * @returns 无返回值
+ */
+export function restoreHomeFeedRouteState(snapshot: HomeFeedRouteStateSnapshot): void {
+	setHomeFeedRouteState(snapshot);
+}
+
+/**
+ * 局部更新 Home 路由状态。
+ *
+ * 该函数采用 patch 语义：
+ * 1. 只更新调用方显式传入的字段。
+ * 2. 未传入的字段保持当前值不变。
+ * 3. 通过逐字段判断赋值，继续复用同一个 `$state` 代理对象，避免整体替换引用。
+ *
+ * @param patch - 待更新的 Home 路由状态局部字段集合
+ * @returns 无返回值
+ */
+export function setHomeFeedRouteState(patch: Partial<HomeFeedRouteStateSnapshot>): void {
+	if ('categoryIndex' in patch) {
+		homeFeedRouteState.categoryIndex =
+			patch.categoryIndex as HomeFeedRouteStateSnapshot['categoryIndex'];
+	}
+	if ('currentCategoryId' in patch) {
+		homeFeedRouteState.currentCategoryId =
+			patch.currentCategoryId as HomeFeedRouteStateSnapshot['currentCategoryId'];
+	}
+
+	if ('keyword' in patch) {
+		homeFeedRouteState.keyword = patch.keyword as HomeFeedRouteStateSnapshot['keyword'];
+	}
+
+	if ('orderType' in patch) {
+		homeFeedRouteState.orderType = patch.orderType as HomeFeedRouteStateSnapshot['orderType'];
+	}
+
+	if ('timeRange' in patch) {
+		homeFeedRouteState.timeRange = patch.timeRange as HomeFeedRouteStateSnapshot['timeRange'];
+	}
+
+	if ('authorId' in patch) {
+		homeFeedRouteState.authorId = patch.authorId as HomeFeedRouteStateSnapshot['authorId'];
+	}
 }
 
 /** FeedStore 实例类型（泛型，从工厂函数返回值推导） */

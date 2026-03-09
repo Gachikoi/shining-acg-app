@@ -12,6 +12,7 @@
 	import { onMount } from 'svelte';
 	import { Spring } from 'svelte/motion';
 	import { swipe } from '$lib/modules/gesture';
+	import type { SwipeState } from '$lib/modules/gesture';
 	import stackController from './stack.svelte';
 	import type { StackItem } from './types';
 
@@ -28,8 +29,6 @@
 		/**
 		 * 向左滑动（自定义操作）触发的回调
 		 * 回弹动画完成后调用，不触发出栈
-		 *
-		 * @param item - 触发手势的栈元素
 		 */
 		onLeftSwipe?: () => void;
 	}
@@ -42,12 +41,12 @@
 	let el: HTMLElement | undefined = $state();
 
 	// ─── Spring 动画 ─────────────────────────────────────────────────
+
 	const xSpring = new Spring(0, { stiffness: 0.2, damping: 0.85 });
 
 	// ─── 进栈动画 ────────────────────────────────────────────────────
 
 	onMount(async () => {
-		// 先跳到屏幕右侧外（无动画），再用 Spring 弹入到 0
 		xSpring.set(window.innerWidth, { instant: true });
 		_isAnimating = true;
 		await xSpring.set(0);
@@ -60,46 +59,41 @@
 	 * swipe action 的动态配置
 	 *
 	 * 使用 $derived 确保 item / onLeftSwipe props 变化时 swipe action 能获取最新引用。
-	 * disabled 以函数形式读取 _isAnimating（非 $state），闭包实时取值保证正确性。
-	 *
-	 * onSwipeEnd / onSwipeCancel 为 async 函数：
-	 * swipe action 调用时忽略返回的 Promise，异步执行在后台继续，
-	 * _isAnimating 标志位防止动画未完成时触发新手势。
+	 * disabled 以函数形式读取 _isAnimating，闭包实时取值保证正确性。
 	 */
 	const swipeOptions = $derived({
 		threshold: 10,
 		commitThreshold: 0.3,
 		velocityThreshold: 0.3,
-		/** 动画期间禁止新手势，防止与进栈/出栈动画冲突 */
+		interruptible: true,
 		disabled: () => _isAnimating,
-		onSwipeMove: (deltaX: number) => {
-			// 没有 onLeftSwipe 禁止左滑
-			if ((onLeftSwipe && deltaX < 0) || deltaX > 0) {
-				xSpring.set(deltaX, { instant: true });
+
+		onMove: (state: SwipeState) => {
+			// 允许右滑（返回），左滑仅在有 onLeftSwipe 时允许
+			if ((onLeftSwipe && state.deltaX < 0) || state.deltaX > 0) {
+				xSpring.set(state.deltaX, { instant: true });
 			}
 		},
-		onSwipeEnd: async (direction: 'left' | 'right') => {
+
+		onEnd: async (state: SwipeState) => {
 			_isAnimating = true;
-			if (direction === 'right') {
-				// ── 右滑提交：弹出屏幕右侧、
-				// 使用元素实际宽度确保完全离开视口
+
+			if (state.committed && state.direction === 'right') {
+				// 右滑提交：弹出屏幕右侧
 				const exitX = el?.clientWidth ?? window.innerWidth;
-				console.time('xSpring.set');
 				await xSpring.set(exitX);
 				_isAnimating = false;
-				console.timeEnd('xSpring.set');
 				stackController.popById(item.id);
+			} else if (state.committed && state.direction === 'left' && onLeftSwipe) {
+				// 左滑提交：弹回原位并触发回调
+				await xSpring.set(0);
+				_isAnimating = false;
+				onLeftSwipe();
 			} else {
-				// ── 左滑提交：弹回原位 → 触发自定义回调（不出栈）────────
-				// await xSpring.set(0);
-				// onLeftSwipe?.(item);
+				// 未提交 / 不允许的方向：弹回原位
+				await xSpring.set(0);
+				_isAnimating = false;
 			}
-		},
-		onSwipeCancel: async () => {
-			// 未达到触发阈值：弹回原位
-			_isAnimating = true;
-			await xSpring.set(0);
-			_isAnimating = false;
 		}
 	});
 
@@ -119,10 +113,8 @@
 	use:swipe={swipeOptions}
 >
 	{#if DynamicComponent}
-		<!-- 组件已就绪（静态 push 或懒加载 resolve 后） -->
 		<DynamicComponent {...item.props} />
 	{:else}
-		<!-- 懒加载进行中：全屏居中 spinner，进栈动画与加载同步进行 -->
 		<div class="flex h-full w-full items-center justify-center">
 			<div
 				class="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/60"
