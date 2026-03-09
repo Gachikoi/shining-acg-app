@@ -24,7 +24,7 @@ const (
 )
 
 // ---------------------------------------------------------
-// 获取帖子详情
+// 获取帖子详情（可以据此增加帖子查看数量）
 type GetPostRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
