@@ -116,7 +116,7 @@ export function createUserFetchFn(_getFilters?: () => V1FeedFilter): FeedFetchFn
 
 		await new Promise((resolve) => setTimeout(resolve, 500));
 		const offset = cursor ? parseInt(cursor) : 0;
-		const newItems = generateUsers(needNum, offset);
+		const newItems = generateUsers(needNum);
 		const newCursor = (offset + needNum).toString();
 		const hasMoreData = offset + needNum < 200;
 		_getFilters?.();
@@ -148,7 +148,7 @@ export const getUserId = (user: V1UserSummary): string | undefined => user.userI
  * @param count - 生成数量
  * @returns 帖子占位数据
  */
-export const generatePostSkeletons = (count: number): V1PostPreview[] => generatePosts(count, 0);
+export const generatePostSkeletons = (count: number): V1PostPreview[] => generatePosts(count);
 
 /**
  * 用户流骨架屏数据生成器
@@ -156,4 +156,4 @@ export const generatePostSkeletons = (count: number): V1PostPreview[] => generat
  * @param count - 生成数量
  * @returns 用户占位数据
  */
-export const generateUserSkeletons = (count: number): V1UserSummary[] => generateUsers(count, 0);
+export const generateUserSkeletons = (count: number): V1UserSummary[] => generateUsers(count);

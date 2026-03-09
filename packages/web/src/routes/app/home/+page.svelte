@@ -115,7 +115,7 @@
 					containerWidth: contentAreaEl?.clientWidth ?? 0,
 					containerHeight: contentAreaEl?.clientHeight ?? 0,
 					minCardWidth: contentAreaEl?.clientWidth ?? 0,
-					avgCardRatio: remToPx(13) / (contentAreaEl?.clientWidth ?? 0) // 用户列表项的高度通常为 100
+					avgCardRatio: remToPx(13) / (contentAreaEl?.clientWidth ?? 0)
 				}),
 				cache: feedCache,
 				cacheAdapter: USER_CACHE_ADAPTER,
@@ -150,24 +150,32 @@
 	let swipeablePaneRef: ReturnType<typeof SwipeablePane> | undefined = $state();
 	let waterfallRefs = $state<Record<string, ReturnType<typeof WaterfallContainer> | undefined>>({});
 
+	/**
+	 * Tab 按钮点击处理
+	 * 职责：仅控制动画跳转，不负责 store 创建（由 snippet 自动处理）
+	 *
+	 * @param targetIndex - 目标分类索引
+	 */
 	function handleCategoryChange(targetIndex: number): void {
 		if (targetIndex === categoryIndex) {
 			waterfallRefs[currentCategoryId]?.scrollToTopAndRefresh();
 			return;
 		}
-		const targetCategory = CATEGORY_OPTIONS[targetIndex];
-		getOrCreateStore(targetCategory.value);
 		swipeablePaneRef?.jumpToIndex(targetIndex);
 	}
 
+	/**
+	 * SwipeablePane 动画完成后的索引更新回调
+	 * 职责：仅更新 categoryIndex，不负责 store 创建
+	 *
+	 * store 创建由两个来源自然驱动：
+	 * 1. snippet 中的 getOrCreateStore(category.value) —— 面板渲染时自动创建
+	 * 2. $effect 中的骨架屏检测 —— 新分类首次加载时触发 refresh
+	 *
+	 * @param newIndex - 新的分类索引
+	 */
 	function onPaneIndexChange(newIndex: number): void {
 		categoryIndex = newIndex;
-		const category = CATEGORY_OPTIONS[newIndex];
-		getOrCreateStore(category.value);
-
-		if (newIndex > 0) getOrCreateStore(CATEGORY_OPTIONS[newIndex - 1].value);
-		if (newIndex < CATEGORY_OPTIONS.length - 1)
-			getOrCreateStore(CATEGORY_OPTIONS[newIndex + 1].value);
 	}
 
 	// ─── 生命周期 ───────────────────────────────────────────────────
@@ -176,7 +184,6 @@
 	};
 
 	onMount(() => {
-		// 获取内容分类目录后，发送给 sw，以创建后续的 cacheName
 		feedServiceListFeedCategories()
 			.then((res) => {
 				navigator.serviceWorker?.controller?.postMessage({
@@ -190,7 +197,6 @@
 				console.error('获取 feed 流内容分类失败：', e);
 			});
 
-		getOrCreateStore(currentCategoryId);
 		appBus.on('home:refresh', handleHomeRefresh);
 	});
 
@@ -202,15 +208,18 @@
 		feedStores.clear();
 	});
 
+	/**
+	 * 骨架屏阶段自动触发首次数据加载
+	 */
 	$effect(() => {
-		const store = getOrCreateStore(currentCategoryId);
-		// 如果当前分类的 store 处于 skeleton 阶段，则刷新瀑布流
-		// 在这里刷新可以获得“下拉效果”
+		const categoryId = currentCategoryId;
+		const store = feedStores.get(categoryId);
+		if (!store) return;
+
 		if (store.phase === 'skeleton') {
-			if (waterfallRefs[currentCategoryId]) {
-				waterfallRefs[currentCategoryId].scrollToTopAndRefresh();
+			if (waterfallRefs[categoryId]) {
+				waterfallRefs[categoryId].scrollToTopAndRefresh();
 			} else {
-				// TODO 兼容目前的 feed-list 实现
 				store.refresh();
 			}
 		}

@@ -487,6 +487,7 @@
 							/>
 						{:else}
 							<WaterfallCard
+								index={i}
 								postId={post.postId || ''}
 								title={post.displayTitle || ''}
 								cover={{

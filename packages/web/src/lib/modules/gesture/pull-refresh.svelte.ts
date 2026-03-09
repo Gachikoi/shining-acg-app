@@ -175,7 +175,7 @@ export const pullRefresh: Action<
 		const distance = touchY - startY;
 
 		// 未达到处理阈值
-		if (Math.abs(distance) < 5) {
+		if (Math.abs(distance) < 10) {
 			return;
 		}
 
