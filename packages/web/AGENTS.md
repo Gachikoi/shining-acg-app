@@ -47,8 +47,15 @@ src/
 │   │   └── ui/             # shadcn-svelte components
 │   ├── constants.ts        # App constants
 │   ├── models/             # Data models
+│   ├── modules/            # Feature modules (gesture, cache, device, bridge, virtual-feed)
+│   ├── stores/             # Svelte state stores
+│   │   ├── feed/           # Feed 瀑布流 store
+│   │   └── release/        # 发布页 store（草稿持久化）
 │   ├── types/              # Type definitions
-│   └── utils.ts            # cn(), type helpers
+│   ├── utils.ts            # cn(), type helpers
+│   └── utils/              # Utility functions
+│       ├── format-time.ts
+│       └── media-upload.ts # S3 multipart upload (UploadAbortController, uploadMediaBatch)
 ├── routes/
 │   ├── app/                # app.shiningacg.club routes
 │   ├── site/               # www.shiningacg.club routes
@@ -216,3 +223,31 @@ import { someEndpoint } from '$lib/api/sdk.gen';
 const response = await someEndpoint({ path: { id: '123' }, body: { data } });
 // Uses axios with auto token injection (configured in hey-api.svelte.ts)
 ```
+
+---
+
+## Media Upload
+
+`src/lib/utils/media-upload.ts` encapsulates the S3 multipart upload flow used by the release page.
+
+```
+PrepareUploadBatch → CreateMultipartUpload → (SignPart → PUT) × N → CompleteMultipartUpload
+```
+
+```typescript
+import { uploadMediaBatch, UploadAbortController, dataURLToFile } from '$lib/utils/media-upload';
+
+const controller = new UploadAbortController();
+const mediaAssets = await uploadMediaBatch(
+	files, // File[]
+	crypto.randomUUID(), // batchId — stable for the same submit attempt
+	({ uploadedFiles, totalFiles }) => {
+		/* update progress UI */
+	},
+	controller // optional; call controller.abort() to cancel
+);
+// Pass mediaAssets to postServiceCreatePost({ body: { ..., mediaAssets } })
+```
+
+- `dataURLToFile(dataURL, filename)` — converts a stored data URL (e.g. from IndexedDB draft) back to a `File` object when the original `File` reference is unavailable.
+- The abort controller sends `AbortMultipartUpload` to clean up S3 temporary parts on cancellation.
