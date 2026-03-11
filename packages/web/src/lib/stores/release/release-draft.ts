@@ -27,7 +27,9 @@ export interface ReleaseDraft {
 }
 
 // 草稿无需 TTL，应永久保留直到用户显式清除或发布完成
-const draftCache = createDbCache<ReleaseDraft>('release-draft');
+const draftCache = createDbCache<ReleaseDraft>('release-draft', {
+	dbName: 'shining-app-release-draft'
+});
 
 export async function saveReleaseDraft(draft: ReleaseDraft): Promise<void> {
 	await draftCache.set(draft.id, draft);
