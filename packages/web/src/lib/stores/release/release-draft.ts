@@ -13,6 +13,17 @@ const DEFAULT_DRAFT_ID = 'release-draft';
 export const CoverRatioArray = ['1:1', '4:3', '3:4'] as const;
 export type CoverRatio = (typeof CoverRatioArray)[number];
 
+/** 草稿媒体项，支持 single 与 live_photo */
+export type DraftMediaItem =
+	| { kind: 'single'; blob: Blob; name: string }
+	| {
+			kind: 'live_photo';
+			imageBlob: Blob;
+			videoBlob: Blob;
+			imageName: string;
+			videoName: string;
+	  };
+
 export interface ReleaseDraft {
 	id: string;
 	updatedAt: string;
@@ -21,9 +32,9 @@ export interface ReleaseDraft {
 	bodyContent: V1PostContentUnit[];
 	selectedSection: string;
 	coverRatio: CoverRatio;
-	/** 封面对应 mediaBlobs 的索引 */
+	/** 封面对应 mediaItems 的索引 */
 	selectedCoverIndex: number;
-	mediaBlobs: Blob[];
+	mediaItems: DraftMediaItem[];
 }
 
 // 草稿无需 TTL，应永久保留直到用户显式清除或发布完成
