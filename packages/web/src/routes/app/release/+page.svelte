@@ -42,6 +42,7 @@
 	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 	import {
 		ShinRichTextarea,
+		createFetchMentionUsersFromFollowings,
 		extractContentFromShinRichTextarea
 	} from '$lib/components/custom/shin-rich';
 	import * as Select from '$lib/components/ui/select';
@@ -60,6 +61,7 @@
 	import type { MediaUploader } from '$lib/modules/media-uploader';
 
 	const DRAFT_ID = 'release-draft';
+	const fetchMentionUsers = createFetchMentionUsersFromFollowings();
 
 	let lastSaved = $state<string | null>(null);
 	let lastSavedIsAutoSave = $state(false);
@@ -564,12 +566,16 @@
 			</div>
 		</div>
 		{#key resetKey}
-			<!-- TODO(6.2.5.1-3): 传入 onMentionClick 使点击 @ 标识进入目标用户个人资料页 -->
 			<ShinRichTextarea
 				placeholder="添加帖子描述"
 				class="mt-5"
 				bind:contentEditableRef={contenteditableRef}
 				initialContent={initialBodyContent}
+				{fetchMentionUsers}
+				onMentionClick={(userId) => {
+					// @ts-expect-error - /app/profile/[userId] 路由待个人资料模块实现
+					goto(resolve(`/app/profile/${userId}`));
+				}}
 			/>
 		{/key}
 

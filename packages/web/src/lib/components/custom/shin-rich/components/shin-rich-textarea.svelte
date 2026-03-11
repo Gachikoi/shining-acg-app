@@ -1,7 +1,7 @@
 <!--
 	@component ShinRichTextarea
 	@description 富文本输入框，支持换行、@ 用户、字数统计
-	@status 开发中，因依赖未就绪暂未完全对接
+	@status 已对接 fetchMentionUsers、onMentionClick；无 fetchMentionUsers 时使用 MOCK 兜底
 
 	## 概述
 	基于 contenteditable 的富文本输入框，用于正文描述等场景。支持回车换行、粘贴、字数统计，
@@ -78,9 +78,8 @@
 	```
 
 	## 依赖说明
-	- TODO(6.2.5.1-3): 用户列表固定 20 人，@ 后无输入时从关注列表+现网用户获取（优先关注列表）
-	- TODO(6.2.5.1-3): 支持按 QQ 号、用户昵称、备注查找；@ 标识显示蓝色，点击进入个人资料页
-	- 点击 mention 跳转依赖 onMentionClick 回调及 /app/profile/[user_id] 路由
+	- 用户列表：传入 fetchMentionUsers 时从关注列表获取 20 人，有输入时前端 filter；未传入时使用 MOCK
+	- 支持按 QQ 号、用户昵称、备注查找；@ 标识显示蓝色，点击进入个人资料页依赖 onMentionClick
 -->
 
 <script lang="ts">
@@ -144,13 +143,12 @@
 		{ id: '8', avatar: logo, name: '郑十郑十郑十郑十郑十郑十郑十郑十郑十郑十', qq: '88888888' }
 	];
 
-	// TODO: 当后端 API 就绪后，替换为调用 userServiceSearchUsers
 	let userList = $state<MentionUser[]>(MOCK_USERS);
 
 	$effect(() => {
 		if (fetchMentionUsers) {
 			fetchMentionUsers(searchQuery).then((users) => {
-				userList = users;
+				userList = users ?? [];
 			});
 		} else {
 			userList = MOCK_USERS;
