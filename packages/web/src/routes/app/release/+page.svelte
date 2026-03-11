@@ -30,7 +30,7 @@
 	 * 发布页 - 产品需求 6.2.5
 	 * TODO(6.2.5.4-9): iOS/Android Webview 保活，保障应用在后台时也能处理、上传图片视频
 	 */
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
@@ -54,13 +54,10 @@
 		type ReleaseDraft
 	} from '$lib/stores/release';
 	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
+	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
-	import {
-		uploadMediaBatch,
-		dataURLToFile,
-		UploadAbortController,
-		type UploadProgress
-	} from '$lib/utils/media-upload';
+	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
+	import type { MediaUploader } from '$lib/modules/media-uploader';
 
 	const DRAFT_ID = 'release-draft';
 
@@ -68,11 +65,9 @@
 	let lastSavedIsAutoSave = $state(false);
 	let lastSavedSnapshot = $state<ReleaseDraft | null>(null);
 
-	let cachedImagesDataURLs = $state<string[]>([]);
-	// 与 cachedImagesDataURLs 一一对应，保存原始 File 对象用于上传
-	// 从草稿恢复时此数组为空，上传前会通过 dataURLToFile 重新生成
-	let cachedFiles = $state<File[]>([]);
-	let selectedImageURL = $state<string | null>(null);
+	let cachedMediaBlobs = $state<Blob[]>([]);
+	let cachedMediaUrls = $state<string[]>([]);
+	let selectedCoverIndex = $state(0);
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
 	let titleContent = $state('');
 	let contenteditableRef = $state<HTMLDivElement | null>(null);
@@ -90,8 +85,12 @@
 
 	// 上传状态
 	let isUploading = $state(false);
-	let uploadProgress = $state<UploadProgress>({ uploadedFiles: 0, totalFiles: 0 });
-	let uploadAbortController = $state<UploadAbortController | null>(null);
+	let uploadProgress = $state<{ uploadedFiles: number; totalFiles: number }>({
+		uploadedFiles: 0,
+		totalFiles: 0
+	});
+	let mediaUploader = $state<MediaUploader | null>(null);
+	let uploadCancelled = $state(false);
 
 	// 隐藏的文件 input 引用，由"+"按钮触发点击
 	let mediaFileInputRef = $state<HTMLInputElement | null>(null);
@@ -104,7 +103,14 @@
 				: '请选择'
 	);
 
+	function mediaBlobsEqual(a: Blob[], b: Blob[]): boolean {
+		if (a.length !== b.length) return false;
+		return a.every((blob, i) => blob.size === b[i].size && blob.type === b[i].type);
+	}
+
 	function buildDraft(isAutoSave: boolean): ReleaseDraft {
+		const clampedCoverIndex =
+			cachedMediaBlobs.length === 0 ? 0 : Math.min(selectedCoverIndex, cachedMediaBlobs.length - 1);
 		return {
 			id: DRAFT_ID,
 			updatedAt: new Date().toISOString(),
@@ -113,8 +119,8 @@
 			bodyContent: contenteditableRef ? extractContentFromShinRichTextarea(contenteditableRef) : [],
 			selectedSection,
 			coverRatio,
-			coverDataURL: selectedImageURL,
-			mediaDataURLs: [...cachedImagesDataURLs]
+			selectedCoverIndex: clampedCoverIndex,
+			mediaBlobs: [...cachedMediaBlobs]
 		};
 	}
 
@@ -123,9 +129,9 @@
 			a.title === b.title &&
 			a.selectedSection === b.selectedSection &&
 			a.coverRatio === b.coverRatio &&
-			a.coverDataURL === b.coverDataURL &&
+			a.selectedCoverIndex === b.selectedCoverIndex &&
 			JSON.stringify(a.bodyContent) === JSON.stringify(b.bodyContent) &&
-			JSON.stringify(a.mediaDataURLs) === JSON.stringify(b.mediaDataURLs)
+			mediaBlobsEqual(a.mediaBlobs, b.mediaBlobs)
 		);
 	}
 
@@ -152,11 +158,14 @@
 
 	function handleReset() {
 		// TODO(6.2.5.2-1): 区分新建/编辑——编辑现有帖子时应重置为现网内容，而非清空
+		for (const url of cachedMediaUrls) {
+			URL.revokeObjectURL(url);
+		}
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
-		cachedImagesDataURLs = [];
-		cachedFiles = [];
-		selectedImageURL = null;
+		cachedMediaBlobs = [];
+		cachedMediaUrls = [];
+		selectedCoverIndex = 0;
 		selectedSection = '';
 		initialBodyContent = [];
 		lastSaved = null;
@@ -181,13 +190,13 @@
 		mediaFileInputRef?.click();
 	}
 
-	/** 处理文件选择，读取 data URL 用于预览，同时保存 File 对象用于上传。 */
-	async function handleFileSelect(e: Event) {
+	/** 处理文件选择，存 Blob 并创建 URL 用于预览。 */
+	function handleFileSelect(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const newFiles = Array.from(input.files ?? []);
 		if (!newFiles.length) return;
 
-		const remaining = MAX_MEDIA_COUNT - cachedImagesDataURLs.length;
+		const remaining = MAX_MEDIA_COUNT - cachedMediaBlobs.length;
 		if (remaining <= 0) {
 			toast.error(`最多只能选择 ${MAX_MEDIA_COUNT} 张图片/视频`);
 			input.value = '';
@@ -200,34 +209,22 @@
 			toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
 		}
 
-		// 用 FileReader 并行生成所有 data URL
-		const dataURLs = await Promise.all(selected.map(readFileAsDataURL));
+		const newUrls = selected.map((file) => URL.createObjectURL(file));
+		cachedMediaBlobs = [...cachedMediaBlobs, ...selected];
+		cachedMediaUrls = [...cachedMediaUrls, ...newUrls];
 
-		cachedFiles = [...cachedFiles, ...selected];
-		cachedImagesDataURLs = [...cachedImagesDataURLs, ...dataURLs];
-
-		// 重置 input，允许重复选择相同文件
 		input.value = '';
 	}
 
-	/** 读取单个 File 为 data URL（Promise 封装 FileReader）。 */
-	function readFileAsDataURL(file: File): Promise<string> {
-		return new Promise((resolve, reject) => {
-			const reader = new FileReader();
-			reader.onload = () => resolve(reader.result as string);
-			reader.onerror = () => reject(new Error(`读取文件失败: ${file.name}`));
-			reader.readAsDataURL(file);
-		});
-	}
-
-	/** 删除指定索引的媒体，同步更新 cachedFiles 和 cachedImagesDataURLs。 */
+	/** 删除指定索引的媒体，revoke URL 并同步更新 selectedCoverIndex。 */
 	function handleRemoveMedia(index: number) {
-		cachedImagesDataURLs = cachedImagesDataURLs.filter((_, i) => i !== index);
-		cachedFiles = cachedFiles.filter((_, i) => i !== index);
-		// 若当前封面恰好是被删除的那张，重置封面
-		// 后续 $effect 会自动将封面重置为新的第一张（如果还有的话）
-		if (selectedImageURL === (cachedImagesDataURLs[index] ?? null)) {
-			selectedImageURL = null;
+		URL.revokeObjectURL(cachedMediaUrls[index]);
+		cachedMediaBlobs = cachedMediaBlobs.filter((_, i) => i !== index);
+		cachedMediaUrls = cachedMediaUrls.filter((_, i) => i !== index);
+		if (selectedCoverIndex === index) {
+			selectedCoverIndex = 0;
+		} else if (selectedCoverIndex > index) {
+			selectedCoverIndex -= 1;
 		}
 	}
 
@@ -240,56 +237,66 @@
 	async function handleSubmit() {
 		showPublishConfirm = false;
 
-		// 如果没有任何媒体文件，直接创建帖子（纯文字帖）
-		if (cachedImagesDataURLs.length === 0) {
-			await doCreatePost([]);
+		if (cachedMediaBlobs.length === 0) {
+			await doCreatePost([], '');
 			return;
 		}
 
-		// 准备 File 对象：从草稿恢复时 cachedFiles 可能为空，需要从 data URL 重建
-		let filesToUpload: File[];
-		if (cachedFiles.length === cachedImagesDataURLs.length) {
-			filesToUpload = cachedFiles;
-		} else {
-			// 草稿恢复场景：data URL → Blob → File（文件名和 MIME 均从 data URL 中推断）
-			filesToUpload = await Promise.all(
-				cachedImagesDataURLs.map((url, i) => dataURLToFile(url, `media-${i}`))
-			);
+		if (!mediaUploader) {
+			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			return;
 		}
 
+		const filesToUpload = cachedMediaBlobs.map(
+			(blob, i) => new File([blob], `media-${i}`, { type: blob.type })
+		);
+
 		isUploading = true;
+		uploadCancelled = false;
 		uploadProgress = { uploadedFiles: 0, totalFiles: filesToUpload.length };
-		const batchId = crypto.randomUUID();
-		const controller = new UploadAbortController();
-		uploadAbortController = controller;
+
+		const totalFiles = filesToUpload.length;
+		let completedCount = 0;
+		const handleUploadSuccess = () => {
+			completedCount += 1;
+			uploadProgress = { uploadedFiles: completedCount, totalFiles };
+		};
 
 		try {
-			const mediaAssets = await uploadMediaBatch(
-				filesToUpload,
-				batchId,
-				(p) => {
-					uploadProgress = p;
-				},
-				controller
-			);
+			const params = buildPrepareUploadParams({
+				scene: 'MEDIA_SCENE_POST_MEDIA',
+				files: filesToUpload
+			});
+			const batchId = await mediaUploader.upload(params);
+			if (uploadCancelled) return;
 
-			if (controller.aborted) return; // 已在 handleCancelUpload 中处理
+			mediaUploader.uppy.on('upload-success', handleUploadSuccess);
 
-			await doCreatePost(mediaAssets);
-		} catch {
-			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			await mediaUploader.uppy.upload();
+			mediaUploader.uppy.off('upload-success', handleUploadSuccess);
+
+			if (uploadCancelled) return;
+
+			const mediaAssets = await mediaUploader.getBatchMedia(batchId);
+			await doCreatePost(mediaAssets, batchId);
+		} catch (error) {
+			if (!uploadCancelled) {
+				toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			}
 		} finally {
 			isUploading = false;
-			uploadAbortController = null;
 		}
 	}
 
 	/** 调用 CreatePost 接口，成功后清草稿并跳转。 */
-	async function doCreatePost(mediaAssets: import('$lib/api/types.gen').V1MediaAsset[]) {
+	async function doCreatePost(
+		mediaAssets: import('$lib/api/types.gen').V1MediaAsset[],
+		batchId: string
+	) {
 		try {
 			await postServiceCreatePost({
 				body: {
-					batchId: mediaAssets.length > 0 ? crypto.randomUUID() : '',
+					batchId: mediaAssets.length > 0 ? batchId : '',
 					title: titleContent || undefined,
 					content: contenteditableRef
 						? extractContentFromShinRichTextarea(contenteditableRef)
@@ -303,17 +310,16 @@
 			toast.success(TOAST_MESSAGES.POST_PUBLISHED_SUCCESS);
 			// TODO(6.2.5.4): 发布成功后跳转到帖子详情页或 feed，等路由就绪后补充
 			goto('/');
-		} catch {
-			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+		} catch (error) {
+			toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 		}
 	}
 
 	/** 用户主动取消上传。 */
-	async function handleCancelUpload() {
-		if (!uploadAbortController) return;
-		await uploadAbortController.abort();
+	function handleCancelUpload() {
+		uploadCancelled = true;
+		mediaUploader?.cancelAll();
 		isUploading = false;
-		uploadAbortController = null;
 		toast.info(TOAST_MESSAGES.UPLOAD_CANCELLED);
 	}
 
@@ -333,8 +339,7 @@
 		const hasContent =
 			titleContent.trim().length > 0 ||
 			(contenteditableRef && extractContentFromShinRichTextarea(contenteditableRef).length > 0) ||
-			cachedImagesDataURLs.length > 0 ||
-			selectedImageURL;
+			cachedMediaBlobs.length > 0;
 		if (!hasContent) {
 			toast.error(TOAST_MESSAGES.CONTENT_REQUIRED);
 			return false;
@@ -342,12 +347,11 @@
 		return true;
 	}
 
-	// 如果未选择封面，则使用第一张图片作为封面
 	// 需求 6.2.5.1-1：未设置封面时，以第 1 张图片或视频首帧作为封面
 	// TODO(6.2.5.1-1): 视频首帧兜底、无图片/视频时用正文内容生成封面
 	$effect(() => {
-		if (selectedImageURL === null && cachedImagesDataURLs.length > 0) {
-			selectedImageURL = cachedImagesDataURLs[0];
+		if (cachedMediaBlobs.length > 0 && selectedCoverIndex >= cachedMediaBlobs.length) {
+			selectedCoverIndex = 0;
 		}
 	});
 
@@ -377,14 +381,20 @@
 	});
 
 	onMount(() => {
+		mediaUploader = createMediaUploader();
+
 		// 加载草稿
 		loadReleaseDraft(DRAFT_ID).then((draft) => {
 			if (!draft) return;
 			titleContent = draft.title;
 			selectedSection = draft.selectedSection;
 			coverRatio = draft.coverRatio as CoverRatio;
-			selectedImageURL = draft.coverDataURL;
-			cachedImagesDataURLs = [...(draft.mediaDataURLs ?? [])];
+			cachedMediaBlobs = [...(draft.mediaBlobs ?? [])];
+			cachedMediaUrls = (draft.mediaBlobs ?? []).map((b) => URL.createObjectURL(b));
+			selectedCoverIndex =
+				cachedMediaBlobs.length === 0
+					? 0
+					: Math.min(draft.selectedCoverIndex ?? 0, cachedMediaBlobs.length - 1);
 			initialBodyContent = draft.bodyContent ?? [];
 			lastSaved = draft.updatedAt;
 			lastSavedIsAutoSave = draft.isAutoSave;
@@ -439,6 +449,14 @@
 		pendingNavigationUrl = null;
 		showLeaveConfirm = false;
 	}
+
+	onDestroy(() => {
+		mediaUploader?.destroy();
+		mediaUploader = null;
+		for (const url of cachedMediaUrls) {
+			URL.revokeObjectURL(url);
+		}
+	});
 </script>
 
 <main
@@ -462,9 +480,9 @@
 			)}
 			onclick={rotateCoverRatio}
 		>
-			{#if selectedImageURL}
+			{#if cachedMediaUrls[selectedCoverIndex]}
 				<img
-					src={selectedImageURL}
+					src={cachedMediaUrls[selectedCoverIndex]}
 					alt="封面"
 					class="h-full w-full cursor-pointer object-cover"
 					draggable="false"
@@ -486,25 +504,25 @@
 		<!-- 图片/视频选择器 - 需求 6.2.5.1-2 -->
 		<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 		<p class="text-sm text-muted-foreground">
-			最多 {MAX_MEDIA_COUNT} 张，已选 {cachedImagesDataURLs.length} 张
+			最多 {MAX_MEDIA_COUNT} 张，已选 {cachedMediaBlobs.length} 张
 		</p>
 
 		<!-- 隐藏文件 input：accept 同时支持图片和视频 -->
 		<input
 			bind:this={mediaFileInputRef}
 			type="file"
-			accept="image/*,video/*"
+			accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
 			multiple
 			class="hidden"
 			onchange={handleFileSelect}
 		/>
 
 		<div class="mt-3 flex flex-wrap gap-2">
-			{#each cachedImagesDataURLs as imageDataURL, index (index)}
+			{#each cachedMediaBlobs as _, index (index)}
 				<!-- 缩略图 + 删除按钮叠层 -->
 				<div class="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
 					<img
-						src={imageDataURL}
+						src={cachedMediaUrls[index]}
 						alt={`媒体 ${index + 1}`}
 						class="h-full w-full object-cover"
 						draggable="false"
@@ -520,7 +538,7 @@
 				</div>
 			{/each}
 			<!-- 仅在未达上限时显示添加按钮 -->
-			{#if cachedImagesDataURLs.length < MAX_MEDIA_COUNT}
+			{#if cachedMediaBlobs.length < MAX_MEDIA_COUNT}
 				<button
 					class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
 					onclick={handleAddMediaClick}
