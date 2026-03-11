@@ -54,8 +54,7 @@ src/
 │   ├── types/              # Type definitions
 │   ├── utils.ts            # cn(), type helpers
 │   └── utils/              # Utility functions
-│       ├── format-time.ts
-│       └── media-upload.ts # S3 multipart upload (UploadAbortController, uploadMediaBatch)
+│       └── format-time.ts
 ├── routes/
 │   ├── app/                # app.shiningacg.club routes
 │   ├── site/               # www.shiningacg.club routes
@@ -228,26 +227,25 @@ const response = await someEndpoint({ path: { id: '123' }, body: { data } });
 
 ## Media Upload
 
-`src/lib/utils/media-upload.ts` encapsulates the S3 multipart upload flow used by the release page.
+`src/lib/modules/media-uploader/` 封装基于 Uppy + @uppy/aws-s3-multipart 的媒体上传流程，release 页面使用。
 
 ```
 PrepareUploadBatch → CreateMultipartUpload → (SignPart → PUT) × N → CompleteMultipartUpload
 ```
 
 ```typescript
-import { uploadMediaBatch, UploadAbortController, dataURLToFile } from '$lib/utils/media-upload';
+import { createMediaUploader, buildPrepareUploadParams } from '$lib/modules/media-uploader';
 
-const controller = new UploadAbortController();
-const mediaAssets = await uploadMediaBatch(
-	files, // File[]
-	crypto.randomUUID(), // batchId — stable for the same submit attempt
-	({ uploadedFiles, totalFiles }) => {
-		/* update progress UI */
-	},
-	controller // optional; call controller.abort() to cancel
-);
-// Pass mediaAssets to postServiceCreatePost({ body: { ..., mediaAssets } })
+const uploader = createMediaUploader();
+const params = buildPrepareUploadParams({ scene: 'MEDIA_SCENE_POST_MEDIA', files });
+const batchId = await uploader.upload(params);
+uploader.uppy.on('upload-success', () => {
+	/* update progress */
+});
+await uploader.uppy.upload();
+const mediaAssets = await uploader.getBatchMedia(batchId);
+// Pass mediaAssets + batchId to postServiceCreatePost({ body: { batchId, mediaAssets, ... } })
+uploader.cancelAll(); // 取消上传
 ```
 
-- `dataURLToFile(dataURL, filename)` — converts a stored data URL (e.g. from IndexedDB draft) back to a `File` object when the original `File` reference is unavailable.
-- The abort controller sends `AbortMultipartUpload` to clean up S3 temporary parts on cancellation.
+- 草稿媒体以 Blob 存于 IndexedDB，上传前用 `new File([blob], name, { type })` 包装。

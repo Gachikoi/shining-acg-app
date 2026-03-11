@@ -21,8 +21,9 @@ export interface ReleaseDraft {
 	bodyContent: V1PostContentUnit[];
 	selectedSection: string;
 	coverRatio: CoverRatio;
-	coverDataURL: string | null;
-	mediaDataURLs: string[];
+	/** 封面对应 mediaBlobs 的索引 */
+	selectedCoverIndex: number;
+	mediaBlobs: Blob[];
 }
 
 // 草稿无需 TTL，应永久保留直到用户显式清除或发布完成
