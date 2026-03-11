@@ -47,7 +47,7 @@ src/
 │   │   └── ui/             # shadcn-svelte components
 │   ├── constants.ts        # App constants
 │   ├── models/             # Data models
-│   ├── modules/            # Feature modules (gesture, cache, device, bridge, virtual-feed)
+│   ├── modules/            # Feature modules (gesture, cache, device, bridge, virtual-feed, release-media)
 │   ├── stores/             # Svelte state stores
 │   │   ├── feed/           # Feed 瀑布流 store
 │   │   └── release/        # 发布页 store（草稿持久化）
@@ -233,19 +233,23 @@ const response = await someEndpoint({ path: { id: '123' }, body: { data } });
 PrepareUploadBatch → CreateMultipartUpload → (SignPart → PUT) × N → CompleteMultipartUpload
 ```
 
-```typescript
-import { createMediaUploader, buildPrepareUploadParams } from '$lib/modules/media-uploader';
+`src/lib/modules/release-media/` 为发布页媒体适配层，负责 File[] ↔ DraftMediaItem[] ↔ PrepareUploadParams 的转换，支持 Live Photo（`lp_<groupId>_image|video.*` 命名规则）。
 
-const uploader = createMediaUploader();
-const params = buildPrepareUploadParams({ scene: 'MEDIA_SCENE_POST_MEDIA', files });
+```typescript
+import { createMediaUploader } from '$lib/modules/media-uploader';
+import {
+	filesToDraftItems,
+	draftItemsToPrepareParams,
+	getPreviewBlob,
+	mediaItemsEqual
+} from '$lib/modules/release-media';
+
+// 文件选择 → 草稿格式（含 Live Photo 解析）
+const items = filesToDraftItems(files, 'MEDIA_SCENE_POST_MEDIA');
+
+// 草稿恢复后 → 上传参数
+const params = draftItemsToPrepareParams(cachedMediaItems, 'MEDIA_SCENE_POST_MEDIA');
 const batchId = await uploader.upload(params);
-uploader.uppy.on('upload-success', () => {
-	/* update progress */
-});
-await uploader.uppy.upload();
-const mediaAssets = await uploader.getBatchMedia(batchId);
-// Pass mediaAssets + batchId to postServiceCreatePost({ body: { batchId, mediaAssets, ... } })
-uploader.cancelAll(); // 取消上传
 ```
 
-- 草稿媒体以 Blob 存于 IndexedDB，上传前用 `new File([blob], name, { type })` 包装。
+- 草稿媒体以 `DraftMediaItem[]` 存于 IndexedDB（Blob + name，支持 single 与 live_photo），上传前由 `draftItemsToPrepareParams` 重建 File。
