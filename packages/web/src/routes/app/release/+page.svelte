@@ -52,12 +52,19 @@
 		saveReleaseDraft,
 		loadReleaseDraft,
 		clearReleaseDraft,
+		type DraftMediaItem,
 		type ReleaseDraft
 	} from '$lib/stores/release';
+	import {
+		filesToDraftItems,
+		draftItemsToPrepareParams,
+		getPreviewBlob,
+		mediaItemsEqual
+	} from '$lib/modules/release-media';
 	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
 	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
-	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
+	import { createMediaUploader } from '$lib/modules/media-uploader';
 	import type { MediaUploader } from '$lib/modules/media-uploader';
 
 	const DRAFT_ID = 'release-draft';
@@ -67,7 +74,7 @@
 	let lastSavedIsAutoSave = $state(false);
 	let lastSavedSnapshot = $state<ReleaseDraft | null>(null);
 
-	let cachedMediaBlobs = $state<Blob[]>([]);
+	let cachedMediaItems = $state<DraftMediaItem[]>([]);
 	let cachedMediaUrls = $state<string[]>([]);
 	let selectedCoverIndex = $state(0);
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
@@ -105,14 +112,9 @@
 				: '请选择'
 	);
 
-	function mediaBlobsEqual(a: Blob[], b: Blob[]): boolean {
-		if (a.length !== b.length) return false;
-		return a.every((blob, i) => blob.size === b[i].size && blob.type === b[i].type);
-	}
-
 	function buildDraft(isAutoSave: boolean): ReleaseDraft {
 		const clampedCoverIndex =
-			cachedMediaBlobs.length === 0 ? 0 : Math.min(selectedCoverIndex, cachedMediaBlobs.length - 1);
+			cachedMediaItems.length === 0 ? 0 : Math.min(selectedCoverIndex, cachedMediaItems.length - 1);
 		return {
 			id: DRAFT_ID,
 			updatedAt: new Date().toISOString(),
@@ -122,7 +124,7 @@
 			selectedSection,
 			coverRatio,
 			selectedCoverIndex: clampedCoverIndex,
-			mediaBlobs: [...cachedMediaBlobs]
+			mediaItems: [...cachedMediaItems]
 		};
 	}
 
@@ -133,7 +135,7 @@
 			a.coverRatio === b.coverRatio &&
 			a.selectedCoverIndex === b.selectedCoverIndex &&
 			JSON.stringify(a.bodyContent) === JSON.stringify(b.bodyContent) &&
-			mediaBlobsEqual(a.mediaBlobs, b.mediaBlobs)
+			mediaItemsEqual(a.mediaItems, b.mediaItems)
 		);
 	}
 
@@ -165,7 +167,7 @@
 		}
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
-		cachedMediaBlobs = [];
+		cachedMediaItems = [];
 		cachedMediaUrls = [];
 		selectedCoverIndex = 0;
 		selectedSection = '';
@@ -192,28 +194,31 @@
 		mediaFileInputRef?.click();
 	}
 
-	/** 处理文件选择，存 Blob 并创建 URL 用于预览。 */
+	/** 处理文件选择，解析 Live Photo 并转为 DraftMediaItem 追加。 */
 	function handleFileSelect(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const newFiles = Array.from(input.files ?? []);
 		if (!newFiles.length) return;
 
-		const remaining = MAX_MEDIA_COUNT - cachedMediaBlobs.length;
+		const remaining = MAX_MEDIA_COUNT - cachedMediaItems.length;
 		if (remaining <= 0) {
 			toast.error(`最多只能选择 ${MAX_MEDIA_COUNT} 张图片/视频`);
 			input.value = '';
 			return;
 		}
 
-		// 如果本次选择超出剩余配额，截断并提示
-		const selected = newFiles.slice(0, remaining);
-		if (newFiles.length > remaining) {
-			toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
+		try {
+			const newItems = filesToDraftItems(newFiles, 'MEDIA_SCENE_POST_MEDIA');
+			const toAdd = newItems.slice(0, remaining);
+			if (newItems.length > remaining) {
+				toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
+			}
+			const newUrls = toAdd.map((item) => URL.createObjectURL(getPreviewBlob(item)));
+			cachedMediaItems = [...cachedMediaItems, ...toAdd];
+			cachedMediaUrls = [...cachedMediaUrls, ...newUrls];
+		} catch (err) {
+			toast.error(formatUploadError(err) || '文件解析失败');
 		}
-
-		const newUrls = selected.map((file) => URL.createObjectURL(file));
-		cachedMediaBlobs = [...cachedMediaBlobs, ...selected];
-		cachedMediaUrls = [...cachedMediaUrls, ...newUrls];
 
 		input.value = '';
 	}
@@ -221,7 +226,7 @@
 	/** 删除指定索引的媒体，revoke URL 并同步更新 selectedCoverIndex。 */
 	function handleRemoveMedia(index: number) {
 		URL.revokeObjectURL(cachedMediaUrls[index]);
-		cachedMediaBlobs = cachedMediaBlobs.filter((_, i) => i !== index);
+		cachedMediaItems = cachedMediaItems.filter((_, i) => i !== index);
 		cachedMediaUrls = cachedMediaUrls.filter((_, i) => i !== index);
 		if (selectedCoverIndex === index) {
 			selectedCoverIndex = 0;
@@ -239,7 +244,7 @@
 	async function handleSubmit() {
 		showPublishConfirm = false;
 
-		if (cachedMediaBlobs.length === 0) {
+		if (cachedMediaItems.length === 0) {
 			await doCreatePost([], '');
 			return;
 		}
@@ -249,15 +254,13 @@
 			return;
 		}
 
-		const filesToUpload = cachedMediaBlobs.map(
-			(blob, i) => new File([blob], `media-${i}`, { type: blob.type })
-		);
+		const params = draftItemsToPrepareParams(cachedMediaItems, 'MEDIA_SCENE_POST_MEDIA');
+		const totalFiles = params.reduce((sum, p) => sum + (p.kind === 'single' ? 1 : 2), 0);
 
 		isUploading = true;
 		uploadCancelled = false;
-		uploadProgress = { uploadedFiles: 0, totalFiles: filesToUpload.length };
+		uploadProgress = { uploadedFiles: 0, totalFiles };
 
-		const totalFiles = filesToUpload.length;
 		let completedCount = 0;
 		const handleUploadSuccess = () => {
 			completedCount += 1;
@@ -265,10 +268,6 @@
 		};
 
 		try {
-			const params = buildPrepareUploadParams({
-				scene: 'MEDIA_SCENE_POST_MEDIA',
-				files: filesToUpload
-			});
 			const batchId = await mediaUploader.upload(params);
 			if (uploadCancelled) return;
 
@@ -341,7 +340,7 @@
 		const hasContent =
 			titleContent.trim().length > 0 ||
 			(contenteditableRef && extractContentFromShinRichTextarea(contenteditableRef).length > 0) ||
-			cachedMediaBlobs.length > 0;
+			cachedMediaItems.length > 0;
 		if (!hasContent) {
 			toast.error(TOAST_MESSAGES.CONTENT_REQUIRED);
 			return false;
@@ -352,7 +351,7 @@
 	// 需求 6.2.5.1-1：未设置封面时，以第 1 张图片或视频首帧作为封面
 	// TODO(6.2.5.1-1): 视频首帧兜底、无图片/视频时用正文内容生成封面
 	$effect(() => {
-		if (cachedMediaBlobs.length > 0 && selectedCoverIndex >= cachedMediaBlobs.length) {
+		if (cachedMediaItems.length > 0 && selectedCoverIndex >= cachedMediaItems.length) {
 			selectedCoverIndex = 0;
 		}
 	});
@@ -391,16 +390,20 @@
 			titleContent = draft.title;
 			selectedSection = draft.selectedSection;
 			coverRatio = draft.coverRatio as CoverRatio;
-			cachedMediaBlobs = [...(draft.mediaBlobs ?? [])];
-			cachedMediaUrls = (draft.mediaBlobs ?? []).map((b) => URL.createObjectURL(b));
+			const items = draft.mediaItems ?? [];
+			cachedMediaItems = [...items];
+			cachedMediaUrls = items.map((item) => URL.createObjectURL(getPreviewBlob(item)));
 			selectedCoverIndex =
-				cachedMediaBlobs.length === 0
+				cachedMediaItems.length === 0
 					? 0
-					: Math.min(draft.selectedCoverIndex ?? 0, cachedMediaBlobs.length - 1);
+					: Math.min(draft.selectedCoverIndex ?? 0, cachedMediaItems.length - 1);
 			initialBodyContent = draft.bodyContent ?? [];
 			lastSaved = draft.updatedAt;
 			lastSavedIsAutoSave = draft.isAutoSave;
-			lastSavedSnapshot = draft;
+			lastSavedSnapshot = {
+				...draft,
+				mediaItems: draft.mediaItems ?? []
+			};
 		});
 
 		// 每 60s 自动保存
@@ -506,7 +509,7 @@
 		<!-- 图片/视频选择器 - 需求 6.2.5.1-2 -->
 		<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 		<p class="text-sm text-muted-foreground">
-			最多 {MAX_MEDIA_COUNT} 张，已选 {cachedMediaBlobs.length} 张
+			最多 {MAX_MEDIA_COUNT} 张，已选 {cachedMediaItems.length} 张
 		</p>
 
 		<!-- 隐藏文件 input：accept 同时支持图片和视频 -->
@@ -520,7 +523,7 @@
 		/>
 
 		<div class="mt-3 flex flex-wrap gap-2">
-			{#each cachedMediaBlobs as _, index (index)}
+			{#each cachedMediaItems as _, index (index)}
 				<!-- 缩略图 + 删除按钮叠层 -->
 				<div class="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
 					<img
@@ -540,7 +543,7 @@
 				</div>
 			{/each}
 			<!-- 仅在未达上限时显示添加按钮 -->
-			{#if cachedMediaBlobs.length < MAX_MEDIA_COUNT}
+			{#if cachedMediaItems.length < MAX_MEDIA_COUNT}
 				<button
 					class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
 					onclick={handleAddMediaClick}
@@ -635,12 +638,12 @@
 			confirmText="退出"
 		>
 			{#snippet description()}
-				<p>有未保存的变更，是否退出编辑？退出前将自动保存。</p>
+				<p>有未保存的变更，是否退出编辑？<br />退出前将自动保存。</p>
 			{/snippet}
 		</ConfirmDialog>
 		<ConfirmDialog bind:open={showPublishConfirm} onConfirm={handleSubmit} confirmText="发布">
 			{#snippet description()}
-				<p>确定要发布这篇帖子吗？发布后将立即对所有人可见。</p>
+				<p>确定要发布这篇帖子吗？<br />发布后将立即对所有人可见。</p>
 			{/snippet}
 		</ConfirmDialog>
 		<Button
