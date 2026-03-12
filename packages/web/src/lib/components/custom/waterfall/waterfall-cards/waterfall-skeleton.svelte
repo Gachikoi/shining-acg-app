@@ -13,9 +13,12 @@
 	});
 </script>
 
-<article class="rounded-xl border border-border" {style}>
+<article
+	class="overflow-hidden rounded-sm border border-zinc-100 sm:rounded-md md:rounded-xl lg:rounded-2xl"
+	{style}
+>
 	<!-- 封面区域：与 waterfall-card figure 对齐 -->
-	<figure class="relative overflow-hidden rounded-t-xl bg-zinc-100 dark:bg-zinc-900">
+	<figure class="relative overflow-hidden bg-zinc-100 dark:bg-zinc-900">
 		<div class="skeleton-bg relative w-full overflow-hidden" style={ratioStyle}>
 			<div
 				class="shimmer-effect absolute top-0 -left-full h-full w-full bg-linear-to-r from-transparent via-white/40 to-transparent"
