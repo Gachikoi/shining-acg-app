@@ -101,7 +101,6 @@
 <div
 	class="scrollbar-hidden h-full overflow-y-scroll px-2 md:px-4 lg:px-6"
 	bind:this={scrollContainer}
-	// use:pullRefresh={pullRefreshOptions}
 >
 	<div>
 		{#each items as user (user.userId ?? Math.random())}
