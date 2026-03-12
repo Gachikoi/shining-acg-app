@@ -1,7 +1,8 @@
 import type { AwsS3MultipartOptions } from '@uppy/aws-s3';
 import type { UploadResult, Uppy, UppyFile } from '@uppy/core';
 import type { V1MediaAsset, V1MediaScene, V1UploadAsset } from '../../api';
-import type { RealtimeBatchProgress } from '../realtime/core';
+// import type { RealtimeBatchProgress } from '../realtime/core';
+// import type { RealtimeBatchProgress } from '../realtime/core';
 
 export interface UploadFileInput {
 	file: File;
@@ -68,7 +69,8 @@ export interface MediaUploadMeta {
 	scene: V1MediaScene;
 }
 
-export type BatchProgressEvent = RealtimeBatchProgress;
+// export type BatchProgressEvent = RealtimeBatchProgress;
+// export type BatchProgressEvent = RealtimeBatchProgress;
 
 export type HeaderFactory = () => Record<string, string> | Promise<Record<string, string>>;
 
@@ -89,8 +91,8 @@ export interface MediaUploader {
 	cancelAll: () => void;
 	getBatchMedia: (batchId: string) => Promise<V1MediaAsset[]>;
 	subscribeBatchProgress: (
-		batchId: string,
-		listener: (event: BatchProgressEvent) => void
+		batchId: string
+		// listener: (event: BatchProgressEvent) => void
 	) => () => void;
 	clear: () => void;
 	destroy: () => void;
