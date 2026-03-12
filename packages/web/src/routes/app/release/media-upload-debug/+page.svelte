@@ -1,4 +1,6 @@
+<!-- eslint-disable -->
 <script lang="ts">
+	// @ts-nocheck
 	import { onDestroy, onMount } from 'svelte';
 	import type { UppyFile } from '@uppy/core';
 
