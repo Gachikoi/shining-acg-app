@@ -91,12 +91,20 @@
 
 	// 上传状态
 	let isUploading = $state(false);
-	let uploadProgress = $state<{ uploadedFiles: number; totalFiles: number }>({
+	let uploadProgress = $state<{
+		uploadedFiles: number;
+		totalFiles: number;
+		percent?: number;
+	}>({
 		uploadedFiles: 0,
 		totalFiles: 0
 	});
 	let mediaUploader = $state<MediaUploader | null>(null);
 	let uploadCancelled = $state(false);
+	/** 是否存在上传失败文件，需展示重试/删除失败项按钮 */
+	let hasUploadError = $state(false);
+	/** 当前上传批次 ID，供重试成功或删除失败项后调用 getBatchMedia */
+	let currentBatchId = $state<string | null>(null);
 
 	function buildDraft(isAutoSave: boolean): ReleaseDraft {
 		const clampedCoverIndex =
@@ -257,6 +265,8 @@
 	 */
 	async function handleSubmit() {
 		showPublishConfirm = false;
+		hasUploadError = false;
+		currentBatchId = null;
 
 		if (cachedMediaItems.length === 0) {
 			await doCreatePost([], '');
@@ -281,16 +291,34 @@
 			uploadProgress = { uploadedFiles: completedCount, totalFiles };
 		};
 
+		const handleProgress = (percent: number) => {
+			uploadProgress = { ...uploadProgress, percent };
+		};
+
 		try {
 			const batchId = await mediaUploader.upload(params);
+			currentBatchId = batchId;
 			if (uploadCancelled) return;
 
+			mediaUploader.uppy.on('progress', handleProgress);
 			mediaUploader.uppy.on('upload-success', handleUploadSuccess);
 
-			await mediaUploader.uppy.upload();
-			mediaUploader.uppy.off('upload-success', handleUploadSuccess);
+			let result;
+			try {
+				result = await mediaUploader.uppy.upload();
+			} finally {
+				mediaUploader.uppy.off('progress', handleProgress);
+				mediaUploader.uppy.off('upload-success', handleUploadSuccess);
+			}
 
 			if (uploadCancelled) return;
+
+			// uppy.upload() 部分/全部失败时不抛错，返回 { successful, failed }
+			if (result?.failed && result.failed.length > 0) {
+				hasUploadError = true;
+				toast.error(TOAST_MESSAGES.UPLOAD_PARTIAL_FAILED);
+				return;
+			}
 
 			const mediaAssets = await mediaUploader.getBatchMedia(batchId);
 			await doCreatePost(mediaAssets, batchId);
@@ -299,7 +327,54 @@
 				toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 			}
 		} finally {
-			isUploading = false;
+			// 有失败时保持 isUploading，在 action bar 展示重试/删除
+			if (!hasUploadError) {
+				isUploading = false;
+			}
+		}
+	}
+
+	/** 重试所有失败文件，全部成功则继续发布。 */
+	async function handleRetryUpload() {
+		if (!mediaUploader || !hasUploadError || !currentBatchId) return;
+		hasUploadError = false;
+		try {
+			const result = await mediaUploader.retryAll();
+			if (result?.failed && result.failed.length > 0) {
+				hasUploadError = true;
+				toast.error(
+					formatUploadError(result.failed[0]?.error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY
+				);
+				return;
+			}
+			const mediaAssets = await mediaUploader.getBatchMedia(currentBatchId);
+			await doCreatePost(mediaAssets, currentBatchId);
+		} catch (e) {
+			hasUploadError = true;
+			toast.error(formatUploadError(e) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+		} finally {
+			if (!hasUploadError) {
+				isUploading = false;
+			}
+		}
+	}
+
+	/** 从队列移除失败文件，仅用已成功文件继续发布。 */
+	async function handleRemoveFailedAndProceed() {
+		if (!mediaUploader || !hasUploadError || !currentBatchId) return;
+		const failed = mediaUploader.uppy.getFiles().filter((f) => f.error);
+		for (const f of failed) {
+			mediaUploader.uppy.removeFile(f.id);
+		}
+		hasUploadError = false;
+		isUploading = false;
+		const batchId = currentBatchId;
+		// getBatchMedia 仅返回已成功上传的媒体，全部失败时返回 []
+		try {
+			const mediaAssets = await mediaUploader.getBatchMedia(batchId);
+			await doCreatePost(mediaAssets, batchId);
+		} catch (e) {
+			toast.error(formatUploadError(e) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 		}
 	}
 
@@ -334,6 +409,7 @@
 	function handleCancelUpload() {
 		uploadCancelled = true;
 		mediaUploader?.cancelAll();
+		hasUploadError = false;
 		isUploading = false;
 		toast.info(TOAST_MESSAGES.UPLOAD_CANCELLED);
 	}
@@ -363,7 +439,6 @@
 	}
 
 	// 需求 6.2.5.1-1：未设置封面时，以第 1 张图片或视频首帧作为封面
-	// TODO(6.2.5.1-1): 视频首帧兜底、无图片/视频时用正文内容生成封面
 	$effect(() => {
 		if (cachedMediaItems.length > 0 && selectedCoverIndex >= cachedMediaItems.length) {
 			selectedCoverIndex = 0;
@@ -656,6 +731,7 @@
 	<ReleaseActionBar
 		{isUploading}
 		{uploadProgress}
+		{hasUploadError}
 		{lastSaved}
 		{lastSavedIsAutoSave}
 		bind:showLeaveConfirm
@@ -667,5 +743,7 @@
 		onLeaveCancel={handleLeaveCancel}
 		onSubmit={handleSubmit}
 		onCancelUpload={handleCancelUpload}
+		onRetryUpload={handleRetryUpload}
+		onRemoveFailedAndProceed={handleRemoveFailedAndProceed}
 	/>
 </main>
