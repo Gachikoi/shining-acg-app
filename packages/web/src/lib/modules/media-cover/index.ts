@@ -1,4 +1,5 @@
 import type { V1PostContentUnit } from '$lib/api/types.gen';
+import type { DraftMediaItem } from '$lib/stores/release';
 import { getPreviewBlob } from '$lib/modules/release-media';
 import {
 	DEFAULT_TEXT_COVER_STYLE_ID,
@@ -36,6 +37,32 @@ export {
 	registerTextCoverRenderer,
 	isTextCoverStyleId
 };
+export { isImageItem, isVideoItem } from './media-item-utils';
+
+/** 骨架屏：浅灰，抽取中显示 */
+export const PLACEHOLDER_VIDEO_LOADING =
+	'data:image/svg+xml,' +
+	encodeURIComponent(
+		'<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect fill="#e5e5e5" width="96" height="96"/><text fill="#a3a3a3" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="12">加载中</text></svg>'
+	);
+
+/** 失败占位：深灰 +「视频」 */
+export const PLACEHOLDER_VIDEO_FAILED =
+	'data:image/svg+xml,' +
+	encodeURIComponent(
+		'<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect fill="#666" width="96" height="96"/><text fill="white" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="14">视频</text></svg>'
+	);
+
+/** 获取用于缩略图显示的 Blob（图片直接返回，视频抽取首帧） */
+export async function getPreviewBlobForDisplay(item: DraftMediaItem): Promise<Blob> {
+	if (isImageItem(item)) {
+		return getPreviewBlob(item);
+	}
+	if (isVideoItem(item)) {
+		return extractVideoFrameBlob(getVideoBlob(item));
+	}
+	return getPreviewBlob(item);
+}
 
 export async function resolveCoverBlob(options: ResolveCoverBlobOptions): Promise<{
 	blob: Blob;

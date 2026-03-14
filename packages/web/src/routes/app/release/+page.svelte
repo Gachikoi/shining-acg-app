@@ -47,6 +47,11 @@
 	} from '$lib/modules/release-media';
 	import {
 		DEFAULT_TEXT_COVER_STYLE_ID,
+		getPreviewBlobForDisplay,
+		isImageItem,
+		isVideoItem,
+		PLACEHOLDER_VIDEO_FAILED,
+		PLACEHOLDER_VIDEO_LOADING,
 		resolveCoverBlob,
 		type CoverSource
 	} from '$lib/modules/media-cover';
@@ -196,7 +201,7 @@
 		mediaFileInputRef?.click();
 	}
 
-	/** 处理文件选择，解析 Live Photo 并转为 DraftMediaItem 追加。 */
+	/** 处理文件选择，解析 Live Photo 并转为 DraftMediaItem 追加。视频项先显示骨架屏，异步抽取首帧后更新。 */
 	function handleFileSelect(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const newFiles = Array.from(input.files ?? []);
@@ -215,9 +220,36 @@
 			if (newItems.length > remaining) {
 				toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
 			}
-			const newUrls = toAdd.map((item) => URL.createObjectURL(getPreviewBlob(item)));
+			const baseIndex = cachedMediaItems.length;
 			cachedMediaItems = [...cachedMediaItems, ...toAdd];
-			cachedMediaUrls = [...cachedMediaUrls, ...newUrls];
+			const initialUrls = toAdd.map((item) =>
+				isImageItem(item)
+					? URL.createObjectURL(getPreviewBlob(item))
+					: isVideoItem(item)
+						? PLACEHOLDER_VIDEO_LOADING
+						: URL.createObjectURL(getPreviewBlob(item))
+			);
+			cachedMediaUrls = [...cachedMediaUrls, ...initialUrls];
+
+			let hasFailed = false;
+			toAdd.forEach((item, i) => {
+				if (!isVideoItem(item)) return;
+				const idx = baseIndex + i;
+				getPreviewBlobForDisplay(item)
+					.then((blob) => URL.createObjectURL(blob))
+					.then((url) => {
+						cachedMediaUrls = cachedMediaUrls.map((u, j) => (j === idx ? url : u));
+					})
+					.catch(() => {
+						cachedMediaUrls = cachedMediaUrls.map((u, j) =>
+							j === idx ? PLACEHOLDER_VIDEO_FAILED : u
+						);
+						if (!hasFailed) {
+							hasFailed = true;
+							toast.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
+						}
+					});
+			});
 		} catch (err) {
 			toast.error(formatUploadError(err) || '文件解析失败');
 		}
@@ -428,7 +460,13 @@
 			textCoverStyleId = draft.textCoverStyleId ?? DEFAULT_TEXT_COVER_STYLE_ID;
 			const items = draft.mediaItems ?? [];
 			cachedMediaItems = [...items];
-			cachedMediaUrls = items.map((item) => URL.createObjectURL(getPreviewBlob(item)));
+			cachedMediaUrls = items.map((item) =>
+				isImageItem(item)
+					? URL.createObjectURL(getPreviewBlob(item))
+					: isVideoItem(item)
+						? PLACEHOLDER_VIDEO_LOADING
+						: URL.createObjectURL(getPreviewBlob(item))
+			);
 			selectedCoverIndex =
 				cachedMediaItems.length === 0
 					? 0
@@ -440,6 +478,25 @@
 				...draft,
 				mediaItems: draft.mediaItems ?? []
 			};
+
+			let hasFailed = false;
+			items.forEach((item, idx) => {
+				if (!isVideoItem(item)) return;
+				getPreviewBlobForDisplay(item)
+					.then((blob) => URL.createObjectURL(blob))
+					.then((url) => {
+						cachedMediaUrls = cachedMediaUrls.map((u, j) => (j === idx ? url : u));
+					})
+					.catch(() => {
+						cachedMediaUrls = cachedMediaUrls.map((u, j) =>
+							j === idx ? PLACEHOLDER_VIDEO_FAILED : u
+						);
+						if (!hasFailed) {
+							hasFailed = true;
+							toast.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
+						}
+					});
+			});
 		});
 
 		// 每 60s 自动保存
