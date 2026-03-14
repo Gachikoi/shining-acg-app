@@ -32,6 +32,7 @@
 	import { partitionServiceListPartitions, postServiceCreatePost } from '$lib/api';
 	import type { V1PostContentUnit } from '$lib/api/types.gen';
 	import {
+		RELEASE_DRAFT_SCHEMA_VERSION,
 		saveReleaseDraft,
 		loadReleaseDraft,
 		clearReleaseDraft,
@@ -44,7 +45,11 @@
 		getPreviewBlob,
 		mediaItemsEqual
 	} from '$lib/modules/release-media';
-	import { resolveCoverBlob, type CoverSource } from '$lib/modules/media-cover';
+	import {
+		DEFAULT_TEXT_COVER_STYLE_ID,
+		resolveCoverBlob,
+		type CoverSource
+	} from '$lib/modules/media-cover';
 	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
 	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
@@ -62,6 +67,7 @@
 	let cachedMediaUrls = $state<string[]>([]);
 	let selectedCoverIndex = $state(0);
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
+	let textCoverStyleId = $state(DEFAULT_TEXT_COVER_STYLE_ID);
 	let coverPreviewUrl = $state<string | null>(null);
 	let coverSource = $state<CoverSource>('text-generated');
 	let isCoverResolving = $state(false);
@@ -114,7 +120,9 @@
 			selectedSection,
 			coverRatio,
 			selectedCoverIndex: clampedCoverIndex,
-			mediaItems: [...cachedMediaItems]
+			mediaItems: [...cachedMediaItems],
+			schemaVersion: RELEASE_DRAFT_SCHEMA_VERSION,
+			textCoverStyleId
 		};
 	}
 
@@ -124,6 +132,7 @@
 			a.selectedSection === b.selectedSection &&
 			a.coverRatio === b.coverRatio &&
 			a.selectedCoverIndex === b.selectedCoverIndex &&
+			a.textCoverStyleId === b.textCoverStyleId &&
 			JSON.stringify(a.bodyContent) === JSON.stringify(b.bodyContent) &&
 			mediaItemsEqual(a.mediaItems, b.mediaItems)
 		);
@@ -158,6 +167,7 @@
 		clearCoverPreviewUrl();
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
+		textCoverStyleId = DEFAULT_TEXT_COVER_STYLE_ID;
 		cachedMediaItems = [];
 		cachedMediaUrls = [];
 		selectedCoverIndex = 0;
@@ -371,7 +381,7 @@
 
 	$effect(() => {
 		const mediaCount = cachedMediaItems.length;
-		const textTrigger = `${titleContent.length}:${coverBodyInputVersion}:${coverRatio}:${
+		const textTrigger = `${titleContent.length}:${coverBodyInputVersion}:${coverRatio}:${textCoverStyleId}:${
 			initialBodyContent?.length ?? 0
 		}`;
 		// 无媒体时才需要文字封面重算，并加防抖降低 canvas 重绘频率。
@@ -414,6 +424,7 @@
 			titleContent = draft.title;
 			selectedSection = draft.selectedSection;
 			coverRatio = draft.coverRatio as CoverRatio;
+			textCoverStyleId = draft.textCoverStyleId ?? DEFAULT_TEXT_COVER_STYLE_ID;
 			const items = draft.mediaItems ?? [];
 			cachedMediaItems = [...items];
 			cachedMediaUrls = items.map((item) => URL.createObjectURL(getPreviewBlob(item)));
@@ -537,7 +548,8 @@
 				selectedCoverIndex,
 				ratio: coverRatio,
 				title: titleContent,
-				content: getCurrentBodyContent()
+				content: getCurrentBodyContent(),
+				textCoverStyleId
 			});
 			if (token !== coverResolveSeq) return;
 			// URL 统一在 replace 内部替换并释放旧值，避免对象 URL 泄漏。
