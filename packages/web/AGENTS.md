@@ -47,7 +47,7 @@ src/
 │   │   └── ui/             # shadcn-svelte components
 │   ├── constants.ts        # App constants
 │   ├── models/             # Data models
-│   ├── modules/            # Feature modules (gesture, cache, device, bridge, virtual-feed, release-media)
+│   ├── modules/            # Feature modules (gesture, cache, device, bridge, virtual-feed, release-media, media-cover)
 │   ├── stores/             # Svelte state stores
 │   │   ├── feed/           # Feed 瀑布流 store
 │   │   └── release/        # 发布页 store（草稿持久化）
@@ -253,3 +253,24 @@ const batchId = await uploader.upload(params);
 ```
 
 - 草稿媒体以 `DraftMediaItem[]` 存于 IndexedDB（Blob + name，支持 single 与 live_photo），上传前由 `draftItemsToPrepareParams` 重建 File。
+
+---
+
+## Release 封面与草稿演进
+
+### 封面样式接口（media-cover）
+
+`src/lib/modules/media-cover/` 提供视频首帧抽取、文字封面生成与统一封面决策。
+
+- **TextCoverRenderer**：文字封面渲染器接口，通过 `registerTextCoverRenderer` 注册；新增样式时实现该接口并注册，禁止覆盖已有 id。
+- **样式 ID 白名单**：仅已注册样式视为合法；`resolveCoverBlob` 收到未知 `textCoverStyleId` 时回退 `default`，保证线上稳定。
+- **默认样式**：`DEFAULT_TEXT_COVER_STYLE_ID = 'default'`，新增样式需在 registry 中注册后方可被选用。
+
+### 草稿结构演进
+
+`src/lib/stores/release/release-draft.ts` 采用 **schemaVersion + 默认值填充** 管理草稿结构演进。
+
+- **默认值填充**：新增字段时递增 `RELEASE_DRAFT_SCHEMA_VERSION`，并在 `loadReleaseDraft` 中为缺失字段补充默认值；项目未上线前无需迁移链。
+- **禁止破坏性变更**：不得删除或重命名已有字段。
+- **归一化**：加载后对 `textCoverStyleId` 等做白名单校验，非法值回退 `default`；必要时回写最新结构。
+- **上线后**：若需兼容旧版草稿，再引入迁移链（`migrateDraftVxToVy` 等）。
