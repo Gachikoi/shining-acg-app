@@ -15,20 +15,17 @@
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
-	import { Button } from '$lib/components/ui/button';
-	import { Label } from '$lib/components/ui/label';
-	import { PlusIcon, XIcon } from 'lucide-svelte';
-	import { Input } from '$lib/components/ui/input';
-	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
 	import { ReleaseCoverPreview } from '$lib/components/custom/release';
 	import { toast } from 'svelte-sonner';
 	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 	import {
-		ShinRichTextarea,
 		createFetchMentionUsersFromFollowings,
 		extractContentFromShinRichTextarea
 	} from '$lib/components/custom/shin-rich';
-	import * as Select from '$lib/components/ui/select';
+	import ReleaseMediaPicker from './components/release-media-picker.svelte';
+	import ReleaseBodySection from './components/release-body-section.svelte';
+	import ReleasePartitionSelect from './components/release-partition-select.svelte';
+	import ReleaseActionBar from './components/release-action-bar.svelte';
 	import { partitionServiceListPartitions, postServiceCreatePost } from '$lib/api';
 	import type { V1PostContentUnit } from '$lib/api/types.gen';
 	import {
@@ -55,7 +52,6 @@
 		resolveCoverBlob,
 		type CoverSource
 	} from '$lib/modules/media-cover';
-	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
 	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
 	import { createMediaUploader } from '$lib/modules/media-uploader';
@@ -101,17 +97,6 @@
 	});
 	let mediaUploader = $state<MediaUploader | null>(null);
 	let uploadCancelled = $state(false);
-
-	// 隐藏的文件 input 引用，由"+"按钮触发点击
-	let mediaFileInputRef = $state<HTMLInputElement | null>(null);
-
-	let selectedSectionLabel = $derived(
-		partitionsLoading
-			? '加载中...'
-			: selectedSection
-				? (partitions.find((p) => p.value === selectedSection)?.label ?? '请选择')
-				: '请选择'
-	);
 
 	function buildDraft(isAutoSave: boolean): ReleaseDraft {
 		const clampedCoverIndex =
@@ -195,11 +180,6 @@
 	// ── 图片/视频选择器 ────────────────────────────────────────────────
 
 	const MAX_MEDIA_COUNT = 20; // 需求 6.2.5.1-2：最多 20 张
-
-	/** 用户点击"+"时触发隐藏文件 input 的点击。 */
-	function handleAddMediaClick() {
-		mediaFileInputRef?.click();
-	}
 
 	/** 处理文件选择，解析 Live Photo 并转为 DraftMediaItem 追加。视频项先显示骨架屏，异步抽取首帧后更新。 */
 	function handleFileSelect(e: Event) {
@@ -647,182 +627,45 @@
 			isLoading={isCoverResolving}
 			onToggleRatio={rotateCoverRatio}
 		/>
-		<!-- 图片/视频选择器 - 需求 6.2.5.1-2 -->
-		<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
-		<p class="text-sm text-muted-foreground">
-			最多 {MAX_MEDIA_COUNT} 张，已选 {cachedMediaItems.length} 张
-		</p>
-
-		<!-- 隐藏文件 input：accept 同时支持图片和视频 -->
-		<input
-			bind:this={mediaFileInputRef}
-			type="file"
-			accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
-			multiple
-			class="hidden"
-			onchange={handleFileSelect}
+		<ReleaseMediaPicker
+			items={cachedMediaItems}
+			urls={cachedMediaUrls}
+			maxCount={MAX_MEDIA_COUNT}
+			onFileSelect={handleFileSelect}
+			onRemove={handleRemoveMedia}
 		/>
-
-		<div class="mt-3 flex flex-wrap gap-2">
-			{#each cachedMediaItems as _, index (index)}
-				<!-- 缩略图 + 删除按钮叠层 -->
-				<div class="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
-					<img
-						src={cachedMediaUrls[index]}
-						alt={`媒体 ${index + 1}`}
-						class="h-full w-full object-cover"
-						draggable="false"
-					/>
-					<!-- 删除按钮覆盖在右上角 -->
-					<button
-						class="absolute top-1 right-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-zinc-900/60 text-zinc-100 hover:bg-zinc-900/80"
-						onclick={() => handleRemoveMedia(index)}
-						aria-label="删除"
-					>
-						<XIcon class="size-3" />
-					</button>
-				</div>
-			{/each}
-			<!-- 仅在未达上限时显示添加按钮 -->
-			{#if cachedMediaItems.length < MAX_MEDIA_COUNT}
-				<button
-					class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-					onclick={handleAddMediaClick}
-					aria-label="添加图片/视频"
-				>
-					<PlusIcon class="size-4 text-muted-foreground" />
-				</button>
-			{/if}
-		</div>
-		<!-- 正文内容：标题 20 字、描述 10000 字、@ 用户见 ShinRichTextarea -->
-		<p class="mt-6 text-lg font-bold">正文内容</p>
-		<div class="relative mt-2">
-			<Input
-				bind:value={titleContent}
-				maxlength={titleWordLimit}
-				placeholder="填写标题"
-				class="pr-16"
-			></Input>
-			<div
-				class="pointer-events-none absolute right-3 bottom-1/2 translate-y-1/2 text-muted-foreground"
-			>
-				{titleContent.length}/{titleWordLimit}
-			</div>
-		</div>
-		{#key resetKey}
-			<ShinRichTextarea
-				placeholder="添加帖子描述"
-				class="mt-5"
-				bind:contentEditableRef={contenteditableRef}
-				initialContent={initialBodyContent}
-				{fetchMentionUsers}
-				onMentionClick={(userId) => {
-					// @ts-expect-error - /app/profile/[userId] 路由待个人资料模块实现
-					goto(resolve(`/app/profile/${userId}`));
-				}}
-			/>
-		{/key}
-
-		<!-- 需求 6.2.5.1-4：分区选择必填，与管理-分区编辑同步 -->
-		<p class="mt-6 text-lg font-bold">分区选择<span class="text-red-500">*</span></p>
-		<div class="mt-2">
-			{#if partitionsError}
-				<p class="text-sm text-destructive">{partitionsError}</p>
-			{:else if !partitionsLoading && partitions.length === 0}
-				<p class="text-sm text-muted-foreground">
-					暂无分区喵。但这怎么可能？如果你看到了这段文字，请联系开发人员。
-				</p>
-			{:else}
-				<Select.Root
-					type="single"
-					name="section"
-					bind:value={selectedSection}
-					disabled={partitionsLoading}
-				>
-					<Select.Trigger class="min-w-31.5 text-sm">
-						{selectedSectionLabel}
-					</Select.Trigger>
-					<Select.Content>
-						<Select.Group>
-							{#each partitions as section (section.value)}
-								<Select.Item value={section.value}>{section.label}</Select.Item>
-							{/each}
-						</Select.Group>
-					</Select.Content>
-				</Select.Root>
-			{/if}
-		</div>
+		<ReleaseBodySection
+			bind:title={titleContent}
+			bind:contenteditableRef
+			{initialBodyContent}
+			{resetKey}
+			{titleWordLimit}
+			{fetchMentionUsers}
+			onMentionClick={(userId) => {
+				// @ts-expect-error - /app/profile/[userId] 路由待个人资料模块实现
+				goto(resolve(`/app/profile/${userId}`));
+			}}
+		/>
+		<ReleasePartitionSelect
+			{partitions}
+			bind:selectedSection
+			loading={partitionsLoading}
+			error={partitionsError}
+		/>
 	</div>
-	<!-- 底部按钮：需求 6.2.5.2 操作区 -->
-	<!-- 保存：无变更时 toast、有变更持久化、1min 自动保存、显示「保存于/自动保存于 xx:xx」 -->
-	<div class="flex gap-2 border-t border-zinc-100 p-4 font-medium">
-		<ConfirmDialog onConfirm={handleReset} confirmText="重置">
-			{#snippet trigger()}
-				<Button
-					variant="tertiary"
-					class="cursor-pointer text-muted-foreground"
-					disabled={isUploading}>重置</Button
-				>
-			{/snippet}
-			{#snippet description()}
-				<p>
-					确定要重置吗？
-					<br />
-					编辑的内容将会丢失
-				</p>
-			{/snippet}
-		</ConfirmDialog>
-		<ConfirmDialog
-			bind:open={showLeaveConfirm}
-			onConfirm={handleLeaveConfirm}
-			onCancel={handleLeaveCancel}
-			confirmText="退出"
-		>
-			{#snippet description()}
-				<p>有未保存的变更，是否退出编辑？<br />退出前将自动保存。</p>
-			{/snippet}
-		</ConfirmDialog>
-		<ConfirmDialog bind:open={showPublishConfirm} onConfirm={handleSubmit} confirmText="发布">
-			{#snippet description()}
-				<p>确定要发布这篇帖子吗？<br />发布后将立即对所有人可见。</p>
-			{/snippet}
-		</ConfirmDialog>
-		<Button
-			variant="tertiary"
-			class="cursor-pointer text-muted-foreground"
-			onclick={handleSave}
-			disabled={isUploading}>保存</Button
-		>
-
-		{#if isUploading}
-			<!-- 上传中：显示进度 + 取消按钮 -->
-			<!-- TODO(6.2.5.4-1): 完整实现需求中的 App 横幅通知进度条（等横幅通知组件就绪后替换） -->
-			<div class="flex flex-1 items-center gap-3">
-				<span class="text-sm text-muted-foreground">
-					上传中 {uploadProgress.uploadedFiles}/{uploadProgress.totalFiles}…
-				</span>
-				<ConfirmDialog onConfirm={handleCancelUpload} confirmText="取消上传">
-					{#snippet trigger()}
-						<Button variant="tertiary" class="cursor-pointer text-destructive">取消</Button>
-					{/snippet}
-					{#snippet description()}
-						<p>确定要取消上传吗？已上传的内容将被清理。</p>
-					{/snippet}
-				</ConfirmDialog>
-			</div>
-		{:else}
-			<Button
-				variant="default"
-				class="flex-1 cursor-pointer transition-none lg:flex-none"
-				onclick={handlePublishClick}>发布帖子</Button
-			>
-		{/if}
-
-		{#if lastSaved && !isUploading}
-			<div class="mx-4 flex items-center text-sm text-muted-foreground">
-				{lastSavedIsAutoSave ? '自动保存于 ' : '保存于 '}
-				{formatTimeAccuracyFirst(lastSaved)}
-			</div>
-		{/if}
-	</div>
+	<ReleaseActionBar
+		{isUploading}
+		{uploadProgress}
+		{lastSaved}
+		{lastSavedIsAutoSave}
+		bind:showLeaveConfirm
+		bind:showPublishConfirm
+		onReset={handleReset}
+		onSave={handleSave}
+		onPublishClick={handlePublishClick}
+		onLeaveConfirm={handleLeaveConfirm}
+		onLeaveCancel={handleLeaveCancel}
+		onSubmit={handleSubmit}
+		onCancelUpload={handleCancelUpload}
+	/>
 </main>
