@@ -1,28 +1,11 @@
 <script module lang="ts">
 	// 常量定义
 	// 参考产品需求文档 6.2.5 发布 (Release)
-	import { linear } from 'svelte/easing';
 	import { CoverRatioArray, type CoverRatio } from '$lib/stores/release';
 
-	// 封面比例对应的宽高
-	const coverRatioToAspectRatio: Record<CoverRatio, string> = {
-		'1:1': 'w-39 h-39',
-		'4:3': 'w-52 h-39',
-		'3:4': 'w-39 h-52'
-	} as const;
 	const defaultCoverRatio: CoverRatio = '3:4';
 
 	const titleWordLimit = 20; // 标题字数限制，需求 6.2.5.1-3：最大 20 个字符
-
-	// 出现然后淡出，用于封面比例标签提示
-	const appearThenFade = (_: Element, { delay = 500, duration = 400, easing = linear } = {}) => {
-		return {
-			delay,
-			duration,
-			easing,
-			css: (t: number) => `opacity: ${1 - t};`
-		};
-	};
 </script>
 
 <script lang="ts">
@@ -34,10 +17,10 @@
 	import { goto, beforeNavigate } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
-	import { cn } from '$lib/utils';
 	import { PlusIcon, XIcon } from 'lucide-svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { ConfirmDialog } from '$lib/components/custom/confirm-dialog';
+	import { ReleaseCoverPreview } from '$lib/components/custom/release';
 	import { toast } from 'svelte-sonner';
 	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 	import {
@@ -61,6 +44,7 @@
 		getPreviewBlob,
 		mediaItemsEqual
 	} from '$lib/modules/release-media';
+	import { resolveCoverBlob, type CoverSource } from '$lib/modules/media-cover';
 	import { formatTimeAccuracyFirst } from '$lib/utils/format-time';
 	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
@@ -78,6 +62,12 @@
 	let cachedMediaUrls = $state<string[]>([]);
 	let selectedCoverIndex = $state(0);
 	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
+	let coverPreviewUrl = $state<string | null>(null);
+	let coverSource = $state<CoverSource>('text-generated');
+	let isCoverResolving = $state(false);
+	let coverBodyInputVersion = $state(0);
+	let coverResolveSeq = 0;
+	let coverResolveTimer: ReturnType<typeof setTimeout> | null = null;
 	let titleContent = $state('');
 	let contenteditableRef = $state<HTMLDivElement | null>(null);
 	let initialBodyContent = $state<V1PostContentUnit[] | undefined>(undefined);
@@ -165,6 +155,7 @@
 		for (const url of cachedMediaUrls) {
 			URL.revokeObjectURL(url);
 		}
+		clearCoverPreviewUrl();
 		titleContent = '';
 		coverRatio = defaultCoverRatio;
 		cachedMediaItems = [];
@@ -356,6 +347,39 @@
 		}
 	});
 
+	$effect(() => {
+		const editable = contenteditableRef;
+		if (!editable) return;
+		// 正文变化频率高，单独维护一个版本号作为封面重算触发源。
+		const onInput = () => {
+			coverBodyInputVersion += 1;
+		};
+		editable.addEventListener('input', onInput);
+		return () => {
+			editable.removeEventListener('input', onInput);
+		};
+	});
+
+	$effect(() => {
+		const mediaCount = cachedMediaItems.length;
+		const coverIndex = selectedCoverIndex;
+		const ratio = coverRatio;
+		if (mediaCount >= 0 && coverIndex >= 0 && ratio.length > 0) {
+			void resolveCoverPreview(0);
+		}
+	});
+
+	$effect(() => {
+		const mediaCount = cachedMediaItems.length;
+		const textTrigger = `${titleContent.length}:${coverBodyInputVersion}:${coverRatio}:${
+			initialBodyContent?.length ?? 0
+		}`;
+		// 无媒体时才需要文字封面重算，并加防抖降低 canvas 重绘频率。
+		if (mediaCount === 0 && textTrigger.length >= 0) {
+			void resolveCoverPreview(250);
+		}
+	});
+
 	// 获取分区列表
 	$effect(() => {
 		let cancelled = false;
@@ -458,10 +482,78 @@
 	onDestroy(() => {
 		mediaUploader?.destroy();
 		mediaUploader = null;
+		if (coverResolveTimer) {
+			clearTimeout(coverResolveTimer);
+			coverResolveTimer = null;
+		}
 		for (const url of cachedMediaUrls) {
 			URL.revokeObjectURL(url);
 		}
+		clearCoverPreviewUrl();
 	});
+
+	function getCurrentBodyContent(): V1PostContentUnit[] {
+		if (contenteditableRef) {
+			return extractContentFromShinRichTextarea(contenteditableRef);
+		}
+		return initialBodyContent ?? [];
+	}
+
+	function clearCoverPreviewUrl(): void {
+		if (coverPreviewUrl) {
+			URL.revokeObjectURL(coverPreviewUrl);
+			coverPreviewUrl = null;
+		}
+	}
+
+	function replaceCoverPreviewUrl(nextBlob: Blob): void {
+		const nextUrl = URL.createObjectURL(nextBlob);
+		clearCoverPreviewUrl();
+		coverPreviewUrl = nextUrl;
+	}
+
+	async function resolveCoverPreview(delayMs: number): Promise<void> {
+		// 递增 token：旧异步任务完成时不会覆盖最新封面结果。
+		const token = ++coverResolveSeq;
+		if (coverResolveTimer) {
+			clearTimeout(coverResolveTimer);
+			coverResolveTimer = null;
+		}
+		await new Promise<void>((resolve) => {
+			coverResolveTimer = setTimeout(
+				() => {
+					coverResolveTimer = null;
+					resolve();
+				},
+				Math.max(0, delayMs)
+			);
+		});
+		if (token !== coverResolveSeq) return;
+
+		isCoverResolving = true;
+		try {
+			const { blob, source } = await resolveCoverBlob({
+				mediaItems: cachedMediaItems,
+				selectedCoverIndex,
+				ratio: coverRatio,
+				title: titleContent,
+				content: getCurrentBodyContent()
+			});
+			if (token !== coverResolveSeq) return;
+			// URL 统一在 replace 内部替换并释放旧值，避免对象 URL 泄漏。
+			replaceCoverPreviewUrl(blob);
+			coverSource = source;
+		} catch (error) {
+			console.error('Resolve cover preview failed:', error);
+			if (token !== coverResolveSeq) return;
+			clearCoverPreviewUrl();
+			coverSource = 'text-generated';
+		} finally {
+			if (token === coverResolveSeq) {
+				isCoverResolving = false;
+			}
+		}
+	}
 </script>
 
 <main
@@ -478,34 +570,13 @@
 			</span>
 		</p>
 		<!-- 封面预览 -->
-		<button
-			class={cn(
-				'relative mt-4 flex cursor-pointer items-center justify-center rounded-xl bg-muted transition-all',
-				coverRatioToAspectRatio[coverRatio]
-			)}
-			onclick={rotateCoverRatio}
-		>
-			{#if cachedMediaUrls[selectedCoverIndex]}
-				<img
-					src={cachedMediaUrls[selectedCoverIndex]}
-					alt="封面"
-					class="h-full w-full cursor-pointer object-cover"
-					draggable="false"
-				/>
-				<!-- TODO(6.2.5.1-1): 封面只能选 1 张图，选择后强制弹出图片视频预览编辑器裁切成 1:1/4:3/3:4 -->
-			{:else}
-				<span class="text-xs text-muted-foreground">比例1:1 / 4:3 / 3:4</span>
-			{/if}
-			<!-- 封面比例标签提示，当封面比例改变时，标签提示出现，经过小段时间后标签自动淡出 -->
-			{#key coverRatio}
-				<div
-					class="pointer-events-none absolute top-5/6 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-md bg-zinc-900/60 px-2 py-1 text-xs text-zinc-100 opacity-0"
-					in:appearThenFade
-				>
-					{coverRatio}
-				</div>
-			{/key}
-		</button>
+		<ReleaseCoverPreview
+			ratio={coverRatio}
+			coverUrl={coverPreviewUrl}
+			source={coverSource}
+			isLoading={isCoverResolving}
+			onToggleRatio={rotateCoverRatio}
+		/>
 		<!-- 图片/视频选择器 - 需求 6.2.5.1-2 -->
 		<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 		<p class="text-sm text-muted-foreground">
