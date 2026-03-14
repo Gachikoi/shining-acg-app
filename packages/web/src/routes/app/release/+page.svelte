@@ -145,10 +145,11 @@
 
 	async function performSave(isAutoSave: boolean) {
 		const draft = buildDraft(isAutoSave);
-		await saveReleaseDraft(draft);
+		const snapshot = $state.snapshot(draft);
+		await saveReleaseDraft(snapshot);
 		lastSaved = draft.updatedAt;
 		lastSavedIsAutoSave = isAutoSave;
-		lastSavedSnapshot = draft;
+		lastSavedSnapshot = snapshot;
 	}
 
 	function handleSave() {
