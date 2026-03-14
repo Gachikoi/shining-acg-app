@@ -213,11 +213,12 @@
 		>
 			{placeholder}
 		</div>
+		<!-- 已知桌面端 bug: 当一直输入一个字母或者数字时，会把容器横向撑大，不会自动换行。wrap-break-word 没有效果，目前暂时无法解决。并且解决优先度低，因为这个 bug 只在输入长数字和英文时发生，且只在桌面端出现 -->
 		<div
 			contentEditable="true"
 			role="textbox"
 			tabindex="0"
-			class="min-h-12 outline-none"
+			class="min-h-12 wrap-break-word outline-none"
 			bind:this={contentEditableRef}
 			onkeydown={(e) => controller.handleKeydown(e)}
 			oninput={(e) => controller.handleRichTextareaInput(e)}
