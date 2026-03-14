@@ -64,13 +64,13 @@
 		confirmText="退出"
 	>
 		{#snippet description()}
-			<p>有未保存的变更，是否退出编辑？<br />退出前将自动保存。</p>
+			<p>确认退出编辑吗？</p>
 		{/snippet}
 	</ConfirmDialog>
 
 	<ConfirmDialog bind:open={showPublishConfirm} onConfirm={onSubmit} confirmText="发布">
 		{#snippet description()}
-			<p>确定要发布这篇帖子吗？<br />发布后将立即对所有人可见。</p>
+			<p>确定要发布帖子吗？</p>
 		{/snippet}
 	</ConfirmDialog>
 
