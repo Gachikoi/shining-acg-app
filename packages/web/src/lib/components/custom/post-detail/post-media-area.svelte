@@ -4,8 +4,7 @@
 	import { ChevronLeft, ChevronRight, Play } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
-	import { usePan, useTap } from 'svelte-gestures';
-	import type { TapCustomEvent } from 'svelte-gestures';
+	import { swipe, tap, GestureType } from '$lib/modules/gesture';
 	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
 
 	const {
@@ -15,13 +14,8 @@
 
 	let activeIndex = $state(0);
 	let gestureContainerEl: HTMLDivElement | null = $state(null);
-	// 拖拽滑动状态
 	let panOffsetX = $state(0);
-	let panStartX = 0;
-	let isPanning = $state(false);
-	let panContainerNode: HTMLElement | null = $state(null);
 	let lastPanEndTime = 0;
-	const PAN_THRESHOLD = 60;
 	const PAN_MAX_OFFSET_RATIO = 1.2;
 	const TAP_IGNORE_AFTER_PAN_MS = 200;
 	$effect(() => {
@@ -67,68 +61,42 @@
 		previewEditorAutoplay = autoplay;
 	}
 
-	function onTapGesture(e: TapCustomEvent) {
-		// 刚拖拽结束时短暂忽略 tap，避免误触
-		if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
-		const target = e.detail.target as HTMLElement;
-		if (target?.closest('button')) return;
-		let mediaContainer = target?.closest('[data-media-index]') as HTMLElement | null;
-		// 移动端 tap 的 target 可能是手势挂载的根节点，用触摸坐标反查所在 slide
-		if (!mediaContainer && gestureContainerEl && typeof document !== 'undefined') {
-			const rect = gestureContainerEl.getBoundingClientRect();
-			const clientX = rect.left + e.detail.x;
-			const clientY = rect.top + e.detail.y;
-			const hit = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
-			mediaContainer = hit?.closest?.('[data-media-index]') ?? null;
+	const swipeOptions = $derived.by(() => ({
+		gestureType: GestureType.MEDIA_CAROUSEL,
+		onSwipeMove(deltaX: number) {
+			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
+			const max = w * PAN_MAX_OFFSET_RATIO;
+			panOffsetX = Math.max(-max, Math.min(max, deltaX));
+		},
+		onSwipeEnd(direction: 'left' | 'right') {
+			if (Math.abs(panOffsetX) >= 10) lastPanEndTime = Date.now();
+			if (mediaList.length > 1) {
+				if (direction === 'right') prevMedia();
+				else nextMedia();
+			}
+			panOffsetX = 0;
+		},
+		onSwipeCancel() {
+			panOffsetX = 0;
 		}
-		if (!mediaContainer) return;
-		const mediaIndex = parseInt(mediaContainer.getAttribute('data-media-index') || '-1');
-		if (mediaIndex >= 0 && mediaIndex < mediaList.length) {
-			openPreviewEditor(mediaIndex);
-		}
-	}
-	// 拖拽横向切换
-	function onPanGesture() {}
-	const panGestureOpts = () => ({ delay: 0, touchAction: 'pan-y' as const });
-	function onPanDown(e: CustomEvent<{ x: number; attachmentNode?: HTMLElement }>) {
-		const node = (e.detail.attachmentNode ?? gestureContainerEl) as HTMLElement | null;
-		panStartX = e.detail.x;
-		panContainerNode = node;
-		isPanning = true;
-	}
-	function onPanMove(e: CustomEvent<{ x: number; attachmentNode?: HTMLElement }>) {
-		if (!isPanning) return;
-		const node = (panContainerNode ?? e.detail.attachmentNode) as HTMLElement | null;
-		const w = node?.getBoundingClientRect?.().width ?? 400;
-		const max = w * PAN_MAX_OFFSET_RATIO;
-		const raw = e.detail.x - panStartX;
-		panOffsetX = Math.max(-max, Math.min(max, raw));
-	}
-	function onPanUp() {
-		if (!isPanning) return;
-		if (Math.abs(panOffsetX) >= 10) {
-			lastPanEndTime = Date.now();
-		}
-		if (mediaList.length > 1) {
-			if (panOffsetX < -PAN_THRESHOLD) {
-				nextMedia();
-			} else if (panOffsetX > PAN_THRESHOLD) {
-				prevMedia();
+	}));
+	const tapOptions = $derived.by(() => ({
+		excludeSelector: 'button',
+		onTap(detail: { target: EventTarget; clientX: number; clientY: number }) {
+			if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
+			const target = detail.target as HTMLElement;
+			if (target?.closest('button')) return;
+			let mediaContainer = target?.closest?.('[data-media-index]') as HTMLElement | null;
+			if (!mediaContainer && gestureContainerEl && typeof document !== 'undefined') {
+				const hit = document.elementFromPoint(detail.clientX, detail.clientY) as HTMLElement | null;
+				mediaContainer = hit?.closest?.('[data-media-index]') ?? null;
+			}
+			if (!mediaContainer) return;
+			const mediaIndex = parseInt(mediaContainer.getAttribute('data-media-index') || '-1');
+			if (mediaIndex >= 0 && mediaIndex < mediaList.length) {
+				openPreviewEditor(mediaIndex);
 			}
 		}
-		isPanning = false;
-		panOffsetX = 0;
-		panStartX = 0;
-		panContainerNode = null;
-	}
-	const panGestureAttrs = usePan(onPanGesture, panGestureOpts, {
-		onpandown: onPanDown,
-		onpanmove: onPanMove,
-		onpanup: onPanUp
-	});
-	const tapGestureAttrs = useTap(onTapGesture, () => ({
-		timeframe: 250,
-		touchAction: 'pan-y' as const
 	}));
 </script>
 
@@ -138,8 +106,8 @@
 	class="group relative flex h-full w-full items-center justify-center bg-black/80"
 	role="group"
 	aria-roledescription="carousel"
-	{...panGestureAttrs}
-	{...tapGestureAttrs}
+	use:swipe={swipeOptions}
+	use:tap={tapOptions}
 >
 	{#if mediaList.length > 0 && activeIndex >= 0}
 		<!-- 媒体滑动视口 -->
@@ -148,7 +116,7 @@
 				class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
 				style={`transform: translateX(calc(-${activeIndex * 100}% + ${panOffsetX}px));`}
 			>
-				{#each mediaList as media, index (media.asset_id ?? index)}
+				{#each mediaList as media, index (media.assetId ?? index)}
 					<div
 						class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
 						data-media-index={index}
@@ -219,7 +187,7 @@
 				<div
 					class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
 				>
-					{#each mediaList as media, index (media.asset_id ?? index)}
+					{#each mediaList as media, index (media.assetId ?? index)}
 						<button
 							type="button"
 							class={cn(
