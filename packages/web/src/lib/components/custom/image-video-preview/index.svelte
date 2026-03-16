@@ -14,9 +14,7 @@
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
 	import { isMobileUA } from '$lib/utils/device';
-	import { usePan, useTap, usePress } from 'svelte-gestures';
-	import type { TapCustomEvent, PressCustomEvent } from 'svelte-gestures';
-	import type { GestureCustomEvent } from 'svelte-gestures';
+	import { swipe, tap, longPress, GestureType } from '$lib/modules/gesture';
 	import ImagePreview from './Image-preview.svelte';
 	import VideoPreview from './Video-preview.svelte';
 
@@ -80,23 +78,24 @@
 	let downloadError = $state<string | null>(null);
 	// 下载错误显示定时器
 	let downloadErrorTimer: ReturnType<typeof setTimeout> | null = null;
-	// 横向拖拽跟随
+	// 横向拖拽跟随（swipe 驱动）
 	let panOffsetX = $state(0);
-	let panStartX = 0;
 	let isPanning = $state(false);
-	let panContainerNode: HTMLElement | null = $state(null);
+	let gestureContainerEl: HTMLElement | null = $state(null);
 	let lastPanEndTime = 0;
 	// 刚打开预览后一段时间内忽略关闭（避免移动端「打开」触发的合成 click 落在预览层上误关）
 	let lastOpenedAt = 0;
 	const TAP_IGNORE_AFTER_OPEN_MS = 420;
 	const TAP_IGNORE_AFTER_PAN_MS = 380;
 	const TAP_PAUSE_IGNORE_PLAY_MS = 220;
-	const PAN_THRESHOLD = 60;
 	const PAN_MAX_OFFSET_RATIO = 1.2;
 	// 轻击暂停后短时间忽略播放（避免同一次触摸的合成 click 触发播放按钮）
 	let lastPausedByTapTime = 0;
 	// 长按边缘 2x 倍速：松手恢复 1x，并显示提示
 	let isEdgeTwoSpeedActive = $state(false);
+	// 刚关闭下载菜单后的短时间，避免随后触发的合成 click 误关预览（仅图片模式）
+	let lastDownloadMenuClosedAt = 0;
+	const DOWNLOAD_MENU_CLOSED_GRACE_MS = 450;
 
 	// 当前媒体
 	const currentMedia = $derived(
@@ -207,6 +206,9 @@
 			// ignore
 		}
 		isVideoBuffering = false;
+		// 暂停时关闭下载菜单，避免“点别处暂停但菜单仍开着”
+		downloadPopoverOpen = false;
+		contextMenuPosition = null;
 	}
 
 	// 进入视频预览（滑动切换进入 or 直接打开就是视频）时自动尝试播放一次
@@ -216,7 +218,7 @@
 		if (!isVideo) return;
 		if (!videoElement) return;
 		// 每次切换进入某个视频时，自动播放只尝试一次（避免重复触发）
-		const key = `${currentMedia?.asset_id ?? currentIndex}`;
+		const key = `${currentMedia?.assetId ?? currentIndex}`;
 		if (lastAutoplayKey === key) return;
 		lastAutoplayKey = key;
 		showControls = true;
@@ -297,9 +299,12 @@
 		if (el?.closest('[data-download-menu]')) return;
 		if (el?.closest('.video-controls')) return;
 		if (el?.closest('.play-button-area')) return;
+		// 点击小圆点/左右切换按钮等导航区只切换内容，不关闭预览
+		if (el?.closest('[data-preview-nav]')) return;
 		if (downloadPopoverOpen) {
 			downloadPopoverOpen = false;
 			contextMenuPosition = null;
+			lastDownloadMenuClosedAt = Date.now();
 			// 需求：有下载菜单时，轻击菜单外 -> 关闭菜单并进入播放状态（仅视频）
 			if (isVideo) {
 				lastPausedByTapTime = 0;
@@ -323,100 +328,71 @@
 			}
 			return;
 		}
+		// 图片：刚关闭下载菜单后的短时间不关预览，避免合成 click 误关
+		if (Date.now() - lastDownloadMenuClosedAt < DOWNLOAD_MENU_CLOSED_GRACE_MS) return;
 		// 刚打开后忽略：避免移动端「打开」产生的合成 click 落在预览层上误关
 		if (Date.now() - lastOpenedAt < TAP_IGNORE_AFTER_OPEN_MS) return;
 		handleClose();
 	}
 
-	// 手势不作用在视频控制区/播放按钮上，避免与点击冲突
-	let panIgnoreThisPointer = false;
-	// svelte-gestures：拖拽跟随 (usePan) / 轻击 (useTap) / 长按 (usePress)
-	const panGestureOpts = () => ({ delay: 0, touchAction: 'pan-y' as const });
-	function onPanGesture() {}
-	function onPanDown(e: GestureCustomEvent) {
-		const el = e.detail.target as HTMLElement;
-		if (el?.closest('.video-controls') || el?.closest('.play-button-area')) {
-			panIgnoreThisPointer = true;
-			return;
-		}
-		panIgnoreThisPointer = false;
-		panStartX = e.detail.x;
-		panContainerNode = e.detail.attachmentNode ?? null;
-		isPanning = true;
-	}
-	function onPanMove(e: GestureCustomEvent) {
-		if (panIgnoreThisPointer) return;
-		const node = panContainerNode ?? e.detail.attachmentNode;
-		const w = node?.getBoundingClientRect?.().width ?? 400;
-		const max = w * PAN_MAX_OFFSET_RATIO;
-		const raw = e.detail.x - panStartX;
-		panOffsetX = Math.max(-max, Math.min(max, raw));
-	}
-	const PAN_IGNORE_TAP_THRESHOLD = 10;
-	function onPanUp() {
-		if (panIgnoreThisPointer) {
-			panIgnoreThisPointer = false;
+	// 同一元素上 swipe + tap + long-press，用手势锁区分竞态
+	const swipeOptions = $derived.by(() => ({
+		gestureType: GestureType.PREVIEW_SWIPE,
+		onSwipeStart() {
+			isPanning = true;
+		},
+		onSwipeMove(deltaX: number) {
+			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
+			const max = w * PAN_MAX_OFFSET_RATIO;
+			panOffsetX = Math.max(-max, Math.min(max, deltaX));
+		},
+		onSwipeEnd(direction: 'left' | 'right') {
+			if (Math.abs(panOffsetX) >= 10) lastPanEndTime = Date.now();
 			isPanning = false;
-			return;
-		}
-		if (Math.abs(panOffsetX) >= PAN_IGNORE_TAP_THRESHOLD) {
-			lastPanEndTime = Date.now();
-		}
-		isPanning = false;
-		if (mediaList.length > 1) {
-			if (panOffsetX > PAN_THRESHOLD) prevMedia();
-			else if (panOffsetX < -PAN_THRESHOLD) nextMedia();
-		}
-		panOffsetX = 0;
-		panStartX = 0;
-		panContainerNode = null;
-	}
-	const tapGestureOpts = () => ({ timeframe: 250, touchAction: 'pan-y' as const });
-	function onTapGesture(e: TapCustomEvent) {
-		if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
-		handleContentTap(e.detail.target);
-	}
-	const pressGestureOpts = () => ({
-		timeframe: 550,
-		spread: 30,
-		touchAction: 'pan-y' as const,
-		triggerBeforeFinished: true
-	});
-	function onPressGesture(e: PressCustomEvent) {
-		if (!isMobile) return;
-		if (downloadPopoverOpen) return;
-		if (e.detail.pointerType !== 'touch') return;
-		const el = e.currentTarget as HTMLElement;
-		if (!el) return;
-		const rect = el.getBoundingClientRect();
-		// 视频：长按左右边缘 2x 倍速（松手恢复 1x），长按中间弹出下载菜单
-		if (isVideo) {
-			const xRatio = rect.width > 0 ? e.detail.x / rect.width : 0.5;
-			if (xRatio < 0.2 || xRatio > 0.8) {
-				isEdgeTwoSpeedActive = true;
-				changePlaybackRate(2);
-				return;
+			if (mediaList.length > 1) {
+				if (direction === 'right') prevMedia();
+				else nextMedia();
 			}
-			// 中间区域：进入暂停状态并弹出下载菜单
-			requestPause();
-			showControls = true;
+			panOffsetX = 0;
+		},
+		onSwipeCancel() {
+			isPanning = false;
+			panOffsetX = 0;
 		}
-		openDownloadMenuAtPoint(rect.left + e.detail.x, rect.top + e.detail.y);
-	}
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature for svelte-gestures onpressup
-	function onPressUp(_e: GestureCustomEvent) {
-		if (isEdgeTwoSpeedActive) {
-			isEdgeTwoSpeedActive = false;
-			changePlaybackRate(1);
+	}));
+	const tapOptions = $derived.by(() => ({
+		excludeSelector: '.video-controls, .play-button-area, [data-preview-nav]',
+		onTap(detail: { target: EventTarget }) {
+			if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
+			handleContentTap(detail.target);
 		}
-	}
-	const panGestureAttrs = usePan(onPanGesture, panGestureOpts, {
-		onpandown: onPanDown,
-		onpanmove: onPanMove,
-		onpanup: onPanUp
-	});
-	const tapGestureAttrs = useTap(onTapGesture, tapGestureOpts);
-	const pressGestureAttrs = usePress(onPressGesture, pressGestureOpts, { onpressup: onPressUp });
+	}));
+	const longPressOptions = $derived.by(() => ({
+		gestureType: GestureType.PREVIEW_LONG_PRESS,
+		excludeSelector: '.video-controls, .play-button-area',
+		touchOnly: true,
+		onPress(e: { x: number; clientX: number; clientY: number; currentTarget: HTMLElement }) {
+			if (downloadPopoverOpen) return;
+			const rect = e.currentTarget.getBoundingClientRect();
+			if (isVideo) {
+				const xRatio = rect.width > 0 ? e.x / rect.width : 0.5;
+				if (xRatio < 0.2 || xRatio > 0.8) {
+					isEdgeTwoSpeedActive = true;
+					changePlaybackRate(2);
+					return;
+				}
+				requestPause();
+				showControls = true;
+			}
+			openDownloadMenuAtPoint(e.clientX, e.clientY);
+		},
+		onPressUp() {
+			if (isEdgeTwoSpeedActive) {
+				isEdgeTwoSpeedActive = false;
+				changePlaybackRate(1);
+			}
+		}
+	}));
 
 	// 视频播放控制
 	function togglePlay() {
@@ -710,9 +686,9 @@
 		const isMediaImage = media.type === 'MEDIA_TYPE_IMAGE';
 		const extension = isMediaImage ? 'jpg' : 'mp4';
 		const fileId =
-			media.single?.file_id ??
-			media.live_photo?.image?.file_id ??
-			media.live_photo?.video?.file_id ??
+			media.single?.fileId ??
+			media.livePhoto?.image?.fileId ??
+			media.livePhoto?.video?.fileId ??
 			Date.now().toString();
 		const filename = `media_${fileId}.${extension}`;
 
@@ -852,10 +828,11 @@
 		<!-- 媒体内容 -->
 		{#if currentMedia}
 			<div
+				bind:this={gestureContainerEl}
 				class="group relative flex h-full w-full items-center justify-center overflow-hidden"
-				{...panGestureAttrs}
-				{...tapGestureAttrs}
-				{...pressGestureAttrs}
+				use:swipe={swipeOptions}
+				use:tap={tapOptions}
+				use:longPress={longPressOptions}
 			>
 				<div
 					class="h-full w-full"
@@ -905,6 +882,7 @@
 				{#if mediaList.length > 1 && !(isVideo && isFullscreen)}
 					<!-- 上一张 -->
 					<button
+						data-preview-nav
 						class={cn(
 							'absolute top-1/2 left-4 z-10 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-white transition-all hover:scale-110 hover:bg-black/60',
 							'hidden opacity-60 group-hover:opacity-100 md:block',
@@ -934,6 +912,7 @@
 
 					<!-- 下一张 -->
 					<button
+						data-preview-nav
 						class={cn(
 							'absolute top-1/2 right-4 z-10 hidden -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-white transition-all hover:scale-110 hover:bg-black/60 md:block',
 							'opacity-60 group-hover:opacity-100',
@@ -970,6 +949,7 @@
 
 					<!-- 底部小圆点指示器 -->
 					<div
+						data-preview-nav
 						class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 opacity-60 transition-opacity group-hover:opacity-100"
 					>
 						<div class="flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5">

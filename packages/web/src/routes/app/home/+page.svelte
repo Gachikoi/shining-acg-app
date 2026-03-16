@@ -276,6 +276,14 @@
 				</Button>
 			{/each}
 		</div>
+		<Button
+			variant="secondary"
+			size="sm"
+			class="shrink-0 text-xs"
+			onclick={() => (showMockPostDetail = true)}
+		>
+			Mock 详情
+		</Button>
 	</div>
 
 	<!-- 内容区域 -->
@@ -327,23 +335,36 @@
 	>
 		<LucideRefreshCw class="h-6 w-6" />
 	</Button>
-</div>
-{#if ENABLE_POST_DETAIL_MOCK && showPostDetailMock && postDetailMockData}
-	<!-- 帖子详情 Stack（Mock）：点击任何瀑布流卡片都展示同一份 mock 帖子 + mock 评论 -->
-	<PostDetail post={postDetailMockData.post} onClose={closePostDetail}>
-		{#snippet comments({ postId, currentUserId, initialCount, onReply, onTotalCountChange })}
+
+	<!-- Mock 帖子详情弹窗（联调用） -->
+	{#if showMockPostDetail}
+		{#snippet mockComments({
+			postId,
+			currentUserId,
+			initialCount,
+			onReply,
+			onTotalCountChange
+		}: {
+			postId: string;
+			currentUserId: string | null;
+			initialCount: string | number | undefined;
+			onReply: (comment: import('$lib/api').V1Comment) => void;
+			onTotalCountChange: (delta: number) => void;
+		})}
 			<CommentSection
 				{postId}
 				{currentUserId}
 				{initialCount}
 				useMock={true}
-				mockComments={postDetailMockData!.mockComments}
+				mockComments={postDetailMockData.comments}
 				{onReply}
 				{onTotalCountChange}
 			/>
 		{/snippet}
-	</PostDetail>
-{:else if !ENABLE_POST_DETAIL_MOCK && activePostId}
-	<!-- 帖子详情 Stack（真实接口）：根据瀑布流卡片的 post_id 调后端接口 -->
-	<PostDetail postId={activePostId} onClose={closePostDetail} />
-{/if}
+		<PostDetail
+			post={postDetailMockData.post}
+			comments={mockComments}
+			onClose={() => (showMockPostDetail = false)}
+		/>
+	{/if}
+</div>
