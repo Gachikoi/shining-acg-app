@@ -10,6 +10,8 @@
 export { swipe } from './swipe.svelte';
 export { pullRefresh, DEFAULT_PULL_REFRESH_CONFIG } from './pull-refresh.svelte';
 export { scrollBoundary } from './scroll-boundary.svelte';
+export { tap } from './tap.svelte';
+export { longPress } from './long-press.svelte';
 
 // ─── Arena API（高级用法，消费端通常不需要直接使用） ─────────────
 
@@ -34,5 +36,9 @@ export type {
 	SwipeOptions,
 	PullRefreshConfig,
 	PullRefreshOptions,
-	ScrollBoundaryOptions
+	ScrollBoundaryOptions,
+	TapDetail,
+	TapOptions,
+	LongPressDetail,
+	LongPressOptions
 } from './types';
