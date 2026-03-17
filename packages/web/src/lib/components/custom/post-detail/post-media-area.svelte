@@ -4,7 +4,7 @@
 	import { ChevronLeft, ChevronRight, Play } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
-	import { swipe, tap, GestureType } from '$lib/modules/gesture';
+	import { swipe, tap } from '$lib/modules/gesture';
 	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
 
 	const {
@@ -15,9 +15,7 @@
 	let activeIndex = $state(0);
 	let gestureContainerEl: HTMLDivElement | null = $state(null);
 	let panOffsetX = $state(0);
-	let lastPanEndTime = 0;
 	const PAN_MAX_OFFSET_RATIO = 1.2;
-	const TAP_IGNORE_AFTER_PAN_MS = 200;
 	$effect(() => {
 		// 当 mediaList 变化时，重置索引
 		if (mediaList.length === 0) {
@@ -62,28 +60,22 @@
 	}
 
 	const swipeOptions = $derived.by(() => ({
-		gestureType: GestureType.MEDIA_CAROUSEL,
-		onSwipeMove(deltaX: number) {
+		onMove(state: { deltaX: number }) {
 			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
 			const max = w * PAN_MAX_OFFSET_RATIO;
-			panOffsetX = Math.max(-max, Math.min(max, deltaX));
+			panOffsetX = Math.max(-max, Math.min(max, state.deltaX));
 		},
-		onSwipeEnd(direction: 'left' | 'right') {
-			if (Math.abs(panOffsetX) >= 10) lastPanEndTime = Date.now();
-			if (mediaList.length > 1) {
-				if (direction === 'right') prevMedia();
+		onEnd(state: { committed: boolean; direction: 'left' | 'right' }) {
+			if (state.committed && mediaList.length > 1) {
+				if (state.direction === 'right') prevMedia();
 				else nextMedia();
 			}
-			panOffsetX = 0;
-		},
-		onSwipeCancel() {
 			panOffsetX = 0;
 		}
 	}));
 	const tapOptions = $derived.by(() => ({
 		excludeSelector: 'button',
-		onTap(detail: { target: EventTarget; clientX: number; clientY: number }) {
-			if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
+		onTap(detail: { target: EventTarget | null; clientX: number; clientY: number }) {
 			const target = detail.target as HTMLElement;
 			if (target?.closest('button')) return;
 			let mediaContainer = target?.closest?.('[data-media-index]') as HTMLElement | null;

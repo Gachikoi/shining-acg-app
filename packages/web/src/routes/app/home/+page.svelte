@@ -232,29 +232,6 @@
 			}
 		}
 	});
-
-	import { PostDetail } from '$lib/components/custom/post-detail';
-	import { getMockPost, getMockPostComments } from '$lib/mock/post-detail';
-
-	// 开发时可通过 env 快速切换不同 mock 场景
-	// 默认使用 comments-many，点击后一次性展示复杂评论区（多条一级评论、长评论、回复等）
-	const scenario = import.meta.env?.VITE_POST_DETAIL_MOCK_SCENARIO ?? 'comments-many';
-
-	const mockPost = getMockPost('mock-post-1', scenario);
-	const mockComments = getMockPostComments('mock-post-1', scenario);
-	let showMockDetail = false;
-
-	function openMockDetail() {
-		showMockDetail = true;
-	}
-
-	function closePostDetail() {
-		if (ENABLE_POST_DETAIL_MOCK) {
-			showPostDetailMock = false;
-		} else {
-			activePostId = null;
-		}
-	}
 </script>
 
 <div class="flex h-full w-full flex-col">
@@ -276,14 +253,6 @@
 				</Button>
 			{/each}
 		</div>
-		<Button
-			variant="secondary"
-			size="sm"
-			class="shrink-0 text-xs"
-			onclick={() => (showMockPostDetail = true)}
-		>
-			Mock 详情
-		</Button>
 	</div>
 
 	<!-- 内容区域 -->
@@ -335,36 +304,4 @@
 	>
 		<LucideRefreshCw class="h-6 w-6" />
 	</Button>
-
-	<!-- Mock 帖子详情弹窗（联调用） -->
-	{#if showMockPostDetail}
-		{#snippet mockComments({
-			postId,
-			currentUserId,
-			initialCount,
-			onReply,
-			onTotalCountChange
-		}: {
-			postId: string;
-			currentUserId: string | null;
-			initialCount: string | number | undefined;
-			onReply: (comment: import('$lib/api').V1Comment) => void;
-			onTotalCountChange: (delta: number) => void;
-		})}
-			<CommentSection
-				{postId}
-				{currentUserId}
-				{initialCount}
-				useMock={true}
-				mockComments={postDetailMockData.comments}
-				{onReply}
-				{onTotalCountChange}
-			/>
-		{/snippet}
-		<PostDetail
-			post={postDetailMockData.post}
-			comments={mockComments}
-			onClose={() => (showMockPostDetail = false)}
-		/>
-	{/if}
 </div>

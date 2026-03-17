@@ -14,7 +14,7 @@
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
 	import { isMobileUA } from '$lib/utils/device';
-	import { swipe, tap, longPress, GestureType } from '$lib/modules/gesture';
+	import { swipe, tap, longPress } from '$lib/modules/gesture';
 	import ImagePreview from './Image-preview.svelte';
 	import VideoPreview from './Video-preview.svelte';
 
@@ -82,11 +82,9 @@
 	let panOffsetX = $state(0);
 	let isPanning = $state(false);
 	let gestureContainerEl: HTMLElement | null = $state(null);
-	let lastPanEndTime = 0;
 	// 刚打开预览后一段时间内忽略关闭（避免移动端「打开」触发的合成 click 落在预览层上误关）
 	let lastOpenedAt = 0;
 	const TAP_IGNORE_AFTER_OPEN_MS = 420;
-	const TAP_IGNORE_AFTER_PAN_MS = 380;
 	const TAP_PAUSE_IGNORE_PLAY_MS = 220;
 	const PAN_MAX_OFFSET_RATIO = 1.2;
 	// 轻击暂停后短时间忽略播放（避免同一次触摸的合成 click 触发播放按钮）
@@ -335,40 +333,32 @@
 		handleClose();
 	}
 
-	// 同一元素上 swipe + tap + long-press，用手势锁区分竞态
+	// 同一交互层上 swipe + tap + long-press，通过位移阈值与时序避免竞态/误触
 	const swipeOptions = $derived.by(() => ({
-		gestureType: GestureType.PREVIEW_SWIPE,
-		onSwipeStart() {
+		onStart() {
 			isPanning = true;
 		},
-		onSwipeMove(deltaX: number) {
+		onMove(state: { deltaX: number }) {
 			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
 			const max = w * PAN_MAX_OFFSET_RATIO;
-			panOffsetX = Math.max(-max, Math.min(max, deltaX));
+			panOffsetX = Math.max(-max, Math.min(max, state.deltaX));
 		},
-		onSwipeEnd(direction: 'left' | 'right') {
-			if (Math.abs(panOffsetX) >= 10) lastPanEndTime = Date.now();
+		onEnd(state: { committed: boolean; direction: 'left' | 'right' }) {
 			isPanning = false;
-			if (mediaList.length > 1) {
-				if (direction === 'right') prevMedia();
+			if (state.committed && mediaList.length > 1) {
+				if (state.direction === 'right') prevMedia();
 				else nextMedia();
 			}
-			panOffsetX = 0;
-		},
-		onSwipeCancel() {
-			isPanning = false;
 			panOffsetX = 0;
 		}
 	}));
 	const tapOptions = $derived.by(() => ({
 		excludeSelector: '.video-controls, .play-button-area, [data-preview-nav]',
-		onTap(detail: { target: EventTarget }) {
-			if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
+		onTap(detail: { target: EventTarget | null }) {
 			handleContentTap(detail.target);
 		}
 	}));
 	const longPressOptions = $derived.by(() => ({
-		gestureType: GestureType.PREVIEW_LONG_PRESS,
 		excludeSelector: '.video-controls, .play-button-area',
 		touchOnly: true,
 		onPress(e: { x: number; clientX: number; clientY: number; currentTarget: HTMLElement }) {
@@ -803,14 +793,10 @@
 			fullScreen ? 'inset-0 bg-black' : 'inset-0 bg-zinc-100',
 			className
 		)}
-		onclick={(e) => {
-			if (Date.now() - lastPanEndTime < TAP_IGNORE_AFTER_PAN_MS) return;
-			if (Date.now() - lastOpenedAt < TAP_IGNORE_AFTER_OPEN_MS) return;
-			handleContentTap(e.target);
-		}}
 		onkeydown={(e) => {
 			e.stopPropagation();
 		}}
+		use:tap={tapOptions}
 	>
 		<!-- 关闭按钮 -->
 		<div class={cn('absolute top-4 left-4', isVideo && isFullscreen ? 'z-70' : 'z-10')}>
@@ -831,7 +817,6 @@
 				bind:this={gestureContainerEl}
 				class="group relative flex h-full w-full items-center justify-center overflow-hidden"
 				use:swipe={swipeOptions}
-				use:tap={tapOptions}
 				use:longPress={longPressOptions}
 			>
 				<div
