@@ -70,11 +70,13 @@
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
 	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
+	import { tap } from '$lib/modules/gesture';
 	let {
 		post: initialPost,
 		postId,
 		showComments = true,
 		comments,
+		onSubmitComment,
 		onClose
 	}: {
 		/** 直接传入的帖子数据（可选，用于已有数据直出渲染） */
@@ -99,6 +101,8 @@
 				}
 			]
 		>;
+		/** 可选：覆盖评论提交逻辑（mock/测试场景使用，默认走真实 API） */
+		onSubmitComment?: (content: string, replyTo: V1Comment | null) => void | Promise<void>;
 		/** 可选：点击关闭按钮/遮罩时的回调，由父组件控制是否卸载 Stack */
 		onClose?: () => void;
 	} = $props();
@@ -142,8 +146,8 @@
 		async function fetchCurrentUser() {
 			try {
 				const response = await userServiceGetMe({});
-				if (response.data?.profile?.user_id) {
-					currentUserId = response.data.profile.user_id;
+				if (response.data?.profile?.userId) {
+					currentUserId = response.data.profile.userId;
 				}
 			} catch (err) {
 				console.error('获取当前用户信息失败:', err);
@@ -157,7 +161,7 @@
 	$effect(() => {
 		async function fetchFollowingStatus() {
 			// 需要同时有 post、作者 ID、当前用户 ID 且不是自己
-			if (!post?.author?.user_id || !currentUserId || post.author.user_id === currentUserId) {
+			if (!post?.author?.userId || !currentUserId || post.author.userId === currentUserId) {
 				isFollowing = false;
 				return;
 			}
@@ -165,9 +169,9 @@
 			isFetchingFollowing = true;
 			try {
 				const response = await userServiceGetUser({
-					path: { user_id: post.author.user_id }
+					path: { userId: post.author.userId }
 				});
-				isFollowing = response.data?.relation_status?.is_following ?? false;
+				isFollowing = response.data?.relationStatus?.isFollowing ?? false;
 			} catch (err) {
 				console.error('获取关注状态失败:', err);
 				isFollowing = false;
@@ -184,7 +188,7 @@
 		actionError = null;
 		try {
 			const response = await postServiceGetPost({
-				path: { post_id: id }
+				path: { postId: id }
 			});
 			if (response.data?.post) {
 				post = response.data.post;
@@ -200,35 +204,35 @@
 	}
 
 	async function handleLike() {
-		if (!post?.post_id || isLiking) return;
+		if (!post?.postId || isLiking) return;
 
-		const currentIsLiked = post.relation_status?.is_liked ?? false;
+		const currentIsLiked = post.relationStatus?.isLiked ?? false;
 		const newIsLiked = !currentIsLiked;
 
 		// 乐观更新
 		if (post.stats) {
-			const currentCount = Number(post.stats.like_count ?? '0') || 0;
-			post.stats.like_count = String(currentCount + (newIsLiked ? 1 : -1));
+			const currentCount = Number(post.stats.likeCount ?? '0') || 0;
+			post.stats.likeCount = String(currentCount + (newIsLiked ? 1 : -1));
 		}
-		if (post.relation_status) {
-			post.relation_status.is_liked = newIsLiked;
+		if (post.relationStatus) {
+			post.relationStatus.isLiked = newIsLiked;
 		}
 
 		isLiking = true;
 		try {
 			await postServiceSetPostLike({
-				path: { post_id: post.post_id },
-				body: { is_liked: newIsLiked }
+				path: { postId: post.postId },
+				body: { isLiked: newIsLiked }
 			});
 		} catch (err) {
 			console.error('点赞操作失败:', err);
 			// 回滚乐观更新
 			if (post.stats) {
-				const currentCount = Number(post.stats.like_count ?? '0') || 0;
-				post.stats.like_count = String(currentCount + (newIsLiked ? -1 : 1));
+				const currentCount = Number(post.stats.likeCount ?? '0') || 0;
+				post.stats.likeCount = String(currentCount + (newIsLiked ? -1 : 1));
 			}
-			if (post.relation_status) {
-				post.relation_status.is_liked = currentIsLiked;
+			if (post.relationStatus) {
+				post.relationStatus.isLiked = currentIsLiked;
 			}
 			actionError = '点赞操作失败，请重试';
 		} finally {
@@ -237,36 +241,36 @@
 	}
 
 	async function handleCollect() {
-		if (!post?.post_id || isCollecting) return;
+		if (!post?.postId || isCollecting) return;
 
-		const currentIsCollected = post.relation_status?.is_collected ?? false;
+		const currentIsCollected = post.relationStatus?.isCollected ?? false;
 		const newIsCollected = !currentIsCollected;
 
 		// 乐观更新
 		if (post.stats) {
-			const currentCount = Number(post.stats.collect_count ?? '0') || 0;
-			post.stats.collect_count = String(currentCount + (newIsCollected ? 1 : -1));
+			const currentCount = Number(post.stats.collectCount ?? '0') || 0;
+			post.stats.collectCount = String(currentCount + (newIsCollected ? 1 : -1));
 		}
-		if (post.relation_status) {
-			post.relation_status.is_collected = newIsCollected;
+		if (post.relationStatus) {
+			post.relationStatus.isCollected = newIsCollected;
 		}
 
 		isCollecting = true;
 		actionError = null;
 		try {
 			await postServiceSetPostCollect({
-				path: { post_id: post.post_id },
-				body: { is_collected: newIsCollected }
+				path: { postId: post.postId },
+				body: { isCollected: newIsCollected }
 			});
 		} catch (err) {
 			console.error('收藏操作失败:', err);
 			// 回滚乐观更新
 			if (post.stats) {
-				const currentCount = Number(post.stats.collect_count ?? '0') || 0;
-				post.stats.collect_count = String(currentCount + (newIsCollected ? -1 : 1));
+				const currentCount = Number(post.stats.collectCount ?? '0') || 0;
+				post.stats.collectCount = String(currentCount + (newIsCollected ? -1 : 1));
 			}
-			if (post.relation_status) {
-				post.relation_status.is_collected = currentIsCollected;
+			if (post.relationStatus) {
+				post.relationStatus.isCollected = currentIsCollected;
 			}
 			actionError = '收藏操作失败，请重试';
 		} finally {
@@ -283,7 +287,7 @@
 		}
 
 		// 并发控制
-		if (!post?.author?.user_id || isFollowingAction) return;
+		if (!post?.author?.userId || isFollowingAction) return;
 
 		actionError = null; // 清除之前的错误提示
 		const currentIsFollowing = isFollowing;
@@ -295,10 +299,10 @@
 		isFollowingAction = true;
 		try {
 			const body: UserServiceSetFollowBody = {
-				is_following: newIsFollowing
+				isFollowing: newIsFollowing
 			};
 			await userServiceSetFollow({
-				path: { user_id: post.author.user_id },
+				path: { userId: post.author.userId },
 				body
 			});
 		} catch (err) {
@@ -316,7 +320,7 @@
 
 		try {
 			const postTitle = post.title || '帖子';
-			const postUrl = `${window.location.origin}${resolve('/app/home')}?post_id=${post.post_id}`;
+			const postUrl = `${window.location.origin}${resolve('/app/home')}?postId=${post.postId}`;
 			const shareText = `【${postTitle}】${postUrl}`;
 
 			// 使用 Clipboard API
@@ -337,7 +341,7 @@
 
 	const author = $derived(post?.author);
 	const departments = $derived(author?.departments ?? []);
-	const publishLabel = $derived(formatTimeAgo(post?.publish_time ?? ''));
+	const publishLabel = $derived(formatTimeAgo(post?.publishTime ?? ''));
 
 	const CONTENT_LIMIT = 1000;
 	const rawContent = $derived(post?.content ?? '');
@@ -375,28 +379,37 @@
 
 	function handleCommentCountChange(delta: number) {
 		if (!post?.stats) return;
-		const raw = post.stats.comment_count;
+		const raw = post.stats.commentCount;
 		const current = Number(raw ?? '0') || 0;
 		const next = Math.max(0, current + delta);
-		post.stats.comment_count = String(next);
+		post.stats.commentCount = String(next);
 	}
 
 	async function handleSubmitComment(content: string, replyTo: V1Comment | null) {
-		if (!post?.post_id) return;
+		if (!post?.postId) return;
+
+		// 允许外部覆盖提交逻辑（mock/测试场景）
+		if (onSubmitComment) {
+			await onSubmitComment(content, replyTo);
+			commentEditorOpen = false;
+			commentReplyTo = null;
+			return;
+		}
 
 		const body: V1CreateCommentRequest = {
-			target_id: post.post_id,
-			target_type: 'COMMENT_TARGET_TYPE_POST' as V1CommentTargetType,
-			content
+			targetId: post.postId,
+			targetType: 'COMMENT_TARGET_TYPE_POST' as V1CommentTargetType,
+			content,
+			media: []
 		};
 
-		if (replyTo && replyTo.comment_id) {
-			const parentId = replyTo.reply_context?.parent_comment_id ?? replyTo.comment_id;
-			body.reply_context = {
-				parent_comment_id: parentId,
-				reply_to_comment_id: replyTo.comment_id,
-				reply_to_user_id: replyTo.author?.user_id,
-				reply_to_user_name: replyTo.author?.name
+		if (replyTo && replyTo.commentId) {
+			const parentId = replyTo.replyContext?.parentCommentId ?? replyTo.commentId;
+			body.replyContext = {
+				parentCommentId: parentId,
+				replyToCommentId: replyTo.commentId,
+				replyToUserId: replyTo.author?.userId,
+				replyToUserName: replyTo.author?.name
 			};
 		}
 
@@ -451,8 +464,10 @@
 		tabindex="-1"
 		aria-modal="true"
 		aria-label="错误"
-		onclick={(e) => {
-			if (e.currentTarget === e.target) handleClose();
+		use:tap={{
+			onTap: ({ target, currentTarget }) => {
+				if (target === currentTarget) handleClose();
+			}
 		}}
 		onkeydown={(e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
@@ -488,9 +503,11 @@
 		tabindex="-1"
 		aria-modal="true"
 		aria-label="帖子详情"
-		onclick={(e) => {
-			// 仅点击遮罩时关闭，避免内容点击误触
-			if (e.currentTarget === e.target) handleClose();
+		use:tap={{
+			onTap: ({ target, currentTarget }) => {
+				// 仅点击遮罩时关闭，避免内容点击误触
+				if (target === currentTarget) handleClose();
+			}
 		}}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
@@ -548,7 +565,7 @@
 								</Button>
 							</div>
 							<!-- TODO: Stack 基建完成后，非本人用户使用 UserProfilePopover 打开 -->
-							{#if author?.user_id && currentUserId && author.user_id === currentUserId}
+							{#if author?.userId && currentUserId && author.userId === currentUserId}
 								<a href={resolve('/app/profile')} class="cursor-pointer">
 									{#if author?.avatar}
 										<img
@@ -569,8 +586,8 @@
 									type="button"
 									class="cursor-pointer"
 									onclick={() => {
-										if (author?.user_id) {
-											pendingUserProfileUserId = author.user_id;
+										if (author?.userId) {
+											pendingUserProfileUserId = author.userId;
 											isUserProfilePopoverOpen = true;
 										}
 									}}
@@ -600,12 +617,12 @@
 									</p>
 								</div>
 								<div class="scrollbar-hide mt-1 flex max-w-full gap-1 overflow-x-auto pb-1">
-									{#if author?.verified_title}
+									{#if author?.verifiedTitle}
 										<Badge
 											variant="secondary"
 											class="max-w-32 truncate bg-amber-50 text-xs font-normal text-amber-700"
 										>
-											{author.verified_title}
+											{author.verifiedTitle}
 										</Badge>
 									{/if}
 									{#if departments.length > 0}
@@ -621,7 +638,7 @@
 								</div>
 							</div>
 							<div class="ml-auto flex flex-col items-end gap-2">
-								{#if post.author?.user_id && post.author.user_id !== currentUserId}
+								{#if post.author?.userId && post.author.userId !== currentUserId}
 									<Button
 										variant="default"
 										class="text-md min-w-20 cursor-pointer font-bold"
@@ -687,21 +704,21 @@
 						<!-- 评论区 -->
 						{#if showComments}
 							<div class="mt-6" bind:this={commentSectionEl}>
-								{#if post.post_id}
+								{#if post.postId}
 									{#if comments}
 										{@render comments({
-											postId: post.post_id,
+											postId: post.postId,
 											currentUserId,
-											initialCount: post.stats?.comment_count,
+											initialCount: post.stats?.commentCount,
 											onReply: openCommentEditor,
 											onTotalCountChange: handleCommentCountChange
 										})}
 									{:else}
 										<CommentSection
 											bind:this={commentSectionRef}
-											postId={post.post_id}
+											postId={post.postId}
 											{currentUserId}
-											initialCount={post.stats?.comment_count}
+											initialCount={post.stats?.commentCount}
 											onReply={openCommentEditor}
 											onTotalCountChange={handleCommentCountChange}
 										/>
@@ -747,17 +764,17 @@
 									disabled={isLiking}
 									class={cn(
 										'flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800',
-										post.relation_status?.is_liked && 'text-rose-500'
+										post.relationStatus?.isLiked && 'text-rose-500'
 									)}
 									onclick={handleLike}
 								>
 									{#if isLiking}
 										<LoaderCircle class="size-4 animate-spin" />
 									{:else}
-										<Heart class={cn('size-4', post.relation_status?.is_liked && 'fill-current')} />
+										<Heart class={cn('size-4', post.relationStatus?.isLiked && 'fill-current')} />
 									{/if}
-									{#if post.stats?.like_count != null}
-										<span>{post.stats.like_count}</span>
+									{#if post.stats?.likeCount != null}
+										<span>{post.stats.likeCount}</span>
 									{/if}
 								</Button>
 								<Button
@@ -766,7 +783,7 @@
 									disabled={isCollecting}
 									class={cn(
 										'flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800',
-										post.relation_status?.is_collected && 'text-amber-500'
+										post.relationStatus?.isCollected && 'text-amber-500'
 									)}
 									onclick={handleCollect}
 								>
@@ -774,11 +791,11 @@
 										<LoaderCircle class="size-4 animate-spin" />
 									{:else}
 										<Star
-											class={cn('size-4', post.relation_status?.is_collected && 'fill-current')}
+											class={cn('size-4', post.relationStatus?.isCollected && 'fill-current')}
 										/>
 									{/if}
-									{#if post.stats?.collect_count != null}
-										<span>{post.stats.collect_count}</span>
+									{#if post.stats?.collectCount != null}
+										<span>{post.stats.collectCount}</span>
 									{/if}
 								</Button>
 								<Button
@@ -791,8 +808,8 @@
 									}}
 								>
 									<MessageCircle class="size-4" />
-									{#if post.stats?.comment_count != null}
-										<span>{post.stats.comment_count}</span>
+									{#if post.stats?.commentCount != null}
+										<span>{post.stats.commentCount}</span>
 									{/if}
 								</Button>
 								<Button
