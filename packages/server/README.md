@@ -13,6 +13,7 @@ Shining ACG 后端服务是一个基于 **Go** 语言开发的单体服务（Mon
 
 - [技术栈与工具](#-技术栈与工具)
 - [项目结构](#-项目结构)
+  - [internal 目录约定](#internal-目录约定)
 - [快速开始 (本地开发)](#-快速开始-本地开发)
   - [环境准备](#1-环境准备)
   - [启动基础设施](#2-启动基础设施)
@@ -56,11 +57,14 @@ packages/server
 │   ├── main.go         # 主程序
 │   └── wire.go         # 依赖注入定义 (运行 wire 生成 wire_gen.go)
 ├── config/             # 配置结构定义
-├── internal/           # 私有业务代码 (不对外暴露)
-│   ├── biz/            # 业务逻辑层 (Use Case)
-│   ├── model/          # 数据库模型 (GORM Model)
-│   ├── repo/           # 数据持久层 (Repository)
-│   └── service/        # RPC 服务实现层
+├── internal/           # 私有业务代码 (不对外暴露)，分层约定见下文
+│   ├── biz/            # 按 proto 中的服务边界划分的用例层 (Use Case)
+│   │   ├── feed/       # 示例：与 Feed 相关 RPC 对应的业务编排
+│   │   │   └── repo/   # 可选：仅被本边界使用的查询/持久化实现
+│   │   └── media/      # 示例：与 Media 相关 RPC 对应的业务编排
+│   ├── model/          # 数据库实体与表结构映射 (GORM Model 等)
+│   ├── repo/           # 跨多个 biz 复用的仓储 (按表/聚合划分，而非按 RPC)
+│   └── service/        # Connect/gRPC 服务实现层 (薄适配：proto ↔ biz)
 ├── pkg/                # 公共库 (可被外部引用)
 │   ├── ffmpeg/         # 音视频处理封装
 │   ├── logger/         # 基于 slog 的日志封装
@@ -70,6 +74,20 @@ packages/server
 ├── script/             # 辅助脚本
 └── docker-compose.yml  # 本地开发基础设施编排
 ```
+
+### internal 目录约定
+
+本服务的 `internal` 按 **依赖由外向内** 组织：`service` → `biz` → `repo`（及可选的 `biz/<边界>/repo`）→ `model`。`proto/` 描述对外契约，**不必**在文件系统上逐文件镜像 proto 树；与 **RPC Service** 对齐的是 `service` 中的 Handler 与 `biz` 下的边界包名。
+
+| 路径 | 职责 |
+| :--- | :--- |
+| `internal/service` | 实现 proto 中定义的各 `Service`（Connect Handler）。负责请求/响应与内部类型的映射，**不写复杂业务与 SQL**。 |
+| `internal/biz/<边界>` | 与 proto 中的服务/能力边界对应（如 `feed`、`media`），编排用例、领域规则，依赖下层 `repo` 接口。 |
+| `internal/repo` | 多个 `biz` 包都会访问的表或聚合的仓储实现（例如用户、帖子等共享数据）。按 **数据归属** 拆分文件或子包，而非按单个 RPC 服务拆分。 |
+| `internal/model` | 与数据库表（或持久化形态）对应的类型定义；尽量保持为「结构 + 约束」，复杂规则放在 `biz`。 |
+| `internal/biz/<边界>/repo` | **仅当**某类查询或持久化逻辑 **只服务于该边界** 时使用（例如 Feed 时间线专用 SQL）。若同一表日后被多个 `biz` 使用，应上提到 `internal/repo` 并对外暴露接口。 |
+
+新增 RPC 服务时的推荐顺序：在 `proto/` 定义契约并 `buf generate` → 在 `internal/service` 增加 Handler → 在 `internal/biz/<边界>` 实现用例 → 按需补充 `internal/repo` 或 `internal/biz/<边界>/repo` → 在 `cmd/wire.go` 中注册依赖。
 
 ---
 
