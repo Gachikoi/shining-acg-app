@@ -23,9 +23,9 @@
  */
 
 import type { Action } from 'svelte/action';
-import { release, tryAcquire } from './arena.svelte';
+import { release, tryAcquire } from '../arena.svelte';
 import type { TapOptions } from './types';
-import { generateId } from './utils';
+import { generateId } from '../utils';
 
 type Phase = 'idle' | 'tracking';
 
