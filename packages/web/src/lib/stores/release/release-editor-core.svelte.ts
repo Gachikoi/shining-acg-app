@@ -206,6 +206,44 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 	}
 
 	/**
+	 * 将 `cachedMediaItems` / `cachedMediaUrls` 中的一项从 `fromIndex` 移到 `toIndex`（同序 splice）
+	 *
+	 * @param fromIndex - 被拖动项当前下标
+	 * @param toIndex - 插入位置下标（与 `Array.splice` 语义一致：先移除再插入）
+	 *
+	 * @remarks
+	 * - `fromIndex === toIndex` 或越界时立即返回，不修改状态。
+	 * - `selectedCoverIndex` 随重排平移：若封面项被移动则指向新下标；其余项在跨越区间时增减。
+	 * - 会触发既有 `$effect`，进而重算封面预览（与 `handleRemoveMedia` 同类索引维护）。
+	 */
+	function reorderMedia(fromIndex: number, toIndex: number): void {
+		if (fromIndex === toIndex) return;
+		const n = cachedMediaItems.length;
+		if (fromIndex < 0 || fromIndex >= n || toIndex < 0 || toIndex >= n) return;
+
+		const nextItems = [...cachedMediaItems];
+		const nextUrls = [...cachedMediaUrls];
+		const [movedItem] = nextItems.splice(fromIndex, 1);
+		const [movedUrl] = nextUrls.splice(fromIndex, 1);
+		nextItems.splice(toIndex, 0, movedItem);
+		nextUrls.splice(toIndex, 0, movedUrl);
+		cachedMediaItems = nextItems;
+		cachedMediaUrls = nextUrls;
+
+		let s = selectedCoverIndex;
+		if (s === fromIndex) {
+			s = toIndex;
+		} else if (fromIndex < toIndex) {
+			if (s > fromIndex && s <= toIndex) {
+				s -= 1;
+			}
+		} else if (s >= toIndex && s < fromIndex) {
+			s += 1;
+		}
+		selectedCoverIndex = s;
+	}
+
+	/**
 	 * 从持久化草稿恢复媒体列表、封面索引与比例/文字样式；先回收当前列表的 object URL
 	 *
 	 * @param draft.mediaItems - IndexedDB 恢复的 Blob 项
@@ -365,6 +403,7 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 		rotateCoverRatio,
 		handleFileSelect,
 		handleRemoveMedia,
+		reorderMedia,
 		hydrateFromDraftMedia,
 		resetMediaAndCover,
 		destroy
