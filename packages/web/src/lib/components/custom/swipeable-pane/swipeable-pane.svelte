@@ -3,32 +3,17 @@
   可滑动面板容器，管理 3 个面板的"虚拟窗口"。
 
   核心行为：
-  - 始终只渲染最多 3 个面板（prev / current / next），按需创建/销毁
-  - 手势/wheel 滑动时实时预览相邻面板，松手后 Spring 弹性过渡
-  - 非相邻 Tab 点击时，将目标分类临时放入相邻槽位，播放单步 Spring 动画
-  - 每个面板独立管理滚动状态和数据
-
-  动画策略：
-  - 所有位移由 Spring<number> 驱动，通过 Svelte 响应式绑定到 style:transform
-  - 拖动阶段 spring.set(value, { instant: true }) 即时跟手
-  - 松手后 spring.set(target) 启动物理弹性动画（fire-and-forget，不 await）
-  - $effect 监听 offsetSpring.current 实现近距定稿（1px 阈值），
-    避免 Spring 尾端渐近收敛导致的长 await（锁 arena 阻塞 pullRefresh 等其他手势）
-
-  手势打断策略：
-  - onStart 计算离视口中心最近的面板作为 gestureBaseIndex
-  - 如果 gestureBaseIndex !== currentIndex，立即重建虚拟窗口（overridePanels）
-    并调整 offset 保持视觉连续，使新手势可到达 gestureBaseIndex ± 1
-  - onEnd 以 containerWidth/2 为「snap to nearest」阈值（位置），
-    辅以速度检查（velocity flick）决定最终面板
+  - 始终只维护 3 个槽位，当前不需要渲染的槽位直接置为 null
+  - 手势拖动时按当前视口实时重建 panels，并用 WAAPI 让 transform 跟手
+  - 非相邻 Tab 点击时，把目标页借位到即将进入视口的一侧，播放单步动画
+  - 动画结束后显式定稿，不依赖额外响应式副作用兜底
 
   使用方式：
   ```svelte
   <SwipeablePane
     categories={CATEGORY_OPTIONS}
-    currentIndex={categoryIndex}
-    onCommit={(i) => ...}
-    onIndexChange={(i) => (categoryIndex = i)}
+    category={selectedCategory}
+    onIndexChange={(i) => ...}
   >
     {#snippet children(category, index)}
       <WaterfallContainer ... />
@@ -37,227 +22,97 @@
   ```
 -->
 <script lang="ts">
-	import { swipe } from '$lib/modules/gesture';
-	import { Spring } from 'svelte/motion';
-	import type { CategoryOption, SwipeablePaneProps } from './types';
-	import type { SwipeState } from '$lib/modules/gesture';
+	import { shiningBridge } from '$lib/modules/bridge';
+	import type { Axis, SwipeState } from '$lib/modules/gesture';
+	import { registerScrollBoundary, swipe } from '$lib/modules/gesture';
+	import { onMount, untrack } from 'svelte';
+	import type { SwipeablePaneProps } from './types';
+	import { buildPanels, inspectVisualState, type PanelTuple } from './utils';
 
-	/** 面板槽位数据结构 */
-	type PanelSlot = { category: CategoryOption; originalIndex: number } | null;
-
-	let { categories, currentIndex, children, onCommit, onIndexChange }: SwipeablePaneProps =
+	let { categories, currentIndex, currentCategoryId, children, onIndexChange }: SwipeablePaneProps =
 		$props();
 
 	// ─── 容器尺寸 ────────────────────────────────────────────────
 
-	/** 容器元素引用 */
-	let containerEl: HTMLElement | undefined = $state();
+	/** 容器元素引用（bind:this 在挂载后赋值，仅用于 onMount 内初始化） */
+	let containerEl: HTMLElement | undefined;
 	/** 容器宽度（px） */
 	let containerWidth = $state(0);
+	/** 三列槽位根元素（与 `panels` 下标 0/1/2 对齐），[1] 为虚拟窗口 slot1，用于 `contains(pointerup.target)` */
+	let panelSlotRoots = $state<(HTMLElement | undefined)[]>([undefined, undefined, undefined]);
 
-	$effect(() => {
-		if (!containerEl) return;
+	/**
+	 * 挂载时：建立 ResizeObserver 监听容器宽度，并注册 scrollBoundary 实现边界让渡。
+	 * 卸载时：断开 observer 并 unregister。
+	 * 注意！containerEl 是 300% 宽的容器，其 parentElement 是视口，用于注册 scrollBoundary。
+	 */
+	onMount(() => {
+		if (!containerEl?.parentElement) return;
+
+		// 因为 ResizeObserver 执行时机过晚，所以在 onMounted 时先手动获取一次宽度
+		containerWidth = containerEl.parentElement.getBoundingClientRect().width; // 和 contentRect.width 一样都是 double 类型
+		// 监听 containerWidth 变化并更新元素的 transform translate3d 偏移量
 		const observer = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				containerWidth = entry.contentRect.width;
+				animateTo(0, 0, 0); // 用 animate 而非 style 设定偏移，防止 style 被 animate 覆盖
 			}
 		});
-		observer.observe(containerEl);
-		return () => observer.disconnect();
+		observer.observe(containerEl.parentElement);
+
+		// 注册边缘让渡
+		const unregister = registerScrollBoundary(containerEl.parentElement, {
+			axis: 'x',
+			canScroll(queryAxis: Axis, direction: number): boolean {
+				if (queryAxis !== 'x') return false;
+				// direction > 0: 右滑 → 去上一页，需 windowCenterIndex > 0
+				// direction < 0: 左滑 → 去下一页，需未到末项
+				if (direction > 0) return currentIndex > 0;
+				return currentIndex < categories.length - 1;
+			}
+		});
+		return () => {
+			observer.disconnect();
+			unregister();
+		};
 	});
 
-	// ─── Spring 偏移 ─────────────────────────────────────────────
+	// ─── 动画 ─────────────────────────────────────────────
 
-	/** 所有面板的统一水平偏移，由 swipe 手势和 Spring 动画驱动 */
-	const offsetSpring = new Spring(0, { stiffness: 0.15, damping: 0.9 });
-
-	// ─── 动画纪元（打断保护） ────────────────────────────────────
-
-	/**
-	 * 每次新手势或跳转开始时自增。
-	 * $effect 定稿时对比纪元，被打断的动画不会执行副作用。
-	 */
-	let animEpoch = 0;
+	const ANIMATION_DURATION = 300;
+	const LIGHT_IMPACT_VIBRATION_OPTION = { type: 'impact', style: 'light' } as const;
+	let containerElAnimation: Animation | null = null;
+	let queuedJumpTargets = $state<number[]>([]);
+	let activeTargetIndex = $state<number | undefined>(undefined);
 
 	/**
-	 * 手势开始时捕获的 Spring 当前值（经过视觉索引调整后的残差偏移）。
+	 * 手势/跳转开始时捕获的基础偏移
 	 * 在 onMove 中作为基础偏移叠加 deltaX，确保打断动画后拖动从视觉位置无缝衔接。
 	 */
 	let capturedOffset = 0;
 
-	/** jumpToIndex 正在进行中标志，仅用于描述当前状态，不再阻止新的 jump */
-	let isJumping = false;
+	let panels = $state<PanelTuple>(
+		untrack(() => buildPanels(currentIndex, categories, 0, containerWidth))
+	);
 
-	// ─── 手势基准索引 ────────────────────────────────────────────
-
-	/**
-	 * 手势计算的基准索引——当前「视觉中心」所在的面板。
-	 *
-	 * 当手势打断动画时，通过 Spring 偏移计算离屏幕中心最近的面板索引并赋值。
-	 * clampOffset、onEnd 的提交评估、jumpToIndex 均基于此值，
-	 * 而非 prop currentIndex（可能因 Svelte 批处理延迟尚未更新）。
-	 *
-	 * 空闲时（无动画、无覆盖面板、无跳转）通过 $effect 与 currentIndex 同步。
-	 */
-	let gestureBaseIndex = $state(0);
-
-	/** 空闲时与 prop currentIndex 同步 */
+	// 仅在 categories 变化时重建 panels，并尽量保持用户还能看到原来的 category 分类内容
 	$effect(() => {
-		if (!animTarget && !overridePanels && !isJumping) {
-			gestureBaseIndex = currentIndex;
-		}
+		void categories;
+
+		untrack(() => {
+			const nextIndex =
+				categories.findIndex((category) => category.value === currentCategoryId) ?? 0;
+			updatePanels(nextIndex);
+		});
 	});
 
-	// ─── 动画目标 & $effect 近距定稿 ─────────────────────────────
-
-	/**
-	 * 当前动画的目标状态。
-	 *
-	 * 设置后，下方 $effect 会在每帧追踪 offsetSpring.current，
-	 * 当 Spring 距目标 < 1px 时自动执行定稿（重置 Spring、更新 currentIndex）。
-	 *
-	 * 始终设置（包含回弹），确保 overridePanels 在动画结束后被清理。
-	 * null 仅表示完全空闲。
-	 */
-	let animTarget: { offset: number; targetIndex: number; epoch: number } | null = $state(null);
-
-	/**
-	 * Spring 近距定稿 $effect
-	 *
-	 * 响应式追踪机制：
-	 * - animTarget 为 null 时：不读取 offsetSpring.current → 零开销
-	 * - animTarget 有值时：每帧追踪 offsetSpring.current → 在目标 1px 内自动定稿
-	 *
-	 * 定稿执行：
-	 * 1. 清除 animTarget
-	 * 2. 校验 epoch（被打断则跳过）
-	 * 3. 更新 gestureBaseIndex
-	 * 4. 重置 Spring 到 0
-	 * 5. 清理 overridePanels / isJumping
-	 * 6. 通知外部 onIndexChange
-	 */
-	$effect(() => {
-		if (!animTarget) return;
-		const dist = Math.abs(offsetSpring.current - animTarget.offset);
-		if (dist < 1) {
-			const { targetIndex, epoch } = animTarget;
-			animTarget = null;
-			if (epoch !== animEpoch) return;
-			gestureBaseIndex = targetIndex;
-			offsetSpring.set(0, { instant: true });
-			overridePanels = null;
-			isJumping = false;
-			onIndexChange?.(targetIndex);
-		}
-	});
-
-	// ─── 虚拟窗口 ───────────────────────────────────────────────
-
-	/** 常规面板列表：根据 currentIndex（prop）自动计算 */
-	let normalPanels = $derived.by((): [PanelSlot, PanelSlot, PanelSlot] => {
-		const prev: PanelSlot =
-			currentIndex > 0
-				? { category: categories[currentIndex - 1], originalIndex: currentIndex - 1 }
-				: null;
-		const current: PanelSlot = { category: categories[currentIndex], originalIndex: currentIndex };
-		const next: PanelSlot =
-			currentIndex < categories.length - 1
-				? { category: categories[currentIndex + 1], originalIndex: currentIndex + 1 }
-				: null;
-		return [prev, current, next];
-	});
-
-	/** 非相邻跳转 / 手势打断时的面板覆盖 */
-	let overridePanels = $state<[PanelSlot, PanelSlot, PanelSlot] | null>(null);
-
-	/** 实际用于渲染的面板列表 */
-	let panels = $derived(overridePanels ?? normalPanels);
-
-	/**
-	 * 构建以 centerIndex 为中心的三面板虚拟窗口
-	 *
-	 * @param centerIndex - 中心面板索引
-	 * @returns [prev, current, next] 三元组
-	 */
-	function buildPanels(centerIndex: number): [PanelSlot, PanelSlot, PanelSlot] {
-		const prev: PanelSlot =
-			centerIndex > 0
-				? { category: categories[centerIndex - 1], originalIndex: centerIndex - 1 }
-				: null;
-		const current: PanelSlot = {
-			category: categories[centerIndex],
-			originalIndex: centerIndex
-		};
-		const next: PanelSlot =
-			centerIndex < categories.length - 1
-				? { category: categories[centerIndex + 1], originalIndex: centerIndex + 1 }
-				: null;
-		return [prev, current, next];
-	}
-
-	/**
-	 * 计算当前视觉状态。
-	 *
-	 * 该函数不依赖 `currentIndex` 或 `gestureBaseIndex` 的同步时机，
-	 * 而是直接根据当前实际渲染的 `panels` 槽位和 `offsetSpring.current`
-	 * 反推「离视口中心最近的面板」。
-	 *
-	 * 这样在以下场景中都能得到稳定结果：
-	 * - 手势打断 Spring 动画
-	 * - 非相邻 jump 动画进行到一半时再次点击其他 Tab
-	 * - overridePanels 临时替换了标准三窗口结构
-	 *
-	 * @returns 当前视觉中心对应的索引、槽位、容器宽度与残差偏移
-	 */
-	function getVisualState(): {
-		visualIndex: number;
-		visualSlot: number;
-		containerWidth: number;
-		residualOffset: number;
-	} {
-		const width = containerWidth || 1;
-		const currentOffset = offsetSpring.current;
-
-		/**
-		 * 默认回退到中心槽位。
-		 * 正常情况下中心槽位总会存在，但这里保留兜底分支，避免极端状态下返回非法值。
-		 */
-		let visualIndex = currentIndex;
-		let visualSlot = 1;
-		let minDistance = Infinity;
-
-		for (let slot = 0; slot < panels.length; slot++) {
-			const panel = panels[slot];
-			if (!panel) continue;
-
-			/**
-			 * 面板当前位置 = 槽位基准位移 + 全局 Spring 偏移。
-			 * 离 0 最近的面板，就是当前视觉中心所在页。
-			 */
-			const panelTranslateX = (slot - 1) * width + currentOffset;
-			const distanceToCenter = Math.abs(panelTranslateX);
-
-			if (distanceToCenter < minDistance) {
-				minDistance = distanceToCenter;
-				visualIndex = panel.originalIndex;
-				visualSlot = slot;
-			}
-		}
-
-		/**
-		 * residualOffset 表示：
-		 * 若把当前视觉中心页重新放回中心槽位（slot = 1），
-		 * 为保持视觉位置不变，Spring 需要立刻设置成多少。
-		 */
-		const residualOffset = (visualSlot - 1) * width + currentOffset;
-
-		return {
-			visualIndex,
-			visualSlot,
-			containerWidth: width,
-			residualOffset
-		};
-	}
+	// 在 home/+page.svelte 中，如果 snapshot 进行了 restore，则重建 panels
+	export const updatePanels = (currentIndex: number) => {
+		resetTransitionState(true);
+		panels = buildPanels(currentIndex, categories, 0, containerWidth);
+		capturedOffset = 0;
+		animateTo(0, 0, 0);
+	};
 
 	// ─── 偏移钳位 ───────────────────────────────────────────────
 
@@ -265,109 +120,307 @@
 	 * 偏移量钳位（基于 gestureBaseIndex）：
 	 * 1. 首/末面板禁止向无内容方向拖动
 	 * 2. 限制在 ±containerWidth 范围内（虚拟窗口只有 3 个面板）
-	 *
-	 * @param raw - 原始偏移量
-	 * @returns 钳位后的偏移量
 	 */
-	function clampOffset(raw: number): number {
-		if (gestureBaseIndex === 0 && raw > 0) return 0;
-		if (gestureBaseIndex === categories.length - 1 && raw < 0) return 0;
+	function clampOffset(raw: number, baseIndex: number): number {
+		if (baseIndex === 0 && raw > 0) return 0;
+		if (baseIndex === categories.length - 1 && raw < 0) return 0;
 		const limit = containerWidth || Infinity;
 		return Math.max(-limit, Math.min(limit, raw));
 	}
 
+	/**
+	 * pointerup 的 `target` 是否落在中间槽 slot1 的根节点子树内（用于决定是否允许「纯速度」翻页）。
+	 * slot1 根是 `containerEl` 的子节点，不可能 `contains(containerEl)`，故 target 为手势绑定的整轨容器时不会误判为在 slot1 内。
+	 *
+	 * @param slot1Root - 中间列（index 1）包裹 `div`
+	 * @param target - `SwipeState.endPointerTarget` / `PointerEvent.target`
+	 * @returns `target` 为 `Node` 且被 `slot1Root` 包含则为 true
+	 */
+	function isEndTargetInsideSlot1(
+		slot1Root: HTMLElement | undefined,
+		target: EventTarget | null | undefined
+	): boolean {
+		if (!slot1Root || target == null) return false;
+		return target instanceof Node && slot1Root.contains(target);
+	}
+
+	/**
+	 *
+	 * @param from 手势开始时捕获的基础偏移，用于动画初始值设定
+	 * @param to 偏移量（以 slot 1 为偏移量中心，负数表示向左偏移，正数表示向右偏移）
+	 * @param duration 动画时长（ms）
+	 * @param baseIndex 当前槽位 1 的面板索引，用于限制偏移量在正确范围内
+	 * @returns 动画对象。0ms 即时定位也会返回 animation 实例，但清理由内部完成。
+	 */
+	const animateTo = (from: number, to: number, duration: number): Animation => {
+		if (!containerEl) throw new Error('containerEl 不存在，无法正常运行');
+
+		containerElAnimation?.commitStyles();
+		containerElAnimation?.cancel();
+		containerElAnimation = null;
+
+		const animation = containerEl.animate(
+			[
+				{
+					transform: `translate3d(${-containerWidth + from}px, 0, 0)`
+				},
+				{
+					transform: `translate3d(${-containerWidth + to}px, 0, 0)`
+				}
+			],
+			{
+				duration,
+				easing: 'cubic-bezier(0.45, 0, 0.55, 1)',
+				fill: 'both' // 不设置 forwards 会闪白屏
+			}
+		);
+
+		containerElAnimation = animation;
+
+		animation.onfinish = () => {
+			animation.commitStyles();
+			animation.cancel();
+			if (containerElAnimation === animation) {
+				containerElAnimation = null;
+			}
+		};
+
+		return animation;
+	};
+
+	/**
+	 * 读取容器当前真实 transform 对应的 offset。
+	 *
+	 * 必须读取 computed style，因为 jump / settle 的位移来自 WAAPI animation，
+	 * 只读 inline style 会丢失动画中间帧的位置。
+	 *
+	 * @returns 当前以 slot 1 为基准的容器偏移量
+	 */
+	function captureCurrentOffset(): number {
+		if (!containerEl) throw new Error('containerEl 不存在，无法正常运行');
+		return new DOMMatrix(getComputedStyle(containerEl).transform).m41 + containerWidth;
+	}
+
+	/**
+	 * 统一取消当前动画状态。
+	 *
+	 * @param clearQueue - 是否同时清空未执行的 jump 队列
+	 * @returns void
+	 */
+	function resetTransitionState(clearQueue: boolean): void {
+		containerElAnimation?.commitStyles();
+		containerElAnimation?.cancel();
+		containerElAnimation = null;
+		activeTargetIndex = undefined;
+		if (clearQueue) {
+			queuedJumpTargets = [];
+		}
+	}
+
+	/**
+	 * 手势动画完成后的统一定稿。
+	 *
+	 * @param targetIndex - 本次 settle 最终到达的真实索引
+	 * @returns void
+	 */
+	function finishAnimation(targetIndex: number): void {
+		activeTargetIndex = undefined;
+		panels = buildPanels(targetIndex, categories, 0, containerWidth);
+		capturedOffset = 0;
+		animateTo(0, 0, 0);
+		containerElAnimation = null;
+		pumpJumpQueue();
+	}
+
+	/**
+	 * 从当前视觉位置启动一段 jump 动画。
+	 *
+	 * @param targetIndex - 本段 jump 的目标索引
+	 * @returns void
+	 */
+	function startJumpTransition(targetIndex: number): void {
+		if (!containerEl) return;
+
+		// 重置动画状态
+		resetTransitionState(false);
+
+		// 更新视觉状态
+		const visualState = inspectVisualState(
+			captureCurrentOffset(),
+			panels,
+			containerWidth,
+			currentIndex
+		);
+		capturedOffset = visualState.residualOffset;
+
+		activeTargetIndex = targetIndex;
+		panels = buildPanels(
+			currentIndex,
+			categories,
+			capturedOffset,
+			containerWidth,
+			activeTargetIndex
+		);
+
+		const targetOffset =
+			targetIndex === currentIndex
+				? 0
+				: targetIndex > currentIndex
+					? -containerWidth
+					: containerWidth;
+
+		onIndexChange?.(targetIndex);
+
+		requestAnimationFrame(() => {
+			if (activeTargetIndex !== targetIndex || containerElAnimation !== null) return;
+			animateTo(capturedOffset, targetOffset, ANIMATION_DURATION).onfinish = () => {
+				finishAnimation(targetIndex);
+			};
+		});
+	}
+
+	/**
+	 * 在 jump 空闲时消费队列里的下一个目标。
+	 *
+	 * @returns void
+	 */
+	function pumpJumpQueue(): void {
+		if (containerElAnimation !== null) return;
+		const [nextTarget, ...rest] = queuedJumpTargets;
+		if (nextTarget === undefined) return;
+		queuedJumpTargets = rest;
+		startJumpTransition(nextTarget);
+	}
+
 	// ─── Swipe action 配置 ───────────────────────────────────────
 
-	/** 速度阈值（px/ms）：快速轻扫提交 */
-	const VELOCITY_MIN = 0.3;
-
 	let swipeOptions = $derived({
-		threshold: 10,
 		interruptible: true,
 
 		/**
-		 * 手势开始：计算视觉基准索引，必要时重建虚拟窗口。
+		 * 手势开始：计算视觉基准索引，必要时重建虚拟窗口；并标记手势激活以按需渲染相邻面板。
 		 *
-		 * 核心逻辑：
-		 * 1. 通过 Spring 当前偏移计算离屏幕中心最近的面板 → visualIndex
-		 * 2. 如果 visualIndex ≠ currentIndex（手势打断了动画）：
-		 *    - 重建虚拟窗口（overridePanels）以 visualIndex 为中心
-		 *    - 计算残差偏移（residual）保持视觉连续
-		 *    - 通知 parent 更新 currentCategoryId 和 categoryIndex
-		 * 3. 后续 onMove/onEnd 基于 gestureBaseIndex 而非 currentIndex
+		 * 一、之前的方案
+		 * resetTransitionState(true);
+		 *	capturedOffset = captureCurrentOffset();
+		 *	animateTo(capturedOffset, capturedOffset, 0);
+		 *
+		 * 这种方案有一种缺陷：当上一次 onEnd 在 currentIndex === 2 通过速度触发提交时，会将 panels 改为 "1,2,"，将 currentIndex 改为 1；
+		 * 然后用户点击屏幕触发 onStart 并且 visualState.primaryIndex === currentIndex 时，panels 仍为 "1,2,"，captureOffset 按照 1 在第 0 位归位；
+		 * 再松手触发 onEnd 时，panels 变为 "0,1,2"，但 inspectVisualState 算 residualOffset 时，依赖的是「当时的 panels + 当时的 offset」。若上一段手势里 panels 还是 "1,2,"，算出来的 residual 是在那一套槽位语义下的「把主屏挪回中间」；
+		 * 下一瞬间 panels 已经换成 "0,1,2"，槽位里同一索引对应的列位置变了，之前按 "1,2," 推出来的 residualOffset 和新 panels 不再同一套坐标系，就会出现闪一下的问题。
+		 * 二、新的方案
+		 * 就是现在的代码，让 矩阵位移、三槽挂载、capturedOffset 三者始终同一套语义
 		 */
 		onStart: () => {
-			animEpoch++;
-			animTarget = null;
+			if (!containerEl) return;
 
-			const { visualIndex, residualOffset } = getVisualState();
+			resetTransitionState(true);
 
-			gestureBaseIndex = visualIndex;
-
-			if (visualIndex !== currentIndex) {
-				capturedOffset = residualOffset;
-				offsetSpring.set(residualOffset, { instant: true });
-				overridePanels = buildPanels(visualIndex);
-				onCommit?.(visualIndex);
-				onIndexChange?.(visualIndex);
-			} else {
-				capturedOffset = residualOffset;
-				offsetSpring.set(residualOffset, { instant: true });
+			const visualState = inspectVisualState(
+				captureCurrentOffset(),
+				panels,
+				containerWidth,
+				currentIndex
+			);
+			if (visualState.primaryIndex !== currentIndex) {
+				onIndexChange?.(visualState.primaryIndex);
 			}
+
+			/**
+			 * 当 onEnd 通过速度触发提交时，会直接触发 currentIndex 的变化：
+			 * 假设 onEnd 从 currentIndex===0 根据速度提交到 currentIndex===1，panels 此时为 “,0,1”，这时视觉上的中心面板的 index 不等于 currentIndex；
+			 * 然后用户点击屏幕触发 onStart 时，如果 visualState.primaryIndex === currentIndex，
+			 * 这里虽然 visualState.primaryIndex === currentIndex，但是由于 panels 变为 "0,1,"，所以 capturedOffset 不等于 visualState.residualOffset，
+			 * 所以无论哪种情况，都需要基于最新的 visualState 来归位，而不是使用旧的 captureOffset。
+			 */
+			capturedOffset = visualState.residualOffset;
+
+			const offset = clampOffset(capturedOffset, currentIndex);
+			panels = buildPanels(currentIndex, categories, offset, containerWidth);
+			animateTo(offset, offset, 0);
+
+			// 提前唤醒马达
+			shiningBridge.prepareForVibrate(LIGHT_IMPACT_VIBRATION_OPTION);
 		},
 
 		onMove: (state: SwipeState) => {
-			const raw = capturedOffset + state.deltaX;
-			offsetSpring.set(clampOffset(raw), { instant: true });
+			if (!containerEl) return;
+
+			// 获取当前视觉状态，判断是否应该更新 index 和 capturedOffset
+			const visualState = inspectVisualState(
+				clampOffset(capturedOffset + state.deltaX, currentIndex),
+				panels,
+				containerWidth,
+				currentIndex
+			);
+			if (visualState.primaryIndex !== currentIndex) {
+				onIndexChange?.(visualState.primaryIndex);
+				capturedOffset = visualState.residualOffset - state.deltaX;
+			}
+
+			const offset = clampOffset(capturedOffset + state.deltaX, currentIndex);
+			panels = buildPanels(currentIndex, categories, offset, containerWidth);
+			animateTo(offset, offset, 0);
 		},
 
 		/**
-		 * 手势结束：基于绝对视觉位置决定目标面板（snap-to-nearest）。
-		 *
-		 * 提交评估基于 gestureBaseIndex 而非 currentIndex：
-		 * - 位置阈值：|finalOffset| > containerWidth/2 → 离相邻面板更近 → 切换
-		 * - 速度阈值：finalOffset 在目标侧且速度方向一致 → 快速轻扫切换
-		 * - 否则：回弹到 gestureBaseIndex
-		 *
-		 * 始终设置 animTarget（含回弹），确保 overridePanels 在动画结束后被清理。
-		 *
-		 * @param state - 手势结束时的状态快照
+		 * 手势结束：基于绝对视觉位置决定目标面板（snap-to-nearest）；
+		 * 标记手势结束并设置 animatingToward，动画结束后清除。
 		 */
 		onEnd: (state: SwipeState) => {
-			const finalOffset = clampOffset(capturedOffset + state.deltaX);
-			let targetIndex = gestureBaseIndex;
-			const halfWidth = containerWidth / 2;
+			if (!containerEl) return;
+			const slot1Root = panelSlotRoots[1];
 
-			/**
-			 * snap-to-nearest 提交评估：
-			 *
-			 * velocityX 符号约定（来自 VelocityTracker，基于 clientX）：
-			 * - 正值 = 手指向右 = offset 正方向 = prev 面板方向
-			 * - 负值 = 手指向左 = offset 负方向 = next 面板方向
-			 */
-			const goNext =
-				gestureBaseIndex < categories.length - 1 &&
-				finalOffset < 0 &&
-				(Math.abs(finalOffset) > halfWidth ||
-					(state.velocityX < 0 && Math.abs(state.velocityX) > VELOCITY_MIN));
+			// 获取当前视觉状态，判断是否应该更新 index 和 capturedOffset
+			const visualState = inspectVisualState(
+				clampOffset(capturedOffset + state.deltaX, currentIndex),
+				panels,
+				containerWidth,
+				currentIndex
+			);
 
-			const goPrev =
-				gestureBaseIndex > 0 &&
-				finalOffset > 0 &&
-				(Math.abs(finalOffset) > halfWidth ||
-					(state.velocityX > 0 && Math.abs(state.velocityX) > VELOCITY_MIN));
+			let targetIndex = currentIndex;
+			capturedOffset = visualState.residualOffset - state.deltaX;
 
-			if (goNext) targetIndex = gestureBaseIndex + 1;
-			else if (goPrev) targetIndex = gestureBaseIndex - 1;
-
-			if (targetIndex !== gestureBaseIndex) {
-				onCommit?.(targetIndex);
+			if (visualState.primaryIndex !== currentIndex) {
+				targetIndex = visualState.primaryIndex;
+			} else if (
+				Math.abs(state.velocityX) > state.velocityThresholdUsed &&
+				// 指针通道：仅当 pointerup.target 仍落在中间槽 slot1 子树内才允许「纯速度」翻页
+				(state.source !== 'pointer' || isEndTargetInsideSlot1(slot1Root, state.endPointerTarget))
+			) {
+				// 如果位移没有达到阈值，则判断速度是否达到阈值
+				if (state.velocityX < 0 && currentIndex < categories.length - 1) {
+					targetIndex = currentIndex + 1;
+					shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
+				} else if (state.velocityX > 0 && currentIndex > 0) {
+					targetIndex = currentIndex - 1;
+					shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
+				} else {
+					targetIndex = currentIndex;
+				}
 			}
 
-			const dir = targetIndex > gestureBaseIndex ? -1 : targetIndex < gestureBaseIndex ? 1 : 0;
-			const targetOffset = dir * containerWidth;
-			offsetSpring.set(targetOffset);
-			animTarget = { offset: targetOffset, targetIndex, epoch: animEpoch };
+			const fromOffset = clampOffset(capturedOffset + state.deltaX, currentIndex);
+
+			const toOffset =
+				targetIndex === currentIndex
+					? 0
+					: targetIndex > currentIndex
+						? -containerWidth
+						: containerWidth;
+			activeTargetIndex = targetIndex;
+
+			panels = buildPanels(currentIndex, categories, fromOffset, containerWidth, targetIndex);
+
+			if (targetIndex !== currentIndex) {
+				onIndexChange?.(targetIndex);
+			}
+
+			animateTo(fromOffset, toOffset, ANIMATION_DURATION).onfinish = () => {
+				finishAnimation(targetIndex);
+			};
 		}
 	});
 
@@ -378,101 +431,36 @@
 	 *
 	 * 从当前视觉位置（而非 gestureBaseIndex 或 currentIndex）出发，
 	 * 确保在动画中途点击 Tab 也能从当前视觉位置平滑过渡。
-	 *
-	 * 流程：
-	 * 1. 通过 Spring 偏移计算当前视觉索引 + 残差偏移
-	 * 2. 以视觉索引为中心重建虚拟窗口
-	 * 3. offsetSpring 设为残差偏移（保持视觉连续）
-	 * 4. rAF 后启动 Spring 动画到 targetOffset
-	 * 5. $effect 近距定稿
-	 *
-	 * @param targetIndex - 目标分类索引
-	 * @returns 无返回值
 	 */
 	export function jumpToIndex(targetIndex: number): void {
-		const { visualIndex, containerWidth: width, residualOffset } = getVisualState();
+		if (!containerEl) throw new Error('containerEl 不存在，无法正常运行');
 
-		isJumping = true;
-		animEpoch++;
-		animTarget = null;
-		const epoch = animEpoch;
-
-		/**
-		 * 将 gestureBaseIndex 立即同步到当前视觉中心页。
-		 * 这样如果这次 jump 又被新的手势或 jump 打断，新的计算基线仍然正确。
-		 */
-		gestureBaseIndex = visualIndex;
-
-		/**
-		 * 先把当前视觉中心页放回中心槽位，保持视觉连续。
-		 * 后续无论是相邻跳转还是非相邻跳转，都从这份统一基线开始。
-		 */
-		offsetSpring.set(residualOffset, { instant: true });
-
-		/**
-		 * 命中当前视觉中心页时，不再忽略点击，而是直接把该页收束到中心。
-		 * 这样动画中途再次点击当前正在靠近中心的目标页，也能立即完成对齐。
-		 */
-		if (targetIndex === visualIndex) {
-			overridePanels = buildPanels(visualIndex);
-			onCommit?.(targetIndex);
-			offsetSpring.set(0);
-			animTarget = { offset: 0, targetIndex, epoch };
+		if (containerElAnimation !== null) {
+			const queueTail = queuedJumpTargets[queuedJumpTargets.length - 1];
+			if (activeTargetIndex === targetIndex || queueTail === targetIndex) return;
+			queuedJumpTargets = [...queuedJumpTargets, targetIndex];
+			shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
 			return;
 		}
 
-		onCommit?.(targetIndex);
-
-		const direction = targetIndex > visualIndex ? -1 : 1;
-		const targetOffset = direction * width;
-
-		// 重建虚拟窗口：visualIndex 在中心槽位
-		if (Math.abs(targetIndex - visualIndex) === 1) {
-			overridePanels = buildPanels(visualIndex);
-		} else {
-			// 非相邻跳转：将目标放入相邻槽位
-			const fromPanel: PanelSlot = {
-				category: categories[visualIndex],
-				originalIndex: visualIndex
-			};
-			const targetPanel: PanelSlot = {
-				category: categories[targetIndex],
-				originalIndex: targetIndex
-			};
-			const basePanels = buildPanels(visualIndex);
-			if (direction === -1) {
-				overridePanels = [basePanels[0], fromPanel, targetPanel];
-			} else {
-				overridePanels = [targetPanel, fromPanel, basePanels[2]];
-			}
-		}
-
-		// 等待 Svelte DOM 更新后启动动画
-		requestAnimationFrame(() => {
-			if (epoch !== animEpoch) {
-				return;
-			}
-			offsetSpring.set(targetOffset);
-			animTarget = { offset: targetOffset, targetIndex, epoch };
-		});
+		startJumpTransition(targetIndex);
+		shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
 	}
 </script>
 
-<div
-	class="relative h-full w-full overflow-hidden"
-	style="touch-action: pan-y;"
-	bind:this={containerEl}
-	use:swipe={swipeOptions}
->
-	{#each panels as panel, slot (panel?.category?.value)}
-		<div
-			class="absolute inset-0 overflow-hidden"
-			style="transform: translate3d({(slot - 1) * containerWidth +
-				offsetSpring.current}px, 0, 0); will-change: transform; contain: strict;"
-		>
-			{#if panel}
-				{@render children(panel.category, panel.originalIndex)}
-			{/if}
-		</div>
-	{/each}
+<div class="relative h-full w-full overflow-hidden">
+	<div
+		class="absolute flex h-full w-[300%] touch-none overflow-hidden will-change-transform"
+		bind:this={containerEl}
+		use:swipe={swipeOptions}
+	>
+		{#each panels as panel, index (panel?.category?.value || index)}
+			<div class="h-full w-1/3" bind:this={panelSlotRoots[index]}>
+				{panel?.originalIndex}
+				{#if panel}
+					{@render children(panel.category, panel.originalIndex)}
+				{/if}
+			</div>
+		{/each}
+	</div>
 </div>

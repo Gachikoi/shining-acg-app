@@ -185,8 +185,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 
 		// ── 跟手阶段（rAF 节流） ────────────────────────────────
 		if (pointerPhase === 'active') {
-			pendingDeltaX = dx - threshold();
-			pendingDeltaY = dy - threshold();
+			pendingDeltaX = dx > 0 ? dx - threshold() : dx + threshold();
+			pendingDeltaY = dy > 0 ? dy - threshold() : dy + threshold();
 			if (pointerRafId === null) {
 				pointerRafId = requestAnimationFrame(() => {
 					pointerRafId = null;
@@ -216,8 +216,9 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 *
 	 * @param finalX - 手指离开时的 clientX
 	 * @param finalY - 手指离开时的 clientY
+	 * @param endTarget - pointerup 的 `event.target`，供 onEnd 与 slot1 等区域做 DOM 归属判断
 	 */
-	function finishPointerGesture(finalX: number, finalY: number) {
+	function finishPointerGesture(finalX: number, finalY: number, endTarget: EventTarget | null) {
 		// 取消 rAF 确保调用方的视觉状态在 onEnd 之前是最新的。
 		if (pointerRafId !== null) {
 			cancelAnimationFrame(pointerRafId);
@@ -235,30 +236,29 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		const committed = distanceCommit || velocityCommit;
 		const direction: 'left' | 'right' = dx > 0 ? 'right' : 'left';
 
-		let state: SwipeState | null = null;
-		if (pointerPhase === 'active') {
-			state = {
-				deltaX: dx - threshold(),
-				deltaY: dy - threshold(),
-				velocityX: vx,
-				velocityY: vy,
-				direction,
-				committed,
-				velocityThresholdUsed: velocityThreshold(),
-				source: 'pointer'
-			};
-		} else {
-			state = {
-				deltaX: 0,
-				deltaY: 0,
-				velocityX: 0,
-				velocityY: 0,
-				direction: 'right',
-				committed: false,
-				velocityThresholdUsed: velocityThreshold(),
-				source: 'pointer'
-			};
-		}
+		const state: SwipeState =
+			pointerPhase === 'active'
+				? {
+						deltaX: dx > 0 ? dx - threshold() : dx + threshold(),
+						deltaY: dy > 0 ? dy - threshold() : dy + threshold(),
+						velocityX: vx,
+						velocityY: vy,
+						direction,
+						committed,
+						velocityThresholdUsed: velocityThreshold(),
+						source: 'pointer',
+						endPointerTarget: endTarget
+					}
+				: {
+						deltaX: 0,
+						deltaY: 0,
+						velocityX: 0,
+						velocityY: 0,
+						direction: 'right',
+						committed: false,
+						velocityThresholdUsed: velocityThreshold(),
+						source: 'pointer'
+					};
 
 		release(id);
 
@@ -305,7 +305,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	function onPointerUp(e: PointerEvent) {
 		if (e.pointerId !== pointerId) return;
 
-		finishPointerGesture(e.clientX, e.clientY);
+		finishPointerGesture(e.clientX, e.clientY, e.target);
 	}
 
 	/**
