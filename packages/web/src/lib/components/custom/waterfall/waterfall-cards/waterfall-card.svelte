@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Eye, Heart, PlayIcon } from 'lucide-svelte';
-	import { formatTime } from '$lib/utils';
 	import { breakpoint } from '$lib/modules/device';
+	import { formatTime } from '$lib/utils';
+	import { Eye, Heart, PlayIcon } from 'lucide-svelte';
 
 	interface UserSummary {
 		avatar: string;
@@ -16,7 +16,6 @@
 
 	let {
 		index,
-		postId,
 		title,
 		cover,
 		author,
@@ -29,7 +28,6 @@
 		publishTime
 	}: {
 		index: number;
-		postId: string;
 		title: string;
 		cover: Media;
 		author: UserSummary;
@@ -48,7 +46,6 @@
 </script>
 
 <article
-	data-post-id={postId}
 	class="group cursor-pointer overflow-hidden rounded-sm border border-zinc-100 sm:rounded-md md:rounded-xl lg:rounded-2xl dark:border-zinc-900"
 >
 	<figure
