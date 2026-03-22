@@ -22,6 +22,7 @@ import type { GestureSource } from '../../../core/types';
  * @property committed - 是否达到提交阈值（距离或速度）
  * @property velocityThresholdUsed - 本帧使用的速度阈值（px/ms），来自 SwipeOptions.velocityThreshold，供消费端做方向相关判断
  * @property source - 本次手势的事件来源
+ * @property endPointerTarget - 指针通道正常结束时 pointerup 的 `event.target`；wheel / cancel 等路径不设
  */
 export interface SwipeState {
 	deltaX: number;
@@ -33,6 +34,8 @@ export interface SwipeState {
 	/** 本帧使用的速度阈值（px/ms），与 SwipeOptions.velocityThreshold 一致，便于消费端做「速度超过阈值」判断而不重复写常量 */
 	velocityThresholdUsed: number;
 	source: GestureSource;
+	/** 指针通道 pointerup 的 `target`，供消费端与 slot1 根节点做 `contains` 判断 */
+	endPointerTarget?: EventTarget | null;
 }
 
 /**
