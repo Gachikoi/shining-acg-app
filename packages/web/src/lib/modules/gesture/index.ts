@@ -8,8 +8,8 @@
 // ─── Svelte Actions（registry：登记供竞技场查询；gestures：完整输入闭环） ─
 
 export { edgeZone } from './actions/registry/edge-zone';
-export { dragReorder, findListItemIndexUnderPoint } from './drag-reorder';
-export type { DragReorderDragPreview, DragReorderOptions } from './drag-reorder';
+export { dragReorder, findListItemIndexUnderPoint } from './actions/gestures/drag-reorder';
+export type { DragReorderDragPreview, DragReorderOptions } from './actions/gestures/drag-reorder';
 export { DEFAULT_PULL_REFRESH_CONFIG, pullRefresh } from './actions/gestures/pull-refresh';
 export { scrollBoundary } from './actions/registry/scroll-boundary';
 export { swipe } from './actions/gestures/swipe';
@@ -45,3 +45,4 @@ export type { SwipeOptions, SwipeState } from './actions/gestures/swipe';
 
 export * from './actions/gestures/long-press';
 export * from './actions/gestures/tap';
+export * from './actions/gestures/drag-reorder';

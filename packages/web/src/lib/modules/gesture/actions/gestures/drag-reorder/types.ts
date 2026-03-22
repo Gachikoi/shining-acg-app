@@ -13,6 +13,7 @@
  *   `getArenaNode` 应返回已注册 `scrollBoundary` 的**祖先**（否则回退 `listRoot` / `document.body`）。
  * - **索引**：`fromIndex` 在 `pointerdown` 时**快照**为本次拖拽起点；拖拽过程中 `update()` 可刷新 `fromIndex` 供其它实例使用，但不影响已开始的拖拽。`onReorder` 仅在松手且 `from !== to` 时调用。
  * - **跟手虚影**：可选 `dragPreview`；由 Action 挂到 `document.body`，松手 / `destroy` / `finally` 中必定移除。
+ * - **激活**：按住达到 `longPressDurationMs` 后尝试进入拖拽；等待期间位移超过 `longPressMoveCancelPx` 则取消本次计时（可与列表滚动共存）。
  */
 
 /**
@@ -66,11 +67,18 @@ export interface DragReorderOptions {
 	listRoot?: HTMLElement | null;
 
 	/**
-	 * 按下后指针移动超过该距离（px）才进入拖拽，避免轻触误拖
+	 * 自 `pointerdown` 起保持按下、且等待期内位移未超 `longPressMoveCancelPx` 时，经过该毫秒数后尝试 `tryAcquire` 并进入拖拽
 	 *
-	 * @default 8
+	 * @default 450
 	 */
-	activationThreshold?: number;
+	longPressDurationMs?: number;
+
+	/**
+	 * 在「等待长按」阶段，相对按下点移动超过该距离（px）则取消定时器，本次序列不再通过计时进入拖拽（避免与滚动冲突）
+	 *
+	 * @default 10
+	 */
+	longPressMoveCancelPx?: number;
 
 	/**
 	 * 返回 `true` 时忽略指针（如上传中、只读态）
@@ -95,7 +103,7 @@ export interface DragReorderOptions {
 	onDragEnd?: () => void;
 
 	/**
-	 * 本次指针序列在 **`pointerup` 时仍未进入 `dragging`**（位移未达 `activationThreshold` 等）时调用
+	 * 本次指针序列在 **`pointerup` 时仍未进入 `dragging`**（长按未到点、等待期因移动被取消、`tryAcquire` 失败等）时调用
 	 *
 	 * @remarks 用于「整卡轻点打开菜单」等与拖拽互斥的轻触语义；**不会**在 `pointercancel` / `lostpointercapture` 的 pending 清理路径触发。
 	 */
