@@ -42,14 +42,14 @@ type NotificationExtra struct {
 type Notification struct {
 	BaseModel
 
-	// ID 覆盖 BaseModel.ID，作为 idx_notifications_user_feed 的最右 tiebreaker（priority:4, sort:desc）。
+	// ID 覆盖 BaseModel.ID，作为 idx_notifications_user_feed 的最右 tiebreaker（priority:4, desc）。
 	// created_at 在毫秒精度下可能重复，追加 id DESC 使游标 (created_at, id) 全局唯一。
 	ID int64 `gorm:"primaryKey;autoIncrement:false;
-		index:idx_notifications_user_feed,sort:desc,priority:4" json:"id,string"`
+		index:idx_notifications_user_feed,desc,priority:4" json:"id,string"`
 
 	// 覆盖 BaseModel.CreatedAt 以加入复合索引
-	// priority:3 — sort:desc 对应瀑布流游标分页（最新在前），id 在 priority:4 位提供 tiebreaker
-	CreatedAt time.Time `gorm:"index:idx_notifications_user_feed,sort:desc,priority:3" json:"created_at"`
+	// priority:3 — desc 对应瀑布流游标分页（最新在前），id 在 priority:4 位提供 tiebreaker
+	CreatedAt time.Time `gorm:"index:idx_notifications_user_feed,desc,priority:3" json:"created_at"`
 
 	// priority:1 — 复合索引最左列，所有查询的等值过滤条件
 	UserID int64 `gorm:"not null;index:idx_notifications_user_feed,priority:1;index:idx_notifications_category_unread" json:"user_id,string"`
@@ -65,6 +65,7 @@ type Notification struct {
 
 	// 触发者（系统类通知为 null）
 	ActorID *int64 `json:"actor_id,string,omitempty"`
+	Actor   User   `gorm:"foreignKey:ActorID"`
 
 	// 关联目标（部分类别为 null）；1=Post, 2=Comment（应用内部约定）
 	TargetType int32  `json:"target_type"`

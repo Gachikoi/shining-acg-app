@@ -13,6 +13,7 @@ import (
 type Device struct {
 	DeviceID string `gorm:"primaryKey;size:128" json:"device_id"`
 	UserID   int64  `gorm:"not null;index" json:"user_id,string"`
+	User     User
 
 	// 设备信息，对应 proto: DeviceInfo
 	Platform      authv1.DevicePlatform `gorm:"not null" json:"platform"`

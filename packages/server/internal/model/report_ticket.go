@@ -23,12 +23,12 @@ import (
 type ReportTicket struct {
 	BaseModel
 
-	// ID 覆盖 BaseModel.ID，作为游标索引的最右 tiebreaker（sort:desc,priority:3）
+	// ID 覆盖 BaseModel.ID，作为游标索引的最右 tiebreaker（desc,priority:3）
 	ID int64 `gorm:"primaryKey;autoIncrement:false;
-		index:idx_report_tickets_feed,sort:desc,priority:3" json:"id,string"`
+		index:idx_report_tickets_feed,desc,priority:3" json:"id,string"`
 
-	// UpdatedAt 覆盖 BaseModel.UpdatedAt，作为游标索引的次排序列（sort:desc,priority:2）
-	UpdatedAt time.Time `gorm:"index:idx_report_tickets_feed,sort:desc,priority:2" json:"updated_at"`
+	// UpdatedAt 覆盖 BaseModel.UpdatedAt，作为游标索引的次排序列（desc,priority:2）
+	UpdatedAt time.Time `gorm:"index:idx_report_tickets_feed,desc,priority:2" json:"updated_at"`
 
 	// 被举报对象，(target_type, target_id) 唯一，防止同一对象重复开单
 	// 对应 proto: ReportType enum

@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	commonv1 "app.shiningacg.club/gen/proto/api/main/common/v1"
 	"gorm.io/gorm"
 )
 
@@ -20,4 +21,11 @@ type BaseModel struct {
 type LinkItem struct {
 	Label string `gorm:"size:12" json:"label"`
 	URL   string `gorm:"size:200" json:"url"`
+}
+
+func (l *LinkItem) ToLink() *commonv1.Link {
+	return &commonv1.Link{
+		Label: l.Label,
+		Url:   l.URL,
+	}
 }
