@@ -1,7 +1,7 @@
 /**
  * @file 手势系统公共导出
  * @description
- * 统一导出 GestureArena（`core`）、全部 Svelte Action（位于 `actions/registry` 与 `actions/gestures`，含 `dragReorder`）、
+ * 统一导出 GestureArena（`core`）、全部 Svelte Action（位于 `actions/registry` 与 `actions/gestures`；`dragReorder` 已 deprecated，媒体排序请用 `$lib/modules/sortable-list`）、
  * 共享类型与默认配置。业务侧请只从本文件导入，勿依赖子路径。
  */
 
