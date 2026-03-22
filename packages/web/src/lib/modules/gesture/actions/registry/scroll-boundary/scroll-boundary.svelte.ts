@@ -17,8 +17,9 @@
  */
 
 import type { Action } from 'svelte/action';
-import { registerScrollBoundary } from './arena.svelte';
-import type { Axis, ScrollBoundaryOptions } from './types';
+import { registerScrollBoundary } from '../../../core/arena.svelte';
+import type { Axis } from '../../../core/types';
+import type { ScrollBoundaryOptions } from './types';
 
 /**
  * 滚动边界声明 Svelte Action
