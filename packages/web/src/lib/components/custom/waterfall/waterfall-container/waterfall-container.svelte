@@ -21,8 +21,8 @@
 		containerWidth: number;
 		/** 生成该快照时的卡片间距（px） */
 		gap: number;
-		/** 参与布局的帖子 ID 顺序，用于校验快照是否仍然对应同一份数据 */
-		postIds: string[];
+		/** 参与布局的帖子引用，用于校验快照是否仍然对应同一份数据 */
+		postRef: V1PostPreview[];
 		/** 瀑布流绝对定位结果 */
 		cardPositions: CardPosition[];
 		/** 各列累计高度 */
@@ -51,12 +51,18 @@
 </script>
 
 <script lang="ts">
-	import { pullRefresh, type PullRefreshConfig } from '$lib/modules/gesture';
 	import type { V1PostPreview } from '$lib/api/types.gen';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { resolveCacheUrl } from '$lib/modules/cache';
 	import { breakpoint, remToPx } from '$lib/modules/device';
+	import {
+		DEFAULT_PULL_REFRESH_CONFIG,
+		pullRefresh,
+		type PullRefreshConfig
+	} from '$lib/modules/gesture';
 	import { calculateVisibleRange } from '$lib/modules/virtual-scroll';
-	import { onMount, onDestroy } from 'svelte';
+	import { formatStat } from '$lib/utils';
+	import { onDestroy, onMount } from 'svelte';
 	import type { Action } from 'svelte/action';
 	import { Spring } from 'svelte/motion';
 	import { WaterfallCard, WaterfallSkeletonCard } from '../waterfall-cards';
@@ -66,9 +72,6 @@
 		type CardPosition,
 		type LayoutItem
 	} from './waterfall-layout';
-	import { formatStat } from '$lib/utils';
-	import { resolveCacheUrl } from '$lib/modules/cache';
-	import { DEFAULT_PULL_REFRESH_CONFIG } from '$lib/modules/gesture/pull-refresh.svelte';
 
 	/**
 	 * 瀑布流配置项
@@ -97,7 +100,8 @@
 		hasMore = true,
 		showSkeleton = false,
 		refreshing = false,
-		categoryId = '',
+		businessId,
+		categoryId,
 		onLoadMore,
 		onRefresh,
 		config
@@ -113,7 +117,8 @@
 		/** 是否正在刷新（由外部控制） */
 		refreshing?: boolean;
 		/** 当前分类 ID（用于清除媒体缓存） */
-		categoryId?: string;
+		businessId: string;
+		categoryId: string;
 		/** 加载更多回调 */
 		onLoadMore?: () => void;
 		/** 刷新回调，action 会 await 此函数 */
@@ -144,12 +149,16 @@
 
 	/** 容器宽度（px） */
 	let containerWidth = $state(0);
+	/** 容器高度（px），由 ResizeObserver 维护，避免读取 clientHeight 引发强制回流 */
+	let containerHeight = $state(0);
 	/** 各列高度数组 */
 	let columnHeights: number[] = $state([]);
 	/** 所有卡片的绝对定位信息 */
 	let cardPositions: CardPosition[] = $state([]);
 	/** 当前虚拟滚动可见范围 */
 	let visibleRange = $state({ start: 0, end: 0 });
+	/** 缓存的容器滚动位置（px），由 scroll 事件同步更新，避免在计算中读取 scrollTop 引发强制回流 */
+	let currentScrollTop = $state(0);
 	/** 瀑布流最大高度（px） */
 	let maxHeight = $state(0);
 	/** 已计算布局的卡片数量（用于增量计算） */
@@ -179,7 +188,7 @@
 	// ─── DOM 相关 ──────────────────────────────────────────────
 
 	/** 卡片 DOM 实测高度缓存：key = postId，value = 内层 div 高度（不含 gap） */
-	const measuredHeights = new Map<string, number>();
+	let measuredHeights = new Map<string, number>();
 
 	// ─── 派生数据 ──────────────────────────────────────────────────
 
@@ -216,29 +225,23 @@
 
 	/**
 	 * 判断缓存快照是否仍然可复用。
-	 * 只有容器宽度、gap、帖子顺序完全一致时，历史布局才能安全直接恢复。
-	 *
-	 * @param snapshot - 待校验的布局快照
-	 * @param width - 当前容器宽度
-	 * @param gap - 当前布局间距
-	 * @returns 快照是否可安全复用
+	 * 只有容器宽度、gap、帖子完全一致时，历史布局才能安全直接恢复。
+	 * @param categoryId - 分类 ID
+	 * @param containerWidth - 容器宽度
+	 * @param posts - 帖子列表
 	 */
-	function canReuseSnapshot(
-		snapshot: WaterfallLayoutSnapshot,
-		width: number,
-		gap: number
-	): boolean {
-		if (snapshot.containerWidth !== width) return false;
-		if (snapshot.gap !== gap) return false;
-		if (snapshot.postIds.length !== posts.length) return false;
+	function getReusableSnapshot(
+		categoryId: string,
+		containerWidth: number
+	): WaterfallLayoutSnapshot | null {
+		const snapshot = waterfallLayoutSnapshotStore.get(categoryId);
+		if (!snapshot) return null;
 
-		for (let i = 0; i < posts.length; i++) {
-			if (snapshot.postIds[i] !== (posts[i].postId || '')) {
-				return false;
-			}
-		}
+		if (snapshot.containerWidth !== containerWidth) return null;
+		if (snapshot.gap !== resolveGapPx()) return null;
+		if (snapshot.postRef !== posts) return null; // feed-store.svelte.ts 中每次更新数据，posts 的引用都会发生变化，所以通过引用来判断是否可以恢复布局
 
-		return true;
+		return snapshot;
 	}
 
 	/**
@@ -248,12 +251,13 @@
 	 * @returns 无返回值
 	 */
 	function persistLayoutSnapshot(): void {
-		if (!categoryId || containerWidth <= 0 || cardPositions.length === 0) return;
+		if (!categoryId || containerWidth <= 0 || cardPositions.length === 0 || posts.length === 0)
+			return;
 
 		waterfallLayoutSnapshotStore.set(categoryId, {
 			containerWidth: containerWidth, // 不需要 $state.snapshot，因为不是对象，svelte 不会编译为 Proxy，这里可以取到正常值
 			gap: resolveGapPx(),
-			postIds: posts.map((post) => post.postId || ''), // map 不返回响应式值，不需要 $state.snapshot
+			postRef: posts,
 			cardPositions: $state.snapshot(cardPositions), // 必须要 $state.snapshot，因为 cardPositions 是对象，会被编译为 Proxy，这里把 Proxy 转回正常值
 			columnHeights: $state.snapshot(columnHeights),
 			measuredHeights: new Map(measuredHeights), // 防止获取引用导致出现 bug
@@ -262,7 +266,7 @@
 			snapshotCount: $state.snapshot(snapshotCount),
 			snapshotColumnHeights: $state.snapshot(snapshotColumnHeights),
 			visibleRange: $state.snapshot(visibleRange),
-			scrollTop: $state.snapshot(scrollContainer?.scrollTop ?? 0)
+			scrollTop: $state.snapshot(currentScrollTop)
 		});
 	}
 
@@ -270,19 +274,14 @@
 	 * 尝试从缓存恢复布局状态。
 	 * 命中后会直接恢复绝对定位、测量高度和滚动位置，避免重挂载触发全量重算。
 	 *
-	 * @param width - 当前容器宽度
+	 * @param categoryId - 分类 ID
+	 * @param containerWidth - 容器宽度（防止 $state 更新延迟，必须主动传入 containerWidth）
+	 * @param posts - 帖子列表
 	 * @returns 是否成功恢复
 	 */
-	function restoreLayoutSnapshot(width: number): boolean {
-		if (!categoryId) return false;
-
-		const snapshot = waterfallLayoutSnapshotStore.get(categoryId);
+	function restoreLayoutSnapshot(categoryId: string, containerWidth: number): boolean {
+		const snapshot = getReusableSnapshot(categoryId, containerWidth);
 		if (!snapshot) return false;
-
-		const gap = resolveGapPx();
-		if (!canReuseSnapshot(snapshot, width, gap)) {
-			return false;
-		}
 
 		cardPositions = snapshot.cardPositions;
 		columnHeights = snapshot.columnHeights;
@@ -291,11 +290,7 @@
 		snapshotCount = snapshot.snapshotCount;
 		snapshotColumnHeights = snapshot.snapshotColumnHeights;
 		visibleRange = snapshot.visibleRange;
-
-		measuredHeights.clear();
-		for (const [postId, height] of snapshot.measuredHeights) {
-			measuredHeights.set(postId, height);
-		}
+		measuredHeights = snapshot.measuredHeights; // 已经拷贝过了
 
 		if (containerElement) {
 			containerElement.style.height = `${maxHeight}px`;
@@ -303,6 +298,7 @@
 
 		if (scrollContainer) {
 			scrollContainer.scrollTop = snapshot.scrollTop;
+			currentScrollTop = snapshot.scrollTop;
 		}
 
 		updateVisibleRange();
@@ -320,7 +316,6 @@
 	 */
 
 	function recalculateLayout(reset = false): void {
-		console.log(reset ? '全量重置布局' : '增量计算布局');
 		// 响应式间距
 		const gap = resolveGapPx();
 
@@ -365,14 +360,20 @@
 	/**
 	 * 更新虚拟滚动可见范围
 	 * 根据当前滚动位置计算应渲染哪些卡片
+	 * 完全依赖缓存的 currentScrollTop 和 viewportHeight 避免布局抖动 (Layout Thrashing)
 	 */
 	function updateVisibleRange(): void {
-		if (!scrollContainer || !containerElement) return;
+		if (!scrollContainer || !containerElement || containerHeight === 0) return;
 
 		const result = calculateVisibleRange({
 			items: cardPositions,
-			scrollTop: scrollContainer.scrollTop,
-			viewportHeight: scrollContainer.clientHeight
+			scrollTop: currentScrollTop,
+			viewportHeight: containerHeight,
+			...(mergedConfig.bufferSize ? { bufferSize: mergedConfig.bufferSize } : undefined),
+			...(mergedConfig.bufferHeight ? { bufferHeight: mergedConfig.bufferHeight } : undefined),
+			...(mergedConfig.binarySearchThreshold
+				? { binarySearchThreshold: mergedConfig.binarySearchThreshold }
+				: undefined)
 		});
 
 		visibleRange = result;
@@ -401,22 +402,30 @@
 	 * 处理滚动事件（RAF 节流）
 	 * 更新虚拟滚动范围并检查是否需要加载更多
 	 */
-	function handleScroll() {
+	function handleScroll(e: Event) {
+		const target = e.target as HTMLElement;
+		if (!target) return;
+
+		// 1. 在事件回调中同步读取 scrollTop
+		// 此刻 DOM 处于干净状态，直接读取不会强制重排（Layout Thrashing）
+		currentScrollTop = target.scrollTop;
+
 		if (scrollFrameId !== null) return;
 
 		scrollFrameId = requestAnimationFrame(async () => {
-			updateVisibleRange();
-
 			if (!scrollContainer) {
 				scrollFrameId = null;
 				return;
 			}
 
-			const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+			// 2. 基于缓存的状态更新可视区域，杜绝任何 DOM 读取
+			updateVisibleRange();
 
-			// 接近底部时触发加载更多
+			// 3. 接近底部时触发加载更多
+			// 顶部下拉指示器区域(16px) + 间距(12px) = 28px
+			const totalContentHeight = maxHeight + 28;
 			if (
-				scrollHeight - scrollTop - clientHeight < mergedConfig.loadingThreshold &&
+				totalContentHeight - currentScrollTop - containerHeight < mergedConfig.loadingThreshold &&
 				hasMore &&
 				!loading
 			) {
@@ -452,28 +461,37 @@
 	onMount(() => {
 		if (!containerElement || !scrollContainer) return;
 
-		// 恢复布局
-		console.log(
-			restoreLayoutSnapshot(containerElement.clientWidth) ? '可以恢复布局' : '不能恢复布局'
-		);
-
-		// ── containerObserver：仅监听滚动容器宽度 ──────────────────────────────
+		// ── containerObserver：仅监听滚动容器宽度与高度 ──────────────────────────────
 		// 挂在 scrollContainer（外层），不挂 containerElement（内层）。
 		// 原因：recalculateLayout 会写 containerElement.style.height，若同时观察它，
 		// 高度写入会触发新一轮通知，形成反馈循环，导致
 		// "ResizeObserver loop completed with undelivered notifications" 错误。
 		// iOS WKWebView 会将此作为未捕获错误抛出。
 		// 改为观察外层 scrollContainer 后，写内层高度不影响外层宽度，循环天然断开。
+		// ResizeObserver 会提供无布局抖动 (layout thrashing) 的宽高测量。
 		containerObserver = new ResizeObserver(([entry]) => {
-			const w = entry.contentRect.width;
-			if (w === containerWidth) return; // 宽度未变，跳过
-			containerWidth = w;
+			// contentRect 提供的是 content-box 的尺寸
+			const w = Math.round(entry.contentRect.width);
+			const h = Math.round(entry.contentRect.height);
 
-			if (
-				waterfallLayoutSnapshotStore.get(categoryId) &&
-				canReuseSnapshot(waterfallLayoutSnapshotStore.get(categoryId)!, w, resolveGapPx())
-			)
+			let changed = false;
+			if (w !== containerWidth) {
+				containerWidth = w;
+				changed = true;
+			}
+			if (h !== containerHeight) {
+				containerHeight = h;
+				changed = true;
+			}
+
+			if (!changed) {
 				return;
+			}
+
+			// 挂载首次触发时，如果能重用快照，则直接恢复并退出
+			if (restoreLayoutSnapshot(categoryId, containerWidth)) {
+				return;
+			}
 			recalculateLayout(true);
 			updateVisibleRange();
 		});
@@ -511,18 +529,8 @@
 					}
 				}
 			}
-
 			// 如果还能重用快照，则跳过计算
-			if (
-				waterfallLayoutSnapshotStore.get(categoryId) &&
-				canReuseSnapshot(
-					waterfallLayoutSnapshotStore.get(categoryId)!,
-					containerWidth,
-					resolveGapPx()
-				)
-			)
-				return;
-
+			if (getReusableSnapshot(categoryId, containerWidth)) return;
 			if (!hasNewCard && !hasChangedCard) return;
 			if (hasChangedCard) {
 				// ② 已有卡片高度变化 → 全量重算
@@ -664,14 +672,17 @@
 								postId={post.postId || ''}
 								title={post.displayTitle || ''}
 								cover={{
-									url: resolveCacheUrl(post.cover?.single?.url || '', `feed-${categoryId}`), // 添加 feed 前缀以避免缓存桶命名冲突
+									url: resolveCacheUrl(
+										post.cover?.single?.url || '',
+										`${businessId}-${categoryId}`
+									), // 添加 feed 前缀以避免缓存桶命名冲突
 									ratio:
 										post.cover?.single?.meta?.width && post.cover.single.meta?.height
 											? post.cover.single.meta.width / post.cover.single.meta.height
 											: 1
 								}}
 								author={{
-									avatar: resolveCacheUrl(post.author?.avatar, `feed-${categoryId}`),
+									avatar: resolveCacheUrl(post.author?.avatar, `${businessId}-${categoryId}`),
 									name: post.author?.name || '',
 									id: post.author?.userId || ''
 								}}
