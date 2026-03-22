@@ -1,7 +1,7 @@
 <script module lang="ts">
 	// 常量定义
 	// 参考产品需求文档 6.2.5 发布 (Release)
-	import { CoverRatioArray, type CoverRatio } from '$lib/stores/release';
+	import type { CoverRatio } from '$lib/stores/release';
 
 	const defaultCoverRatio: CoverRatio = '3:4';
 
@@ -26,364 +26,54 @@
 	import ReleaseBodySection from './components/release-body-section.svelte';
 	import ReleasePartitionSelect from './components/release-partition-select.svelte';
 	import ReleaseActionBar from './components/release-action-bar.svelte';
-	import { partitionServiceListPartitions, postServiceCreatePost } from '$lib/api';
-	import type { V1PostContentUnit } from '$lib/api/types.gen';
+	import { postServiceCreatePost } from '$lib/api';
+	import type { V1PostContentUnit, V1MediaAsset } from '$lib/api/types.gen';
 	import {
 		RELEASE_DRAFT_SCHEMA_VERSION,
 		saveReleaseDraft,
 		loadReleaseDraft,
 		clearReleaseDraft,
-		type DraftMediaItem,
 		type ReleaseDraft
 	} from '$lib/stores/release';
+	import { createReleasePartitions } from '$lib/stores/release/release-partitions.svelte.js';
+	import { createReleaseEditorCore } from '$lib/stores/release/release-editor-core.svelte.js';
+	import { createReleaseUploadController } from '$lib/stores/release/release-upload.svelte.js';
 	import { scrollBoundary } from '$lib/modules/gesture';
-	import {
-		DEFAULT_TEXT_COVER_STYLE_ID,
-		getPreviewBlobForDisplay,
-		isImageItem,
-		isVideoItem,
-		PLACEHOLDER_VIDEO_FAILED,
-		PLACEHOLDER_VIDEO_LOADING,
-		resolveCoverBlob,
-		type CoverSource
-	} from '$lib/modules/media-cover';
-	import { createMediaUploader } from '$lib/modules/media-uploader';
-	import type { MediaUploader } from '$lib/modules/media-uploader';
-	import {
-		filesToDraftItems,
-		draftItemsToPrepareParams,
-		getPreviewBlob,
-		mediaItemsEqual
-	} from '$lib/modules/release-media';
+	import { mediaItemsEqual } from '$lib/modules/release-media';
 	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
 
 	const DRAFT_ID = 'release-draft';
 	const fetchMentionUsers = createFetchMentionUsersFromFollowings();
 
-	let lastSaved = $state<string | null>(null);
-	let lastSavedIsAutoSave = $state(false);
-	let lastSavedSnapshot = $state<ReleaseDraft | null>(null);
+	// 分区列表 / 媒体与封面 / 上传：状态与副作用在对应 .svelte.ts 工厂内
+	const partitionsState = createReleasePartitions();
 
-	let cachedMediaItems = $state<DraftMediaItem[]>([]);
-	let cachedMediaUrls = $state<string[]>([]);
-	let selectedCoverIndex = $state(0);
-	let coverRatio = $state<CoverRatio>(defaultCoverRatio);
-	let textCoverStyleId = $state(DEFAULT_TEXT_COVER_STYLE_ID);
-	let coverPreviewUrl = $state<string | null>(null);
-	let coverSource = $state<CoverSource>('text-generated');
-	let isCoverResolving = $state(false);
-	let coverBodyInputVersion = $state(0);
-	let coverResolveSeq = 0;
-	let coverResolveTimer: ReturnType<typeof setTimeout> | null = null;
 	let titleContent = $state('');
 	let contenteditableRef = $state<HTMLDivElement | null>(null);
 	let initialBodyContent = $state<V1PostContentUnit[] | undefined>(undefined);
-
-	let partitions = $state<Array<{ value: string; label: string }>>([]);
-	let partitionsLoading = $state(true);
-	let partitionsError = $state<string | null>(null);
 	let selectedSection = $state('');
 
-	let showLeaveConfirm = $state(false);
-	let pendingNavigationUrl = $state<URL | null>(null);
-	let resetKey = $state(0);
-	let showPublishConfirm = $state(false);
-
-	// 上传状态
-	let isUploading = $state(false);
-	let uploadProgress = $state<{
-		uploadedFiles: number;
-		totalFiles: number;
-		percent?: number;
-	}>({
-		uploadedFiles: 0,
-		totalFiles: 0
-	});
-	let mediaUploader = $state<MediaUploader | null>(null);
-	let uploadCancelled = $state(false);
-	/** 是否存在上传失败文件，需展示重试/删除失败项按钮 */
-	let hasUploadError = $state(false);
-	/** 当前上传批次 ID，供重试成功或删除失败项后调用 getBatchMedia */
-	let currentBatchId = $state<string | null>(null);
-
-	function buildDraft(isAutoSave: boolean): ReleaseDraft {
-		const clampedCoverIndex =
-			cachedMediaItems.length === 0 ? 0 : Math.min(selectedCoverIndex, cachedMediaItems.length - 1);
-		return {
-			id: DRAFT_ID,
-			updatedAt: new Date().toISOString(),
-			isAutoSave,
-			title: titleContent,
-			bodyContent: contenteditableRef ? extractContentFromShinRichTextarea(contenteditableRef) : [],
-			selectedSection,
-			coverRatio,
-			selectedCoverIndex: clampedCoverIndex,
-			mediaItems: [...cachedMediaItems],
-			schemaVersion: RELEASE_DRAFT_SCHEMA_VERSION,
-			textCoverStyleId
-		};
-	}
-
-	function draftsEqual(a: ReleaseDraft, b: ReleaseDraft): boolean {
-		return (
-			a.title === b.title &&
-			a.selectedSection === b.selectedSection &&
-			a.coverRatio === b.coverRatio &&
-			a.selectedCoverIndex === b.selectedCoverIndex &&
-			a.textCoverStyleId === b.textCoverStyleId &&
-			JSON.stringify(a.bodyContent) === JSON.stringify(b.bodyContent) &&
-			mediaItemsEqual(a.mediaItems, b.mediaItems)
-		);
-	}
-
-	function isDirty(): boolean {
-		if (!lastSavedSnapshot) return true;
-		return !draftsEqual(buildDraft(false), lastSavedSnapshot);
-	}
-
-	async function performSave(isAutoSave: boolean) {
-		const draft = buildDraft(isAutoSave);
-		const snapshot = $state.snapshot(draft);
-		await saveReleaseDraft(snapshot);
-		lastSaved = draft.updatedAt;
-		lastSavedIsAutoSave = isAutoSave;
-		lastSavedSnapshot = snapshot;
-	}
-
-	function handleSave() {
-		if (!isDirty()) {
-			toast.info(TOAST_MESSAGES.NO_CHANGES_TO_SAVE);
-			return;
-		}
-		performSave(false);
-	}
-
-	function handleReset() {
-		// TODO(6.2.5.2-1): 区分新建/编辑——编辑现有帖子时应重置为现网内容，而非清空
-		for (const url of cachedMediaUrls) {
-			URL.revokeObjectURL(url);
-		}
-		clearCoverPreviewUrl();
-		titleContent = '';
-		coverRatio = defaultCoverRatio;
-		textCoverStyleId = DEFAULT_TEXT_COVER_STYLE_ID;
-		cachedMediaItems = [];
-		cachedMediaUrls = [];
-		selectedCoverIndex = 0;
-		selectedSection = '';
-		initialBodyContent = [];
-		lastSaved = null;
-		lastSavedSnapshot = null;
-		resetKey += 1;
-		clearReleaseDraft(DRAFT_ID);
-	}
-
-	// 封面比例轮换
-	function rotateCoverRatio() {
-		const currentIndex = CoverRatioArray.indexOf(coverRatio);
-		const nextIndex = (currentIndex + 1) % CoverRatioArray.length;
-		coverRatio = CoverRatioArray[nextIndex];
-	}
-
-	// ── 图片/视频选择器 ────────────────────────────────────────────────
-
-	const MAX_MEDIA_COUNT = 20; // 需求 6.2.5.1-2：最多 20 张
-
-	/** 处理文件选择，解析 Live Photo 并转为 DraftMediaItem 追加。视频项先显示骨架屏，异步抽取首帧后更新。 */
-	function handleFileSelect(e: Event) {
-		const input = e.currentTarget as HTMLInputElement;
-		const newFiles = Array.from(input.files ?? []);
-		if (!newFiles.length) return;
-
-		const remaining = MAX_MEDIA_COUNT - cachedMediaItems.length;
-		if (remaining <= 0) {
-			toast.error(`最多只能选择 ${MAX_MEDIA_COUNT} 张图片/视频`);
-			input.value = '';
-			return;
-		}
-
-		try {
-			const newItems = filesToDraftItems(newFiles, 'MEDIA_SCENE_POST_MEDIA');
-			const toAdd = newItems.slice(0, remaining);
-			if (newItems.length > remaining) {
-				toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
+	const editor = createReleaseEditorCore({
+		defaultCoverRatio,
+		getTitle: () => titleContent,
+		getBodyContent: () => {
+			if (contenteditableRef) {
+				return extractContentFromShinRichTextarea(contenteditableRef);
 			}
-			const baseIndex = cachedMediaItems.length;
-			cachedMediaItems = [...cachedMediaItems, ...toAdd];
-			const initialUrls = toAdd.map((item) =>
-				isImageItem(item)
-					? URL.createObjectURL(getPreviewBlob(item))
-					: isVideoItem(item)
-						? PLACEHOLDER_VIDEO_LOADING
-						: URL.createObjectURL(getPreviewBlob(item))
-			);
-			cachedMediaUrls = [...cachedMediaUrls, ...initialUrls];
-
-			let hasFailed = false;
-			toAdd.forEach((item, i) => {
-				if (!isVideoItem(item)) return;
-				const idx = baseIndex + i;
-				getPreviewBlobForDisplay(item)
-					.then((blob) => URL.createObjectURL(blob))
-					.then((url) => {
-						cachedMediaUrls = cachedMediaUrls.map((u, j) => (j === idx ? url : u));
-					})
-					.catch(() => {
-						cachedMediaUrls = cachedMediaUrls.map((u, j) =>
-							j === idx ? PLACEHOLDER_VIDEO_FAILED : u
-						);
-						if (!hasFailed) {
-							hasFailed = true;
-							toast.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
-						}
-					});
-			});
-		} catch (err) {
-			toast.error(formatUploadError(err) || '文件解析失败');
-		}
-
-		input.value = '';
-	}
-
-	/** 删除指定索引的媒体，revoke URL 并同步更新 selectedCoverIndex。 */
-	function handleRemoveMedia(index: number) {
-		URL.revokeObjectURL(cachedMediaUrls[index]);
-		cachedMediaItems = cachedMediaItems.filter((_, i) => i !== index);
-		cachedMediaUrls = cachedMediaUrls.filter((_, i) => i !== index);
-		if (selectedCoverIndex === index) {
-			selectedCoverIndex = 0;
-		} else if (selectedCoverIndex > index) {
-			selectedCoverIndex -= 1;
-		}
-	}
-
-	// ── 上传 & 发布流程 ────────────────────────────────────────────────
+			return initialBodyContent ?? [];
+		},
+		getContenteditableRef: () => contenteditableRef,
+		getInitialBodyUnitsLength: () => initialBodyContent?.length ?? 0
+	});
 
 	/**
-	 * 确认发布后执行：上传媒体文件，然后调用 CreatePost。
-	 * 需求 6.2.5.4：用户确认发布后才开始真正上传。
+	 * 调用 CreatePost：由 `createReleaseUploadController` 在上传结束或无媒体时触发
+	 *
+	 * @param mediaAssets - 已上传资源；纯文帖为空数组
+	 * @param batchId - 上传批次；无媒体为空串
 	 */
-	async function handleSubmit() {
-		showPublishConfirm = false;
-		hasUploadError = false;
-		currentBatchId = null;
-
-		if (cachedMediaItems.length === 0) {
-			await doCreatePost([], '');
-			return;
-		}
-
-		if (!mediaUploader) {
-			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
-			return;
-		}
-
-		const params = draftItemsToPrepareParams(cachedMediaItems, 'MEDIA_SCENE_POST_MEDIA');
-		const totalFiles = params.reduce((sum, p) => sum + (p.kind === 'single' ? 1 : 2), 0);
-
-		isUploading = true;
-		uploadCancelled = false;
-		uploadProgress = { uploadedFiles: 0, totalFiles };
-
-		let completedCount = 0;
-		const handleUploadSuccess = () => {
-			completedCount += 1;
-			uploadProgress = { uploadedFiles: completedCount, totalFiles };
-		};
-
-		const handleProgress = (percent: number) => {
-			uploadProgress = { ...uploadProgress, percent };
-		};
-
-		try {
-			const batchId = await mediaUploader.upload(params);
-			currentBatchId = batchId;
-			if (uploadCancelled) return;
-
-			mediaUploader.uppy.on('progress', handleProgress);
-			mediaUploader.uppy.on('upload-success', handleUploadSuccess);
-
-			let result;
-			try {
-				result = await mediaUploader.uppy.upload();
-			} finally {
-				mediaUploader.uppy.off('progress', handleProgress);
-				mediaUploader.uppy.off('upload-success', handleUploadSuccess);
-			}
-
-			if (uploadCancelled) return;
-
-			// uppy.upload() 部分/全部失败时不抛错，返回 { successful, failed }
-			if (result?.failed && result.failed.length > 0) {
-				hasUploadError = true;
-				toast.error(TOAST_MESSAGES.UPLOAD_PARTIAL_FAILED);
-				return;
-			}
-
-			const mediaAssets = await mediaUploader.getBatchMedia(batchId);
-			await doCreatePost(mediaAssets, batchId);
-		} catch (error) {
-			if (!uploadCancelled) {
-				toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
-			}
-		} finally {
-			// 有失败时保持 isUploading，在 action bar 展示重试/删除
-			if (!hasUploadError) {
-				isUploading = false;
-			}
-		}
-	}
-
-	/** 重试所有失败文件，全部成功则继续发布。 */
-	async function handleRetryUpload() {
-		if (!mediaUploader || !hasUploadError || !currentBatchId) return;
-		hasUploadError = false;
-		try {
-			const result = await mediaUploader.retryAll();
-			if (result?.failed && result.failed.length > 0) {
-				hasUploadError = true;
-				toast.error(
-					formatUploadError(result.failed[0]?.error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY
-				);
-				return;
-			}
-			const mediaAssets = await mediaUploader.getBatchMedia(currentBatchId);
-			await doCreatePost(mediaAssets, currentBatchId);
-		} catch (e) {
-			hasUploadError = true;
-			toast.error(formatUploadError(e) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
-		} finally {
-			if (!hasUploadError) {
-				isUploading = false;
-			}
-		}
-	}
-
-	/** 从队列移除失败文件，仅用已成功文件继续发布。 */
-	async function handleRemoveFailedAndProceed() {
-		if (!mediaUploader || !hasUploadError || !currentBatchId) return;
-		const failed = mediaUploader.uppy.getFiles().filter((f) => f.error);
-		for (const f of failed) {
-			mediaUploader.uppy.removeFile(f.id);
-		}
-		hasUploadError = false;
-		isUploading = false;
-		const batchId = currentBatchId;
-		// getBatchMedia 仅返回已成功上传的媒体，全部失败时返回 []
-		try {
-			const mediaAssets = await mediaUploader.getBatchMedia(batchId);
-			await doCreatePost(mediaAssets, batchId);
-		} catch (e) {
-			toast.error(formatUploadError(e) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
-		}
-	}
-
-	/** 调用 CreatePost 接口，成功后清草稿并跳转。 */
-	async function doCreatePost(
-		mediaAssets: import('$lib/api/types.gen').V1MediaAsset[],
-		batchId: string
-	) {
+	async function completePublish(mediaAssets: V1MediaAsset[], batchId: string): Promise<void> {
 		try {
 			await postServiceCreatePost({
 				body: {
@@ -406,17 +96,135 @@
 		}
 	}
 
-	/** 用户主动取消上传。 */
-	function handleCancelUpload() {
-		uploadCancelled = true;
-		mediaUploader?.cancelAll();
-		hasUploadError = false;
-		isUploading = false;
-		toast.info(TOAST_MESSAGES.UPLOAD_CANCELLED);
+	const upload = createReleaseUploadController({
+		getDraftItems: () => editor.cachedMediaItems,
+		completePublish
+	});
+
+	let lastSaved = $state<string | null>(null);
+	let lastSavedIsAutoSave = $state(false);
+	let lastSavedSnapshot = $state<ReleaseDraft | null>(null);
+
+	let showLeaveConfirm = $state(false);
+	let pendingNavigationUrl = $state<URL | null>(null);
+	let resetKey = $state(0);
+	let showPublishConfirm = $state(false);
+
+	/**
+	 * 拼装当前表单与 `editor` 状态的持久化快照
+	 *
+	 * @param isAutoSave - 是否记为自动保存（定时器为 true，手动保存为 false）
+	 * @returns 可写入 IndexedDB 的 `ReleaseDraft`
+	 */
+	function buildDraft(isAutoSave: boolean): ReleaseDraft {
+		const items = editor.cachedMediaItems;
+		const clampedCoverIndex =
+			items.length === 0 ? 0 : Math.min(editor.selectedCoverIndex, items.length - 1);
+		return {
+			id: DRAFT_ID,
+			updatedAt: new Date().toISOString(),
+			isAutoSave,
+			title: titleContent,
+			bodyContent: contenteditableRef ? extractContentFromShinRichTextarea(contenteditableRef) : [],
+			selectedSection,
+			coverRatio: editor.coverRatio,
+			selectedCoverIndex: clampedCoverIndex,
+			mediaItems: [...items],
+			schemaVersion: RELEASE_DRAFT_SCHEMA_VERSION,
+			textCoverStyleId: editor.textCoverStyleId
+		};
 	}
 
+	/**
+	 * 比较两份草稿是否一致（正文为 JSON 比较，媒体为 `mediaItemsEqual`）
+	 *
+	 * @param a - 通常来自 `buildDraft`
+	 * @param b - 通常来自 `lastSavedSnapshot`
+	 */
+	function draftsEqual(a: ReleaseDraft, b: ReleaseDraft): boolean {
+		return (
+			a.title === b.title &&
+			a.selectedSection === b.selectedSection &&
+			a.coverRatio === b.coverRatio &&
+			a.selectedCoverIndex === b.selectedCoverIndex &&
+			a.textCoverStyleId === b.textCoverStyleId &&
+			JSON.stringify(a.bodyContent) === JSON.stringify(b.bodyContent) &&
+			mediaItemsEqual(a.mediaItems, b.mediaItems)
+		);
+	}
+
+	/**
+	 * 相对上次成功保存快照是否有未持久化变更；无快照视为脏
+	 *
+	 * @returns 是否需要提示保存或拦截离开
+	 */
+	function isDirty(): boolean {
+		if (!lastSavedSnapshot) return true;
+		return !draftsEqual(buildDraft(false), lastSavedSnapshot);
+	}
+
+	/**
+	 * 将 `buildDraft` 写入 IndexedDB 并更新 `lastSaved` / 快照
+	 *
+	 * @param isAutoSave - 与草稿字段 `isAutoSave` 一致
+	 */
+	async function performSave(isAutoSave: boolean) {
+		const draft = buildDraft(isAutoSave);
+		const snapshot = $state.snapshot(draft);
+		await saveReleaseDraft(snapshot);
+		lastSaved = draft.updatedAt;
+		lastSavedIsAutoSave = isAutoSave;
+		lastSavedSnapshot = snapshot;
+	}
+
+	/** 手动保存：无变更时 toast 提示 */
+	function handleSave() {
+		if (!isDirty()) {
+			toast.info(TOAST_MESSAGES.NO_CHANGES_TO_SAVE);
+			return;
+		}
+		performSave(false);
+	}
+
+	/** 清空表单、媒体与本地草稿缓存，并递增 `resetKey` 以重建正文区 */
+	function handleReset() {
+		// TODO(6.2.5.2-1): 区分新建/编辑——编辑现有帖子时应重置为现网内容，而非清空
+		editor.resetMediaAndCover();
+		titleContent = '';
+		selectedSection = '';
+		initialBodyContent = [];
+		lastSaved = null;
+		lastSavedSnapshot = null;
+		resetKey += 1;
+		clearReleaseDraft(DRAFT_ID);
+	}
+
+	/** 确认发布弹窗确认后：关闭弹窗并委托 `upload.submit()` */
+	async function handleSubmit() {
+		showPublishConfirm = false;
+		await upload.submit();
+	}
+
+	/** 底栏「重试上传」：委托 `upload.retry()` */
+	function handleRetryUpload() {
+		void upload.retry();
+	}
+
+	/** 底栏「删除失败项并继续」：委托 `upload.removeFailedAndProceed()` */
+	function handleRemoveFailedAndProceed() {
+		void upload.removeFailedAndProceed();
+	}
+
+	/** 底栏取消上传 */
+	function handleCancelUpload() {
+		upload.cancelUpload();
+	}
+
+	/**
+	 * 点击发布：校验分区与表单后打开确认弹窗
+	 */
 	function handlePublishClick() {
-		if (isUploading) return;
+		if (upload.isUploading) return;
 		if (!selectedSection) {
 			toast.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
 			return;
@@ -427,11 +235,16 @@
 		showPublishConfirm = true;
 	}
 
+	/**
+	 * 校验标题、正文或媒体至少一项有内容
+	 *
+	 * @returns 是否通过校验（失败时已 toast）
+	 */
 	function validateForm(): boolean {
 		const hasContent =
 			titleContent.trim().length > 0 ||
 			(contenteditableRef && extractContentFromShinRichTextarea(contenteditableRef).length > 0) ||
-			cachedMediaItems.length > 0;
+			editor.cachedMediaItems.length > 0;
 		if (!hasContent) {
 			toast.error(TOAST_MESSAGES.CONTENT_REQUIRED);
 			return false;
@@ -439,94 +252,19 @@
 		return true;
 	}
 
-	// 需求 6.2.5.1-1：未设置封面时，以第 1 张图片或视频首帧作为封面
-	$effect(() => {
-		if (cachedMediaItems.length > 0 && selectedCoverIndex >= cachedMediaItems.length) {
-			selectedCoverIndex = 0;
-		}
-	});
-
-	$effect(() => {
-		const editable = contenteditableRef;
-		if (!editable) return;
-		// 正文变化频率高，单独维护一个版本号作为封面重算触发源。
-		const onInput = () => {
-			coverBodyInputVersion += 1;
-		};
-		editable.addEventListener('input', onInput);
-		return () => {
-			editable.removeEventListener('input', onInput);
-		};
-	});
-
-	$effect(() => {
-		const mediaCount = cachedMediaItems.length;
-		const coverIndex = selectedCoverIndex;
-		const ratio = coverRatio;
-		if (mediaCount >= 0 && coverIndex >= 0 && ratio.length > 0) {
-			void resolveCoverPreview(0);
-		}
-	});
-
-	$effect(() => {
-		const mediaCount = cachedMediaItems.length;
-		const textTrigger = `${titleContent.length}:${coverBodyInputVersion}:${coverRatio}:${textCoverStyleId}:${
-			initialBodyContent?.length ?? 0
-		}`;
-		// 无媒体时才需要文字封面重算，并加防抖降低 canvas 重绘频率。
-		if (mediaCount === 0 && textTrigger.length >= 0) {
-			void resolveCoverPreview(250);
-		}
-	});
-
-	// 获取分区列表
-	$effect(() => {
-		let cancelled = false;
-		partitionsLoading = true;
-		partitionsError = null;
-		(async () => {
-			try {
-				const { data, error } = await partitionServiceListPartitions({ throwOnError: false });
-				if (cancelled) return;
-				if (error) {
-					partitionsError = '加载分区列表失败';
-					return;
-				}
-				partitions = (data?.partitions ?? [])
-					.filter((p) => p?.id && p?.name)
-					.map((p) => ({ value: p.id!, label: p.name! }));
-			} finally {
-				if (!cancelled) partitionsLoading = false;
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	});
-
 	onMount(() => {
-		mediaUploader = createMediaUploader();
+		upload.init();
 
-		// 加载草稿
 		loadReleaseDraft(DRAFT_ID).then((draft) => {
 			if (!draft) return;
 			titleContent = draft.title;
 			selectedSection = draft.selectedSection;
-			coverRatio = draft.coverRatio as CoverRatio;
-			textCoverStyleId = draft.textCoverStyleId ?? DEFAULT_TEXT_COVER_STYLE_ID;
-			const items = draft.mediaItems ?? [];
-			cachedMediaItems = [...items];
-			cachedMediaUrls = items.map((item) =>
-				isImageItem(item)
-					? URL.createObjectURL(getPreviewBlob(item))
-					: isVideoItem(item)
-						? PLACEHOLDER_VIDEO_LOADING
-						: URL.createObjectURL(getPreviewBlob(item))
-			);
-			selectedCoverIndex =
-				cachedMediaItems.length === 0
-					? 0
-					: Math.min(draft.selectedCoverIndex ?? 0, cachedMediaItems.length - 1);
+			editor.hydrateFromDraftMedia({
+				mediaItems: draft.mediaItems ?? [],
+				selectedCoverIndex: draft.selectedCoverIndex ?? 0,
+				coverRatio: draft.coverRatio,
+				textCoverStyleId: draft.textCoverStyleId
+			});
 			initialBodyContent = draft.bodyContent ?? [];
 			lastSaved = draft.updatedAt;
 			lastSavedIsAutoSave = draft.isAutoSave;
@@ -534,35 +272,15 @@
 				...draft,
 				mediaItems: draft.mediaItems ?? []
 			};
-
-			let hasFailed = false;
-			items.forEach((item, idx) => {
-				if (!isVideoItem(item)) return;
-				getPreviewBlobForDisplay(item)
-					.then((blob) => URL.createObjectURL(blob))
-					.then((url) => {
-						cachedMediaUrls = cachedMediaUrls.map((u, j) => (j === idx ? url : u));
-					})
-					.catch(() => {
-						cachedMediaUrls = cachedMediaUrls.map((u, j) =>
-							j === idx ? PLACEHOLDER_VIDEO_FAILED : u
-						);
-						if (!hasFailed) {
-							hasFailed = true;
-							toast.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
-						}
-					});
-			});
 		});
 
-		// 每 60s 自动保存
 		const interval = setInterval(() => {
 			if (isDirty()) {
 				performSave(true);
 			}
 		}, 60_000);
 
-		// 关闭标签页/刷新时弹窗提醒
+		/** 浏览器关闭/刷新前：有脏数据时触发原生离开提示 */
 		const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
 			if (isDirty()) {
 				e.preventDefault();
@@ -576,7 +294,7 @@
 		};
 	});
 
-	// 需求 6.2.5.3 意外兜底：导航离开/关闭标签页时有未保存变更则二次确认，退出前自动保存
+	// 需求 6.2.5.3：有未保存修改时拦截 SPA 导航并二次确认
 	beforeNavigate(({ to, cancel }) => {
 		if (!isDirty()) return;
 		if (!to?.url) return;
@@ -585,6 +303,9 @@
 		showLeaveConfirm = true;
 	});
 
+	/**
+	 * 离开确认弹窗「确认」：自动保存后执行此前缓存的 SPA 导航
+	 */
 	async function handleLeaveConfirm() {
 		if (pendingNavigationUrl) {
 			await performSave(true);
@@ -599,87 +320,16 @@
 		}
 	}
 
+	/** 离开确认弹窗「取消」：清除待导航 URL */
 	function handleLeaveCancel() {
 		pendingNavigationUrl = null;
 		showLeaveConfirm = false;
 	}
 
 	onDestroy(() => {
-		mediaUploader?.destroy();
-		mediaUploader = null;
-		if (coverResolveTimer) {
-			clearTimeout(coverResolveTimer);
-			coverResolveTimer = null;
-		}
-		for (const url of cachedMediaUrls) {
-			URL.revokeObjectURL(url);
-		}
-		clearCoverPreviewUrl();
+		upload.destroy();
+		editor.destroy(); // 回收媒体与封面 object URL；顺序上先停 Uppy 再 revoke
 	});
-
-	function getCurrentBodyContent(): V1PostContentUnit[] {
-		if (contenteditableRef) {
-			return extractContentFromShinRichTextarea(contenteditableRef);
-		}
-		return initialBodyContent ?? [];
-	}
-
-	function clearCoverPreviewUrl(): void {
-		if (coverPreviewUrl) {
-			URL.revokeObjectURL(coverPreviewUrl);
-			coverPreviewUrl = null;
-		}
-	}
-
-	function replaceCoverPreviewUrl(nextBlob: Blob): void {
-		const nextUrl = URL.createObjectURL(nextBlob);
-		clearCoverPreviewUrl();
-		coverPreviewUrl = nextUrl;
-	}
-
-	async function resolveCoverPreview(delayMs: number): Promise<void> {
-		// 递增 token：旧异步任务完成时不会覆盖最新封面结果。
-		const token = ++coverResolveSeq;
-		if (coverResolveTimer) {
-			clearTimeout(coverResolveTimer);
-			coverResolveTimer = null;
-		}
-		await new Promise<void>((resolve) => {
-			coverResolveTimer = setTimeout(
-				() => {
-					coverResolveTimer = null;
-					resolve();
-				},
-				Math.max(0, delayMs)
-			);
-		});
-		if (token !== coverResolveSeq) return;
-
-		isCoverResolving = true;
-		try {
-			const { blob, source } = await resolveCoverBlob({
-				mediaItems: cachedMediaItems,
-				selectedCoverIndex,
-				ratio: coverRatio,
-				title: titleContent,
-				content: getCurrentBodyContent(),
-				textCoverStyleId
-			});
-			if (token !== coverResolveSeq) return;
-			// URL 统一在 replace 内部替换并释放旧值，避免对象 URL 泄漏。
-			replaceCoverPreviewUrl(blob);
-			coverSource = source;
-		} catch (error) {
-			console.error('Resolve cover preview failed:', error);
-			if (token !== coverResolveSeq) return;
-			clearCoverPreviewUrl();
-			coverSource = 'text-generated';
-		} finally {
-			if (token === coverResolveSeq) {
-				isCoverResolving = false;
-			}
-		}
-	}
 </script>
 
 <main
@@ -687,18 +337,18 @@
 >
 	<div class="min-h-0 grow overflow-y-auto p-6" use:scrollBoundary={{ axis: 'y' }}>
 		<ReleaseCoverPreview
-			ratio={coverRatio}
-			coverUrl={coverPreviewUrl}
-			source={coverSource}
-			isLoading={isCoverResolving}
-			onToggleRatio={rotateCoverRatio}
+			ratio={editor.coverRatio}
+			coverUrl={editor.coverPreviewUrl}
+			source={editor.coverSource}
+			isLoading={editor.isCoverResolving}
+			onToggleRatio={editor.rotateCoverRatio}
 		/>
 		<ReleaseMediaPicker
-			items={cachedMediaItems}
-			urls={cachedMediaUrls}
-			maxCount={MAX_MEDIA_COUNT}
-			onFileSelect={handleFileSelect}
-			onRemove={handleRemoveMedia}
+			items={editor.cachedMediaItems}
+			urls={editor.cachedMediaUrls}
+			maxCount={editor.maxMediaCount}
+			onFileSelect={editor.handleFileSelect}
+			onRemove={editor.handleRemoveMedia}
 		/>
 		<ReleaseBodySection
 			bind:title={titleContent}
@@ -713,16 +363,16 @@
 			}}
 		/>
 		<ReleasePartitionSelect
-			{partitions}
+			partitions={partitionsState.partitions}
 			bind:selectedSection
-			loading={partitionsLoading}
-			error={partitionsError}
+			loading={partitionsState.loading}
+			error={partitionsState.error}
 		/>
 	</div>
 	<ReleaseActionBar
-		{isUploading}
-		{uploadProgress}
-		{hasUploadError}
+		isUploading={upload.isUploading}
+		uploadProgress={upload.uploadProgress}
+		hasUploadError={upload.hasUploadError}
 		{lastSaved}
 		{lastSavedIsAutoSave}
 		bind:showLeaveConfirm
