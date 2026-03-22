@@ -12,16 +12,19 @@
 	import type { V1UserSummary } from '$lib/api/types.gen';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, type ButtonProps } from '$lib/components/ui/button';
+	import { resolveCacheUrl } from '$lib/modules/cache';
 	import { breakpoint } from '$lib/modules/device';
 	import { scrollBoundary } from '$lib/modules/gesture';
 	import { formatStat } from '$lib/utils';
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { stackController } from '../stack';
 
 	/** 关注关系状态枚举（模拟，后续从 API 获取） */
 	type RelationState = 'none' | 'following' | 'followed_by' | 'mutual';
 
 	let {
+		businessId,
+		categoryId,
 		items,
 		loading = false,
 		hasMore = true,
@@ -29,6 +32,8 @@
 		onLoadMore
 		// onRefresh
 	}: {
+		businessId: string;
+		categoryId: string;
 		/** 用户摘要数据列表 */
 		items: V1UserSummary[];
 		/** 是否正在加载更多 */
@@ -125,7 +130,7 @@
 						<div class="size-10 rounded-full bg-muted sm:size-12"></div>
 					{:else}
 						<img
-							src={user.avatar}
+							src={resolveCacheUrl(user.avatar, `${businessId}-${categoryId}`)}
 							alt={user.name}
 							class="size-10 rounded-full bg-muted object-cover sm:size-12"
 						/>
