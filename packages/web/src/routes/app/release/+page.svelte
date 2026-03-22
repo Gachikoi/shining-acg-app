@@ -335,7 +335,11 @@
 <main
 	class="flex h-full flex-col rounded-2xl border-zinc-100 lg:mx-4 lg:h-[calc(100%-1rem)] lg:border"
 >
-	<div class="min-h-0 grow overflow-y-auto p-6" use:scrollBoundary={{ axis: 'y' }}>
+	<div
+		class="min-h-0 grow overflow-y-auto p-6"
+		data-release-body-scroll
+		use:scrollBoundary={{ axis: 'y' }}
+	>
 		<ReleaseCoverPreview
 			ratio={editor.coverRatio}
 			coverUrl={editor.coverPreviewUrl}
@@ -349,6 +353,12 @@
 			maxCount={editor.maxMediaCount}
 			onFileSelect={editor.handleFileSelect}
 			onRemove={editor.handleRemoveMedia}
+			selectedCoverIndex={editor.selectedCoverIndex}
+			onSelectCoverIndex={(i) => {
+				editor.selectedCoverIndex = i;
+			}}
+			onReorder={editor.reorderMedia}
+			mediaInteractionsDisabled={upload.isUploading}
 		/>
 		<ReleaseBodySection
 			bind:title={titleContent}
