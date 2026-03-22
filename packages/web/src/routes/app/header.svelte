@@ -5,20 +5,22 @@
 	import { Input } from '$lib/components/ui/input';
 	import { DOMAIN_CONFIG } from '$lib/constants';
 	import { breakpoint } from '$lib/modules/device';
-	import { homeFeedRouteState } from '$lib/stores/feed';
+	import { createFeedRouteStateStore } from '$lib/stores/feed';
 	import { onDestroy } from 'svelte';
 	import SettingPopover from './setting-popover.svelte';
 
+	const homeFeedRouteState = createFeedRouteStateStore();
+
 	let debounceTimer: ReturnType<typeof setTimeout>;
-	let localKeyword = $state(homeFeedRouteState.keyword);
-	let lastCommittedKeyword = $state(homeFeedRouteState.keyword);
+	let localKeyword = $state(homeFeedRouteState.state.keyword);
+	let lastCommittedKeyword = $state(homeFeedRouteState.state.keyword);
 
 	/**
 	 * 当搜索词从页面快照恢复、外部逻辑重置等“非输入框 typing”来源发生变化时，
 	 * 需要把全局状态重新同步回输入框本地状态，否则 UI 会停留在旧值。
 	 */
 	$effect(() => {
-		const externalKeyword = homeFeedRouteState.keyword;
+		const externalKeyword = homeFeedRouteState.state.keyword;
 		if (externalKeyword === lastCommittedKeyword) return;
 		localKeyword = externalKeyword;
 		lastCommittedKeyword = externalKeyword;
@@ -28,7 +30,7 @@
 		const keywordToDebounce = localKeyword;
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			homeFeedRouteState.keyword = keywordToDebounce;
+			homeFeedRouteState.state.keyword = keywordToDebounce;
 			lastCommittedKeyword = keywordToDebounce;
 		}, 500);
 		return () => clearTimeout(debounceTimer);

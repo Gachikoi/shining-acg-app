@@ -14,27 +14,26 @@
   - 组件编排和路由
 -->
 <script lang="ts">
-	import { WaterfallContainer } from '$lib/components/custom/waterfall';
-	import { FeedList } from '$lib/components/custom/feed-list';
 	import { SwipeablePane, type CategoryOption } from '$lib/components/custom/swipeable-pane';
+	import { WaterfallContainer } from '$lib/components/custom/waterfall';
 	import { Button } from '$lib/components/ui/button';
 	import { appBus } from '$lib/events/app-bus';
 	import { createDbCache } from '$lib/modules/cache';
 	import {
-		createFeedStore,
-		feedStores,
-		homeFeedRouteState,
-		setHomeFeedRouteState,
-		type FeedStore,
 		POST_CACHE_ADAPTER,
 		USER_CACHE_ADAPTER,
+		createFeedRouteStateStore,
+		createFeedStore,
 		createPostFetchFn,
 		createUserFetchFn,
-		getPostId,
-		getUserId,
+		estimateNeedNum,
+		feedStores,
 		generatePostSkeletons,
 		generateUserSkeletons,
-		estimateNeedNum
+		getPostId,
+		getUserId,
+		type FeedStore,
+		type HomeFeedRouteStateSnapshot
 	} from '$lib/stores/feed';
 	import { LucideRefreshCw } from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
@@ -47,8 +46,10 @@
 		V1UserSummary
 	} from '$lib/api/types.gen';
 	import { remToPx } from '$lib/modules/device';
-	import { feedServiceListFeedCategories } from '$lib/api';
 	import { cn } from '$lib/utils';
+	import type { Snapshot } from '../$types';
+
+	const homeFeedRouteState = createFeedRouteStateStore();
 
 	/**
 	 * 保存 Home 页面对应 history entry 的路由级快照。
@@ -57,10 +58,13 @@
 	 * 这样在浏览器前进/后退时，仍能按 history entry 维度恢复当时的筛选状态，
 	 * 而不仅仅是复用“最近一次”的全局单例值。
 	 */
-	// export const snapshot: Snapshot<HomeFeedRouteStateSnapshot> = {
-	// 	capture: captureHomeFeedRouteState,
-	// 	restore: restoreHomeFeedRouteState
-	// };
+	export const snapshot: Snapshot<HomeFeedRouteStateSnapshot> = {
+		capture: homeFeedRouteState.capture,
+		restore: (snapshot) => {
+			homeFeedRouteState.restore(snapshot);
+			swipeablePaneRef?.updatePanels(snapshot.categoryIndex); // 恢复路由状态后重建 panels
+		}
+	};
 
 	// ─── 缓存 ──────────────────────────────────────────────────────
 
@@ -69,14 +73,14 @@
 	// ─── 分类配置 ──────────────────────────────────────────────────
 
 	const CATEGORY_OPTIONS: CategoryOption[] = [
-		{ label: '综合', value: 'general', contentType: 'waterfall' },
-		{ label: '关注', value: 'following', contentType: 'waterfall' },
-		{ label: '用户', value: 'user', contentType: 'list' },
-		{ label: '1', value: 'shining', contentType: 'waterfall' },
-		{ label: '2', value: 'search', contentType: 'waterfall' },
-		{ label: '3', value: 'message', contentType: 'waterfall' },
-		{ label: '4', value: 'profile', contentType: 'waterfall' },
-		{ label: '5', value: 'setting', contentType: 'waterfall' }
+		{ label: '0', value: 'general', contentType: 'waterfall' },
+		{ label: '1', value: 'following', contentType: 'waterfall' },
+		{ label: '2', value: 'user', contentType: 'list' },
+		{ label: '3', value: 'shining', contentType: 'waterfall' },
+		{ label: '4', value: 'search', contentType: 'waterfall' },
+		{ label: '5', value: 'message', contentType: 'waterfall' },
+		{ label: '6', value: 'profile', contentType: 'waterfall' },
+		{ label: '7', value: 'setting', contentType: 'waterfall' }
 	];
 
 	/** 内容区容器 DOM 引用 */
@@ -85,10 +89,10 @@
 	/** 筛选上下文 getter——注入到 feed-api 的 fetch 工厂中 */
 	function getFilters(): V1FeedFilter {
 		return {
-			keyword: homeFeedRouteState.keyword,
-			orderType: homeFeedRouteState.orderType,
-			timeRange: homeFeedRouteState.timeRange,
-			authorId: homeFeedRouteState.authorId
+			keyword: homeFeedRouteState.state.keyword,
+			orderType: homeFeedRouteState.state.orderType,
+			timeRange: homeFeedRouteState.state.timeRange,
+			authorId: homeFeedRouteState.state.authorId
 		};
 	}
 
@@ -101,7 +105,6 @@
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function getOrCreateStore(categoryId: string): FeedStore<any> {
 		let store = feedStores.get(categoryId);
-		console.log('store:', store, categoryId);
 		if (store) return store;
 
 		const contentType =
@@ -162,23 +165,11 @@
 	function handleCategoryChange(targetIndex: number): void {
 		const targetValue = CATEGORY_OPTIONS[targetIndex]?.value;
 		// 使用单例路由状态中的 currentCategoryId 判断，避免动画中途重复跳转。
-		if (targetValue === homeFeedRouteState.currentCategoryId) {
-			waterfallRefs[homeFeedRouteState.currentCategoryId]?.scrollToTopAndRefresh();
+		if (targetValue === homeFeedRouteState.state.currentCategoryId) {
+			waterfallRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
 			return;
 		}
 		swipeablePaneRef?.jumpToIndex(targetIndex);
-	}
-
-	/**
-	 * SwipeablePane 手势意图确认回调（动画开始前）
-	 * 职责：立即更新 currentCategoryId 以反映用户选择意图
-	 *
-	 * @param targetIndex - 目标分类索引
-	 */
-	function onPaneCommit(targetIndex: number): void {
-		setHomeFeedRouteState({
-			currentCategoryId: CATEGORY_OPTIONS[targetIndex]?.value ?? 'general'
-		});
 	}
 
 	/**
@@ -192,30 +183,28 @@
 	 * @param newIndex - 新的分类索引
 	 */
 	function onPaneIndexChange(newIndex: number): void {
-		setHomeFeedRouteState({
-			categoryIndex: newIndex,
-			currentCategoryId: CATEGORY_OPTIONS[newIndex]?.value ?? 'general'
-		});
+		homeFeedRouteState.state.categoryIndex = newIndex;
+		homeFeedRouteState.state.currentCategoryId = CATEGORY_OPTIONS[newIndex]?.value ?? 'general';
 	}
 
 	// ─── 生命周期 ───────────────────────────────────────────────────
 	const handleHomeRefresh = () => {
-		waterfallRefs[homeFeedRouteState.currentCategoryId]?.scrollToTopAndRefresh();
+		waterfallRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
 	};
 
 	onMount(() => {
-		feedServiceListFeedCategories()
-			.then((res) => {
-				navigator.serviceWorker?.controller?.postMessage({
-					type: 'GET_MEDIA_CACHE_CATEGORIES',
-					data: {
-						mediaCategories: res.data?.categories?.map((category) => category.categoryId) || []
-					}
-				});
-			})
-			.catch((e) => {
-				console.error('获取 feed 流内容分类失败：', e);
-			});
+		// feedServiceListFeedCategories()
+		// 	.then((res) => {
+		// 		navigator.serviceWorker?.controller?.postMessage({
+		// 			type: 'GET_MEDIA_CACHE_CATEGORIES',
+		// 			data: {
+		// 				mediaCategories: res.data?.categories?.map((category) => category.categoryId) || []
+		// 			}
+		// 		});
+		// 	})
+		// 	.catch((e) => {
+		// 		console.error('获取 feed 流内容分类失败：', e);
+		// 	});
 
 		appBus.on('home:refresh', handleHomeRefresh);
 	});
@@ -231,7 +220,7 @@
 	 * 骨架屏阶段自动触发首次数据加载
 	 */
 	$effect(() => {
-		const categoryId = homeFeedRouteState.currentCategoryId;
+		const categoryId = homeFeedRouteState.state.currentCategoryId;
 		const store = feedStores.get(categoryId);
 		if (!store) return;
 
@@ -248,12 +237,12 @@
 <div class="flex h-full w-full flex-col">
 	<!-- 顶部 Tab 切换 -->
 	<div class="flex w-full shrink-0 items-center bg-background px-1 py-2 sm:px-2 md:px-4 lg:px-6">
-		<div class="flex space-x-2">
+		<div class="flex space-x-2 overflow-x-scroll">
 			{#each CATEGORY_OPTIONS as option, index (option.value)}
 				<Button
 					variant="ghost"
 					class={cn(
-						option.value === homeFeedRouteState.currentCategoryId
+						option.value === homeFeedRouteState.state.currentCategoryId
 							? 'bg-zinc-100 dark:bg-zinc-900'
 							: 'text-zinc-500 dark:text-zinc-400'
 					)}
@@ -271,20 +260,22 @@
 		<SwipeablePane
 			bind:this={swipeablePaneRef}
 			categories={CATEGORY_OPTIONS}
-			currentIndex={homeFeedRouteState.categoryIndex}
-			onCommit={onPaneCommit}
+			currentIndex={homeFeedRouteState.state.categoryIndex}
+			currentCategoryId={homeFeedRouteState.state.currentCategoryId}
 			onIndexChange={onPaneIndexChange}
 		>
 			{#snippet children(category)}
 				{@const store = getOrCreateStore(category.value)}
 				{#if category.contentType === 'list'}
-					<FeedList
+					<!-- <FeedList
+						businessId='feed'
+						categoryId={category.value}
 						items={store.items}
 						loading={store.loadingMore}
 						hasMore={store.hasMore}
 						showSkeleton={store.showSkeleton}
 						onLoadMore={() => store.loadMore()}
-					/>
+					/> -->
 				{:else}
 					<WaterfallContainer
 						bind:this={waterfallRefs[category.value]}
@@ -293,6 +284,7 @@
 						hasMore={store.hasMore}
 						showSkeleton={store.showSkeleton}
 						refreshing={store.refreshing}
+						businessId="feed"
 						categoryId={category.value}
 						onLoadMore={store.loadMore}
 						onRefresh={store.refresh}
@@ -307,7 +299,7 @@
 		size="icon"
 		class="absolute right-4 bottom-8 z-50 hidden h-12 w-12 rounded-md shadow-lg md:flex"
 		onclick={() => {
-			waterfallRefs[homeFeedRouteState.currentCategoryId]?.scrollToTopAndRefresh();
+			waterfallRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
 		}}
 	>
 		<LucideRefreshCw class="h-6 w-6" />
