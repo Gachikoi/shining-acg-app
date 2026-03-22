@@ -69,11 +69,10 @@ func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&model.MediaAsset{}, &model.MediaFile{},
 		&model.Department{}, &model.Partition{},
-		&model.User{}, &model.UserRemark{},
+		&model.User{},
 		&model.VerificationApplication{}, &model.UserSettings{}, &model.Device{},
 		&model.Post{}, &model.Comment{},
 		&model.Follow{}, &model.Interaction{}, &model.Notification{},
 		&model.ReportTicket{}, &model.ReportRecord{},
-		&model.SystemNotification{},
 	)
 }
