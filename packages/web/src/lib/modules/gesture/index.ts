@@ -8,8 +8,8 @@
 // ─── Svelte Actions（registry：登记供竞技场查询；gestures：完整输入闭环） ─
 
 export { edgeZone } from './actions/registry/edge-zone';
-export { dragReorder, findListItemIndexUnderPoint } from './drag-reorder';
-export type { DragReorderDragPreview, DragReorderOptions } from './drag-reorder';
+export { dragReorder, findListItemIndexUnderPoint } from './actions/gestures/drag-reorder';
+export type { DragReorderDragPreview, DragReorderOptions } from './actions/gestures/drag-reorder';
 export { scrollBoundary } from './actions/registry/scroll-boundary';
 
 // ─── Arena API（高级用法，消费端通常不需要直接使用） ─────────────
