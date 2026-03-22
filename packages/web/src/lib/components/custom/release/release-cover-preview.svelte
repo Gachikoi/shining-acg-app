@@ -33,6 +33,14 @@
 	const sourceText = $derived(sourceTextMap[source]);
 </script>
 
+<p class="text-lg font-bold">
+	封面设置
+	<br class="lg:hidden" />
+	<span class="text-sm font-normal text-muted-foreground">
+		未设置封面时，以第 1 张图片或视频首帧作为封面；若没有图片或视频，将会使用正文内容自动生成封面。
+	</span>
+</p>
+
 <button
 	type="button"
 	class={cn(
