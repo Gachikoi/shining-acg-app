@@ -1,5 +1,6 @@
 /**
  * @file 拖拽重排 — Svelte Action（Pointer Events + GestureArena）
+ * @deprecated 发布页等媒体网格已改用 `$lib/modules/sortable-list`（SortableJS）。本 Action 保留至全仓无引用后再移除。
  * @description
  * 在**任意 HTMLElement** 上作为拖拽源（如手柄或**整条列表项**），将列表项从 `fromIndex` 重排到指针落点对应下标。
  * 使用横向 `tryAcquire` 与父级纵向 `scrollBoundary` 边界让渡策略配合；**触摸 / 笔**在 `pointerdown` 时即设

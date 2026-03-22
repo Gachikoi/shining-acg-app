@@ -3,7 +3,6 @@
   "specifiers": {
     "npm:@eslint/compat@^1.4.0": "1.4.1_eslint@9.39.2",
     "npm:@eslint/js@^9.39.1": "9.39.2",
-    "npm:@internationalized/date@^3.10.1": "3.11.0",
     "npm:@lucide/svelte@0.561": "0.561.0_svelte@5.50.3",
     "npm:@sveltejs/adapter-cloudflare@^7.2.4": "7.2.7_@sveltejs+kit@2.50.2__@sveltejs+vite-plugin-svelte@6.2.4___svelte@5.50.3___vite@7.3.1____@types+node@24.10.13____lightningcss@1.31.1___@types+node@24.10.13___lightningcss@1.31.1__svelte@5.50.3__typescript@5.9.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_wrangler@4.65.0__@cloudflare+workers-types@4.20260214.0_@sveltejs+vite-plugin-svelte@6.2.4__svelte@5.50.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_@types+node@24.10.13_lightningcss@1.31.1_svelte@5.50.3_typescript@5.9.3_vite@7.3.1__@types+node@24.10.13__lightningcss@1.31.1",
     "npm:@sveltejs/kit@^2.48.5": "2.50.2_@sveltejs+vite-plugin-svelte@6.2.4__svelte@5.50.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_svelte@5.50.3_typescript@5.9.3_vite@7.3.1__@types+node@24.10.13__lightningcss@1.31.1_@types+node@24.10.13_lightningcss@1.31.1",
@@ -12,6 +11,7 @@
     "npm:@tailwindcss/typography@~0.5.19": "0.5.19_tailwindcss@4.1.18",
     "npm:@tailwindcss/vite@^4.1.17": "4.1.18_vite@7.3.1__@types+node@24.10.13__lightningcss@1.31.1_@types+node@24.10.13_lightningcss@1.31.1",
     "npm:@types/node@24": "24.10.13",
+    "npm:@types/sortablejs@^1.15.9": "1.15.9",
     "npm:@uppy/aws-s3@^5.1.0": "5.1.0_@uppy+core@5.2.0",
     "npm:@uppy/compressor@^3.1.0": "3.1.0_@uppy+core@5.2.0",
     "npm:@uppy/core@^5.2.0": "5.2.0",
@@ -32,6 +32,7 @@
     "npm:prettier-plugin-tailwindcss@~0.7.1": "0.7.2_prettier@3.8.1_prettier-plugin-svelte@3.4.1__prettier@3.8.1__svelte@5.50.3_svelte@5.50.3",
     "npm:prettier@^3.6.2": "3.8.1",
     "npm:rollup-plugin-visualizer@^5.12.0": "5.14.0",
+    "npm:sortablejs@^1.15.7": "1.15.7",
     "npm:svelte-check@^4.3.4": "4.3.6_svelte@5.50.3_typescript@5.9.3",
     "npm:svelte-sonner@^1.0.7": "1.1.0_svelte@5.50.3",
     "npm:svelte@^5.43.8": "5.50.3",
@@ -95,9 +96,6 @@
     },
     "@cspotcode/source-map-support@0.8.1": {
       "integrity": "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==",
-      "dependencies": [
-        "@jridgewell/trace-mapping@0.3.9"
-      ],
       "tarball": "https://registry.npmmirror.com/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz"
     },
     "@emnapi/runtime@1.8.1": {
@@ -570,7 +568,7 @@
       "integrity": "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==",
       "dependencies": [
         "@jridgewell/sourcemap-codec",
-        "@jridgewell/trace-mapping@0.3.31"
+        "@jridgewell/trace-mapping"
       ],
       "tarball": "https://registry.npmmirror.com/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz"
     },
@@ -578,7 +576,7 @@
       "integrity": "sha512-LI9u/+laYG4Ds1TDKSJW2YPrIlcVYOwi2fUC6xB43lueCjgxV4lffOCZCtYFiH6TNOX+tQKXx97T4IKHbhyHEQ==",
       "dependencies": [
         "@jridgewell/gen-mapping",
-        "@jridgewell/trace-mapping@0.3.31"
+        "@jridgewell/trace-mapping"
       ],
       "tarball": "https://registry.npmmirror.com/@jridgewell/remapping/-/remapping-2.3.5.tgz"
     },
@@ -597,14 +595,6 @@
         "@jridgewell/sourcemap-codec"
       ],
       "tarball": "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz"
-    },
-    "@jridgewell/trace-mapping@0.3.9": {
-      "integrity": "sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==",
-      "dependencies": [
-        "@jridgewell/resolve-uri",
-        "@jridgewell/sourcemap-codec"
-      ],
-      "tarball": "https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.9.tgz"
     },
     "@lucide/svelte@0.561.0_svelte@5.50.3": {
       "integrity": "sha512-vofKV2UFVrKE6I4ewKJ3dfCXSV6iP6nWVmiM83MLjsU91EeJcEg7LoWUABLp/aOTxj1HQNbJD1f3g3L0JQgH9A==",
@@ -628,8 +618,7 @@
       "integrity": "sha512-NBdYIb90J7LfOI32dOewKI1r7wnkiH6m920puQ3qHUeZkxNkQiFnXVWoE6YtFSv6QOiPPf7ys6i+HWWecDz7sw==",
       "dependencies": [
         "@poppinss/colors",
-        "@sindresorhus/is",
-        "supports-color@10.2.2"
+        "@sindresorhus/is"
       ],
       "tarball": "https://registry.npmmirror.com/@poppinss/dumper/-/dumper-0.6.5.tgz"
     },
@@ -868,7 +857,7 @@
         "@sveltejs/vite-plugin-svelte",
         "@types/cookie",
         "acorn",
-        "cookie@0.6.0",
+        "cookie",
         "devalue",
         "esm-env",
         "kleur",
@@ -1071,6 +1060,10 @@
     "@types/retry@0.12.2": {
       "integrity": "sha512-XISRgDJ2Tc5q4TRqvgJtzsRkFYNJzZrhTdtMoGVBttwzzQJkPnS3WWTFc7kuDRoPtPakl+T+OfdEUjYJj7Jbow==",
       "tarball": "https://registry.npmmirror.com/@types/retry/-/retry-0.12.2.tgz"
+    },
+    "@types/sortablejs@1.15.9": {
+      "integrity": "sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==",
+      "tarball": "https://registry.npmmirror.com/@types/sortablejs/-/sortablejs-1.15.9.tgz"
     },
     "@typescript-eslint/eslint-plugin@8.55.0_@typescript-eslint+parser@8.55.0__eslint@9.39.2__typescript@5.9.3_eslint@9.39.2_typescript@5.9.3": {
       "integrity": "sha512-1y/MVSz0NglV1ijHC8OT49mPJ4qhPYjiK08YUQVbIOyu+5k862LKUHFkpKHWu//zmr7hDR2rhwUm6gnCGNmGBQ==",
@@ -1308,7 +1301,7 @@
         "esm-env",
         "runed@0.35.1_@sveltejs+kit@2.50.2__@sveltejs+vite-plugin-svelte@6.2.4___svelte@5.50.3___vite@7.3.1____@types+node@24.10.13____lightningcss@1.31.1___@types+node@24.10.13___lightningcss@1.31.1__svelte@5.50.3__typescript@5.9.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_svelte@5.50.3_@sveltejs+vite-plugin-svelte@6.2.4__svelte@5.50.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_@types+node@24.10.13_lightningcss@1.31.1_typescript@5.9.3_vite@7.3.1__@types+node@24.10.13__lightningcss@1.31.1",
         "svelte",
-        "svelte-toolbelt@0.10.6_svelte@5.50.3_@sveltejs+kit@2.50.2__@sveltejs+vite-plugin-svelte@6.2.4___svelte@5.50.3___vite@7.3.1____@types+node@24.10.13____lightningcss@1.31.1___@types+node@24.10.13___lightningcss@1.31.1__svelte@5.50.3__typescript@5.9.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_@sveltejs+vite-plugin-svelte@6.2.4__svelte@5.50.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_@types+node@24.10.13_lightningcss@1.31.1_typescript@5.9.3_vite@7.3.1__@types+node@24.10.13__lightningcss@1.31.1",
+        "svelte-toolbelt@0.10.6_svelte@5.50.3_@sveltejs+kit@2.50.2__@sveltejs+vite-plugin-svelte@6.2.4___svelte@5.50.3___vite@7.3.1____@types+node@24.10.13____lightningcss@1.31.1___@types+node@24.10.13___lightningcss@1.31.1__svelte@5.50.3__typescript@5.9.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_lightningcss@1.31.1",
         "tabbable"
       ],
       "tarball": "https://registry.npmmirror.com/bits-ui/-/bits-ui-2.15.5.tgz"
@@ -1360,7 +1353,7 @@
       "integrity": "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==",
       "dependencies": [
         "ansi-styles",
-        "supports-color@7.2.0"
+        "supports-color"
       ],
       "tarball": "https://registry.npmmirror.com/chalk/-/chalk-4.1.2.tgz"
     },
@@ -1417,10 +1410,6 @@
     "cookie@0.6.0": {
       "integrity": "sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==",
       "tarball": "https://registry.npmmirror.com/cookie/-/cookie-0.6.0.tgz"
-    },
-    "cookie@1.1.1": {
-      "integrity": "sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==",
-      "tarball": "https://registry.npmmirror.com/cookie/-/cookie-1.1.1.tgz"
     },
     "cross-spawn@7.0.6": {
       "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
@@ -2649,6 +2638,10 @@
       ],
       "tarball": "https://registry.npmmirror.com/sirv/-/sirv-3.0.2.tgz"
     },
+    "sortablejs@1.15.7": {
+      "integrity": "sha512-Kk8wLQPlS+yi1ZEf48a4+fzHa4yxjC30M/Sr2AnQu+f/MPwvvX9XjZ6OWejiz8crBsLwSq8GHqaxaET7u6ux0A==",
+      "tarball": "https://registry.npmmirror.com/sortablejs/-/sortablejs-1.15.7.tgz"
+    },
     "source-map-js@1.2.1": {
       "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
       "tarball": "https://registry.npmmirror.com/source-map-js/-/source-map-js-1.2.1.tgz"
@@ -2684,10 +2677,6 @@
       ],
       "tarball": "https://registry.npmmirror.com/style-to-object/-/style-to-object-1.0.14.tgz"
     },
-    "supports-color@10.2.2": {
-      "integrity": "sha512-SS+jx45GF1QjgEXQx4NJZV9ImqmO2NPz5FNsIHrsDjh2YsHnawpan7SNQ1o8NuhrbHZy9AZhIoCUiCeaW/C80g==",
-      "tarball": "https://registry.npmmirror.com/supports-color/-/supports-color-10.2.2.tgz"
-    },
     "supports-color@7.2.0": {
       "integrity": "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==",
       "dependencies": [
@@ -2698,7 +2687,7 @@
     "svelte-check@4.3.6_svelte@5.50.3_typescript@5.9.3": {
       "integrity": "sha512-uBkz96ElE3G4pt9E1Tw0xvBfIUQkeH794kDQZdAUk795UVMr+NJZpuFSS62vcmO/DuSalK83LyOwhgWq8YGU1Q==",
       "dependencies": [
-        "@jridgewell/trace-mapping@0.3.31",
+        "@jridgewell/trace-mapping",
         "chokidar",
         "fdir",
         "picocolors",
@@ -2733,7 +2722,7 @@
       ],
       "tarball": "https://registry.npmmirror.com/svelte-sonner/-/svelte-sonner-1.1.0.tgz"
     },
-    "svelte-toolbelt@0.10.6_svelte@5.50.3_@sveltejs+kit@2.50.2__@sveltejs+vite-plugin-svelte@6.2.4___svelte@5.50.3___vite@7.3.1____@types+node@24.10.13____lightningcss@1.31.1___@types+node@24.10.13___lightningcss@1.31.1__svelte@5.50.3__typescript@5.9.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_@sveltejs+vite-plugin-svelte@6.2.4__svelte@5.50.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_@types+node@24.10.13_lightningcss@1.31.1_typescript@5.9.3_vite@7.3.1__@types+node@24.10.13__lightningcss@1.31.1": {
+    "svelte-toolbelt@0.10.6_svelte@5.50.3_@sveltejs+kit@2.50.2__@sveltejs+vite-plugin-svelte@6.2.4___svelte@5.50.3___vite@7.3.1____@types+node@24.10.13____lightningcss@1.31.1___@types+node@24.10.13___lightningcss@1.31.1__svelte@5.50.3__typescript@5.9.3__vite@7.3.1___@types+node@24.10.13___lightningcss@1.31.1__@types+node@24.10.13__lightningcss@1.31.1_lightningcss@1.31.1": {
       "integrity": "sha512-YWuX+RE+CnWYx09yseAe4ZVMM7e7GRFZM6OYWpBKOb++s+SQ8RBIMMe+Bs/CznBMc0QPLjr+vDBxTAkozXsFXQ==",
       "dependencies": [
         "clsx",
@@ -3025,7 +3014,6 @@
         "@poppinss/colors",
         "@poppinss/dumper",
         "@speed-highlight/core",
-        "cookie@1.1.1",
         "youch-core"
       ],
       "tarball": "https://registry.npmmirror.com/youch/-/youch-4.1.0-beta.10.tgz"
@@ -3048,6 +3036,7 @@
         "npm:@tailwindcss/typography@~0.5.19",
         "npm:@tailwindcss/vite@^4.1.17",
         "npm:@types/node@24",
+        "npm:@types/sortablejs@^1.15.9",
         "npm:@uppy/aws-s3@^5.1.0",
         "npm:@uppy/compressor@^3.1.0",
         "npm:@uppy/core@^5.2.0",
@@ -3068,6 +3057,7 @@
         "npm:prettier-plugin-tailwindcss@~0.7.1",
         "npm:prettier@^3.6.2",
         "npm:rollup-plugin-visualizer@^5.12.0",
+        "npm:sortablejs@^1.15.7",
         "npm:svelte-check@^4.3.4",
         "npm:svelte-sonner@^1.0.7",
         "npm:svelte@^5.43.8",

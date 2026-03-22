@@ -7,6 +7,8 @@
 /**
  * `use:dragReorder` 的配置
  *
+ * @deprecated 新业务请优先使用 `$lib/modules/sortable-list`（SortableJS）。
+ *
  * @remarks
  * - **拖拽源**：Action 绑在手柄等任意子节点，不必等于列表项根节点。
  * - **竞技场**：开始拖拽时 `tryAcquire`，`axis: 'x'` 以便与父级纵向 `scrollBoundary` 共存；

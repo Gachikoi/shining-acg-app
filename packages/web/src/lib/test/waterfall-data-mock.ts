@@ -50,8 +50,11 @@ function generatePost(id: string): V1PostPreview {
 		postId: `post_${id}`,
 		displayTitle: `${title} #${id}`,
 		cover: {
+			assetId: `asset_cover_${id}`,
 			type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
+			scene: 'MEDIA_SCENE_POST_COVER',
 			status: 'MEDIA_STATUS_UNSPECIFIED',
+			orderIndex: 0,
 			single: {
 				fileId: `file_${id}`,
 				status: 'MEDIA_STATUS_COMPLETED',
