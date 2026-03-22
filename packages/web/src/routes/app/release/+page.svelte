@@ -36,12 +36,7 @@
 		type DraftMediaItem,
 		type ReleaseDraft
 	} from '$lib/stores/release';
-	import {
-		filesToDraftItems,
-		draftItemsToPrepareParams,
-		getPreviewBlob,
-		mediaItemsEqual
-	} from '$lib/modules/release-media';
+	import { scrollBoundary } from '$lib/modules/gesture';
 	import {
 		DEFAULT_TEXT_COVER_STYLE_ID,
 		getPreviewBlobForDisplay,
@@ -52,10 +47,16 @@
 		resolveCoverBlob,
 		type CoverSource
 	} from '$lib/modules/media-cover';
-	import { formatUploadError } from '$lib/utils/format-upload-error';
-	import { resolve } from '$app/paths';
 	import { createMediaUploader } from '$lib/modules/media-uploader';
 	import type { MediaUploader } from '$lib/modules/media-uploader';
+	import {
+		filesToDraftItems,
+		draftItemsToPrepareParams,
+		getPreviewBlob,
+		mediaItemsEqual
+	} from '$lib/modules/release-media';
+	import { formatUploadError } from '$lib/utils/format-upload-error';
+	import { resolve } from '$app/paths';
 
 	const DRAFT_ID = 'release-draft';
 	const fetchMentionUsers = createFetchMentionUsersFromFollowings();
@@ -684,17 +685,7 @@
 <main
 	class="flex h-full flex-col rounded-2xl border-zinc-100 lg:mx-4 lg:h-[calc(100%-1rem)] lg:border"
 >
-	<div class="min-h-0 grow overflow-y-auto p-6">
-		<!-- 封面设置文字 -->
-		<p class="text-lg font-bold">
-			封面设置
-			<br class="lg:hidden" />
-			<span class="text-sm font-normal text-muted-foreground">
-				未设置封面时，以第 1
-				张图片或视频首帧作为封面；若没有图片或视频，将会使用正文内容自动生成封面。
-			</span>
-		</p>
-		<!-- 封面预览 -->
+	<div class="min-h-0 grow overflow-y-auto p-6" use:scrollBoundary={{ axis: 'y' }}>
 		<ReleaseCoverPreview
 			ratio={coverRatio}
 			coverUrl={coverPreviewUrl}
