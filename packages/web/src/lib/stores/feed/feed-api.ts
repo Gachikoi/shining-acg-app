@@ -189,7 +189,7 @@ export const DEFAULT_CONFIG = {
 	bufferMultiplier: 1.5,
 	avgItemRatio: 1.6,
 	min: 10,
-	max: 10
+	max: 100
 };
 
 /**
@@ -233,6 +233,5 @@ export function estimateNeedNum(
 	const visibleRows = Math.ceil(containerHeight / avgItemHeight);
 	// 含缓冲区的总估算量
 	const raw = visibleRows * columnCount * bufferMultiplier;
-
 	return Math.max(min, Math.min(max, Math.ceil(raw)));
 }
