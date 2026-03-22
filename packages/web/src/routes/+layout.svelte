@@ -8,7 +8,6 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { onMount } from 'svelte';
-	import { feedServiceListFeedCategories } from '$lib/api';
 
 	let { children } = $props();
 
@@ -53,31 +52,6 @@
 
 	onMount(() => {
 		detectSW();
-
-		feedServiceListFeedCategories()
-			.then((res) => {
-				navigator.serviceWorker?.controller?.postMessage({
-					type: 'GET_MEDIA_CACHE_CATEGORIES',
-					data: {
-						mediaCategories: res.data?.categories?.map((category) => category.categoryId) || []
-					}
-				});
-
-				// 请求持久化存储权限，防止 iOS 在存储压力下自动清除 Service Worker 和 Cache
-				if (navigator.storage && navigator.storage.persist) {
-					navigator.storage
-						.persist()
-						.then((granted) => {
-							console.log('Storage persistence granted: ' + granted);
-						})
-						.catch((err) => {
-							console.error('Storage persistence request failed: ' + err);
-						});
-				}
-			})
-			.catch((e) => {
-				console.error('获取 feed 流内容分类失败：', e);
-			});
 	});
 </script>
 
