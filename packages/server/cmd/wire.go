@@ -19,16 +19,26 @@ var DataProviderSet = wire.NewSet(
 	repo.NewDB,
 	repo.NewResourceRepo,
 	wire.Bind(new(repo.ResourceRepo), new(*repo.ResourceRepoImpl)),
+	repo.NewPartitionRepo,
+	wire.Bind(new(partition.PartitionRepo), new(*partition.PartitionRepoImpl)),
+	repo.NewUserRepo,
+	wire.Bind(new(user.UserRepo), new(*user.UserRepoImpl)),
+	repo.NewPostRepo,
+	wire.Bind(new(post.PostRepo), new(*post.PostRepoImpl)),
 )
 
 // BizProviderSet 业务逻辑层依赖注入集合
 var BizProviderSet = wire.NewSet(
 	biz.NewResourceUseCase,
+	biz.NewFeedUseCase,
+	wire.Bind(new(feed.FeedUseCase), new(*feed.FeedUseCaseImpl)),
 )
 
 // ServiceProviderSet 服务层依赖注入集合
 var ServiceProviderSet = wire.NewSet(
 	service.NewResourceServiceServer,
+	feed.NewFeedServiceServer,
+	user.NewUserServiceServer,
 )
 
 // SnowflakeProvider 雪花算法节点提供者
