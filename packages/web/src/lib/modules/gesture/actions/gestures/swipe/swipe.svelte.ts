@@ -24,10 +24,11 @@
  * ```
  */
 
+import { release, startAnimation, tryAcquire } from '$lib/modules/gesture';
+import { generateId, normalizeWheelDelta } from '$lib/modules/gesture/core/utils';
 import type { Action } from 'svelte/action';
-import { tryAcquire, release, startAnimation } from './arena.svelte';
 import type { SwipeOptions, SwipeState } from './types';
-import { createVelocityTracker, generateId, normalizeWheelDelta } from './utils';
+import { createVelocityTracker } from './utils';
 
 // ─── 手势阶段 ────────────────────────────────────────────────────
 
@@ -67,11 +68,15 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	let startY = 0;
 	/** pointerdown 时的 event.target，用于 arena 边界让渡判断 */
 	let pointerTarget: HTMLElement = node;
-	const velocityTracker = createVelocityTracker();
+	const velocityTrackerX = createVelocityTracker();
+	/** 副轴（Y）速度跟踪器，用于透传 velocityY */
+	const velocityTrackerY = createVelocityTracker();
 	/** rAF 节流 ID */
 	let pointerRafId: number | null = null;
 	/** rAF 期间暂存的最新 deltaX */
 	let pendingDeltaX = 0;
+	/** rAF 期间暂存的最新 deltaY（副轴） */
+	let pendingDeltaY = 0;
 	/** 是否需要阻止 touchmove 默认行为（Safari 兼容） */
 	let shouldPreventScroll = false;
 	/** 当前触摸周期内是否已使用过一次自动恢复，防止 reject → recover → reject 无限循环 */
@@ -94,6 +99,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// ═══════════════════════════════════════════════════════════════
 
 	function onPointerDown(e: PointerEvent) {
+		// 已经为 e.target 进行了隐式指针捕获
 		autoRecoveryUsed = false;
 		if (opts.disabled?.()) return;
 		if (pointerId !== null) return;
@@ -104,8 +110,11 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		pointerTarget = (e.target as HTMLElement) ?? node;
 		pointerPhase = 'pending';
 
-		velocityTracker.reset();
-		velocityTracker.addSample(e.clientX);
+		velocityTrackerX.reset();
+		velocityTrackerY.reset();
+		velocityTrackerX.addSample(e.clientX);
+		velocityTrackerY.addSample(e.clientY);
+		opts.onStart?.();
 	}
 
 	function onPointerMove(e: PointerEvent) {
@@ -125,8 +134,10 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			startY = e.clientY;
 			pointerTarget = (e.target as HTMLElement) ?? node;
 			pointerPhase = 'pending';
-			velocityTracker.reset();
-			velocityTracker.addSample(e.clientX);
+			velocityTrackerX.reset();
+			velocityTrackerY.reset();
+			velocityTrackerX.addSample(e.clientX);
+			velocityTrackerY.addSample(e.clientY);
 			autoRecoveryUsed = true;
 		}
 
@@ -135,8 +146,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 
 		const dx = e.clientX - startX;
 		const dy = e.clientY - startY;
-
-		velocityTracker.addSample(e.clientX);
+		velocityTrackerX.addSample(e.clientX);
+		velocityTrackerY.addSample(e.clientY);
 
 		// ── 方向判定阶段 ─────────────────────────────────────────
 		if (pointerPhase === 'pending') {
@@ -157,7 +168,9 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				node,
 				axis: 'x',
 				direction,
-				pointerTarget
+				pointerTarget,
+				startX,
+				startY
 			});
 
 			if (!granted) {
@@ -168,22 +181,24 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			// 获胜：进入 active，捕获指针
 			pointerPhase = 'active';
 			shouldPreventScroll = true;
-			node.setPointerCapture(e.pointerId);
-			opts.onStart?.();
 		}
 
 		// ── 跟手阶段（rAF 节流） ────────────────────────────────
 		if (pointerPhase === 'active') {
-			pendingDeltaX = dx;
+			pendingDeltaX = dx - threshold();
+			pendingDeltaY = dy - threshold();
 			if (pointerRafId === null) {
 				pointerRafId = requestAnimationFrame(() => {
 					pointerRafId = null;
 					if (pointerPhase !== 'active') return;
 					opts.onMove?.({
 						deltaX: pendingDeltaX,
-						velocityX: velocityTracker.getVelocity(),
+						deltaY: pendingDeltaY,
+						velocityX: velocityTrackerX.getVelocity(),
+						velocityY: velocityTrackerY.getVelocity(),
 						direction: pendingDeltaX > 0 ? 'right' : 'left',
 						committed: false,
+						velocityThresholdUsed: velocityThreshold(),
 						source: 'pointer'
 					});
 				});
@@ -191,98 +206,130 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		}
 	}
 
+	/**
+	 * 结束当前指针手势的公共逻辑
+	 *
+	 * 1. 如果有待处理的 rAF onMove 回调，先同步刷新（保证调用方视觉状态最新）
+	 * 2. 计算手势终态（位移提交 / 速度提交 / 方向）
+	 * 3. 调用 opts.onEnd
+	 * 4. resetPointer 确保后续重复信号被跳过
+	 *
+	 * @param finalX - 手指离开时的 clientX
+	 * @param finalY - 手指离开时的 clientY
+	 */
+	function finishPointerGesture(finalX: number, finalY: number) {
+		// 取消 rAF 确保调用方的视觉状态在 onEnd 之前是最新的。
+		if (pointerRafId !== null) {
+			cancelAnimationFrame(pointerRafId);
+			pointerRafId = null;
+		}
+
+		const dx = finalX - startX;
+		const dy = finalY - startY;
+		const vx = velocityTrackerX.getVelocity();
+		const vy = velocityTrackerY.getVelocity();
+		const containerWidth = node.clientWidth;
+
+		const distanceCommit = Math.abs(dx) > containerWidth * commitThreshold();
+		const velocityCommit = Math.abs(vx) > velocityThreshold();
+		const committed = distanceCommit || velocityCommit;
+		const direction: 'left' | 'right' = dx > 0 ? 'right' : 'left';
+
+		let state: SwipeState | null = null;
+		if (pointerPhase === 'active') {
+			state = {
+				deltaX: dx - threshold(),
+				deltaY: dy - threshold(),
+				velocityX: vx,
+				velocityY: vy,
+				direction,
+				committed,
+				velocityThresholdUsed: velocityThreshold(),
+				source: 'pointer'
+			};
+		} else {
+			state = {
+				deltaX: 0,
+				deltaY: 0,
+				velocityX: 0,
+				velocityY: 0,
+				direction: 'right',
+				committed: false,
+				velocityThresholdUsed: velocityThreshold(),
+				source: 'pointer'
+			};
+		}
+
+		release(id);
+
+		const result = opts.onEnd?.(state);
+		if (result instanceof Promise) {
+			registerAnimation(result);
+		}
+
+		resetPointer();
+	}
+
+	/**
+	 * 以「取消」语义结束当前指针手势（零位移、committed: false）
+	 *
+	 * 用于 pointercancel / lostpointercapture 等场景，通知调用方回弹到初始位置。
+	 * 不调用 resetPointer，由调用方在适当时机调用。
+	 *
+	 * @returns void
+	 */
+	function finishPointerGestureAsCancel(): void {
+		const state: SwipeState = {
+			deltaX: 0,
+			deltaY: 0,
+			velocityX: 0,
+			velocityY: 0,
+			direction: 'right',
+			committed: false,
+			velocityThresholdUsed: velocityThreshold(),
+			source: 'pointer'
+		};
+		release(id);
+		const result = opts.onEnd?.(state);
+		if (result instanceof Promise) {
+			registerAnimation(result);
+		}
+	}
+
+	/**
+	 * pointerup —— 桌面端（鼠标）手势结束的主信号，触摸端的兜底信号
+	 *
+	 * 触摸设备上通常已被 touchend 抢先处理，此处 finishPointerGesture
+	 * 内部的 pointerPhase 守卫会使其直接跳过。
+	 */
 	function onPointerUp(e: PointerEvent) {
 		if (e.pointerId !== pointerId) return;
 
-		if (pointerPhase === 'active') {
-			const dx = e.clientX - startX;
-			const vx = velocityTracker.getVelocity();
-			const containerWidth = node.clientWidth;
-
-			const distanceCommit = Math.abs(dx) > containerWidth * commitThreshold();
-			const velocityCommit = Math.abs(vx) > velocityThreshold();
-			const committed = distanceCommit || velocityCommit;
-			const direction: 'left' | 'right' = dx > 0 ? 'right' : 'left';
-
-			const state: SwipeState = {
-				deltaX: dx,
-				velocityX: vx,
-				direction,
-				committed,
-				source: 'pointer'
-			};
-
-			// 释放 arena 控制权（手势本身结束，动画由 AnimationGuard 保护）
-			release(id);
-
-			// 调用 onEnd，如果返回 Promise 则注册为 AnimationToken
-			const result = opts.onEnd?.(state);
-			if (result instanceof Promise) {
-				registerAnimation(result);
-			}
-		} else {
-			release(id);
-		}
-
-		resetPointer();
+		finishPointerGesture(e.clientX, e.clientY);
 	}
 
+	/**
+	 * pointercancel —— 系统取消手势（如浏览器接管滚动）
+	 *
+	 * 语义上是「取消」而非「完成」，因此使用零位移 + committed: false 的状态，
+	 * 让调用方回弹到初始位置。
+	 */
 	function onPointerCancel(e: PointerEvent) {
 		if (e.pointerId !== pointerId) return;
 
-		if (pointerPhase === 'active') {
-			// 取消 = 未提交，deltaX 回 0
-			const state: SwipeState = {
-				deltaX: 0,
-				velocityX: 0,
-				direction: 'right',
-				committed: false,
-				source: 'pointer'
-			};
-			release(id);
-			const result = opts.onEnd?.(state);
-			if (result instanceof Promise) {
-				registerAnimation(result);
-			}
-		} else {
-			release(id);
-		}
-
-		resetPointer();
+		finishPointerGestureAsCancel();
 	}
 
 	/**
-	 * 指针捕获丢失（如系统弹窗抢走焦点）
-	 * 等价于 pointercancel 处理
-	 */
-	/**
 	 * 指针捕获丢失回调
 	 *
-	 * 关键：lostpointercapture 会冒泡。触摸设备上，浏览器在 pointerdown 时
-	 * 对触摸目标元素做"隐式捕获"。当我们 setPointerCapture 把捕获转移到父节点时，
-	 * 子元素的隐式捕获被释放 → lostpointercapture 在子元素触发并冒泡到这里。
-	 * 必须通过 e.target !== node 过滤掉这类冒泡事件，只处理自身节点真正丢失捕获的情况。
+	 * 通常已被 pointerup / pointercancel 抢先处理
+	 * 异常情况下，此事件作为可靠的兜底。
 	 */
 	function onLostPointerCapture(e: PointerEvent) {
 		if (e.pointerId !== pointerId) return;
-		// 忽略子元素失去隐式捕获后冒泡上来的事件
-		if (e.target !== node) return;
 
-		if (pointerPhase === 'active') {
-			const state: SwipeState = {
-				deltaX: 0,
-				velocityX: 0,
-				direction: 'right',
-				committed: false,
-				source: 'pointer'
-			};
-			release(id);
-			const result = opts.onEnd?.(state);
-			if (result instanceof Promise) {
-				registerAnimation(result);
-			}
-		}
-		resetPointer();
+		finishPointerGestureAsCancel();
 	}
 
 	/** 重置 Pointer 通道全部状态 */
@@ -393,9 +440,12 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 
 				opts.onMove?.({
 					deltaX: wheelAccumX,
+					deltaY: 0,
 					velocityX: 0,
+					velocityY: 0,
 					direction: wheelAccumX > 0 ? 'right' : 'left',
 					committed: false,
+					velocityThresholdUsed: velocityThreshold(),
 					source: 'wheel'
 				});
 			});
@@ -413,9 +463,12 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 
 		const state: SwipeState = {
 			deltaX: wheelAccumX,
+			deltaY: 0,
 			velocityX: 0,
+			velocityY: 0,
 			direction,
 			committed,
+			velocityThresholdUsed: velocityThreshold(),
 			source: 'wheel'
 		};
 
@@ -454,14 +507,10 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * @param animationPromise - onEnd 回调返回的 Promise
 	 */
 	function registerAnimation(animationPromise: Promise<void>) {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		let cancelled = false;
 		const token = {
+			id,
 			owner: GESTURE_TYPE,
 			interruptible: interruptible(),
-			cancel: () => {
-				cancelled = true;
-			},
 			finished: animationPromise
 		};
 		startAnimation(token);
@@ -477,8 +526,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	node.addEventListener('pointercancel', onPointerCancel);
 	node.addEventListener('lostpointercapture', onLostPointerCapture);
 	node.addEventListener('wheel', onWheel, { passive: false });
-
-	// Safari 滚动阻止补丁
+	/** touch-action: none 不足以保证不触发 pointercancel，必须在 touch 层用 preventDefault 兜底 */
 	node.addEventListener('touchmove', onTouchMove, { passive: false });
 
 	return {

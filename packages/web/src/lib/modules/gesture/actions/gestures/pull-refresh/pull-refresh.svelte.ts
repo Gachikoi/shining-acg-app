@@ -20,9 +20,10 @@
  */
 
 import type { Action } from 'svelte/action';
-import { tryAcquire, release } from './arena.svelte';
+import { tryAcquire, release } from '../../../core/arena.svelte';
 import type { PullRefreshConfig, PullRefreshOptions } from './types';
-import { calculateElasticDistance, generateId, normalizeWheelDelta } from './utils';
+import { calculateElasticDistance } from './utils';
+import { generateId, normalizeWheelDelta } from '../../../core/utils';
 
 // ─── 默认配置 ────────────────────────────────────────────────────
 
@@ -141,7 +142,9 @@ export const pullRefresh: Action<HTMLElement, PullRefreshOptions> = (node, initi
 				node,
 				axis: 'y',
 				direction: 1,
-				pointerTarget
+				pointerTarget,
+				startX,
+				startY
 			});
 
 			if (!granted) {
