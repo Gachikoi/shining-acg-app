@@ -1,13 +1,13 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import darkLogo from '$lib/assets/dark-logo.png';
 	import logo from '$lib/assets/logo.png';
-	import { mode } from 'mode-watcher';
-	import './layout.css';
-	import { dev } from '$app/environment';
 	import { Button } from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Toaster } from '$lib/components/ui/sonner';
+	import { mode, ModeWatcher } from 'mode-watcher';
 	import { onMount } from 'svelte';
+	import './layout.css';
 
 	let { children } = $props();
 
@@ -78,3 +78,5 @@
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
+
+<ModeWatcher></ModeWatcher>

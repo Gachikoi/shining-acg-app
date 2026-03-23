@@ -456,7 +456,6 @@
 	>
 		{#each panels as panel, index (panel?.category?.value || index)}
 			<div class="h-full w-1/3" bind:this={panelSlotRoots[index]}>
-				{panel?.originalIndex}
 				{#if panel}
 					{@render children(panel.category, panel.originalIndex)}
 				{/if}
