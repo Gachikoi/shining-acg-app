@@ -6,7 +6,7 @@ export const DOMAIN_CONFIG = {
 	app: IS_TEST ? 'test.app.shiningacg.club' : 'app.shiningacg.club',
 	site: IS_TEST ? 'test.www.shiningacg.club' : 'www.shiningacg.club',
 	root: IS_TEST ? 'test.shiningacg.club' : 'shiningacg.club',
-	loginHelper: IS_TEST ? 'test.shiningacg.gach1koi.site' : 'shiningacg.gach1koi.site',
+	loginHelper: IS_TEST ? 'test-shiningacg.gach1koi.site' : 'shiningacg.gach1koi.site',
 	api: IS_TEST ? 'test-api.shiningacg.club' : 'api.shiningacg.club',
 	appSuffix: 'app.shiningacg.club',
 	siteSuffix: 'www.shiningacg.club',
