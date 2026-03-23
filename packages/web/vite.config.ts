@@ -21,7 +21,8 @@ export default defineConfig({
 			'test.www.shiningacg.club',
 			'test.shiningacg.club',
 			'shiningacg.gach1koi.site',
-			'test.shiningacg.gach1koi.site'
+			/** 与 DOMAIN_CONFIG.loginHelper 测试域名一致（单层子域，便于 Universal SSL 覆盖） */
+			'test-shiningacg.gach1koi.site'
 		],
 		proxy: {
 			'/api': {
