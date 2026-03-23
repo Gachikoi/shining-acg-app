@@ -3,12 +3,13 @@
 	import { page } from '$app/state';
 	import { appBus } from '$lib/events/app-bus';
 	import { Bell, House, SquarePen, UserCogIcon } from 'lucide-svelte';
-	import { ModeWatcher } from 'mode-watcher';
 	import { onDestroy, onMount } from 'svelte';
-	import Header from './header.svelte';
-	import SettingPopover from './setting-popover.svelte';
-	import TabButton from './tab-button.svelte';
-	import { StackContainer } from '$lib/components/custom/stack';
+	import Header from '../app/header.svelte';
+	import SettingPopover from '../app/setting-popover.svelte';
+	import TabButton from '../app/tab-button.svelte';
+	// import { StackContainer } from '$lib/components/custom/stack';
+	import { DOMAIN_CONFIG } from '$lib/constants';
+	import Button from '$lib/components/ui/button/button.svelte';
 
 	let { children } = $props();
 
@@ -43,6 +44,7 @@
 			<TabButton text="发布" icon={SquarePen} href="/release" />
 			<TabButton badgeText="99+" text="管理" icon={UserCogIcon} href="/management" />
 			<TabButton img="www.google.com" text="我" href="/profile" />
+			<Button class="h-12" href={`https://${DOMAIN_CONFIG.loginHelper}`}>登录</Button>
 		</div>
 		<SettingPopover></SettingPopover>
 	</aside>
@@ -61,6 +63,4 @@
 		<TabButton img="www.google.com" text="我" type="mobile" href="/profile" />
 	</footer>
 </div>
-
-<ModeWatcher></ModeWatcher>
-<StackContainer maxVisible={2} />
+<!-- <StackContainer maxVisible={2} /> -->

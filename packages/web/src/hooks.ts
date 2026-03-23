@@ -11,6 +11,8 @@ export const reroute: Reroute = ({ url }) => {
 		newPath = `/app${pathname}`;
 	} else if (hostname.includes(DOMAIN_CONFIG.rootSuffix)) {
 		newPath = `/site${pathname}`;
+	} else if (hostname.includes(DOMAIN_CONFIG.loginHelperSuffix)) {
+		newPath = `/login-helper${pathname}`;
 	}
 
 	return newPath;

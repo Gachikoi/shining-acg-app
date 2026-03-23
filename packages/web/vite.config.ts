@@ -19,7 +19,9 @@ export default defineConfig({
 			'shiningacg.club',
 			'test.app.shiningacg.club',
 			'test.www.shiningacg.club',
-			'test.shiningacg.club'
+			'test.shiningacg.club',
+			'shiningacg.gach1koi.site',
+			'test.shiningacg.gach1koi.site'
 		],
 		proxy: {
 			'/api': {
