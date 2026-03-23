@@ -20,10 +20,10 @@
  */
 
 import type { Action } from 'svelte/action';
-import { tryAcquire, release } from '../../../core/arena.svelte';
+import { release, tryAcquire } from '../../../core/arena.svelte';
+import { generateId, normalizeWheelDelta } from '../../../core/utils';
 import type { PullRefreshConfig, PullRefreshOptions } from './types';
 import { calculateElasticDistance } from './utils';
-import { generateId, normalizeWheelDelta } from '../../../core/utils';
 
 // ─── 默认配置 ────────────────────────────────────────────────────
 
@@ -154,7 +154,6 @@ export const pullRefresh: Action<HTMLElement, PullRefreshOptions> = (node, initi
 
 			pointerPhase = 'active';
 			shouldPreventScroll = true;
-			node.setPointerCapture(e.pointerId);
 			opts.onPullingChange?.(true);
 		}
 
@@ -218,13 +217,10 @@ export const pullRefresh: Action<HTMLElement, PullRefreshOptions> = (node, initi
 	 *
 	 * 关键：lostpointercapture 会冒泡。触摸设备上，浏览器在 pointerdown 时
 	 * 对触摸目标元素做"隐式捕获"。当我们 setPointerCapture 把捕获转移到本节点时，
-	 * 子元素的隐式捕获被释放 → lostpointercapture 在子元素触发并冒泡到这里。
 	 * 必须通过 e.target !== node 过滤掉这类冒泡事件。
 	 */
 	function onLostPointerCapture(e: PointerEvent) {
 		if (e.pointerId !== pointerId) return;
-		// 忽略子元素失去隐式捕获后冒泡上来的事件
-		if (e.target !== node) return;
 
 		if (pointerPhase === 'active') {
 			opts.onPullingChange?.(false);
@@ -320,21 +316,6 @@ export const pullRefresh: Action<HTMLElement, PullRefreshOptions> = (node, initi
 		if (shouldPreventScroll) {
 			e.preventDefault();
 			return;
-		}
-
-		// pending 阶段：在滚动容器顶部且触摸向下时阻止
-		if (pointerPhase === 'pending' && node.scrollTop <= 1 && e.touches.length === 1) {
-			const dx = Math.abs(e.touches[0].clientX - startX);
-			const dy = e.touches[0].clientY - startY;
-
-			// 明确横向意图 → 放行给 swipe 或浏览器
-			if (Math.max(dx, Math.abs(dy)) >= 10 && dx > Math.abs(dy)) {
-				return;
-			}
-
-			if (dy > 0) {
-				e.preventDefault();
-			}
 		}
 	}
 

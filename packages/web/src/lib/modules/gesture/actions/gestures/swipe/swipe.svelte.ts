@@ -274,11 +274,18 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * 以「取消」语义结束当前指针手势（零位移、committed: false）
 	 *
 	 * 用于 pointercancel / lostpointercapture 等场景，通知调用方回弹到初始位置。
-	 * 不调用 resetPointer，由调用方在适当时机调用。
+	 * 必须在末尾 resetPointer：否则 pointerId 残留，后续 pointerdown 被「单指针锁」短路，
+	 * 表现为整次会话内横滑/与内层 pull-refresh 协同异常。
 	 *
 	 * @returns void
 	 */
 	function finishPointerGestureAsCancel(): void {
+		// 取消 rAF 确保调用方的视觉状态在 onEnd 之前是最新的。
+		if (pointerRafId !== null) {
+			cancelAnimationFrame(pointerRafId);
+			pointerRafId = null;
+		}
+
 		const state: SwipeState = {
 			deltaX: 0,
 			deltaY: 0,
@@ -294,6 +301,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		if (result instanceof Promise) {
 			registerAnimation(result);
 		}
+
+		resetPointer();
 	}
 
 	/**
@@ -369,19 +378,6 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		if (shouldPreventScroll) {
 			e.preventDefault();
 			return;
-		}
-
-		// pending 阶段：仅在方向未决或横向意图时阻止
-		if (pointerPhase === 'pending' && e.touches.length === 1) {
-			const dx = Math.abs(e.touches[0].clientX - startX);
-			const dy = Math.abs(e.touches[0].clientY - startY);
-
-			// 位移足够判定方向且明确纵向 → 放行，让浏览器处理滚动
-			if (Math.max(dx, dy) >= threshold() && dy > dx) {
-				return;
-			}
-
-			e.preventDefault();
 		}
 	}
 
