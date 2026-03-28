@@ -7,7 +7,8 @@
 	import Header from '../app/header.svelte';
 	import SettingPopover from '../app/setting-popover.svelte';
 	import TabButton from '../app/tab-button.svelte';
-	// import { StackContainer } from '$lib/components/custom/stack';
+	import { FullScreenLoadingHost } from '$lib/components/custom/full-screen-loading';
+	import { StackContainer } from '$lib/components/custom/stack';
 	import { DOMAIN_CONFIG } from '$lib/constants';
 	import Button from '$lib/components/ui/button/button.svelte';
 
@@ -63,4 +64,6 @@
 		<TabButton img="www.google.com" text="我" type="mobile" href="/profile" />
 	</footer>
 </div>
-<!-- <StackContainer maxVisible={2} /> -->
+<StackContainer maxVisible={2} />
+<!-- zIndex 高于 StackItem（默认 zIndexBase=100），保证懒加载蒙版盖住栈页 -->
+<FullScreenLoadingHost zIndex={10_000} />

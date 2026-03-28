@@ -11,6 +11,8 @@
  * - **竞技场集成**：通过 arena.tryAcquire 与 scrollBoundary 协调边界让渡
  * - **动画保护**：onEnd 返回的 Promise 被包装为 AnimationToken 注册到 arena
  * - **Safari 兼容**：额外 touchmove { passive: false } 阻止滚动
+ * - **横向 wheel 与历史导航**：在挂载节点上设置 `overscroll-behavior-x: none`，避免 Chrome/Safari（尤其 macOS 触控板）
+ *   将横向滚动手势链式到视口后触发「前进/后退」；与 MDN 对 overscroll-behavior 的说明一致
  *
  * @example
  * ```svelte
@@ -27,16 +29,9 @@
 import { release, startAnimation, tryAcquire } from '$lib/modules/gesture';
 import { generateId, normalizeWheelDelta } from '$lib/modules/gesture/core/utils';
 import type { Action } from 'svelte/action';
+import type { PointerPhase, PointerTrack, WheelPhase } from '../types';
 import type { SwipeOptions, SwipeState } from './types';
-import { createVelocityTracker } from './utils';
-
-// ─── 手势阶段 ────────────────────────────────────────────────────
-
-/** Pointer 通道状态机阶段 */
-type PointerPhase = 'idle' | 'pending' | 'active' | 'rejected';
-
-/** Wheel 通道状态机阶段 */
-type WheelPhase = 'idle' | 'active';
+import { createPointerTrack } from './utils';
 
 // ─── Action 实现 ──────────────────────────────────────────────────
 
@@ -60,23 +55,38 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	const velocityThreshold = () => opts.velocityThreshold ?? 0.3;
 	const interruptible = () => opts.interruptible ?? true;
 
+	let lock = false;
+
 	// ── Pointer 通道状态 ──────────────────────────────────────────
 
+	/** 指针状态相关 */
+	/** 指针状态机 */
 	let pointerPhase: PointerPhase = 'idle';
-	let pointerId: number | null = null;
-	let startX = 0;
-	let startY = 0;
-	/** pointerdown 时的 event.target，用于 arena 边界让渡判断 */
-	let pointerTarget: HTMLElement = node;
-	const velocityTrackerX = createVelocityTracker();
-	/** 副轴（Y）速度跟踪器，用于透传 velocityY */
-	const velocityTrackerY = createVelocityTracker();
 	/** rAF 节流 ID */
 	let pointerRafId: number | null = null;
+	/** pointerdown 时的 event.target，用于 arena 边界让渡判断 */
+	let pointerTarget: HTMLElement = node;
+
+	/** 主驱动手势相关 */
+	/** 参与本笔手势的所有指针：pointerId -> 轨迹（start/current），用于多指接手 */
+	const trackedPointers = new Map<number, PointerTrack>();
+	/**
+	 * 当前驱动位移/速度的指针 ID（「司机」）。
+	 * move 阶段若存在 |vx| 显著更大者则换为 leading（带滞后）；换班时位移合并必须用旧 driver 的增量（见 onPointerMove），否则会跳变。
+	 */
+	let driverId: number | null = null;
+	/** 指针离开时累计的位移，与当前主导 pointer 的位移相加得到 totalDelta */
+	let accumulatedDeltaX = 0;
+	let accumulatedDeltaY = 0;
+
 	/** rAF 期间暂存的最新 deltaX */
 	let pendingDeltaX = 0;
 	/** rAF 期间暂存的最新 deltaY（副轴） */
 	let pendingDeltaY = 0;
+	/** rAF 期间暂存的当前 driver 轨迹（用于速度与 onMove） */
+	let pendingDriverTrack: PointerTrack | null = null;
+
+	/** 其他相关 */
 	/** 是否需要阻止 touchmove 默认行为（Safari 兼容） */
 	let shouldPreventScroll = false;
 	/** 当前触摸周期内是否已使用过一次自动恢复，防止 reject → recover → reject 无限循环 */
@@ -98,23 +108,84 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// Pointer 通道
 	// ═══════════════════════════════════════════════════════════════
 
+	/**
+	 * 多指换班时挑战者横向 |vx| 需比当前 driver 至少大该值（px/ms），否则维持 driver。
+	 * 量级参考调试日志中噪声（约 0.01–0.05）与有效差（约 0.15+）。
+	 */
+	const SWITCH_VELOCITY_MARGIN_PX_PER_MS = 0.08;
+
+	/**
+	 * 多指时仅按「瞬时 |vx|」取最大会把 driver 在相邻 pointermove 间来回切：
+	 * 当前事件的指针刚 addSample，另一指速度仍是上一帧；双零时 Map 顺序还会与 driverId 不一致（见调试日志）。
+	 *
+	 * @param currentDriverId - 当前 driver；若挑战者 |vx| 未比当前高出 `SWITCH_VELOCITY_MARGIN_PX_PER_MS`，则维持当前 driver
+	 * @returns leadingPointerId 与对应轨迹
+	 */
+	function getLeading(currentDriverId: number): {
+		leadingPointerId: number;
+		leadingTrack: PointerTrack;
+	} {
+		let bestAbsVx = -1;
+		let velocityWinnerId: number | null = null;
+		let velocityWinnerTrack: PointerTrack | null = null;
+		for (const [pid, p] of trackedPointers) {
+			const absVx = Math.abs(p.trackerX.getVelocity());
+			if (absVx > bestAbsVx) {
+				bestAbsVx = absVx;
+				velocityWinnerId = pid;
+				velocityWinnerTrack = p;
+			}
+		}
+		if (velocityWinnerId === null || velocityWinnerTrack === null) {
+			throw new Error('getLeading: trackedPointers 非空却未得到速度比较用的 pointerId/track');
+		}
+
+		if (velocityWinnerId === currentDriverId) {
+			return { leadingPointerId: velocityWinnerId, leadingTrack: velocityWinnerTrack };
+		}
+
+		const currentTrack = trackedPointers.get(currentDriverId);
+		if (!currentTrack) {
+			return { leadingPointerId: velocityWinnerId, leadingTrack: velocityWinnerTrack };
+		}
+
+		const currentAbsVx = Math.abs(currentTrack.trackerX.getVelocity());
+		if (bestAbsVx < currentAbsVx + SWITCH_VELOCITY_MARGIN_PX_PER_MS) {
+			return {
+				leadingPointerId: currentDriverId,
+				leadingTrack: currentTrack
+			};
+		}
+
+		return {
+			leadingPointerId: velocityWinnerId,
+			leadingTrack: velocityWinnerTrack
+		};
+	}
+
 	function onPointerDown(e: PointerEvent) {
-		// 已经为 e.target 进行了隐式指针捕获
-		autoRecoveryUsed = false;
 		if (opts.disabled?.()) return;
-		if (pointerId !== null) return;
 
-		pointerId = e.pointerId;
-		startX = e.clientX;
-		startY = e.clientY;
-		pointerTarget = (e.target as HTMLElement) ?? node;
-		pointerPhase = 'pending';
+		const x = e.clientX;
+		const y = e.clientY;
+		/**
+		 * onStart 仅在本手势会话的「第一根手指」按下时触发。
+		 * 额外 pointer（多指）若再次调用 onStart，调用方会误当作新手势并重置 UI（如 SwipeablePane 的 panels/capturedOffset）。
+		 */
+		if (pointerPhase === 'idle') {
+			opts.onStart?.();
+			// pointer 状态
+			pointerPhase = 'pending';
+			pointerTarget = (e.target as HTMLElement) ?? node;
 
-		velocityTrackerX.reset();
-		velocityTrackerY.reset();
-		velocityTrackerX.addSample(e.clientX);
-		velocityTrackerY.addSample(e.clientY);
-		opts.onStart?.();
+			// 主驱动手势相关
+			trackedPointers.set(e.pointerId, createPointerTrack(x, y));
+			driverId = e.pointerId;
+			return;
+		}
+
+		if (trackedPointers.has(e.pointerId)) return;
+		trackedPointers.set(e.pointerId, createPointerTrack(x, y));
 	}
 
 	function onPointerMove(e: PointerEvent) {
@@ -123,33 +194,83 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		// 当用户改变滑动方向时，pointermove 从当前位置补救追踪。
 		// autoRecoveryUsed 防止 reject → recover → reject 无限循环。
 		if (
-			pointerId === null &&
+			trackedPointers.size === 0 &&
 			pointerPhase === 'idle' &&
 			(e.buttons & 1) !== 0 &&
 			!opts.disabled?.() &&
 			!autoRecoveryUsed
 		) {
-			pointerId = e.pointerId;
-			startX = e.clientX;
-			startY = e.clientY;
+			// pointer 状态
 			pointerTarget = (e.target as HTMLElement) ?? node;
 			pointerPhase = 'pending';
-			velocityTrackerX.reset();
-			velocityTrackerY.reset();
-			velocityTrackerX.addSample(e.clientX);
-			velocityTrackerY.addSample(e.clientY);
+
+			// 主驱动手势相关
+			trackedPointers.set(e.pointerId, createPointerTrack(e.clientX, e.clientY));
+			driverId = e.pointerId;
+
 			autoRecoveryUsed = true;
 		}
 
-		if (e.pointerId !== pointerId) return;
-		if (pointerPhase === 'idle' || pointerPhase === 'rejected') return;
+		if (pointerPhase === 'idle' || driverId === null || trackedPointers.size === 0) return;
 
-		const dx = e.clientX - startX;
-		const dy = e.clientY - startY;
-		velocityTrackerX.addSample(e.clientX);
-		velocityTrackerY.addSample(e.clientY);
+		// 当前事件的指针
+		const track = trackedPointers.get(e.pointerId);
+		if (!track) throw new Error('track 不应该为 null，代码出现错误');
+		track.currentX = e.clientX;
+		track.currentY = e.clientY;
+		track.trackerX.addSample(track.currentX);
+		track.trackerY.addSample(track.currentY);
 
-		// ── 方向判定阶段 ─────────────────────────────────────────
+		const { leadingPointerId: leadingId, leadingTrack } = getLeading(driverId);
+
+		if (lock) return; // 对多指切换进行锁住，避免重复计算
+		/**
+		 * 速度换班：|vx| 显著大于当前 driver 者成为 driver（见 `getLeading` 滞后）。
+		 * 合并进 accumulated：
+		 * - 必须包含「旧 driver」相对其 start 的位移 + 原 accumulated，否则会把上一任已拖出的量丢掉（跳变）。
+		 * - 还必须加上「新 leading」在 reset 前相对其 start 的位移：换班帧里本事件已更新新 leading 的 current，
+		 *   若随后把 start 设为 current，会抹掉本帧该指位移，表现为新 driver 跟手滞后一拍。
+		 */
+		if (driverId !== leadingId) {
+			lock = true;
+			const oldDriver = trackedPointers.get(driverId);
+			if (!oldDriver) {
+				lock = false;
+				return;
+			}
+			const newLeadingLdx = leadingTrack.currentX - leadingTrack.startX; // 记录本次事件的位移，切换 driver 时也不能丢下本次事件的位移否则会出现跳变
+			const newLeadingLdy = leadingTrack.currentY - leadingTrack.startY; // 记录本次事件的位移，切换 driver 时也不能丢下本次事件的位移否则会出现跳变
+			const totalDx = accumulatedDeltaX + (oldDriver.currentX - oldDriver.startX) + newLeadingLdx;
+			const totalDy = accumulatedDeltaY + (oldDriver.currentY - oldDriver.startY) + newLeadingLdy;
+			accumulatedDeltaX = totalDx;
+			accumulatedDeltaY = totalDy;
+			driverId = leadingId;
+			for (const p of trackedPointers.values()) {
+				p.startX = p.currentX;
+				p.startY = p.currentY;
+				p.trackerX.reset();
+				p.trackerY.reset();
+			}
+			lock = false;
+		}
+
+		/**
+		 * 本事件指针不是 driver 时，跟手位移不会反映到 UI，但 current 已更新；
+		 * 若不在此把 start 对齐到 current，非 driver 在「未换班」期间会累积 current-start，
+		 * 速度滞后导致换班推迟越久，换班帧并入的 newLeading 越大，出现瞬时跳变。
+		 * 速度仍由 tracker 的采样维护，此处只清零「位移基准」。
+		 */
+		if (driverId !== e.pointerId) {
+			track.startX = track.currentX;
+			track.startY = track.currentY;
+			return;
+		}
+
+		// 换班后 driverId === leadingId，leadingTrack 即当前 driver，无需再 get(driverId)
+		let dx = accumulatedDeltaX + leadingTrack.currentX - leadingTrack.startX;
+		let dy = accumulatedDeltaY + leadingTrack.currentY - leadingTrack.startY;
+
+		// ── 方向判定阶段：位移与 arena 起点均以当前 driver（与 leading 同指）为准 ──
 		if (pointerPhase === 'pending') {
 			const absDx = Math.abs(dx);
 			const absDy = Math.abs(dy);
@@ -160,7 +281,6 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				return;
 			}
 
-			// 横向意图 → 向 arena 竞争
 			const direction = dx > 0 ? 1 : -1;
 			const granted = tryAcquire({
 				id,
@@ -169,8 +289,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				axis: 'x',
 				direction,
 				pointerTarget,
-				startX,
-				startY
+				startX: leadingTrack.startX,
+				startY: leadingTrack.startY
 			});
 
 			if (!granted) {
@@ -178,27 +298,42 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				return;
 			}
 
-			// 获胜：进入 active，捕获指针
+			// 将 startX, startY 重置为 currentX, currentY，消除阈值影响
+			for (const p of trackedPointers.values()) {
+				p.startX = p.currentX;
+				p.startY = p.currentY;
+			}
+			// startX 发生变化，重新计算 dx、dy
+			dx = accumulatedDeltaX + leadingTrack.currentX - leadingTrack.startX;
+			dy = accumulatedDeltaY + leadingTrack.currentY - leadingTrack.startY;
+
 			pointerPhase = 'active';
 			shouldPreventScroll = true;
 		}
 
-		// ── 跟手阶段（rAF 节流） ────────────────────────────────
+		// ── 跟手阶段（rAF 节流）：仅 driver 指针的 move 驱动 onMove，避免重复累计 ──
 		if (pointerPhase === 'active') {
-			pendingDeltaX = dx > 0 ? dx - threshold() : dx + threshold();
-			pendingDeltaY = dy > 0 ? dy - threshold() : dy + threshold();
+			pendingDeltaX = dx;
+			pendingDeltaY = dy;
+			pendingDriverTrack = leadingTrack;
+
 			if (pointerRafId === null) {
 				pointerRafId = requestAnimationFrame(() => {
 					pointerRafId = null;
-					if (pointerPhase !== 'active') return;
+
+					if (pointerPhase !== 'active' || pendingDriverTrack === null) return;
+
+					const velocityX = pendingDriverTrack.trackerX.getVelocity();
+					const velocityY = pendingDriverTrack.trackerY.getVelocity();
+
 					opts.onMove?.({
 						deltaX: pendingDeltaX,
 						deltaY: pendingDeltaY,
-						velocityX: velocityTrackerX.getVelocity(),
-						velocityY: velocityTrackerY.getVelocity(),
-						direction: pendingDeltaX > 0 ? 'right' : 'left',
+						velocityX,
+						velocityY,
+						direction: (velocityX !== 0 ? velocityX : pendingDeltaX) > 0 ? 'right' : 'left',
 						committed: false,
-						velocityThresholdUsed: velocityThreshold(),
+						velocityThresholdUsed: velocityThreshold(), // TODO 良好的设计应该通过 committed 来表明超过阈值，而不是在这里返回阈值
 						source: 'pointer'
 					});
 				});
@@ -206,103 +341,64 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		}
 	}
 
-	/**
-	 * 结束当前指针手势的公共逻辑
-	 *
-	 * 1. 如果有待处理的 rAF onMove 回调，先同步刷新（保证调用方视觉状态最新）
-	 * 2. 计算手势终态（位移提交 / 速度提交 / 方向）
-	 * 3. 调用 opts.onEnd
-	 * 4. resetPointer 确保后续重复信号被跳过
-	 *
-	 * @param finalX - 手指离开时的 clientX
-	 * @param finalY - 手指离开时的 clientY
-	 * @param endTarget - pointerup 的 `event.target`，供 onEnd 与 slot1 等区域做 DOM 归属判断
-	 */
-	function finishPointerGesture(finalX: number, finalY: number, endTarget: EventTarget | null) {
-		// 取消 rAF 确保调用方的视觉状态在 onEnd 之前是最新的。
-		if (pointerRafId !== null) {
-			cancelAnimationFrame(pointerRafId);
-			pointerRafId = null;
+	function removePointer(pointerIdToRemove: number, isCancel: boolean) {
+		// 移除前用当前 driver 算总位移（与 onPointerMove 中 dx 语义一致）
+		if (driverId === null) throw new Error('removePointer: driverId 不应为 null');
+		const driverTrackBefore = trackedPointers.get(driverId);
+		if (!driverTrackBefore) throw new Error('removePointer: driver 轨迹缺失');
+		const dx = accumulatedDeltaX + driverTrackBefore.currentX - driverTrackBefore.startX;
+		const dy = accumulatedDeltaY + driverTrackBefore.currentY - driverTrackBefore.startY;
+		const vx = driverTrackBefore.trackerX.getVelocity();
+		const vy = driverTrackBefore.trackerY.getVelocity();
+
+		trackedPointers.delete(pointerIdToRemove);
+
+		// 无剩余指针 → 结束手势
+		if (trackedPointers.size === 0) {
+			// 取消未执行的 rAF
+			if (pointerRafId !== null) {
+				cancelAnimationFrame(pointerRafId);
+				pointerRafId = null;
+			}
+
+			// 计算方向
+			const direction = (vx !== 0 ? vx : dx) > 0 ? 'right' : 'left';
+
+			// 计算提交状态
+			const distanceCommit = Math.abs(dx) > node.clientWidth * commitThreshold();
+			const velocityCommit = Math.abs(vx) > velocityThreshold();
+			const committed = velocityCommit || distanceCommit;
+			const state: SwipeState = {
+				deltaX: pointerPhase === 'active' ? dx : 0,
+				deltaY: pointerPhase === 'active' ? dy : 0,
+				velocityX: pointerPhase === 'active' ? vx : 0,
+				velocityY: pointerPhase === 'active' ? vy : 0,
+				direction,
+				committed: isCancel ? false : committed,
+				velocityThresholdUsed: velocityThreshold(),
+				source: 'pointer'
+			};
+
+			const result = opts.onEnd?.(state);
+			if (result instanceof Promise) {
+				registerAnimation(result);
+			}
+
+			release(id);
+			resetPointer();
+			return;
 		}
 
-		const dx = finalX - startX;
-		const dy = finalY - startY;
-		const vx = velocityTrackerX.getVelocity();
-		const vy = velocityTrackerY.getVelocity();
-		const containerWidth = node.clientWidth;
-
-		const distanceCommit = Math.abs(dx) > containerWidth * commitThreshold();
-		const velocityCommit = Math.abs(vx) > velocityThreshold();
-		const committed = distanceCommit || velocityCommit;
-		const direction: 'left' | 'right' = dx > 0 ? 'right' : 'left';
-
-		const state: SwipeState =
-			pointerPhase === 'active'
-				? {
-						deltaX: dx > 0 ? dx - threshold() : dx + threshold(),
-						deltaY: dy > 0 ? dy - threshold() : dy + threshold(),
-						velocityX: vx,
-						velocityY: vy,
-						direction,
-						committed,
-						velocityThresholdUsed: velocityThreshold(),
-						source: 'pointer',
-						endPointerTarget: endTarget
-					}
-				: {
-						deltaX: 0,
-						deltaY: 0,
-						velocityX: 0,
-						velocityY: 0,
-						direction: 'right',
-						committed: false,
-						velocityThresholdUsed: velocityThreshold(),
-						source: 'pointer'
-					};
-
-		release(id);
-
-		const result = opts.onEnd?.(state);
-		if (result instanceof Promise) {
-			registerAnimation(result);
+		// 有剩余指针 → 累计到 accumulated，剩余指针的 start 重置为 current，后续由最快手指继续驱动
+		accumulatedDeltaX = dx;
+		accumulatedDeltaY = dy;
+		for (const p of trackedPointers.values()) {
+			p.startX = p.currentX;
+			p.startY = p.currentY;
+			p.trackerX.reset();
+			p.trackerY.reset();
 		}
-
-		resetPointer();
-	}
-
-	/**
-	 * 以「取消」语义结束当前指针手势（零位移、committed: false）
-	 *
-	 * 用于 pointercancel / lostpointercapture 等场景，通知调用方回弹到初始位置。
-	 * 必须在末尾 resetPointer：否则 pointerId 残留，后续 pointerdown 被「单指针锁」短路，
-	 * 表现为整次会话内横滑/与内层 pull-refresh 协同异常。
-	 *
-	 * @returns void
-	 */
-	function finishPointerGestureAsCancel(): void {
-		// 取消 rAF 确保调用方的视觉状态在 onEnd 之前是最新的。
-		if (pointerRafId !== null) {
-			cancelAnimationFrame(pointerRafId);
-			pointerRafId = null;
-		}
-
-		const state: SwipeState = {
-			deltaX: 0,
-			deltaY: 0,
-			velocityX: 0,
-			velocityY: 0,
-			direction: 'right',
-			committed: false,
-			velocityThresholdUsed: velocityThreshold(),
-			source: 'pointer'
-		};
-		release(id);
-		const result = opts.onEnd?.(state);
-		if (result instanceof Promise) {
-			registerAnimation(result);
-		}
-
-		resetPointer();
+		driverId = trackedPointers.keys().next().value as number; // removePointer 前的 leadingPointer 可能已经被清除，所以需要重新选举 driver
 	}
 
 	/**
@@ -312,9 +408,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * 内部的 pointerPhase 守卫会使其直接跳过。
 	 */
 	function onPointerUp(e: PointerEvent) {
-		if (e.pointerId !== pointerId) return;
-
-		finishPointerGesture(e.clientX, e.clientY, e.target);
+		if (!trackedPointers.has(e.pointerId)) return;
+		removePointer(e.pointerId, false);
 	}
 
 	/**
@@ -324,9 +419,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * 让调用方回弹到初始位置。
 	 */
 	function onPointerCancel(e: PointerEvent) {
-		if (e.pointerId !== pointerId) return;
-
-		finishPointerGestureAsCancel();
+		if (!trackedPointers.has(e.pointerId)) return;
+		removePointer(e.pointerId, true);
 	}
 
 	/**
@@ -336,22 +430,35 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * 异常情况下，此事件作为可靠的兜底。
 	 */
 	function onLostPointerCapture(e: PointerEvent) {
-		if (e.pointerId !== pointerId) return;
-
-		finishPointerGestureAsCancel();
+		if (!trackedPointers.has(e.pointerId)) return;
+		removePointer(e.pointerId, true);
 	}
 
 	/** 重置 Pointer 通道全部状态 */
 	function resetPointer() {
+		// pointer 状态
 		pointerPhase = 'idle';
-		pointerId = null;
-		startX = 0;
-		startY = 0;
-		shouldPreventScroll = false;
+		// 清除未生效的 rAF
 		if (pointerRafId !== null) {
 			cancelAnimationFrame(pointerRafId);
 			pointerRafId = null;
 		}
+		pointerTarget = node;
+
+		// 主驱动手势
+		trackedPointers.clear();
+		driverId = null;
+		accumulatedDeltaX = 0;
+		accumulatedDeltaY = 0;
+
+		// 位移
+		pendingDeltaX = 0;
+		pendingDeltaY = 0;
+		pendingDriverTrack = null;
+
+		// 其他
+		shouldPreventScroll = false;
+		autoRecoveryUsed = false;
 	}
 
 	/**
@@ -384,7 +491,6 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// ═══════════════════════════════════════════════════════════════
 	// Wheel 通道
 	// ═══════════════════════════════════════════════════════════════
-
 	function onWheel(e: WheelEvent) {
 		if (opts.disabled?.()) return;
 
@@ -516,6 +622,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// 事件绑定与生命周期
 	// ═══════════════════════════════════════════════════════════════
 
+	/** 阻断横向 overscroll 向父级/视口传递，减轻触控板横向 wheel 触发浏览器历史导航 */
+	node.style.overscrollBehaviorX = 'none';
 	node.addEventListener('pointerdown', onPointerDown);
 	node.addEventListener('pointermove', onPointerMove);
 	node.addEventListener('pointerup', onPointerUp);

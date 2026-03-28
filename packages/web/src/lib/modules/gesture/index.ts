@@ -8,9 +8,7 @@
 // ─── Svelte Actions（registry：登记供竞技场查询；gestures：完整输入闭环） ─
 
 export { edgeZone } from './actions/registry/edge-zone';
-export { DEFAULT_PULL_REFRESH_CONFIG, pullRefresh } from './actions/gestures/pull-refresh';
 export { scrollBoundary } from './actions/registry/scroll-boundary';
-export { swipe } from './actions/gestures/swipe';
 
 // ─── Arena API（高级用法，消费端通常不需要直接使用） ─────────────
 
@@ -37,9 +35,5 @@ export type {
 // ─── 各 Action 专属类型（自子模块再导出） ─────────────────────────
 
 export type { EdgeZoneOptions } from './actions/registry/edge-zone';
-export type { PullRefreshConfig, PullRefreshOptions } from './actions/gestures/pull-refresh';
 export type { ScrollBoundaryOptions } from './actions/registry/scroll-boundary';
-export type { SwipeOptions, SwipeState } from './actions/gestures/swipe';
-
-export * from './actions/gestures/long-press';
-export * from './actions/gestures/tap';
+export * from './actions/gestures';
