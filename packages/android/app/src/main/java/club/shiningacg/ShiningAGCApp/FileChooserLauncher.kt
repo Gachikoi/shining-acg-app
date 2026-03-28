@@ -89,7 +89,18 @@ class FileChooserLauncher(
         val result = if (isCameraResult && cameraPhotoUri != null) {
             arrayOf(cameraPhotoUri!!)
         } else {
-            val uris = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+            // Try static parseResult first
+            var uris = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+            
+            // If static method returns null, manually parse ClipData
+            if (uris == null && data?.clipData != null) {
+                Log.d("FileChooserLauncher", "parseResult: manually parsing ClipData")
+                val clipData = data.clipData!!
+                uris = Array(clipData.itemCount) { i ->
+                    clipData.getItemAt(i).uri
+                }
+            }
+            
             uris?.forEach { uri ->
                 grantReadPermission(uri)
             }
