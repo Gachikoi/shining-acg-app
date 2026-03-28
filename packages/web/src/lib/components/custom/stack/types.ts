@@ -20,9 +20,19 @@ import type { Component } from 'svelte';
  * // 子组件 push 父组件（避免循环 import）
  * push({ loader: () => import('../parent-page.svelte'), props: {} });
  */
-export type ComponentLoader<TProps extends Record<string, unknown> = Record<string, unknown>> =
-	() => Promise<{ default: Component<TProps> }>;
+export type ComponentLoader<
+	TProps extends Record<string, unknown | never> = Record<string, unknown | never>
+> = () => Promise<{ default: Component<TProps> }>;
 
+/**
+ * 必须是使用 getBoundingClientRect() 获取的相对于 viewport 的数据，否则动画起始点会出错
+ */
+export type RectInfo = {
+	top: number;
+	left: number;
+	width: number;
+	height: number;
+};
 /**
  * 栈中单个元素的描述结构
  *
@@ -40,8 +50,12 @@ export interface StackItem {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	component: Component<any> | null;
 	/** 传递给组件的 props */
-	props: Record<string, unknown>;
-	onLeftSwipe?: () => void;
+	props?: Record<string, unknown | never>;
+	rectInfo?: RectInfo;
+	next?: PushOptionsWithoutNext;
+	isNext?: boolean;
+	/** 是否忽略安全区域，默认不忽略 */
+	ignoreSafeArea?: boolean;
 }
 
 // ─── PushOptions 判别联合 ─────────────────────────────────────────
@@ -56,12 +70,17 @@ export interface StackItem {
  * @template TProps - 组件 props 类型
  */
 export interface StaticPushOptions<
-	TProps extends Record<string, unknown> = Record<string, unknown>
+	TProps extends Record<string, unknown | never> = Record<string, unknown | never>
 > {
 	/** 已 import 的 Svelte 5 组件引用 */
 	component: Component<TProps>;
 	/** 传递给组件的 props，默认为空对象 */
 	props?: TProps;
+	/** push 点击元素的位置信息，如果传递此值则会在 push 时采用以触点为起点的缩放动画 */
+	rectInfo?: RectInfo;
+	next?: PushOptionsWithoutNext;
+	/** 是否忽略安全区域，默认不忽略 */
+	ignoreSafeArea?: boolean;
 }
 
 /**
@@ -73,12 +92,23 @@ export interface StaticPushOptions<
  *
  * @template TProps - 组件 props 类型
  */
-export interface LazyPushOptions<TProps extends Record<string, unknown> = Record<string, unknown>> {
+export interface LazyPushOptions<
+	TProps extends Record<string, unknown | never> = Record<string, unknown | never>
+> {
 	/** 动态 import 函数，返回包含组件默认导出的 Promise */
 	loader: ComponentLoader<TProps>;
 	/** 传递给组件的 props，默认为空对象 */
 	props?: TProps;
+	/** push 点击元素的位置信息，如果传递此值则会在 push 时采用以触点为起点的缩放动画 */
+	rectInfo?: RectInfo;
+	next?: PushOptionsWithoutNext;
+	/** 是否忽略安全区域，默认不忽略 */
+	ignoreSafeArea?: boolean;
 }
+
+export type PushOptionsWithoutNext<
+	TProps extends Record<string, unknown | never> = Record<string, unknown | never>
+> = Omit<StaticPushOptions<TProps>, 'next'> | Omit<LazyPushOptions<TProps>, 'next'>;
 
 /**
  * push 操作的入参类型（判别联合）
@@ -92,9 +122,14 @@ export interface LazyPushOptions<TProps extends Record<string, unknown> = Record
  * // 懒加载 push（解决循环依赖）
  * push({ loader: () => import('./detail-page.svelte'), props: { id: '123' } });
  */
-export type PushOptions<TProps extends Record<string, unknown> = Record<string, unknown>> =
-	| StaticPushOptions<TProps>
-	| LazyPushOptions<TProps>;
+export type PushOptions<
+	TProps extends Record<string, unknown | never> = Record<string, unknown | never>
+> = StaticPushOptions<TProps> | LazyPushOptions<TProps>;
+
+/**
+ * 子页面通过 `queryStatus()` 暴露的存活状态，供 StackContainer 做可见性裁剪（与 StackItem 上报一致）
+ */
+export type StackPageLifecycleStatus = 'living' | 'silence';
 
 /**
  * StackContainer 的布局与行为配置
