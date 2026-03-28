@@ -40,10 +40,11 @@ export { default as stackController } from './stack.svelte';
 
 // ─── 类型 ────────────────────────────────────────────────────────
 export type {
-	StackItem,
-	PushOptions,
-	StaticPushOptions,
-	LazyPushOptions,
 	ComponentLoader,
-	StackContainerProps
+	LazyPushOptions,
+	PushOptions,
+	StackContainerProps,
+	StackItem,
+	StackPageLifecycleStatus,
+	StaticPushOptions
 } from './types';

@@ -8,50 +8,200 @@
   - 懒加载态：item.component 为 null 时显示全屏居中 spinner，
     loader resolve 后（$derived 响应式）自动渲染真实组件
 -->
+<script module lang="ts">
+	/**
+	 * StackItem DOM 快照（模块级单例）
+	 *
+	 * 用于 maxVisible 裁剪导致的卸载/再挂载场景：
+	 * - 卸载时保存当前行内样式
+	 * - 再挂载时按 item.id 恢复上一次视觉状态
+	 */
+	type CachedDomSnapshot = {
+		transform: string;
+		clipPath: string;
+		transition: string;
+	};
+
+	const domSnapshotByItemId = new Map<string, CachedDomSnapshot>();
+
+	/**
+	 * @param itemId - 栈元素 id
+	 * @returns 对应缓存快照（不存在则 undefined）
+	 */
+	export function getDomSnapshot(itemId: string): CachedDomSnapshot | undefined {
+		return domSnapshotByItemId.get(itemId);
+	}
+
+	/**
+	 * @param itemId - 栈元素 id
+	 * @param snapshot - 要写入的 DOM 快照
+	 * @returns void
+	 */
+	export function setDomSnapshot(itemId: string, snapshot: CachedDomSnapshot): void {
+		domSnapshotByItemId.set(itemId, snapshot);
+	}
+</script>
+
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { Spring } from 'svelte/motion';
-	import { swipe } from '$lib/modules/gesture';
-	import type { SwipeState } from '$lib/modules/gesture';
+	import type { SwipeOptions, SwipeState } from '$lib/modules/gesture';
+	import { edgeZone, swipe } from '$lib/modules/gesture';
+	import { onDestroy, onMount, type SvelteComponent, untrack } from 'svelte';
 	import stackController from './stack.svelte';
-	import type { StackItem } from './types';
+	import type { StackItem, StackPageLifecycleStatus } from './types';
+	import { Loading } from '../full-screen-loading';
 
-	// ─── Props ──────────────────────────────────────────────────────
-
-	/** StackItem 内部组件属性 */
-	interface Props {
+	let {
+		item,
+		zIndex,
+		_isAnimating = $bindable()
+	}: {
 		/** 当前要渲染的栈元素 */
 		item: StackItem;
 		/** 该层的 CSS z-index */
 		zIndex: number;
 		/** 是否正在动画中 */
-		_isAnimating: boolean;
-		/**
-		 * 向左滑动（自定义操作）触发的回调
-		 * 回弹动画完成后调用，不触发出栈
-		 */
-		onLeftSwipe?: () => void;
-	}
+		_isAnimating?: boolean;
+	} = $props();
 
-	let { item, zIndex, _isAnimating = $bindable(), onLeftSwipe }: Props = $props();
+	/**
+	 * $props 衍生值
+	 */
+	let isNext = $derived(item.isNext ?? false); // 自己是不是左滑入栈的那个元素
+	let hasNext = $derived(item.next !== undefined); // 自己后方还有没有左滑入栈的元素
+	let isTop = $derived(item.id === stackController.top?.id); // 自己是不是栈顶
+	let isSecondaryTop = $derived(
+		stackController.length >= 2 && item.id === stackController.items[stackController.length - 2]?.id
+	); // 自己是不是第二层栈顶
 
-	// ─── DOM 引用 ────────────────────────────────────────────────────
+	/** 动画 */
+	const EASING = 'cubic-bezier(0.45, 0, 0.55, 1)';
+	const DURATION = 300;
+
+	/**
+	 * `moveAndScaleTo` 使用的复合 transition：transform 与 clip-path 使用相同的 duration / easing。
+	 * 逗号分隔多条过渡是 CSS transition 简写的标准写法（与分别写 transition-property 等价）。
+	 */
+	const TRANSFORM_AND_CLIP_TRANSITION = `transform ${DURATION}ms ${EASING}, clip-path ${DURATION}ms ${EASING}`;
+
+	// 组件引用
+	const DynamicComponent = $derived(item.component);
 
 	/** 容器元素引用 */
-	let el: HTMLElement | undefined = $state();
+	let el: HTMLElement | null = $state(null);
+	let componentEl: SvelteComponent | null = $state(null);
 
-	// ─── Spring 动画 ─────────────────────────────────────────────────
+	/**
+	 * 是否处于「右滑 scale-down」状态
+	 *
+	 * - true：scale 从 1 缩小（swipe-right 手势或取消后的回弹），使用 origin-center
+	 * - false：push 从 rectInfo 弹入、pop 回到 rectInfo，使用 origin-top-left
+	 */
+	let isSwipeRightScaleDown = $state(false);
 
-	const xSpring = new Spring(0, { stiffness: 0.2, damping: 0.85 });
+	/** 初始化位置和缩放 */
+	let initTranslateX = 0;
+	let initTranslateY = 0;
+	let initScale = 1;
 
-	// ─── 进栈动画 ────────────────────────────────────────────────────
+	/** 暴露子组件的查询页面状态函数给 stack-container 使用 */
+	export const queryStatus = (): StackPageLifecycleStatus => {
+		return componentEl?.queryStatus?.() ?? 'silence';
+	};
 
-	onMount(async () => {
-		xSpring.set(window.innerWidth, { instant: true });
-		_isAnimating = true;
-		await xSpring.set(0);
-		_isAnimating = false;
-	});
+	/**
+	 * 将当前层水平平移到指定 translateX。
+	 *
+	 * @param x - 目标 translateX（px）
+	 * @param withAnimation - true 时在 transition 结束后 resolve；false 为同步更新样式
+	 * @returns 无动画时为 void；有动画时为在 transitionend 上 resolve 的 Promise
+	 */
+	const panTo = ((x: number, withAnimation: boolean): void | Promise<void> => {
+		el!.style.transition = withAnimation ? `transform ${DURATION}ms ${EASING}` : 'none';
+		el!.style.transform = `translate3d(${x}px, 0, 0)`;
+		el!.style.clipPath = '';
+
+		if (!withAnimation) return;
+
+		return new Promise<void>((resolve) => {
+			el!.addEventListener(
+				'transitionend',
+				() => {
+					el!.style.transition = 'none';
+					resolve();
+				},
+				{ once: true }
+			);
+		});
+	}) as {
+		(x: number, withAnimation: true): Promise<void>;
+		(x: number, withAnimation: false): void;
+	};
+
+	// 这些数据都是随着容器尺寸变化而变化的，所以其实不需要 pxToRem 辅助函数
+	const moveAndScaleTo = ((
+		x: number,
+		y: number,
+		scale: number,
+		withAnimation: boolean
+	): void | Promise<void> => {
+		el!.style.transition = withAnimation ? TRANSFORM_AND_CLIP_TRANSITION : 'none';
+		el!.style.transform = `translate3d(${x}px, ${y}px, 0) scale3d(${scale}, ${scale}, 1)`;
+		/**
+		 * - 有裁切时在 inset() 会覆盖掉 rounded-xl 的圆角，所以需要手动添加 round var(--radius-xl)
+		 */
+		const clipHalfRem = calcClipHeight(scale) / 2;
+		el!.style.clipPath = `inset(${clipHalfRem}px 0 ${clipHalfRem}px 0 ${clipHalfRem > 0 ? 'round var(--radius-xl)' : ''})`;
+
+		if (!withAnimation) return;
+
+		return new Promise<void>((resolve) => {
+			el!.addEventListener(
+				'transitionend',
+				() => {
+					el!.style.transition = 'none';
+					resolve();
+				},
+				{ once: true }
+			);
+		});
+	}) as {
+		(x: number, y: number, scale: number, withAnimation: true): Promise<void>;
+		(x: number, y: number, scale: number, withAnimation: false): void;
+	};
+
+	/**
+	 * 根据 scale 动态计算的裁切高度（总裁切量，上下各半）
+	 *
+	 * 满足：
+	 * 1. scale 变大时 clip 负相关地减小，变化连续
+	 * 2. 两端：scale=1 时 clip=0；scale=initScale 时 clip=(el!.clientHeight*scale - rectInfo.height)/scale
+	 *
+	 * 线性插值连接两端：clip = maxClip * (1 - scale) / (1 - initScale)
+	 */
+	const calcClipHeight = (scale: number) => {
+		if (!el || !item.rectInfo) return 0;
+
+		if (scale >= 1) return 0;
+		if (initScale >= 1) return 0;
+
+		// scale=initScale 时的 clip 值（用户指定的公式）
+		const maxClip = (el!.clientHeight * initScale - item.rectInfo.height) / initScale;
+		if (maxClip <= 0) return 0;
+
+		if (scale <= initScale) return Math.max(0, maxClip);
+
+		// 线性插值：scale 从 originScaleSpring→1 时 clip 从 maxClip→0
+		const clip = (maxClip * (1 - scale)) / (1 - initScale);
+		return Math.max(0, clip);
+	};
+
+	/**
+	 * 动态 transform-origin：
+	 * - push（rectInfo 弹入）/ pop（回到 rectInfo）：origin-top-left，scale 从触点展开
+	 * - swipe-right（从全屏缩小）：origin-center，营造中心收缩的视觉效果
+	 * - 最终回到 scale=1、translate=0 时，位置正确（与 origin 无关）
+	 */
+	const transformOrigin = $derived(isSwipeRightScaleDown ? 'center' : 'top left');
 
 	// ─── 手势配置 ────────────────────────────────────────────────────
 
@@ -61,64 +211,289 @@
 	 * 使用 $derived 确保 item / onLeftSwipe props 变化时 swipe action 能获取最新引用。
 	 * disabled 以函数形式读取 _isAnimating，闭包实时取值保证正确性。
 	 */
-	const swipeOptions = $derived({
-		threshold: 10,
-		commitThreshold: 0.3,
-		velocityThreshold: 0.3,
-		interruptible: true,
-		disabled: () => _isAnimating,
+	const swipeOptions: SwipeOptions = $derived({
+		interruptible: false,
+		disabled: () => _isAnimating ?? false,
+		onMove: async (state: SwipeState) => {
+			if (isTop && !hasNext && state.direction === 'left') return;
+			// 写入 swipeState，所有 StackItem 通过 $effect 响应式同步动画
+			stackController.setSwipeState({ ...state, type: 'onMove' });
 
-		onMove: (state: SwipeState) => {
-			// 允许右滑（返回），左滑仅在有 onLeftSwipe 时允许
-			if ((onLeftSwipe && state.deltaX < 0) || state.deltaX > 0) {
-				xSpring.set(state.deltaX, { instant: true });
+			if (state.direction === 'left' && isTop && hasNext) {
+				// 左滑：创建 next 入栈
+				await stackController.pushNext();
+			} else if (state.direction === 'right' && isTop && item.rectInfo) {
+				// 右滑：准备出栈，并且需要回到 push 触点位置
+				isSwipeRightScaleDown = true;
+				moveAndScaleTo(
+					state.deltaX,
+					state.deltaY,
+					1 - (0.2 * state.deltaX) / el!.clientWidth,
+					false
+				);
+			} else if (state.direction === 'right' && isTop && !item.rectInfo) {
+				// 右滑：准备出栈，并且不需要回到 push 触点位置
+				panTo(state.deltaX, false);
+			} else if (state.direction === 'left' && isSecondaryTop && hasNext) {
+				// 左滑：创建 next 入栈后，变为 SecondaryTop
+				panTo(state.deltaX * 0.5, false); // TODO 不一定需要，且可能因为被 isNext 的栈顶遮挡而导致事件中断
 			}
 		},
 
 		onEnd: async (state: SwipeState) => {
 			_isAnimating = true;
 
-			if (state.committed && state.direction === 'right') {
-				// 右滑提交：弹出屏幕右侧
-				const exitX = el?.clientWidth ?? window.innerWidth;
-				await xSpring.set(exitX);
-				_isAnimating = false;
-				stackController.popById(item.id);
-			} else if (state.committed && state.direction === 'left' && onLeftSwipe) {
-				// 左滑提交：弹回原位并触发回调
-				await xSpring.set(0);
-				_isAnimating = false;
-				onLeftSwipe();
-			} else {
-				// 未提交 / 不允许的方向：弹回原位
-				await xSpring.set(0);
-				_isAnimating = false;
+			stackController.setSwipeState({ ...state, type: 'onEnd' });
+
+			if (isTop && item.rectInfo) {
+				isSwipeRightScaleDown = false;
+				if (state.direction === 'right' && state.committed) {
+					await moveAndScaleTo(initTranslateX, initTranslateY, initScale, true);
+					stackController.pop(false);
+				} else {
+					await moveAndScaleTo(0, 0, 1, true);
+				}
+			} else if (isTop && !item.rectInfo) {
+				if (state.direction === 'right' && state.committed) {
+					await panTo(el!.clientWidth, true);
+					stackController.pop(false);
+				} else {
+					await panTo(0, true);
+				}
+			} else if (isSecondaryTop && hasNext) {
+				if (state.direction === 'left' && state.committed) {
+					await panTo(-(el!.clientWidth / 2), true);
+				} else {
+					await panTo(0, true);
+					stackController.pop(false); // 左滑时，第二栈顶放弃提交，把第一栈顶（即刚才 onMove 中 pushNext 的元素）弹出
+				}
 			}
+			_isAnimating = false;
 		}
 	});
 
-	const DynamicComponent = $derived(item.component);
+	/**
+	 * 执行 pop 动画（由 animationPhase === 'pop' 触发）
+	 * 栈顶：缩放到 rectInfo 或滑出右侧；第二层：滑回中心
+	 *
+	 * @description
+	 * 提交 `pop(false)` 时必须使用**动画开始时**的栈顶 id，不能用 `await` 之后的 `isTop`：
+	 * 栈顶先完成动画并出栈后，原第二层在异步结束时 `isTop` 会变为 true，若据此再 pop 会多弹一层。
+	 */
+	const runPopAnimation = async () => {
+		/** 本帧 phase=pop 时全局栈顶 id；仅该层负责 commitPop（与结束时 derived 的 isTop 无关） */
+		const topIdWhenPopStarted = stackController.top?.id;
+		const shouldCommitPop = item.id === topIdWhenPopStarted;
+
+		_isAnimating = true;
+
+		if (item.rectInfo && isTop) {
+			await moveAndScaleTo(initTranslateX, initTranslateY, initScale, true);
+		} else if (!item.rectInfo && isTop) {
+			await panTo(el!.clientWidth, true);
+		} else if (isSecondaryTop && !stackController.top?.rectInfo) {
+			await panTo(0, true);
+		}
+
+		_isAnimating = false;
+
+		if (shouldCommitPop) {
+			stackController.setAnimationPhase(null);
+			stackController.pop(false);
+		}
+	};
+
+	/**
+	 * 执行 push 动画（由 animationPhase === 'push' 触发）
+	 * 栈顶：从 rectInfo 或右侧弹入；第二层：左移到屏幕一半
+	 */
+	const runPushAnimation = async () => {
+		_isAnimating = true;
+
+		if (item.rectInfo && isTop) {
+			// 是栈顶并且需要 push 触点动画
+			await moveAndScaleTo(0, 0, 1, true);
+		} else if (!item.rectInfo && isTop) {
+			// 是栈顶并且不需要 push 触点动画
+			panTo(el!.clientWidth, false);
+			await panTo(0, true);
+		} else if (isSecondaryTop && !stackController.top?.rectInfo) {
+			// 是第二层栈顶并且栈顶不需要 push 触点动画
+			await panTo(-(el!.clientWidth / 2), true);
+		}
+
+		_isAnimating = false;
+
+		if (isTop) {
+			stackController.setAnimationPhase(null);
+		}
+	};
+
+	/**
+	 * 响应 animationPhase 变化，执行 push/pop 动画
+	 *
+	 * `untrack(run*)`：避免订阅 run*Animation 内部的 isTop/item/top 等，防止 phase 未变时
+	 * 因懒加载、栈替换重复启动动画（见 effect_update_depth_exceeded）。
+	 * 若出现嵌套更新深度报错，再考虑用 `queueMicrotask` 把启动推迟到当前 flush 之后。
+	 */
+	$effect(() => {
+		const phase = stackController.animationPhase;
+		if (phase !== 'pop' && phase !== 'push') return;
+
+		untrack(() => {
+			if (phase === 'pop') {
+				runPopAnimation();
+			} else {
+				runPushAnimation();
+			}
+		});
+	});
+
+	/**
+	 * 响应 swipeState 变化，更新非 pointer 手势目标的 stack-item 的动画
+	 */
+	$effect(() => {
+		const state = stackController.swipeState;
+
+		if (!state) return;
+
+		untrack(async () => {
+			_isAnimating = true;
+
+			if (state.type === 'onMove') {
+				if (state.direction === 'right' && isSecondaryTop && !stackController.top?.rectInfo) {
+					panTo(state.deltaX * 0.5 - el!.clientWidth / 2, false);
+				} else if (state.direction === 'left' && isTop && isNext) {
+					panTo(state.deltaX + el!.clientWidth, false);
+				}
+			} else if (state.type === 'onEnd') {
+				if (isSecondaryTop && !stackController.top?.rectInfo) {
+					const half = el!.clientWidth / 2;
+					/**
+					 * 与 `swipe.onEnd` 中第二层逻辑对齐的终点 translateX（本 effect 同步「非指针层」）：
+					 * - 右滑且 committed：顶层收全屏，第二层回 0
+					 * - 右滑且未 committed：取消右滑，第二层保持侧让位 -half
+					 * - 左滑且 committed：进入 next 布局，第二层到 -half
+					 * - 左滑且未 committed：取消左滑须回 0；旧实现把「非 right+committed」一律设为 -half，
+					 *   会覆盖手势层刚执行的 `panTo(0)`，表现为停在 -half
+					 */
+					const targetX =
+						state.direction === 'right' && state.committed
+							? 0
+							: state.direction === 'right' && !state.committed
+								? -half
+								: state.direction === 'left' && state.committed
+									? -half
+									: state.direction === 'left' && !state.committed
+										? 0
+										: -half;
+					await panTo(targetX, true);
+				} else if (isTop && isNext) {
+					if (state.direction === 'left' && state.committed) {
+						await panTo(0, true);
+					} else {
+						await panTo(el!.clientWidth, true);
+					}
+				}
+
+				stackController.setSwipeState(null);
+			}
+
+			_isAnimating = false;
+		});
+	});
+
+	/**
+	 * 仅根据当前尺寸与 `item.rectInfo` 写入 `initTranslate*` / `initScale`，不写 DOM。
+	 * maxVisible 卸载后带快照再挂载时，若跳过此步骤则 `runPopAnimation` 的 rect 目标仍为 0，导致触点 pop 动画消失或错乱。
+	 *
+	 * @param sizeEl - 用于测量 clientWidth/clientHeight 的容器元素
+	 */
+	const applyInitLayoutVars = (sizeEl: HTMLElement) => {
+		if (isNext) {
+			initScale = 1;
+			initTranslateX = sizeEl.clientWidth;
+			initTranslateY = 0;
+		} else if (item.rectInfo) {
+			initScale = item.rectInfo.width / sizeEl.clientWidth;
+			initTranslateX = item.rectInfo.left;
+			initTranslateY =
+				item.rectInfo.top - (sizeEl.clientHeight * initScale - item.rectInfo.height) / 2;
+		} else {
+			initScale = 1;
+			initTranslateX = sizeEl.clientWidth;
+			initTranslateY = 0;
+		}
+	};
+
+	const initLayout = (sizeEl: HTMLElement) => {
+		// 用 el.clientWidth 和 el.clientHeight 代替 el!.clientWidth 和 el!.clientHeight，防止 init 时 el!.clientWidth 和 el!.clientHeight 还未更新
+		applyInitLayoutVars(sizeEl);
+		moveAndScaleTo(initTranslateX, initTranslateY, initScale, false);
+	};
+
+	onMount(() => {
+		if (!el) return;
+
+		const cached = getDomSnapshot(item.id);
+		if (cached) {
+			// 恢复上次卸载前的样式，避免因重新挂载导致突兀回到 initLayout 起点
+			el.style.transform = cached.transform;
+			el.style.clipPath = cached.clipPath;
+			el.style.transition = cached.transition;
+			applyInitLayoutVars(el); // 恢复上次的布局后也要记得计算 init 数据，否则布局与状态不一致会导致 bug
+			return;
+		}
+
+		initLayout(el);
+	});
+
+	onDestroy(() => {
+		if (!el) return;
+
+		/**
+		 * 仅在元素仍在 stack 内时保存：
+		 * - true：通常是 maxVisible 裁剪触发的临时卸载，后续需要恢复
+		 * - false：已真正出栈，不需要缓存，避免无意义积累
+		 */
+		if (!stackController.items.some((stackItem) => stackItem.id === item.id)) return;
+
+		setDomSnapshot(item.id, {
+			transform: el.style.transform,
+			clipPath: el.style.clipPath,
+			transition: el.style.transition
+		});
+	});
+
+	let loadingTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		if (DynamicComponent) {
+			if (loadingTimer) clearTimeout(loadingTimer);
+			Loading.hide();
+		} else {
+			loadingTimer = setTimeout(() => {
+				Loading.show();
+			}, 100);
+		}
+	});
 </script>
 
 <!--
   全屏覆盖层
   - position: fixed; inset: 0 脱离文档流，覆盖整个视口
+	- pt/pb-[env(...)] 必须用 padding，否则 translateY 就不是基于 viewport 的了，originTranslateY 会比真正位置更靠下
 -->
 <div
 	bind:this={el}
 	style:z-index={zIndex}
-	style:will-change="transform"
-	style:transform={`translate3d(${xSpring.current}px, 0, 0)`}
-	class="fixed inset-0 top-[env(safe-area-inset-top)] bg-background"
+	style:will-change="transform,clip-path"
+	style:transform-origin={transformOrigin}
+	class={`fixed inset-0 bg-background ${item.ignoreSafeArea ? '' : `pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}`}
 	use:swipe={swipeOptions}
+	use:edgeZone={{ width: 24, axis: 'x' }}
 >
 	{#if DynamicComponent}
-		<DynamicComponent {...item.props} />
-	{:else}
-		<div class="flex h-full w-full items-center justify-center">
-			<div
-				class="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/60"
-			></div>
-		</div>
+		<DynamicComponent {...item.props} bind:this={componentEl} />
 	{/if}
 </div>
