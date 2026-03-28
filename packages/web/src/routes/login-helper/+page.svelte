@@ -1,8 +1,57 @@
 <script lang="ts">
+	import { DOMAIN_CONFIG, IS_TEST } from '$lib/constants';
 	/**
-	 * 登录助手落地页：整页仅两行品牌文案，其余为几何与线面图形构成的版面节奏。
-	 * 英文行作眉题，中文行作主标；图形承担对齐、尺度与视觉锚点，不引入额外语意文本。
+	 * 登录助手落地页：品牌区 + QQ 互联。
+	 * QQ JSSDK 与 OAuth 跳转均写在本文件，不单独抽模块。
 	 */
+	import qqLoginIcon from '$lib/assets/qq-login-icon.png';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+
+	const QQ_APP_ID = !IS_TEST ? '1903672283' : '1903672295';
+	const QQ_REDIRECT_URI = `${DOMAIN_CONFIG.loginHelper}/login`;
+
+	/**
+	 * 向 `document.body` 插入 `qc_jssdk.js`（与官方 script 标签等价），同页只插一次。
+	 *
+	 * @returns void
+	 */
+	function injectQqJsSdk(): void {
+		const id = 'login-helper-qq-jssdk';
+		if (document.getElementById(id)) return;
+		const el = document.createElement('script');
+		el.id = id;
+		el.type = 'text/javascript';
+		el.src = 'https://connect.qq.com/qc_jssdk.js';
+		el.async = true;
+		el.setAttribute('data-appid', QQ_APP_ID);
+		el.setAttribute('data-redirecturi', QQ_REDIRECT_URI);
+		document.body.appendChild(el);
+
+		el.onload = () => {
+			QC.Login(
+				{
+					btnId: 'qqLoginBtn'
+				},
+				() => {},
+				() => {}
+			);
+			// 加载完成后立即点击
+			const btn = document.querySelector('#qqLoginBtn');
+			if (btn) {
+				(btn as HTMLElement).click();
+			} else {
+				toast.error('QQ JsSdk 加载完成，但未正常初始化，无法登陆');
+			}
+		};
+		el.onerror = () => {
+			toast.error('QQ JsSdk 加载失败，无法登录');
+		};
+	}
+
+	onMount(() => {
+		injectQqJsSdk();
+	});
 </script>
 
 <!--
@@ -81,10 +130,7 @@
 			晒你动漫社
 		</h1>
 
-		<!-- 底缘粗线框：矩形「画框」感，收束版面 -->
-		<div
-			class="pointer-events-none mt-10 h-16 w-full rounded-sm border border-t border-r border-b-2 border-l border-border/80 dark:border-border/60"
-			aria-hidden="true"
-		></div>
+		<!-- QQ 图标触发授权跳转 -->
+		<img src={qqLoginIcon} alt="QQ 登录" id="qqLoginBtn" class="mt-10" />
 	</div>
 </section>
