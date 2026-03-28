@@ -132,7 +132,7 @@ export function tryAcquire(params: AcquireParams): boolean {
 
 		if (containsPointer) {
 			// 与 scroll-boundary / registerScrollBoundary 约定一致：entry 未覆盖 params.axis 时 canScroll 返回 false 表示
-			// 「不参与该轴让渡」，不得按 isSelf 的 !canScroll 误拒（例如 y-only 容器上的 axis:x drag-reorder）。
+			// 「不参与该轴让渡」，不得按 isSelf 的 !canScroll 误拒（例如 y-only 容器上的 axis:x 手势）。
 			if (entry.axis !== 'both' && entry.axis !== params.axis) {
 				continue;
 			}
