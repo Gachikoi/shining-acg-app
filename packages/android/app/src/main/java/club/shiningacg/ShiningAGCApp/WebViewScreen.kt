@@ -1,12 +1,17 @@
 package club.shiningacg.ShiningAGCApp
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
+import android.webkit.ValueCallback
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -14,6 +19,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -87,6 +95,28 @@ fun WebViewScreen(
 
     // 检测系统是否处于深色模式
     val isDarkTheme = isSystemInDarkTheme()
+
+    val filePathCallback = remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
+
+    val fileChooserLauncher = remember {
+        FileChooserLauncher(context, "${BuildConfig.APPLICATION_ID}.fileprovider")
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uris = fileChooserLauncher.parseResult(result.resultCode, result.data)
+        filePathCallback.value?.onReceiveValue(uris)
+        filePathCallback.value = null
+        fileChooserLauncher.clear()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            filePathCallback.value?.onReceiveValue(null)
+            filePathCallback.value = null
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
@@ -167,6 +197,22 @@ fun WebViewScreen(
                                 return false // 允许 WebView 导航
                             }
                         }
+
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onShowFileChooser(
+                            webView: WebView?,
+                            callback: ValueCallback<Array<Uri>>?,
+                            params: FileChooserParams?
+                        ): Boolean {
+                            filePathCallback.value?.onReceiveValue(null)
+                            filePathCallback.value = callback
+                            params?.let {
+                                val intent = fileChooserLauncher.createChooserIntent(it)
+                                launcher.launch(intent)
+                            }
+                            return true
+                        }
+                    }
 
                     // 启用远程调试（用于调试版本）
                     WebView.setWebContentsDebuggingEnabled(true)
