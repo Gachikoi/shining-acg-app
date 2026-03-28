@@ -15,13 +15,18 @@
     StackContainer zIndexBase={100} maxVisible={5} onLeftSwipe={handleLeftSwipe}
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
+	/** 单页包装组件（与 types.StackItem 数据结构同名冲突，故单独命名） */
+	import StackItemView from './stack-item.svelte';
 	import stackController from './stack.svelte';
-	import StackItem from './stack-item.svelte';
-	import type { StackContainerProps, StackItem as StackItemType } from './types';
+	import type { StackContainerProps, StackItem } from './types';
 
 	// ─── Props ──────────────────────────────────────────────────────
 
 	let { zIndexBase = 100, maxVisible }: StackContainerProps = $props();
+
+	/** 各栈 id → 对应包装组件实例，供可见性裁剪时查询子页 lifecycle */
+	let itemRefs = $state<Record<string, ReturnType<typeof StackItemView>>>({});
 
 	// ─── 可见元素计算 ─────────────────────────────────────────────
 
@@ -36,17 +41,39 @@
 	 * items[7] → zIndex=107, items[8] → zIndex=108, items[9] → zIndex=109（栈顶）
 	 */
 	const visibleItemsWithZIndex = $derived.by(() => {
-		/** 可见元素的起始全局下标（0-based） */
-		const startGlobalIdx =
-			maxVisible !== undefined ? Math.max(0, stackController.items.length - maxVisible) : 0;
+		// 一个 effect 只有在它所读取的对象发生变化时才会重新运行，而不是在其内部的属性发生变化时，所以 items 在变更时一定要创建新对象而不是原地变更。
+		// 或者用 stackController.length 来响应 items 数组长度变化。并且因为 stackController.items 每次变更内容都是通过 push / pop，所以监听 length 就够了 // TODO 测试
+		void stackController.items;
+		void zIndexBase;
+		void maxVisible;
 
-		return stackController.items
-			.slice(startGlobalIdx)
-			.map((item: StackItemType, localIdx: number) => ({
-				item,
-				/** 全局下标对应的 z-index，栈顶（最后入栈）z-index 最高 */
-				zIndex: zIndexBase + startGlobalIdx + localIdx
-			}));
+		/** 每项为栈数据结构 StackItem（非 Svelte 组件） */
+		let result: { item: StackItem; zIndex: number }[] = [];
+		untrack(() => {
+			// 需要从底部开始删除的元素数量
+			let toDeleteCount =
+				maxVisible !== undefined ? Math.max(0, stackController.items.length - maxVisible) : 0;
+
+			result = stackController.items
+				.map((item, index) => {
+					// 如果 item 处于非活跃状态（不提供状态查询函数也属于非活跃状态），并且还需要删除 item，则返回 undefined 让这一条被过滤掉
+					if (
+						itemRefs[item.id]?.queryStatus?.() !== 'living' &&
+						toDeleteCount > 0 &&
+						index < stackController.items.length - 2 // 最后两个元素不删除（会呈现给用户）
+					) {
+						toDeleteCount--;
+						return undefined;
+					}
+					return {
+						item,
+						zIndex: zIndexBase + index
+					};
+				})
+				.filter((item) => item !== undefined);
+		});
+
+		return result;
 	});
 </script>
 
@@ -57,10 +84,16 @@
   - maxVisible 截断导致的卸载同样由 key 机制处理
 -->
 {#each visibleItemsWithZIndex as { item, zIndex } (item.id)}
-	<StackItem
+	<StackItemView
+		bind:this={
+			() => {
+				// 只要不将 itemRefs[item.id] 返回给 Svelte，Svelte 就会保留属性值，防止 item.id 的属性值被意外置为 null 导致 visibleItemsWithZIndex 中的 queryStatus 判断逻辑失效
+			},
+			(el) => {
+				itemRefs[item.id] = el;
+			}
+		}
 		{item}
 		{zIndex}
-		bind:_isAnimating={stackController.isAnimating}
-		onLeftSwipe={item.onLeftSwipe}
 	/>
 {/each}
