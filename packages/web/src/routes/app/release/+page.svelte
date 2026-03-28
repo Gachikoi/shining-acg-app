@@ -15,7 +15,7 @@
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
-	import { ReleaseCoverPreview } from '$lib/components/custom/release';
+	import ReleaseCoverPreview from './components/release-cover-preview.svelte';
 	import { toast } from 'svelte-sonner';
 	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 	import {
