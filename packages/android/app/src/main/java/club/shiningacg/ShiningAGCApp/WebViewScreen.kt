@@ -119,28 +119,42 @@ fun WebViewScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val cameraGranted = permissions[Manifest.permission.CAMERA] == true
-        
+        // Launch file chooser regardless of permissions granted
+        // System will handle what's available
         pendingFileChooserParams.value?.let { params ->
-            if (!cameraGranted) {
-                Toast.makeText(
-                    context, 
-                    "需要相机权限才能拍照，仍可浏览相册", 
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            
             val intent = fileChooserLauncher.createChooserIntent(params)
             launcher.launch(intent)
             pendingFileChooserParams.value = null
         }
     }
 
-    fun hasCameraPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
+    fun hasAllPermissions(): Boolean {
+        val cameraGranted = ContextCompat.checkSelfPermission(
             context, 
             Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
+        
+        val readMediaGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context, 
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true // Older Android uses manifest-declared permission
+        }
+        
+        return cameraGranted && readMediaGranted
+    }
+
+    fun getRequiredPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_MEDIA_IMAGES
+            )
+        } else {
+            arrayOf(Manifest.permission.CAMERA)
+        }
     }
 
     DisposableEffect(Unit) {
@@ -246,8 +260,8 @@ fun WebViewScreen(
                                 it.startsWith("image/") || it == "*/*"
                             }
                             
-                            if (needsCamera && !hasCameraPermission()) {
-                                permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                            if (!hasAllPermissions()) {
+                                permissionLauncher.launch(getRequiredPermissions())
                             } else {
                                 params?.let {
                                     val intent = fileChooserLauncher.createChooserIntent(it)
