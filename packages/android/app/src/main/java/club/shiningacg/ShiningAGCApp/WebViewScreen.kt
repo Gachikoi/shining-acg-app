@@ -35,6 +35,10 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 
 /**
  * 使用 Chrome Custom Tabs 打开 URL（类似 iOS 的 SFSafariViewController）
@@ -97,6 +101,7 @@ fun WebViewScreen(
     val isDarkTheme = isSystemInDarkTheme()
 
     val filePathCallback = remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
+    val pendingFileChooserParams = remember { mutableStateOf<WebChromeClient.FileChooserParams?>(null) }
 
     val fileChooserLauncher = remember {
         FileChooserLauncher(context, "${BuildConfig.APPLICATION_ID}.fileprovider")
@@ -109,6 +114,33 @@ fun WebViewScreen(
         filePathCallback.value?.onReceiveValue(uris)
         filePathCallback.value = null
         fileChooserLauncher.clear()
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val cameraGranted = permissions[Manifest.permission.CAMERA] == true
+        
+        pendingFileChooserParams.value?.let { params ->
+            if (!cameraGranted) {
+                Toast.makeText(
+                    context, 
+                    "需要相机权限才能拍照，仍可浏览相册", 
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            
+            val intent = fileChooserLauncher.createChooserIntent(params)
+            launcher.launch(intent)
+            pendingFileChooserParams.value = null
+        }
+    }
+
+    fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context, 
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     DisposableEffect(Unit) {
@@ -206,9 +238,22 @@ fun WebViewScreen(
                         ): Boolean {
                             filePathCallback.value?.onReceiveValue(null)
                             filePathCallback.value = callback
-                            params?.let {
-                                val intent = fileChooserLauncher.createChooserIntent(it)
-                                launcher.launch(intent)
+                            
+                            pendingFileChooserParams.value = params
+                            
+                            val acceptTypes = params?.acceptTypes ?: arrayOf("*/*")
+                            val needsCamera = acceptTypes.any { 
+                                it.startsWith("image/") || it == "*/*"
+                            }
+                            
+                            if (needsCamera && !hasCameraPermission()) {
+                                permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                            } else {
+                                params?.let {
+                                    val intent = fileChooserLauncher.createChooserIntent(it)
+                                    launcher.launch(intent)
+                                    pendingFileChooserParams.value = null
+                                }
                             }
                             return true
                         }
