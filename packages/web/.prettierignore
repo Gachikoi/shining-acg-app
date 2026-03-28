@@ -12,3 +12,16 @@ deno.lock
 
 # Miscellaneous
 /static/
+
+# 二进制与字体：Prettier 无对应 parser，显式传入路径时也应忽略（见 packages/web/.prettierignore）
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.otf
+*.eot
