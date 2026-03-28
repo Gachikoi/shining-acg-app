@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import android.webkit.WebChromeClient
 import androidx.core.content.FileProvider
 import java.io.File
@@ -39,13 +40,19 @@ class FileChooserLauncher(
      * @return Intent that presents both camera and gallery options to the user
      */
     fun createChooserIntent(params: WebChromeClient.FileChooserParams): Intent {
+        Log.d("FileChooserLauncher", "createChooserIntent called")
+        // Clear previous state to prevent pollution across invocations
+        cameraPhotoUri = null
+        
         // Create camera intent with temporary file
         val cameraResult = createCameraIntent()
         val cameraIntent = cameraResult?.first
         cameraPhotoUri = cameraResult?.second
+        Log.d("FileChooserLauncher", "cameraIntent created: ${cameraIntent != null}")
 
         // Create gallery/file picker intent from params
         val galleryIntent = params.createIntent()
+        Log.d("FileChooserLauncher", "galleryIntent created")
 
         // Combine into chooser dialog
         val chooserTitle = "选择文件"
@@ -55,6 +62,7 @@ class FileChooserLauncher(
         cameraIntent?.let {
             chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(it))
         }
+        Log.d("FileChooserLauncher", "chooserIntent created, has camera: ${cameraIntent != null}")
 
         return chooserIntent
     }
@@ -67,16 +75,42 @@ class FileChooserLauncher(
      * @return Array of URIs, or null if the operation was cancelled or failed
      */
     fun parseResult(resultCode: Int, data: Intent?): Array<Uri>? {
-        // Check if this was a camera result (cameraPhotoUri will be set)
-        cameraPhotoUri?.let { cameraUri ->
-            // Camera result: return the camera URI if successful
-            if (resultCode == android.app.Activity.RESULT_OK) {
-                return arrayOf(cameraUri)
-            }
+        Log.d("FileChooserLauncher", "parseResult called, resultCode: $resultCode")
+        if (resultCode != android.app.Activity.RESULT_OK) {
+            clear()
+            Log.d("FileChooserLauncher", "parseResult returning null due to non-OK resultCode")
+            return null
         }
+        
+        val isCameraResult = cameraPhotoUri != null && 
+                             data?.data == null && 
+                             data?.clipData == null
+        
+        val result = if (isCameraResult && cameraPhotoUri != null) {
+            arrayOf(cameraPhotoUri!!)
+        } else {
+            val uris = WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+            uris?.forEach { uri ->
+                grantReadPermission(uri)
+            }
+            uris
+        }
+        
+        Log.d("FileChooserLauncher", "parseResult returning: ${result?.contentToString()}")
+        clear()
+        return result
+    }
 
-        // Otherwise, use the standard WebChromeClient parsing for gallery/file picker results
-        return WebChromeClient.FileChooserParams.parseResult(resultCode, data)
+    private fun grantReadPermission(uri: Uri) {
+        try {
+            context.grantUriPermission(
+                context.packageName,
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     /**
@@ -101,11 +135,13 @@ class FileChooserLauncher(
             val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 // Grant write permission to the camera app for this URI
                 putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
+            Log.d("FileChooserLauncher", "createCameraIntent succeeded")
             Pair(cameraIntent, photoUri)
         } catch (e: Exception) {
+            Log.d("FileChooserLauncher", "createCameraIntent failed: ${e.message}")
             e.printStackTrace()
             null
         }
