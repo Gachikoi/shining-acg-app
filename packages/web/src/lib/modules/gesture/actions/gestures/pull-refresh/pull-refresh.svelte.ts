@@ -22,6 +22,7 @@
 import type { Action } from 'svelte/action';
 import { release, tryAcquire } from '../../../core/arena.svelte';
 import { generateId, normalizeWheelDelta } from '../../../core/utils';
+import type { PointerPhase } from '../types';
 import type { PullRefreshConfig, PullRefreshOptions } from './types';
 import { calculateElasticDistance } from './utils';
 
@@ -38,7 +39,6 @@ export const DEFAULT_PULL_REFRESH_CONFIG: PullRefreshConfig = {
 
 // ─── 手势阶段 ────────────────────────────────────────────────────
 
-type PointerPhase = 'idle' | 'pending' | 'active' | 'rejected';
 type WheelPhase = 'idle' | 'pulling' | 'scrolling';
 
 // ─── Action 实现 ──────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export const pullRefresh: Action<HTMLElement, PullRefreshOptions> = (node, initi
 		}
 
 		if (e.pointerId !== pointerId) return;
-		if (pointerPhase === 'idle' || pointerPhase === 'rejected') return;
+		if (pointerPhase === 'idle') return;
 
 		const dx = e.clientX - startX;
 		const dy = e.clientY - startY;
