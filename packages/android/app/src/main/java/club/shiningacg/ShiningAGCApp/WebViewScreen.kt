@@ -37,7 +37,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.Manifest
 import android.content.pm.PackageManager
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 
 /**
@@ -116,30 +115,34 @@ fun WebViewScreen(
         fileChooserLauncher.clear()
     }
 
-    // First launcher: request gallery/storage permission
-    val galleryPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        // Gallery permission result - launch camera or chooser
-        pendingFileChooserParams.value?.let { params ->
-            val acceptTypes = params.acceptTypes ?: arrayOf("*/*")
-            val needsCamera = acceptTypes.any { 
-                it.startsWith("image/") || it == "*/*"
-            }
-            
-            if (needsCamera && !hasCameraPermission()) {
-                // Request camera permission next
-                cameraPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
-            } else {
-                // No camera needed or already granted, launch chooser
-                val intent = fileChooserLauncher.createChooserIntent(params)
-                launcher.launch(intent)
-                pendingFileChooserParams.value = null
-            }
+    // Helper functions FIRST (they don't depend on anything)
+    fun hasGalleryPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true // Older Android uses manifest-declared permission
         }
     }
 
-    // Second launcher: request camera permission (after gallery)
+    fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    fun getGalleryPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            emptyArray() // No runtime permission needed for older Android
+        }
+    }
+
+    // THEN define cameraPermissionLauncher (used by galleryPermissionLauncher)
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -151,29 +154,26 @@ fun WebViewScreen(
         }
     }
 
-    fun hasGalleryPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context, 
-                Manifest.permission.READ_MEDIA_IMAGES
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true // Older Android uses manifest-declared permission
-        }
-    }
+    // FINALLY define galleryPermissionLauncher (uses cameraPermissionLauncher and hasCameraPermission)
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Gallery permission result - launch camera or chooser
+        pendingFileChooserParams.value?.let { params ->
+            val acceptTypes = params.acceptTypes ?: arrayOf("*/*")
+            val needsCamera = acceptTypes.any {
+                it.startsWith("image/") || it == "*/*"
+            }
 
-    fun hasCameraPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context, 
-            Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    fun getGalleryPermissions(): Array<String> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            emptyArray() // No runtime permission needed for older Android
+            if (needsCamera && !hasCameraPermission()) {
+                // Request camera permission next
+                cameraPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+            } else {
+                // No camera needed or already granted, launch chooser
+                val intent = fileChooserLauncher.createChooserIntent(params)
+                launcher.launch(intent)
+                pendingFileChooserParams.value = null
+            }
         }
     }
 
