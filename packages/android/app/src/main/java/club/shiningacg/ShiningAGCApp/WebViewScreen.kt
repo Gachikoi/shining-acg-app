@@ -38,6 +38,7 @@ import android.os.VibratorManager
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
+import android.util.Log
 
 /**
  * 使用 Chrome Custom Tabs 打开 URL（类似 iOS 的 SFSafariViewController）
@@ -109,8 +110,20 @@ fun WebViewScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d("WebViewScreen", "launcher result: resultCode=${result.resultCode}")
+        Log.d("WebViewScreen", "launcher result: data=${result.data}")
+        Log.d("WebViewScreen", "launcher result: data.data=${result.data?.data}")
+        Log.d("WebViewScreen", "launcher result: data.clipData=${result.data?.clipData}")
+        
         val uris = fileChooserLauncher.parseResult(result.resultCode, result.data)
-        filePathCallback.value?.onReceiveValue(uris)
+        Log.d("WebViewScreen", "parseResult returned: ${uris?.contentToString()}")
+        
+        if (filePathCallback.value != null) {
+            Log.d("WebViewScreen", "Calling onReceiveValue with uris")
+            filePathCallback.value?.onReceiveValue(uris)
+        } else {
+            Log.e("WebViewScreen", "filePathCallback is NULL! Cannot return result to WebView")
+        }
         filePathCallback.value = null
         fileChooserLauncher.clear()
     }
@@ -270,6 +283,7 @@ fun WebViewScreen(
                             callback: ValueCallback<Array<Uri>>?,
                             params: FileChooserParams?
                         ): Boolean {
+                            Log.d("WebViewScreen", "onShowFileChooser called, callback=$callback, params=$params")
                             filePathCallback.value?.onReceiveValue(null)
                             filePathCallback.value = callback
                             
