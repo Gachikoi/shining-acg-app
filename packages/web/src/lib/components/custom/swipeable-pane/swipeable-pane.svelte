@@ -129,22 +129,6 @@
 	}
 
 	/**
-	 * pointerup 的 `target` 是否落在中间槽 slot1 的根节点子树内（用于决定是否允许「纯速度」翻页）。
-	 * slot1 根是 `containerEl` 的子节点，不可能 `contains(containerEl)`，故 target 为手势绑定的整轨容器时不会误判为在 slot1 内。
-	 *
-	 * @param slot1Root - 中间列（index 1）包裹 `div`
-	 * @param target - `SwipeState.endPointerTarget` / `PointerEvent.target`
-	 * @returns `target` 为 `Node` 且被 `slot1Root` 包含则为 true
-	 */
-	function isEndTargetInsideSlot1(
-		slot1Root: HTMLElement | undefined,
-		target: EventTarget | null | undefined
-	): boolean {
-		if (!slot1Root || target == null) return false;
-		return target instanceof Node && slot1Root.contains(target);
-	}
-
-	/**
 	 *
 	 * @param from 手势开始时捕获的基础偏移，用于动画初始值设定
 	 * @param to 偏移量（以 slot 1 为偏移量中心，负数表示向左偏移，正数表示向右偏移）
@@ -292,6 +276,8 @@
 		startJumpTransition(nextTarget);
 	}
 
+	let startIndex = 0;
+
 	// ─── Swipe action 配置 ───────────────────────────────────────
 
 	let swipeOptions = $derived({
@@ -315,6 +301,7 @@
 		onStart: () => {
 			if (!containerEl) return;
 
+			startIndex = currentIndex;
 			resetTransitionState(true);
 
 			const visualState = inspectVisualState(
@@ -370,7 +357,6 @@
 		 */
 		onEnd: (state: SwipeState) => {
 			if (!containerEl) return;
-			const slot1Root = panelSlotRoots[1];
 
 			// 获取当前视觉状态，判断是否应该更新 index 和 capturedOffset
 			const visualState = inspectVisualState(
@@ -385,20 +371,20 @@
 
 			if (visualState.primaryIndex !== currentIndex) {
 				targetIndex = visualState.primaryIndex;
-			} else if (
-				Math.abs(state.velocityX) > state.velocityThresholdUsed &&
-				// 指针通道：仅当 pointerup.target 仍落在中间槽 slot1 子树内才允许「纯速度」翻页
-				(state.source !== 'pointer' || isEndTargetInsideSlot1(slot1Root, state.endPointerTarget))
-			) {
+			} else if (Math.abs(state.velocityX) > state.velocityThresholdUsed) {
 				// 如果位移没有达到阈值，则判断速度是否达到阈值
 				if (state.velocityX < 0 && currentIndex < categories.length - 1) {
-					targetIndex = currentIndex + 1;
-					shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
+					if (state.deltaX < 0 || startIndex > currentIndex) {
+						// 前者是只允许位移和速度同向时提交，后者是在位移和速度反向时允许回到手势起始点
+						targetIndex = currentIndex + 1;
+						shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
+					}
 				} else if (state.velocityX > 0 && currentIndex > 0) {
-					targetIndex = currentIndex - 1;
-					shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
-				} else {
-					targetIndex = currentIndex;
+					if (state.deltaX > 0 || startIndex < currentIndex) {
+						// 前者是只允许位移和速度同向时提交，后者是在位移和速度反向时允许回到手势起始点
+						targetIndex = currentIndex - 1;
+						shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
+					}
 				}
 			}
 

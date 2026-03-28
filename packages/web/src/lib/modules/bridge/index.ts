@@ -20,7 +20,6 @@ const postToNative = <T extends object>(action: string, payload?: T) => {
 	}
 
 	// 3. Dev/Web Fallback
-	console.debug(`[ShiningBridge] 调用: ${action}`, payload);
 	return false;
 };
 

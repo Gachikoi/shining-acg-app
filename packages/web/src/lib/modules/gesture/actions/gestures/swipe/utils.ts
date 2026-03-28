@@ -3,30 +3,28 @@
  * @description 速度跟踪器等仅 swipe 使用的计算逻辑。
  */
 
-// ─── 速度跟踪 ────────────────────────────────────────────────────
-
-/** 速度跟踪器内部采样点 */
-interface VelocitySample {
-	/** 时间戳（ms） */
-	time: number;
-	/** 坐标值（px） */
-	value: number;
-}
+import type { PointerTrack, VelocitySample, VelocityTracker } from '../types';
 
 /**
- * 速度跟踪器
+ * 创建单指轨迹并写入首帧速度采样（每指独立 trackerX/trackerY）。
  *
- * 维护最近 N 个采样点，基于最旧/最新两点的差值计算平均速度。
- * 适用于 60~120Hz 设备上的平滑速度估算。
- * 可选：窗口速度低于噪声地板时折叠为单点，避免停顿后历史位移仍算出非零速度。
+ * @param x - 起点 clientX
+ * @param y - 起点 clientY
+ * @returns 带 trackerX/trackerY 的 PointerTrack
  */
-export interface VelocityTracker {
-	/** 添加采样点 */
-	addSample: (value: number) => void;
-	/** 获取当前速度（px/ms），无足够采样时返回 0 */
-	getVelocity: () => number;
-	/** 重置所有采样 */
-	reset: () => void;
+export function createPointerTrack(x: number, y: number): PointerTrack {
+	const trackerX = createVelocityTracker();
+	const trackerY = createVelocityTracker();
+	trackerX.addSample(x);
+	trackerY.addSample(y);
+	return {
+		startX: x,
+		startY: y,
+		currentX: x,
+		currentY: y,
+		trackerX,
+		trackerY
+	};
 }
 
 /**
