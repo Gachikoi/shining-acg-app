@@ -2,3 +2,7 @@ root = true
 
 [*]
 end_of_line = lf
+
+# Match Git eol=crlf for batch files; avoid editors rewriting to LF and fighting Git.
+[*.bat]
+end_of_line = crlf
