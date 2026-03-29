@@ -69,6 +69,9 @@ struct WebView: UIViewRepresentable {
     wkwebView.navigationDelegate = context.coordinator
     wkwebView.uiDelegate = context.coordinator
 
+    // 使 scrollView 内部视图 ignore safe area
+    wkwebView.scrollView.contentInsetAdjustmentBehavior = .never
+
     // 解决黑夜模式下首屏白屏/屏幕完全黑问题
     wkwebView.isOpaque = false
 
