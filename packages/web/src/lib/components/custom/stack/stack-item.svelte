@@ -5,8 +5,8 @@
   - 进栈动画：从右侧屏幕外弹入（Spring 物理动画）
   - 右滑手势：拖动跟手 → 提交后弹出屏幕右侧 → popById 出栈
   - 左滑手势：拖动跟手 → 提交后弹回原位 → 触发 onLeftSwipe 回调
-  - 懒加载态：item.component 为 null 时显示全屏居中 spinner，
-    loader resolve 后（$derived 响应式）自动渲染真实组件
+  - 懒加载态：item.component 为 null 时在 `el` 内 `mount` CommandLoadingHost（`Loading.show({ target: el })`），
+    loader resolve 后 `hide` 并渲染真实组件
 -->
 <script module lang="ts">
 	/**
@@ -46,9 +46,9 @@
 	import type { SwipeOptions, SwipeState } from '$lib/modules/gesture';
 	import { edgeZone, swipe } from '$lib/modules/gesture';
 	import { onDestroy, onMount, type SvelteComponent, untrack } from 'svelte';
+	import { Loading } from '../command-loading';
 	import stackController from './stack.svelte';
 	import type { StackItem, StackPageLifecycleStatus } from './types';
-	import { Loading } from '../full-screen-loading';
 
 	let {
 		item,
@@ -109,32 +109,64 @@
 	};
 
 	/**
+	 * 等待写在 `el` **自身**上的 CSS transition 全部结束。
+	 *
+	 * 仅用 `transitionend` 时：子节点 transition 会冒泡到 `el` 导致误 resolve；更糟的是当起止状态无实际插值时
+	 * 某些引擎不派发 `transitionend`，Promise 永久挂起（与本次 onEnd 后无法滑动一致）。
+	 * Web Animations 的 `getAnimations({ subtree: false })` + `finished` 与「是否产生过渡」一致。
+	 *
+	 * 双 `requestAnimationFrame`：保证样式已提交且 UA 已为本元素登记 transition（单帧内可能仍为空）。
+	 *
+	 * @param el - 已写入 `transition` / `transform` / `clipPath` 的容器
+	 * @returns transition 结束或确认未产生过渡时 resolve
+	 */
+	function waitForOwnCssTransitions(el: HTMLElement): Promise<void> {
+		return new Promise((resolve) => {
+			const finish = () => {
+				el.style.transition = 'none';
+				resolve();
+			};
+			// 第一个 rAf 在 dom 渲染前执行，这时 transition 还没有影响到 dom, el.getAnimations 可能取不到动画，所以用双 rAF
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					const anims = el.getAnimations({ subtree: false });
+					if (anims.length === 0) {
+						finish();
+						return;
+					}
+					void Promise.all(anims.map((a) => a.finished.catch(() => {}))).then(() => {
+						finish();
+					});
+				});
+			});
+		});
+	}
+
+	/**
 	 * 将当前层水平平移到指定 translateX。
 	 *
 	 * @param x - 目标 translateX（px）
 	 * @param withAnimation - true 时在 transition 结束后 resolve；false 为同步更新样式
-	 * @returns 无动画时为 void；有动画时为在 transitionend 上 resolve 的 Promise
+	 * @param needClamp - true 时在水平移出左缘时钳在 0，在手势驱动的 pan 时需要设置为 true；在动画驱动的 pan 时需要设置为 false，因为动画驱动时，可能位移到超出左缘。
+	 * @returns 无动画时为 void；有动画时为在过渡完成时 resolve 的 Promise
 	 */
-	const panTo = ((x: number, withAnimation: boolean): void | Promise<void> => {
+	const panTo = ((
+		x: number,
+		{ withAnimation, needClamp = true }: { withAnimation: boolean; needClamp?: boolean }
+	): void | Promise<void> => {
+		/** 无 next 时不允许水平移出左缘；负位移改为钳在 0，避免整帧不写字样导致跟手卡住 */
+		const tx = !hasNext && needClamp ? Math.max(0, x) : x;
+
 		el!.style.transition = withAnimation ? `transform ${DURATION}ms ${EASING}` : 'none';
-		el!.style.transform = `translate3d(${x}px, 0, 0)`;
+		el!.style.transform = `translate3d(${tx}px, 0, 0)`;
 		el!.style.clipPath = '';
 
 		if (!withAnimation) return;
 
-		return new Promise<void>((resolve) => {
-			el!.addEventListener(
-				'transitionend',
-				() => {
-					el!.style.transition = 'none';
-					resolve();
-				},
-				{ once: true }
-			);
-		});
+		return waitForOwnCssTransitions(el!);
 	}) as {
-		(x: number, withAnimation: true): Promise<void>;
-		(x: number, withAnimation: false): void;
+		(x: number, options: { withAnimation: true; needClamp?: boolean }): Promise<void>;
+		(x: number, options: { withAnimation: false; needClamp?: boolean }): void;
 	};
 
 	// 这些数据都是随着容器尺寸变化而变化的，所以其实不需要 pxToRem 辅助函数
@@ -144,26 +176,24 @@
 		scale: number,
 		withAnimation: boolean
 	): void | Promise<void> => {
+		/** 与 panTo 一致：无 hasNext 时 translateX 不越过 0，否则负位移时早退会导致本帧不写 transform */
+		const tx = !hasNext && !isSwipeRightScaleDown ? Math.max(0, x) : x;
+		const tScale = Math.min(1, scale);
+		const ty = x > 0 || isSwipeRightScaleDown ? y : 0;
+
+		const clipHalfRem = calcClipHeight(tScale) / 2;
+		const nextClipPath = `inset(${clipHalfRem}px 0 ${clipHalfRem}px 0 ${clipHalfRem > 0 || isSwipeRightScaleDown ? 'round var(--radius-xl)' : ''})`;
+
 		el!.style.transition = withAnimation ? TRANSFORM_AND_CLIP_TRANSITION : 'none';
-		el!.style.transform = `translate3d(${x}px, ${y}px, 0) scale3d(${scale}, ${scale}, 1)`;
+		el!.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale3d(${tScale}, ${tScale}, 1)`;
 		/**
 		 * - 有裁切时在 inset() 会覆盖掉 rounded-xl 的圆角，所以需要手动添加 round var(--radius-xl)
 		 */
-		const clipHalfRem = calcClipHeight(scale) / 2;
-		el!.style.clipPath = `inset(${clipHalfRem}px 0 ${clipHalfRem}px 0 ${clipHalfRem > 0 ? 'round var(--radius-xl)' : ''})`;
+		el!.style.clipPath = nextClipPath;
 
 		if (!withAnimation) return;
 
-		return new Promise<void>((resolve) => {
-			el!.addEventListener(
-				'transitionend',
-				() => {
-					el!.style.transition = 'none';
-					resolve();
-				},
-				{ once: true }
-			);
-		});
+		return waitForOwnCssTransitions(el!);
 	}) as {
 		(x: number, y: number, scale: number, withAnimation: true): Promise<void>;
 		(x: number, y: number, scale: number, withAnimation: false): void;
@@ -212,18 +242,21 @@
 	 * disabled 以函数形式读取 _isAnimating，闭包实时取值保证正确性。
 	 */
 	const swipeOptions: SwipeOptions = $derived({
-		interruptible: false,
-		disabled: () => _isAnimating ?? false,
+		disabled: () => _isAnimating ?? false, // 利用 onEnd 返回 Promise 禁用动画打断，只能禁用某个手势实例的动画。但 stack-item 只要有一个 item 在动画中，其他 stack-item 的 swipe 手势都应该被禁用。
 		onMove: async (state: SwipeState) => {
-			if (isTop && !hasNext && state.direction === 'left') return;
+			_isAnimating = true;
+
+			if (state.deltaX < 0 && isTop && hasNext && !stackController.isPushingNext) {
+				// 左滑：创建 next 入栈
+				await stackController.pushNext();
+				// 先设置 isPushingNext 为 true，防止在设置 swipeState 的值引发 $effect 响应式，还使用的是旧值
+				stackController.setIsPushingNext(true);
+			}
+
 			// 写入 swipeState，所有 StackItem 通过 $effect 响应式同步动画
 			stackController.setSwipeState({ ...state, type: 'onMove' });
 
-			if (state.direction === 'left' && isTop && hasNext) {
-				// 左滑：创建 next 入栈
-				await stackController.pushNext();
-			} else if (state.direction === 'right' && isTop && item.rectInfo) {
-				// 右滑：准备出栈，并且需要回到 push 触点位置
+			if (isTop && item.rectInfo) {
 				isSwipeRightScaleDown = true;
 				moveAndScaleTo(
 					state.deltaX,
@@ -231,13 +264,14 @@
 					1 - (0.2 * state.deltaX) / el!.clientWidth,
 					false
 				);
-			} else if (state.direction === 'right' && isTop && !item.rectInfo) {
-				// 右滑：准备出栈，并且不需要回到 push 触点位置
-				panTo(state.deltaX, false);
-			} else if (state.direction === 'left' && isSecondaryTop && hasNext) {
-				// 左滑：创建 next 入栈后，变为 SecondaryTop
-				panTo(state.deltaX * 0.5, false); // TODO 不一定需要，且可能因为被 isNext 的栈顶遮挡而导致事件中断
+			} else if (isTop && !item.rectInfo) {
+				panTo(state.deltaX, { withAnimation: false });
+			} else if (isSecondaryTop && hasNext && stackController.isPushingNext) {
+				console.log(true);
+				panTo(state.deltaX * 0.5, { withAnimation: false });
 			}
+
+			_isAnimating = false;
 		},
 
 		onEnd: async (state: SwipeState) => {
@@ -255,19 +289,23 @@
 				}
 			} else if (isTop && !item.rectInfo) {
 				if (state.direction === 'right' && state.committed) {
-					await panTo(el!.clientWidth, true);
+					await panTo(el!.clientWidth, { withAnimation: true });
 					stackController.pop(false);
 				} else {
-					await panTo(0, true);
+					await panTo(0, { withAnimation: true });
 				}
-			} else if (isSecondaryTop && hasNext) {
+			} else if (isSecondaryTop && hasNext && stackController.isPushingNext) {
 				if (state.direction === 'left' && state.committed) {
-					await panTo(-(el!.clientWidth / 2), true);
+					await panTo(-(el!.clientWidth / 2), { withAnimation: true });
 				} else {
-					await panTo(0, true);
+					await panTo(0, { withAnimation: true });
 					stackController.pop(false); // 左滑时，第二栈顶放弃提交，把第一栈顶（即刚才 onMove 中 pushNext 的元素）弹出
 				}
+				stackController.setIsPushingNext(false);
 			}
+
+			stackController.setSwipeState(null);
+
 			_isAnimating = false;
 		}
 	});
@@ -282,17 +320,16 @@
 	 */
 	const runPopAnimation = async () => {
 		/** 本帧 phase=pop 时全局栈顶 id；仅该层负责 commitPop（与结束时 derived 的 isTop 无关） */
-		const topIdWhenPopStarted = stackController.top?.id;
-		const shouldCommitPop = item.id === topIdWhenPopStarted;
+		const shouldCommitPop = $state.snapshot(isTop); // 必须在实际进行 pop 前记录 top?.id，否则可能因为并发导致多次 pop（多次判断 top?.id === item.id)
 
 		_isAnimating = true;
 
 		if (item.rectInfo && isTop) {
 			await moveAndScaleTo(initTranslateX, initTranslateY, initScale, true);
 		} else if (!item.rectInfo && isTop) {
-			await panTo(el!.clientWidth, true);
+			await panTo(el!.clientWidth, { withAnimation: true, needClamp: false });
 		} else if (isSecondaryTop && !stackController.top?.rectInfo) {
-			await panTo(0, true);
+			await panTo(0, { withAnimation: true, needClamp: false });
 		}
 
 		_isAnimating = false;
@@ -308,6 +345,8 @@
 	 * 栈顶：从 rectInfo 或右侧弹入；第二层：左移到屏幕一半
 	 */
 	const runPushAnimation = async () => {
+		const shouldCommitPush = $state.snapshot(isTop);
+
 		_isAnimating = true;
 
 		if (item.rectInfo && isTop) {
@@ -315,16 +354,16 @@
 			await moveAndScaleTo(0, 0, 1, true);
 		} else if (!item.rectInfo && isTop) {
 			// 是栈顶并且不需要 push 触点动画
-			panTo(el!.clientWidth, false);
-			await panTo(0, true);
+			panTo(el!.clientWidth, { withAnimation: false, needClamp: false });
+			await panTo(0, { withAnimation: true, needClamp: false });
 		} else if (isSecondaryTop && !stackController.top?.rectInfo) {
 			// 是第二层栈顶并且栈顶不需要 push 触点动画
-			await panTo(-(el!.clientWidth / 2), true);
+			await panTo(-(el!.clientWidth / 2), { withAnimation: true, needClamp: false });
 		}
 
 		_isAnimating = false;
 
-		if (isTop) {
+		if (shouldCommitPush) {
 			stackController.setAnimationPhase(null);
 		}
 	};
@@ -351,6 +390,7 @@
 
 	/**
 	 * 响应 swipeState 变化，更新非 pointer 手势目标的 stack-item 的动画
+	 * 非主控，不用对 _isAnimating, stackController.setSwipeState 做处理
 	 */
 	$effect(() => {
 		const state = stackController.swipeState;
@@ -358,16 +398,17 @@
 		if (!state) return;
 
 		untrack(async () => {
-			_isAnimating = true;
-
 			if (state.type === 'onMove') {
-				if (state.direction === 'right' && isSecondaryTop && !stackController.top?.rectInfo) {
-					panTo(state.deltaX * 0.5 - el!.clientWidth / 2, false);
-				} else if (state.direction === 'left' && isTop && isNext) {
-					panTo(state.deltaX + el!.clientWidth, false);
+				if (isSecondaryTop && !stackController.top?.rectInfo && !stackController.isPushingNext) {
+					panTo(state.deltaX * 0.5 - el!.clientWidth / 2, {
+						withAnimation: false,
+						needClamp: false
+					});
+				} else if (isTop && isNext && stackController.isPushingNext) {
+					panTo(state.deltaX + el!.clientWidth, { withAnimation: false, needClamp: false });
 				}
 			} else if (state.type === 'onEnd') {
-				if (isSecondaryTop && !stackController.top?.rectInfo) {
+				if (isSecondaryTop && !stackController.top?.rectInfo && !stackController.isPushingNext) {
 					const half = el!.clientWidth / 2;
 					/**
 					 * 与 `swipe.onEnd` 中第二层逻辑对齐的终点 translateX（本 effect 同步「非指针层」）：
@@ -377,29 +418,32 @@
 					 * - 左滑且未 committed：取消左滑须回 0；旧实现把「非 right+committed」一律设为 -half，
 					 *   会覆盖手势层刚执行的 `panTo(0)`，表现为停在 -half
 					 */
-					const targetX =
-						state.direction === 'right' && state.committed
-							? 0
-							: state.direction === 'right' && !state.committed
-								? -half
-								: state.direction === 'left' && state.committed
-									? -half
-									: state.direction === 'left' && !state.committed
-										? 0
-										: -half;
-					await panTo(targetX, true);
-				} else if (isTop && isNext) {
-					if (state.direction === 'left' && state.committed) {
-						await panTo(0, true);
+					// const targetX =
+					// 	state.direction === 'right' && state.committed
+					// 		? 0
+					// 		: state.direction === 'right' && !state.committed
+					// 			? -half
+					// 			: state.direction === 'left' && state.committed
+					// 				? -half
+					// 				: state.direction === 'left' && !state.committed
+					// 					? 0
+					// 					: -half;
+
+					console.log(state.direction, state.velocityX, state.deltaX, state.committed);
+					// await panTo(targetX, { withAnimation: true, needClamp: false });
+					if (state.direction === 'right' && state.committed) {
+						await panTo(0, { withAnimation: true, needClamp: false });
 					} else {
-						await panTo(el!.clientWidth, true);
+						await panTo(-half, { withAnimation: true, needClamp: false });
+					}
+				} else if (isTop && isNext && stackController.isPushingNext) {
+					if (state.direction === 'left' && state.committed) {
+						await panTo(0, { withAnimation: true, needClamp: false });
+					} else {
+						await panTo(el!.clientWidth, { withAnimation: true, needClamp: false });
 					}
 				}
-
-				stackController.setSwipeState(null);
 			}
-
-			_isAnimating = false;
 		});
 	});
 
@@ -430,6 +474,9 @@
 		// 用 el.clientWidth 和 el.clientHeight 代替 el!.clientWidth 和 el!.clientHeight，防止 init 时 el!.clientWidth 和 el!.clientHeight 还未更新
 		applyInitLayoutVars(sizeEl);
 		moveAndScaleTo(initTranslateX, initTranslateY, initScale, false);
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const _ = getComputedStyle(el!).transform; // 读取样式，强制触发 layout，防止在 onMount 瞬间先触发 initLayout 的 moveAndScaleTo 又紧接着触发 runPushAnimation 的 moveAndScaleTo 导致没有动画效果
 	};
 
 	onMount(() => {
@@ -463,18 +510,18 @@
 			clipPath: el.style.clipPath,
 			transition: el.style.transition
 		});
+
+		// 卸载时关闭本层 `el` 上的局部 Loading，避免指向已分离 DOM
+		Loading.hide({ target: el });
 	});
 
-	let loadingTimer: ReturnType<typeof setTimeout> | null = null;
-
 	$effect(() => {
+		if (!el) return;
+
 		if (DynamicComponent) {
-			if (loadingTimer) clearTimeout(loadingTimer);
-			Loading.hide();
+			Loading.hide({ target: el });
 		} else {
-			loadingTimer = setTimeout(() => {
-				Loading.show();
-			}, 100);
+			Loading.show({ target: el });
 		}
 	});
 </script>

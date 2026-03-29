@@ -17,7 +17,6 @@
 	import { scrollBoundary } from '$lib/modules/gesture';
 	import { formatStat } from '$lib/utils';
 	import { onDestroy, onMount } from 'svelte';
-	import { stackController } from '../stack';
 
 	/** 关注关系状态枚举（模拟，后续从 API 获取） */
 	type RelationState = 'none' | 'following' | 'followed_by' | 'mutual';
@@ -119,13 +118,7 @@
 				class:animate-pulse={showSkeleton}
 			>
 				<!-- 头像 -->
-				<div
-					class="shrink-0"
-					onclick={() =>
-						stackController.push({
-							loader: () => import('../../../../routes/app/home/+page.svelte')
-						})}
-				>
+				<div class="shrink-0">
 					{#if showSkeleton}
 						<div class="size-10 rounded-full bg-muted sm:size-12"></div>
 					{:else}
@@ -217,7 +210,7 @@
 				</div>
 
 				<!-- 操作按钮 -->
-				<div class="shrink-0" onclick={() => stackController.pop()}>
+				<div class="shrink-0">
 					{#if showSkeleton}
 						<div class="h-8 w-20 rounded-md bg-muted"></div>
 					{:else}

@@ -52,7 +52,7 @@ export interface StackItem {
 	/** 传递给组件的 props */
 	props?: Record<string, unknown | never>;
 	rectInfo?: RectInfo;
-	next?: PushOptionsWithoutNext;
+	next?: NextPushOptions;
 	isNext?: boolean;
 	/** 是否忽略安全区域，默认不忽略 */
 	ignoreSafeArea?: boolean;
@@ -78,7 +78,7 @@ export interface StaticPushOptions<
 	props?: TProps;
 	/** push 点击元素的位置信息，如果传递此值则会在 push 时采用以触点为起点的缩放动画 */
 	rectInfo?: RectInfo;
-	next?: PushOptionsWithoutNext;
+	next?: NextPushOptions;
 	/** 是否忽略安全区域，默认不忽略 */
 	ignoreSafeArea?: boolean;
 }
@@ -101,14 +101,14 @@ export interface LazyPushOptions<
 	props?: TProps;
 	/** push 点击元素的位置信息，如果传递此值则会在 push 时采用以触点为起点的缩放动画 */
 	rectInfo?: RectInfo;
-	next?: PushOptionsWithoutNext;
+	next?: NextPushOptions;
 	/** 是否忽略安全区域，默认不忽略 */
 	ignoreSafeArea?: boolean;
 }
 
-export type PushOptionsWithoutNext<
+export type NextPushOptions<
 	TProps extends Record<string, unknown | never> = Record<string, unknown | never>
-> = Omit<StaticPushOptions<TProps>, 'next'> | Omit<LazyPushOptions<TProps>, 'next'>;
+> = Omit<StaticPushOptions<TProps>, 'rectInfo'> | Omit<LazyPushOptions<TProps>, 'rectInfo'>;
 
 /**
  * push 操作的入参类型（判别联合）

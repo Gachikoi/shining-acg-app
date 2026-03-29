@@ -28,6 +28,8 @@
 	/** 各栈 id → 对应包装组件实例，供可见性裁剪时查询子页 lifecycle */
 	let itemRefs = $state<Record<string, ReturnType<typeof StackItemView>>>({});
 
+	let _isAnimating = $state(false);
+
 	// ─── 可见元素计算 ─────────────────────────────────────────────
 
 	/**
@@ -95,5 +97,6 @@
 		}
 		{item}
 		{zIndex}
+		bind:_isAnimating
 	/>
 {/each}

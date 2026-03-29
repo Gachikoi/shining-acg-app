@@ -28,13 +28,13 @@
 import type { SwipeState } from '$lib/modules/gesture';
 import { tick } from 'svelte';
 import { toast } from 'svelte-sonner';
-import type { PushOptions, PushOptionsWithoutNext, StackItem } from './types';
+import type { NextPushOptions, PushOptions, StackItem } from './types';
 
 // ─── 全局栈状态 ──────────────────────────────────────────────────
 
 let _items = $state<StackItem[]>([]);
 
-let locked = false;
+let locked = false; // push 函数需要锁，防止 await tick() 时产生并发竞态
 
 /**
  * 栈内部响应式状态（swipe + 动画阶段）
@@ -44,7 +44,9 @@ const _stackState = $state({
 	/** 当前滑动手势状态，仅栈顶写入，全员读取 */
 	swipe: null as (SwipeState & { type: 'onMove' | 'onEnd' }) | null,
 	/** 动画阶段：'push' | 'pop' | null */
-	animationPhase: null as 'push' | 'pop' | null
+	animationPhase: null as 'push' | 'pop' | null,
+	/** 从 pushNext 函数被调用开始，到这次手势及收尾动画结束，用于判别手势主控是否在 isSecondaryTop 上的元素的特殊逻辑 */
+	isPushingNext: false
 });
 
 const stackController = (() => {
@@ -77,7 +79,7 @@ const stackController = (() => {
 	 * @param isNext - 是否作为左滑 next 入栈（写入 StackItem.isNext）
 	 * @returns 已追加新元素后的新栈数组；loader 失败时 reject
 	 */
-	const pushToStack = (newItem: PushOptions | PushOptionsWithoutNext, isNext: boolean) => {
+	const pushToStack = (newItem: PushOptions | NextPushOptions, isNext: boolean) => {
 		const id = crypto.randomUUID();
 
 		_items = [
@@ -86,7 +88,7 @@ const stackController = (() => {
 				id,
 				component: 'loader' in newItem ? null : newItem.component,
 				props: newItem.props,
-				rectInfo: newItem.rectInfo,
+				rectInfo: 'rectInfo' in newItem ? newItem.rectInfo : undefined,
 				next: 'next' in newItem ? newItem.next : undefined,
 				isNext: isNext,
 				ignoreSafeArea: newItem.ignoreSafeArea
@@ -140,17 +142,14 @@ const stackController = (() => {
 	 * @returns 被弹出的元素，若栈为空则返回 undefined
 	 */
 	function pop(isNeedAnimation: boolean = true): StackItem | undefined {
-		console.log('pop', _items.length, _stackState.animationPhase, locked);
 		if (_items.length === 0 || _stackState.animationPhase !== null || locked) {
 			// 前者防止栈空时 pop 重复触发，中间防止动画时重复触发，后者防止 pop 并发调用
 			return undefined;
 		}
-		locked = true;
 
 		if (isNeedAnimation) {
 			// 如果需要动画，设置 phase 由各 StackItem 响应式执行，栈顶动画结束后调用 commitPop
 			setAnimationPhase('pop');
-			locked = false;
 			return;
 		}
 
@@ -161,7 +160,6 @@ const stackController = (() => {
 		 */
 		const removed = _items[_items.length - 1];
 		_items = _items.slice(0, -1);
-		locked = false;
 
 		return removed;
 	}
@@ -181,12 +179,15 @@ const stackController = (() => {
 	 * 用于在栈末尾元素有 next 属性，想要以从右侧滑入的方式载入 next 元素时
 	 */
 	const pushNext = async () => {
+		if (locked) return;
+		locked = true;
 		const next = _items[_items.length - 1]?.next;
 
 		if (!next) throw new Error('没有 next（待入栈的） 元素');
 
 		pushToStack(next, true);
 		await tick();
+		locked = false;
 	};
 
 	return {
@@ -207,6 +208,12 @@ const stackController = (() => {
 		/** 当前动画阶段（只读，供 StackItem 响应式读取） */
 		get animationPhase(): 'push' | 'pop' | null {
 			return _stackState.animationPhase;
+		},
+		get isPushingNext(): boolean {
+			return _stackState.isPushingNext;
+		},
+		setIsPushingNext(isPushingNext: boolean): void {
+			_stackState.isPushingNext = isPushingNext;
 		},
 		setSwipeState,
 		setAnimationPhase,
