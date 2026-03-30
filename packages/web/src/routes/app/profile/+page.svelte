@@ -12,7 +12,8 @@
 	/**
 	 * 懒加载测试子页；断言为 ComponentLoader 以匹配 Stack 的 props 泛型（Svelte 组件推断的 props 与 Record 不完全一致）
 	 */
-	const loadTestPane = (() => import('./profile-stack-test-pane.svelte')) as ComponentLoader;
+	const loadTestPane = (() =>
+		import('./profile-stack-test-pane.svelte')) as unknown as ComponentLoader;
 
 	// ─── 用于「从触点缩放入栈」的参照元素 ─────────────────────────────
 

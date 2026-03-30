@@ -10,7 +10,8 @@
  *
  * @example
  * ```svelte
- * <div use:edgeZone={{ width: 24, axis: 'x' }}>
+ * <!-- 左右各 24px 为水平边缘优先区（常用于侧滑返回与内层横向 swipe 让渡） -->
+ * <div use:edgeZone={{ left: 24, right: 24 }}>
  *   <SwipeablePane />
  * </div>
  * ```

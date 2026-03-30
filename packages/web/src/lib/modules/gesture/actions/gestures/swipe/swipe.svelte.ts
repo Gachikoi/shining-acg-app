@@ -26,9 +26,9 @@
  * ```
  */
 
-import { release, startAnimation, tryAcquire } from '$lib/modules/gesture';
-import { generateId, normalizeWheelDelta } from '$lib/modules/gesture/core/utils';
 import type { Action } from 'svelte/action';
+import { release, startAnimation, tryAcquire } from '../../../core/arena.svelte';
+import { generateId, normalizeWheelDelta } from '../../../core/utils';
 import type { PointerPhase, PointerTrack, WheelPhase } from '../types';
 import type { SwipeOptions, SwipeState } from './types';
 import { createPointerTrack } from './utils';
@@ -280,7 +280,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				resetPointer();
 				return;
 			}
-
+			console.log('tryAcquire', leadingTrack.startX, leadingTrack.startY);
 			const direction = dx > 0 ? 1 : -1;
 			const granted = tryAcquire({
 				id,

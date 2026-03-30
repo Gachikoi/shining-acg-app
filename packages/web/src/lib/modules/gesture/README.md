@@ -46,7 +46,7 @@
 **使用场景**：`StackItem` 的屏幕边缘右滑退出 (Pop)。
 **规则**：
 
-- 通过 `use:edgeZone={{ width: 24, axis: 'x' }}` 注册边缘区域。
+- 通过 `use:edgeZone={{ left: 24 }}` 注册边缘区域。
 - 当子手势（如 `SwipeablePane` 的内部切换）在父级的左右 24px 边缘区域内触发时，**子手势会被竞技场拒绝**。
 - 子手势被拒绝后，由于用户的手指还在滑动，冒泡上来的事件会被父手势（`StackItem`）捕获，父手势因为拥有 `hasEdgePrivilege` 特权，从而成功接管控制权。
 
@@ -62,6 +62,9 @@
 
 ## 开发规范与注意事项
 
-1. **增加新手势**：必须调用 `tryAcquire` 并在获准后再执行 `setPointerCapture` 和 `preventDefault`。
+1. **增加新手势**：
+   - 必须调用 `tryAcquire` 并在获准后再执行 `preventDefault`；
+   - 尽量不用 `setPointerCapture`，它会与浏览器默认的隐式指针捕获行为发生冲突，除非你明确知道你需要的客制化行为；
+   - 一定要保证手势从开始检测到 `tryAcquire` 过程中全为同步代码。此手势系统依赖事件冒泡的同步执行来确保事件由子元素先处理后再由父元素处理，由此保证子元素上手势的优先级大于父元素。如果在 `tryAcquire` 之前事件处理函数中存在异步代码，则会打乱这种优先级。
 2. **Safari 兼容**：在 `pending`（方向未决）阶段，通过精确计算 `dx` 和 `dy` 动态决定是否 `e.preventDefault()` 以规避 Safari 移动端自带的橡皮筋拦截，不能无脑 preventDefault。
 3. **指针补救 (Auto Recovery)**：如果手势在一开始被判定为无效方向释放了指针，但用户未松手且改变了方向，`onPointerMove` 中的 `autoRecovery` 逻辑会重新发起手势追踪。

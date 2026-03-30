@@ -3,6 +3,7 @@
   @description
   个人资料页 Stack 模组手动测试用的全屏子页：展示标题与说明、命令式 pop，
   以及通过 `queryStatus` 配合布局里 StackContainer 的 maxVisible 做可见性裁剪的手动验证。
+  另支持将 `/app/home` 同构的 Feed + SwipeablePane 压栈，便于在栈顶全屏场景下手势竞技场（arena）联调。
 -->
 <script lang="ts">
 	import { stackController } from '$lib/components/custom/stack';
@@ -18,6 +19,12 @@
 	 */
 	const loadSelfPane = (() =>
 		import('./profile-stack-test-pane.svelte')) as unknown as ComponentLoader;
+
+	/**
+	 * 懒加载首页（与 `routes/app/home/+page.svelte` 同文件），用于栈顶全屏下测 SwipeablePane / gesture arena。
+	 * Home 无对外 props；`as unknown` 与 `loadSelfPane` 同理，规避泛型与 Svelte 组件推断不一致。
+	 */
+	const loadHomePage = (() => import('../home/+page.svelte')) as unknown as ComponentLoader;
 
 	/** 子页内「带 rect 入栈」动画的起点：下方小块的 DOM 引用 */
 	let rectPushAnchorEl = $state<HTMLDivElement | null>(null);
@@ -77,6 +84,18 @@
 			},
 			rectInfo: rectFromElement(rectPushAnchorEl),
 			ignoreSafeArea: true
+		});
+	}
+
+	/**
+	 * 将 Home（Feed + SwipeablePane）压入栈顶，用于手势竞技场与栈手势（右滑出栈等）联调。
+	 *
+	 * @returns void
+	 */
+	function pushHomePage(): void {
+		stackController.push({
+			loader: loadHomePage,
+			props: {}
 		});
 	}
 
@@ -196,6 +215,20 @@
 				push 子页 + rectInfo
 			</Button>
 		</div>
+	</section>
+
+	<!--
+		Home 全屏内容：分类 Tab + SwipeablePane（内部注册 scrollBoundary / 与父级 Stack 手势协同），
+		用于在栈顶环境复现并调试 gesture arena。
+	-->
+	<section class="space-y-2 rounded-lg border border-amber-800/30 bg-amber-50/90 p-3 text-left">
+		<p class="text-sm font-medium text-amber-950">Home（Feed / arena）</p>
+		<p class="text-xs leading-relaxed text-muted-foreground">
+			压栈后栈顶为与 /app/home 相同的首页 UI；可横向滑分类、并与右滑出栈对比行为。
+		</p>
+		<Button type="button" size="sm" variant="secondary" onclick={pushHomePage}>
+			push Home（+page）
+		</Button>
 	</section>
 
 	<!-- 栈顶内命令式 pop：与 /app/profile 上 ④⑤ 等价，便于不返回资料页即可复测 -->

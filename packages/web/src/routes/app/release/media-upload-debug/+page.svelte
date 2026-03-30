@@ -1,11 +1,11 @@
 <!-- eslint-disable -->
 <script lang="ts">
 	// @ts-nocheck
-	import { onDestroy, onMount } from 'svelte';
 	import type { UppyFile } from '@uppy/core';
+	import { onDestroy, onMount } from 'svelte';
 
+	import type { V1MediaAsset, V1MediaScene } from '$lib/api';
 	import { mediaServiceAbortMultipartUpload } from '$lib/api';
-	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
 	import type {
 		BatchProgressEvent,
 		MediaUploader,
@@ -13,7 +13,7 @@
 		PrepareUploadParams,
 		PrepareUploadSelection
 	} from '$lib/modules/media-uploader';
-	import type { V1MediaAsset, V1MediaScene } from '$lib/api';
+	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
 
 	type UppyMultipartFile = UppyFile<MediaUploadMeta, Record<string, never>> & {
 		s3Multipart?: {

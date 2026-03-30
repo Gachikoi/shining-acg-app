@@ -257,7 +257,9 @@
 			stackController.setSwipeState({ ...state, type: 'onMove' });
 
 			if (isTop && item.rectInfo) {
-				isSwipeRightScaleDown = true;
+				if (state.deltaX > 0) {
+					isSwipeRightScaleDown = true;
+				}
 				moveAndScaleTo(
 					state.deltaX,
 					state.deltaY,
@@ -267,7 +269,6 @@
 			} else if (isTop && !item.rectInfo) {
 				panTo(state.deltaX, { withAnimation: false });
 			} else if (isSecondaryTop && hasNext && stackController.isPushingNext) {
-				console.log(true);
 				panTo(state.deltaX * 0.5, { withAnimation: false });
 			}
 
@@ -410,27 +411,6 @@
 			} else if (state.type === 'onEnd') {
 				if (isSecondaryTop && !stackController.top?.rectInfo && !stackController.isPushingNext) {
 					const half = el!.clientWidth / 2;
-					/**
-					 * 与 `swipe.onEnd` 中第二层逻辑对齐的终点 translateX（本 effect 同步「非指针层」）：
-					 * - 右滑且 committed：顶层收全屏，第二层回 0
-					 * - 右滑且未 committed：取消右滑，第二层保持侧让位 -half
-					 * - 左滑且 committed：进入 next 布局，第二层到 -half
-					 * - 左滑且未 committed：取消左滑须回 0；旧实现把「非 right+committed」一律设为 -half，
-					 *   会覆盖手势层刚执行的 `panTo(0)`，表现为停在 -half
-					 */
-					// const targetX =
-					// 	state.direction === 'right' && state.committed
-					// 		? 0
-					// 		: state.direction === 'right' && !state.committed
-					// 			? -half
-					// 			: state.direction === 'left' && state.committed
-					// 				? -half
-					// 				: state.direction === 'left' && !state.committed
-					// 					? 0
-					// 					: -half;
-
-					console.log(state.direction, state.velocityX, state.deltaX, state.committed);
-					// await panTo(targetX, { withAnimation: true, needClamp: false });
 					if (state.direction === 'right' && state.committed) {
 						await panTo(0, { withAnimation: true, needClamp: false });
 					} else {
@@ -538,7 +518,7 @@
 	style:transform-origin={transformOrigin}
 	class={`fixed inset-0 bg-background ${item.ignoreSafeArea ? '' : `pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}`}
 	use:swipe={swipeOptions}
-	use:edgeZone={{ width: 24, axis: 'x' }}
+	use:edgeZone={{ left: 24 }}
 >
 	{#if DynamicComponent}
 		<DynamicComponent {...item.props} bind:this={componentEl} />

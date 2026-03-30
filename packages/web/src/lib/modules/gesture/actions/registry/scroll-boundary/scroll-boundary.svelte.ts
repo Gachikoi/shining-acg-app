@@ -22,6 +22,35 @@ import type { Axis } from '../../../core/types';
 import type { ScrollBoundaryOptions } from './types';
 
 /**
+ * 内置实现：用 DOM 滚动量判断某轴+方向是否还有余量。
+ *
+ * @param node - 可滚动节点
+ * @param queryAxis - 查询轴
+ * @param direction - 与 Arena / swipe 一致：正值表示指针向坐标增大方向移动
+ */
+function defaultDomCanScroll(node: HTMLElement, queryAxis: Axis, direction: number): boolean {
+	const EPSILON = 1;
+
+	if (queryAxis === 'x') {
+		const maxScrollLeft = node.scrollWidth - node.clientWidth;
+		if (maxScrollLeft <= 0) return false;
+
+		if (direction > 0) {
+			return node.scrollLeft > EPSILON;
+		}
+		return node.scrollLeft < maxScrollLeft - EPSILON;
+	}
+
+	const maxScrollTop = node.scrollHeight - node.clientHeight;
+	if (maxScrollTop <= 0) return false;
+
+	if (direction > 0) {
+		return node.scrollTop > EPSILON;
+	}
+	return node.scrollTop < maxScrollTop - EPSILON;
+}
+
+/**
  * 滚动边界声明 Svelte Action
  *
  * @param node - 可滚动的 DOM 元素
@@ -54,34 +83,13 @@ export const scrollBoundary: Action<HTMLElement, ScrollBoundaryOptions | undefin
 			 * @returns true 表示还能滚动（子处理），false 表示到边界（让渡给父）
 			 */
 			canScroll(queryAxis: Axis, direction: number): boolean {
-				// 如果注册的 axis 不匹配查询轴，不参与该轴的让渡判断
 				if (axis !== 'both' && axis !== queryAxis) return false;
 
-				// 容忍 1px 浮点误差
-				const EPSILON = 1;
-
-				if (queryAxis === 'x') {
-					const maxScrollLeft = node.scrollWidth - node.clientWidth;
-					if (maxScrollLeft <= 0) return false;
-
-					if (direction > 0) {
-						// 指针右移 → 内容需要能左滚 → scrollLeft > 0
-						return node.scrollLeft > EPSILON;
-					}
-					// 指针左移 → 内容需要能右滚 → scrollLeft < max
-					return node.scrollLeft < maxScrollLeft - EPSILON;
+				if (opts.canScroll) {
+					return opts.canScroll(queryAxis, direction);
 				}
 
-				// queryAxis === 'y'
-				const maxScrollTop = node.scrollHeight - node.clientHeight;
-				if (maxScrollTop <= 0) return false;
-
-				if (direction > 0) {
-					// 指针下移 → 内容需要能上滚 → scrollTop > 0
-					return node.scrollTop > EPSILON;
-				}
-				// 指针上移 → 内容需要能下滚 → scrollTop < max
-				return node.scrollTop < maxScrollTop - EPSILON;
+				return defaultDomCanScroll(node, queryAxis, direction);
 			}
 		});
 	}

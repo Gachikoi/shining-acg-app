@@ -23,8 +23,9 @@
 -->
 <script lang="ts">
 	import { shiningBridge } from '$lib/modules/bridge';
-	import type { Axis, SwipeState } from '$lib/modules/gesture';
-	import { registerScrollBoundary, swipe } from '$lib/modules/gesture';
+	import type { SwipeState } from '$lib/modules/gesture';
+	import type { Axis } from '$lib/modules/gesture/core/types';
+	import { scrollBoundary, swipe } from '$lib/modules/gesture';
 	import { onMount, untrack } from 'svelte';
 	import type { SwipeablePaneProps } from './types';
 	import { buildPanels, inspectVisualState, type PanelTuple } from './utils';
@@ -59,22 +60,6 @@
 			}
 		});
 		observer.observe(containerEl.parentElement);
-
-		// 注册边缘让渡
-		const unregister = registerScrollBoundary(containerEl.parentElement, {
-			axis: 'x',
-			canScroll(queryAxis: Axis, direction: number): boolean {
-				if (queryAxis !== 'x') return false;
-				// direction > 0: 右滑 → 去上一页，需 windowCenterIndex > 0
-				// direction < 0: 左滑 → 去下一页，需未到末项
-				if (direction > 0) return currentIndex > 0;
-				return currentIndex < categories.length - 1;
-			}
-		});
-		return () => {
-			observer.disconnect();
-			unregister();
-		};
 	});
 
 	// ─── 动画 ─────────────────────────────────────────────
@@ -128,7 +113,7 @@
 		return Math.max(-limit, Math.min(limit, raw));
 	}
 
-	/**
+	/**i
 	 *
 	 * @param from 手势开始时捕获的基础偏移，用于动画初始值设定
 	 * @param to 偏移量（以 slot 1 为偏移量中心，负数表示向左偏移，正数表示向右偏移）
@@ -432,13 +417,31 @@
 		startJumpTransition(targetIndex);
 		shiningBridge.vibrate(LIGHT_IMPACT_VIBRATION_OPTION);
 	}
+
+	/**
+	 * 虚拟横向滚动边界：内容区用 transform 平移而非 overflow 滚动，默认 `scrollBoundary` 的 DOM 测量会把
+	 * `scrollLeft === 0` 误判为「不能向右滚」，导致手指右移（direction > 0、切到上一分类）时 tryAcquire 失败。
+	 * 此处按当前 tab 索引声明是否仍有「向内」滑动余量，与 `clampOffset` 一致。
+	 */
+	let scrollBoundaryOptions = $derived({
+		axis: 'x' as const,
+		canScroll: (queryAxis: Axis, direction: number) => {
+			if (queryAxis !== 'x') return false;
+			if (direction > 0) return currentIndex > 0;
+			if (direction < 0) return currentIndex < categories.length - 1;
+			return false;
+		}
+	});
 </script>
 
-<div class="relative h-full w-full overflow-hidden">
+<div
+	class="relative h-full w-full overflow-hidden"
+	use:swipe={swipeOptions}
+	use:scrollBoundary={scrollBoundaryOptions}
+>
 	<div
 		class="absolute flex h-full w-[300%] touch-none overflow-hidden will-change-transform"
 		bind:this={containerEl}
-		use:swipe={swipeOptions}
 	>
 		{#each panels as panel, index (panel?.category?.value || index)}
 			<div class="h-full w-1/3" bind:this={panelSlotRoots[index]}>
