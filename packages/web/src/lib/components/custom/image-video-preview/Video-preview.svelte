@@ -192,10 +192,10 @@
 					step="0.001"
 					value={videoProgress}
 					class="h-0.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
-					style={`background: linear-gradient(to right, rgb(161 161 170) 0%, rgb(161 161 170) ${Math.max(
+					style={`background: linear-gradient(to right, rgb(39 39 42) 0%, rgb(39 39 42) ${Math.max(
 						0,
 						Math.min(100, videoProgress * 100)
-					)}%, rgb(39 39 42) ${Math.max(0, Math.min(100, videoProgress * 100))}%, rgb(39 39 42) 100%);`}
+					)}%, rgb(161 161 170) ${Math.max(0, Math.min(100, videoProgress * 100))}%, rgb(161 161 170) 100%);`}
 					oninput={handleProgressChange}
 					onmousedown={handleProgressMouseDown}
 					onmouseup={handleProgressMouseUp}

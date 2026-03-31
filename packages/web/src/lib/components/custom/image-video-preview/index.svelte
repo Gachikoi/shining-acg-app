@@ -24,6 +24,7 @@
 	import { scrollBoundary, swipe, tap, longPress, type SwipeState } from '$lib/modules/gesture';
 	import ImagePreview from './Image-preview.svelte';
 	import VideoPreview from './Video-preview.svelte';
+	import { applyCommittedCarouselSwipe, computeImageSwipeMove } from './image-preview-swipe-logic';
 
 	let {
 		open = $bindable(false),
@@ -97,18 +98,26 @@
 	let imageEdgePullDy = $state(0);
 	/** 飞回槽位动画进行中：保持 open 直至结束，避免下层媒体区提前露出 */
 	let isFlyClosing = $state(false);
+	/** 首尾边缘拖拽未达阈值：弹回收尾定时器（撤帖内遮罩等），与 `IMAGE_EDGE_SPRING_MS` 对齐 */
+	let edgeSpringCloseTimer: ReturnType<typeof setTimeout> | null = null;
 	let isPanning = $state(false);
+
+	function clearEdgeSpringCloseTimer() {
+		if (edgeSpringCloseTimer !== null) {
+			clearTimeout(edgeSpringCloseTimer);
+			edgeSpringCloseTimer = null;
+		}
+	}
 	let gestureContainerEl: HTMLElement | null = $state(null);
 	let dialogEl: HTMLDivElement | null = $state(null);
 	// 刚打开预览后一段时间内忽略关闭（避免移动端「打开」触发的合成 click 落在预览层上误关）
 	let lastOpenedAt = 0;
 	const TAP_IGNORE_AFTER_OPEN_MS = 420;
 	const TAP_PAUSE_IGNORE_PLAY_MS = 220;
-	const PAN_MAX_OFFSET_RATIO = 1.2;
 	/** 拖拽位移超过 min(宽,高)×该比例且松手时，触发飞回槽位（仅图片） */
 	const IMAGE_EDGE_DISMISS_RATIO = 0.2;
-	/** 与 Image-preview 中缩放层过渡（约 880ms）对齐并留余量 */
-	const IMAGE_EDGE_SPRING_MS = 920;
+	/** 与 `Image-preview` 的 `EDGE_SPRING_S`（1.15s）对齐并留余量 */
+	const IMAGE_EDGE_SPRING_MS = 1150;
 	// 轻击暂停后短时间忽略播放（避免同一次触摸的合成 click 触发播放按钮）
 	let lastPausedByTapTime = 0;
 	// 长按边缘 2x 倍速：松手恢复 1x，并显示提示（与中间区域长按下载菜单互斥）
@@ -177,17 +186,33 @@
 		return imageEdgePullDy;
 	});
 
-	/** 全屏黑底随拖拽变淡，透出下层帖内空白区 */
-	const dialogEdgeBackdropStyle = $derived.by(() => {
-		if (!fullScreen || !isImage || imageEdgePullDist === 0) return '';
+	/**
+	 * 全屏黑底透明度（1=纯黑）。与拖拽位移同步；松手弹回时配合 `edgePullBackdropTransition` 做 CSS 过渡，避免与图片 transform 弹回脱节。
+	 */
+	let imageEdgeBackdropAlpha = $state(1);
+	let edgePullBackdropTransition = $state(false);
+
+	/**
+	 * @param dist - 边缘拖拽位移长度（px）
+	 * @returns 与原先 `dialogEdgeBackdropStyle` 一致的黑底 alpha
+	 */
+	function pullDistToBackdropAlpha(dist: number): number {
 		const r = gestureContainerEl?.getBoundingClientRect();
 		const w = r?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 400);
 		const h = r?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 400);
 		const denom = Math.min(w, h) * IMAGE_EDGE_PULL_DENOM_RATIO;
-		const t = Math.min(1, imageEdgePullDist / denom);
-		const alpha = Math.max(0.04, 1 - 0.9 * t);
-		return `background-color: rgba(0,0,0,${alpha});`;
-	});
+		const t = Math.min(1, dist / denom);
+		return Math.max(0.04, 1 - 0.9 * t);
+	}
+
+	function syncImageEdgeBackdropAlpha() {
+		if (!fullScreen || !isImage) {
+			imageEdgeBackdropAlpha = 1;
+			return;
+		}
+		const d = Math.hypot(imageEdgePullDx, imageEdgePullDy);
+		imageEdgeBackdropAlpha = d > 0 ? pullDistToBackdropAlpha(d) : 1;
+	}
 
 	// 控制条不再自动隐藏（已取消自动隐藏功能）
 	function stopControlsHideTimer() {
@@ -217,6 +242,9 @@
 	// 监听 open 变化，重置状态
 	$effect(() => {
 		if (open) {
+			clearEdgeSpringCloseTimer();
+			edgePullBackdropTransition = false;
+			imageEdgeBackdropAlpha = 1;
 			lastOpenedAt = Date.now();
 			isVideoPlaying = false;
 			lastAutoplayKey = null;
@@ -427,17 +455,11 @@
 		setTimeout(cleanup, MAX_MS + 60);
 	}
 
-	/**
-	 * 取消边缘拖拽后，待弹簧结束再撤帖内空白，避免下层图与全屏回弹不同步
-	 */
-	function scheduleEdgePullBlankAfterSpring() {
-		setTimeout(() => {
-			edgePullBlank = false;
-		}, IMAGE_EDGE_SPRING_MS);
-	}
-
 	/** 关闭预览；飞回流程在 {@link flyImageCloseToSlot} 结束处调用 */
 	function handleClose() {
+		clearEdgeSpringCloseTimer();
+		edgePullBackdropTransition = false;
+		imageEdgeBackdropAlpha = 1;
 		blockClickThroughOnce();
 		onClose?.(currentIndex);
 		open = false;
@@ -448,11 +470,26 @@
 	}
 
 	/**
+	 * 全屏预览内当前帧图片在视口中的显示矩形（`object-fit: contain` 后的真实框，非 gesture 容器）。
+	 *
+	 * @returns 无节点或尺寸无效时 null
+	 */
+	function getPreviewFlySourceRect(): DOMRect | null {
+		const host = gestureContainerEl;
+		if (!host) return null;
+		const img = host.querySelector<HTMLImageElement>('[data-preview-fly-source]');
+		const r = img?.getBoundingClientRect();
+		if (!r || r.width < 2 || r.height < 2) return null;
+		return r;
+	}
+
+	/**
 	 * 图片边缘拖拽达到阈值：先记录几何 → 隐藏全屏层但保持 open → 飞行动画结束后再 handleClose（帖内空白与预览同时撤）
 	 *
 	 * @returns Promise，动画结束或降级关闭后 resolve
 	 */
 	function flyImageCloseToSlot(): Promise<void> {
+		clearEdgeSpringCloseTimer();
 		const media = currentMedia;
 		const idx = currentIndex;
 		const host = gestureContainerEl;
@@ -460,7 +497,7 @@
 			handleClose();
 			return Promise.resolve();
 		}
-		const fromRect = host.getBoundingClientRect();
+		const fromRect = getPreviewFlySourceRect() ?? host.getBoundingClientRect();
 		const src = getMediaDisplayUrl(media);
 
 		isFlyClosing = true;
@@ -539,11 +576,6 @@
 		downloadPopoverOpen = true;
 	}
 
-	// function openDownloadMenuNearElement(el: HTMLElement) {
-	// 	const rect = el.getBoundingClientRect();
-	// 	openDownloadMenuAtPoint(rect.right - 6, rect.top - 6);
-	// }
-
 	// 统一轻击逻辑（含 PC click / 移动端 tap）：
 	// - 点下载菜单不触发其它动作
 	// - 点视频控制区/播放按钮交给控件自身处理
@@ -585,97 +617,38 @@
 		handleClose();
 	}
 
-	// 同一交互层上 swipe + tap + long-press，通过位移阈值与时序避免竞态/误触
+	// 同一交互层上 swipe + tap + long-press
 	const swipeOptions = $derived.by(() => ({
 		onStart() {
+			const hadPendingSettle = edgeSpringCloseTimer !== null;
+			clearEdgeSpringCloseTimer();
+			edgePullBackdropTransition = false;
+			if (hadPendingSettle) {
+				edgePullBlank = false;
+			}
 			isPanning = true;
 			imageEdgePullDx = 0;
 			imageEdgePullDy = 0;
+			syncImageEdgeBackdropAlpha();
 		},
 		onMove(state: SwipeState) {
-			const dx = state.deltaX;
-			const dy = state.deltaY;
 			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
-			const max = w * PAN_MAX_OFFSET_RATIO;
-			const atFirst = currentIndex === 0;
-			const atLast = currentIndex === mediaList.length - 1;
-			const single = mediaList.length === 1;
-			const horizontalDominant = Math.abs(dx) >= Math.abs(dy) * 1.1;
-
-			// PC：图片仅横向分页跟手，禁用边缘回弹/飞回/帖内空白联动（移动端保留完整动效）
-			if (!isMobile && isImage) {
-				imageEdgePullDx = 0;
-				imageEdgePullDy = 0;
-				edgePullBlank = false;
-				if (mediaList.length <= 1) {
-					panOffsetX = 0;
-					return;
-				}
-				panOffsetX = Math.max(-max, Math.min(max, dx));
-				return;
-			}
-
-			if (!isImage) {
-				imageEdgePullDx = 0;
-				imageEdgePullDy = 0;
-				edgePullBlank = false;
-				panOffsetX = Math.max(-max, Math.min(max, dx));
-				return;
-			}
-
-			if (single) {
-				imageEdgePullDx = dx;
-				imageEdgePullDy = dy;
-				panOffsetX = 0;
-				edgePullBlank = true;
-				return;
-			}
-
-			if (atFirst) {
-				if (horizontalDominant && dx <= 0) {
-					imageEdgePullDx = 0;
-					imageEdgePullDy = 0;
-					edgePullBlank = false;
-					panOffsetX = Math.max(-max, Math.min(max, dx));
-					return;
-				}
-				imageEdgePullDx = dx;
-				imageEdgePullDy = dy;
-				panOffsetX = 0;
-				edgePullBlank = true;
-				return;
-			}
-
-			if (atLast) {
-				if (horizontalDominant && dx >= 0) {
-					imageEdgePullDx = 0;
-					imageEdgePullDy = 0;
-					edgePullBlank = false;
-					panOffsetX = Math.max(-max, Math.min(max, dx));
-					return;
-				}
-				imageEdgePullDx = dx;
-				imageEdgePullDy = dy;
-				panOffsetX = 0;
-				edgePullBlank = true;
-				return;
-			}
-
-			if (horizontalDominant) {
-				imageEdgePullDx = 0;
-				imageEdgePullDy = 0;
-				edgePullBlank = false;
-				panOffsetX = Math.max(-max, Math.min(max, dx));
-				return;
-			}
-
-			imageEdgePullDx = dx;
-			imageEdgePullDy = dy;
-			panOffsetX = 0;
-			edgePullBlank = true;
+			const m = computeImageSwipeMove({
+				deltaX: state.deltaX,
+				deltaY: state.deltaY,
+				containerWidth: w,
+				currentIndex,
+				mediaCount: mediaList.length,
+				isMobile,
+				isImage
+			});
+			panOffsetX = m.panOffsetX;
+			imageEdgePullDx = m.imageEdgePullDx;
+			imageEdgePullDy = m.imageEdgePullDy;
+			edgePullBlank = m.edgePullBlank;
+			syncImageEdgeBackdropAlpha();
 		},
 		onEnd(state: SwipeState) {
-			isPanning = false;
 			const rect = gestureContainerEl?.getBoundingClientRect();
 			const w = rect?.width ?? 400;
 			const h = rect?.height ?? 400;
@@ -684,38 +657,61 @@
 			const pdy = imageEdgePullDy;
 			const pullDist = Math.hypot(pdx, pdy);
 			const thresholdPx = minDim * IMAGE_EDGE_DISMISS_RATIO;
-
 			const wasImageFreePull = isImage && edgePullBlank;
 
 			if (wasImageFreePull) {
-				imageEdgePullDx = 0;
-				imageEdgePullDy = 0;
 				panOffsetX = 0;
 				if (pullDist >= thresholdPx) {
+					isPanning = false;
+					imageEdgePullDx = 0;
+					imageEdgePullDy = 0;
+					syncImageEdgeBackdropAlpha();
 					void flyImageCloseToSlot();
-				} else {
-					scheduleEdgePullBlankAfterSpring();
+					return;
 				}
+				// 未达飞回阈值：弹回后保持全屏；仅撤帖内遮罩（与 `IMAGE_EDGE_SPRING_MS` 对齐）
+				isPanning = false;
+				edgePullBackdropTransition = true;
+				requestAnimationFrame(() => {
+					imageEdgePullDx = 0;
+					imageEdgePullDy = 0;
+					requestAnimationFrame(() => {
+						imageEdgeBackdropAlpha = 1;
+					});
+					clearEdgeSpringCloseTimer();
+					edgeSpringCloseTimer = setTimeout(() => {
+						edgeSpringCloseTimer = null;
+						edgePullBackdropTransition = false;
+						edgePullBlank = false;
+					}, IMAGE_EDGE_SPRING_MS);
+				});
 				return;
 			}
 
+			isPanning = false;
 			imageEdgePullDx = 0;
 			imageEdgePullDy = 0;
 			edgePullBlank = false;
+			syncImageEdgeBackdropAlpha();
 
-			if (state.committed && mediaList.length > 0) {
-				if (state.direction === 'right') prevMedia();
-				else nextMedia();
-			}
+			// 首尾横向橡皮筋：committed 不代表「退出预览」，仅在有邻页时才 prev/next（否则会误调 `prevMedia`/`nextMedia` 内的 `handleClose`）
+			applyCommittedCarouselSwipe(state, {
+				mediaCount: mediaList.length,
+				currentIndex,
+				onPrev: prevMedia,
+				onNext: nextMedia
+			});
 			panOffsetX = 0;
 		}
 	}));
 
-	/** 虚拟横向分页：有媒体时声明 x 轴仍有“余量”，避免 arena 把本层 swipe 让给底层 SwipeablePane */
+	/**
+	 * 全屏打开时始终声明横向仍有余量，避免首页 SwipeablePane 在同轴上抢手势（与 post-media-area 外层 shield 双保险）。
+	 */
 	const previewScrollBoundaryOpts = $derived.by(() => ({
 		axis: 'x' as const,
 		canScroll(queryAxis: 'x' | 'y', _direction: number) {
-			return queryAxis === 'x' && mediaList.length > 0;
+			return queryAxis === 'x' && open && mediaList.length > 0;
 		}
 	}));
 
@@ -1196,12 +1192,18 @@
 		bind:this={dialogEl}
 		class={cn(
 			'fixed inset-0 z-60 flex flex-col items-center justify-center',
-			fullScreen && !(isImage && imageEdgePullDist > 0) ? 'bg-black' : '',
+			fullScreen && !isImage ? 'bg-black' : '',
 			!fullScreen ? 'bg-zinc-100' : '',
 			isFlyClosing && 'pointer-events-none opacity-0',
 			className
 		)}
-		style={dialogEdgeBackdropStyle}
+		style={fullScreen && isImage
+			? `background-color: rgba(0,0,0,${imageEdgeBackdropAlpha});${
+					edgePullBackdropTransition
+						? 'transition: background-color 1.15s cubic-bezier(0.2, 0.92, 0.35, 1);'
+						: ''
+				}`
+			: undefined}
 		onkeydown={handleDialogKeyDown}
 	>
 		<!-- 关闭按钮 -->

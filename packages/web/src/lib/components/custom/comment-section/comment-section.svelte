@@ -512,6 +512,26 @@
 		e.stopPropagation();
 		openReplyEditor(reply);
 	}
+
+	/**
+	 * 头像：加载失败时隐藏 img，仅显示外层圆形容器背景（无 alt 文案占位）。
+	 *
+	 * @param e - img error 事件
+	 */
+	function onCommentAvatarImageError(e: Event) {
+		const el = e.currentTarget;
+		if (el instanceof HTMLImageElement) el.style.display = 'none';
+	}
+
+	/**
+	 * 评论附图：加载失败时隐藏 img，仅显示按钮背景。
+	 *
+	 * @param e - img error 事件
+	 */
+	function onCommentAttachmentImageError(e: Event) {
+		const el = e.currentTarget;
+		if (el instanceof HTMLImageElement) el.style.display = 'none';
+	}
 </script>
 
 {#snippet commentImagesAttachments(images: V1MediaAsset[], compact: boolean)}
@@ -520,7 +540,7 @@
 			<button
 				type="button"
 				class={cn(
-					'mt-2 block w-full overflow-hidden rounded-md border border-zinc-200/90 text-left dark:border-zinc-700',
+					'mt-2 block w-full overflow-hidden rounded-md border border-zinc-200/90 bg-zinc-100 text-left dark:border-zinc-700 dark:bg-zinc-800',
 					compact ? 'max-w-48' : 'max-w-sm'
 				)}
 				onclick={() => openCommentImagePreview(images, 0)}
@@ -528,8 +548,10 @@
 				<img
 					src={getMediaDisplayUrl(images[0])}
 					alt=""
+					role="presentation"
 					class="aspect-4/3 max-h-72 w-full object-cover"
 					loading="lazy"
+					onerror={onCommentAttachmentImageError}
 				/>
 			</button>
 		{:else}
@@ -545,14 +567,16 @@
 				{#each getGridSlotIndices(total) as slotIdx (slotIdx)}
 					<button
 						type="button"
-						class="relative aspect-square w-full overflow-hidden rounded-md border border-zinc-200/90 text-left dark:border-zinc-700"
+						class="relative aspect-square w-full overflow-hidden rounded-md border border-zinc-200/90 bg-zinc-100 text-left dark:border-zinc-700 dark:bg-zinc-800"
 						onclick={() => openCommentImagePreview(images, slotIdx)}
 					>
 						<img
 							src={getMediaDisplayUrl(images[slotIdx])}
 							alt=""
+							role="presentation"
 							class="h-full w-full object-cover"
 							loading="lazy"
+							onerror={onCommentAttachmentImageError}
 						/>
 						{#if showBadge && slotIdx === 2}
 							<span
@@ -615,11 +639,17 @@
 				{#if comment.author?.userId && currentUserId && comment.author.userId === currentUserId}
 					<a href={resolve('/app/profile')}>
 						{#if comment.author?.avatar}
-							<img
-								class="size-8 cursor-pointer rounded-full object-cover"
-								src={comment.author.avatar}
-								alt=""
-							/>
+							<div
+								class="size-8 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+							>
+								<img
+									class="size-8 cursor-pointer rounded-full object-cover"
+									src={comment.author.avatar}
+									alt=""
+									role="presentation"
+									onerror={onCommentAvatarImageError}
+								/>
+							</div>
 						{:else}
 							<div class="size-8 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
 						{/if}
@@ -627,7 +657,17 @@
 				{:else}
 					<div class="shrink-0" role="presentation" onclick={(e) => e.stopPropagation()}>
 						{#if comment.author?.avatar}
-							<img class="size-8 rounded-full object-cover" src={comment.author.avatar} alt="" />
+							<div
+								class="size-8 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+							>
+								<img
+									class="size-8 rounded-full object-cover"
+									src={comment.author.avatar}
+									alt=""
+									role="presentation"
+									onerror={onCommentAvatarImageError}
+								/>
+							</div>
 						{:else}
 							<div class="size-8 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
 						{/if}
@@ -745,11 +785,17 @@
 											{#if reply.author?.userId && currentUserId && reply.author.userId === currentUserId}
 												<a href={resolve('/app/profile')} class="shrink-0">
 													{#if reply.author?.avatar}
-														<img
-															class="size-6 rounded-full object-cover"
-															src={reply.author.avatar}
-															alt=""
-														/>
+														<div
+															class="size-6 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+														>
+															<img
+																class="size-6 rounded-full object-cover"
+																src={reply.author.avatar}
+																alt=""
+																role="presentation"
+																onerror={onCommentAvatarImageError}
+															/>
+														</div>
 													{:else}
 														<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
 													{/if}
@@ -761,11 +807,17 @@
 													onclick={(e) => e.stopPropagation()}
 												>
 													{#if reply.author?.avatar}
-														<img
-															class="size-6 rounded-full object-cover"
-															src={reply.author.avatar}
-															alt=""
-														/>
+														<div
+															class="size-6 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+														>
+															<img
+																class="size-6 rounded-full object-cover"
+																src={reply.author.avatar}
+																alt=""
+																role="presentation"
+																onerror={onCommentAvatarImageError}
+															/>
+														</div>
 													{:else}
 														<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
 													{/if}

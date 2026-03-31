@@ -8,14 +8,46 @@ import type {
 	V1CommentStats,
 	V1CommentRelationStatus
 } from '$lib/api';
-import { MOCK_PICSUM_WIDTH, mockPicsumImageUrl } from '$lib/test/mock-picsum-url';
+
+/**
+ * 历史兼容：曾用于纯色 SVG 占位宽度；帖内 mock 现改用 {@link FIXED_IMAGE_SPECS} 的固定外链。
+ */
+export const MOCK_IMAGE_WIDTH = 400;
+
+/**
+ * FNV-1a 32bit，将任意 seed 映射为稳定整数（用于 mock 填色）。
+ */
+function fnv1a32(seed: string): number {
+	let h = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) {
+		h ^= seed.charCodeAt(i);
+		h = Math.imul(h, 16777619) >>> 0;
+	}
+	return h >>> 0;
+}
+
+/**
+ * 由 seed 确定性生成纯色 SVG data URL，无外链；瀑布流封面与帖内 mock 图共用。
+ *
+ * @param width - 逻辑宽度
+ * @param height - 逻辑高度
+ * @param seed - 不同 id 得到不同填充色
+ */
+export function mockImageDataUrlFromSeed(width: number, height: number, seed: string): string {
+	const h = fnv1a32(String(seed));
+	const r = (h & 255).toString(16).padStart(2, '0');
+	const g = ((h >>> 8) & 255).toString(16).padStart(2, '0');
+	const b = ((h >>> 16) & 255).toString(16).padStart(2, '0');
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect fill="#${r}${g}${b}" width="100%" height="100%"/></svg>`;
+	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
 
 /**
  * 开发/联调时无后端可用，用此 mock 数据生成帖子与评论。
  * `getMockPost` 和 `getMockPostComments` 被 `api-mock.ts` 复用。
  * 字段形状严格对齐 `$lib/api`（types.gen.ts）。
  * 评论可含附图：`MEDIA_SCENE_COMMENT_MEDIA`，见 `makeCommentImageMedia` 与 c1 / c1-r2 / i%7===0 等样例。
- * 图片 URL 统一由 `$lib/test/mock-picsum-url` 生成；视频使用公开样例 MP4 + picsum 作封面。
+ * 帖内/评论附图使用固定 `picsum.photos` 外链（真实照片、多种宽高比，非 SVG 色块矩形）；视频使用公开样例 MP4 + 固定封面图。
  */
 
 const nowMs = Date.now();
@@ -92,26 +124,84 @@ function pickUserIdentity(user: UserSummary): { userId: string; userName: string
 	};
 }
 
-/** 可公开访问的短视频样例（仅作 mock 播放；封面用 {@link mockPicsumImageUrl}） */
+/** 可公开访问的短视频样例（仅作 mock 播放；封面见 {@link VIDEO_POSTER_SPEC}） */
 const MOCK_SAMPLE_MP4 = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 
-/** 评论附图（场景为 COMMENT_MEDIA，与发帖媒体区分） */
-function makeCommentImageMedia(
-	id: string,
-	height: number,
-	mimeType: string,
-	orderIndex: number
-): Media {
-	const m = makeImageMedia(id, height, mimeType, orderIndex);
-	return { ...m, scene: 'MEDIA_SCENE_COMMENT_MEDIA' };
+/**
+ * 固定外链 + 与展示一致的逻辑尺寸（picsum 按 id 稳定出图，路径宽高仅影响请求，便于区分横竖方图）。
+ */
+type FixedImageSpec = { url: string; width: number; height: number; mimeType: string };
+
+/** 帖子正文多图：多种宽高比，避免均为「扁矩形色块」观感 */
+const POST_IMAGE_SPECS: FixedImageSpec[] = [
+	{
+		url: 'https://picsum.photos/id/29/400/600',
+		width: 400,
+		height: 600,
+		mimeType: 'image/jpeg'
+	},
+	{
+		url: 'https://picsum.photos/id/15/600/400',
+		width: 600,
+		height: 400,
+		mimeType: 'image/jpeg'
+	},
+	{
+		url: 'https://picsum.photos/id/48/500/500',
+		width: 500,
+		height: 500,
+		mimeType: 'image/jpeg'
+	},
+	{
+		url: 'https://picsum.photos/id/36/360/640',
+		width: 360,
+		height: 640,
+		mimeType: 'image/jpeg'
+	},
+	{
+		url: 'https://picsum.photos/id/42/800/400',
+		width: 800,
+		height: 400,
+		mimeType: 'image/jpeg'
+	}
+];
+
+/** 评论附图：与帖内区分的另一组固定 id */
+const COMMENT_IMAGE_SPECS: FixedImageSpec[] = [
+	{ url: 'https://picsum.photos/id/10/400/500', width: 400, height: 500, mimeType: 'image/jpeg' },
+	{ url: 'https://picsum.photos/id/28/520/380', width: 520, height: 380, mimeType: 'image/jpeg' },
+	{ url: 'https://picsum.photos/id/40/380/520', width: 380, height: 520, mimeType: 'image/jpeg' },
+	{ url: 'https://picsum.photos/id/54/480/480', width: 480, height: 480, mimeType: 'image/jpeg' }
+];
+
+const VIDEO_POSTER_SPEC: FixedImageSpec = {
+	url: 'https://picsum.photos/id/237/640/360',
+	width: 640,
+	height: 360,
+	mimeType: 'image/jpeg'
+};
+
+function pickSpec(specs: FixedImageSpec[], orderIndex: number): FixedImageSpec {
+	return specs[orderIndex % specs.length] ?? specs[0];
 }
 
-function makeImageMedia(id: string, height: number, mimeType: string, orderIndex: number): Media {
-	const url = mockPicsumImageUrl(height, id);
+/** 评论附图（场景为 COMMENT_MEDIA，与发帖媒体区分） */
+function makeCommentImageMedia(id: string, orderIndex: number): Media {
+	return makeImageMedia(id, orderIndex, 'MEDIA_SCENE_COMMENT_MEDIA', COMMENT_IMAGE_SPECS);
+}
+
+function makeImageMedia(
+	id: string,
+	orderIndex: number,
+	scene: Media['scene'] = 'MEDIA_SCENE_POST_MEDIA',
+	specs: FixedImageSpec[] = POST_IMAGE_SPECS
+): Media {
+	const spec = pickSpec(specs, orderIndex);
+	const url = spec.url;
 	return {
 		assetId: id,
 		type: 'MEDIA_TYPE_IMAGE',
-		scene: 'MEDIA_SCENE_POST_MEDIA',
+		scene,
 		status: 'MEDIA_STATUS_COMPLETED',
 		orderIndex,
 		single: {
@@ -121,11 +211,11 @@ function makeImageMedia(id: string, height: number, mimeType: string, orderIndex
 			objectKey: url,
 			url,
 			meta: {
-				width: MOCK_PICSUM_WIDTH,
-				height,
+				width: spec.width,
+				height: spec.height,
 				durationMs: '0',
 				sizeBytes: '0',
-				mimeType
+				mimeType: spec.mimeType
 			},
 			status: 'MEDIA_STATUS_COMPLETED'
 		}
@@ -134,12 +224,11 @@ function makeImageMedia(id: string, height: number, mimeType: string, orderIndex
 
 function makeVideoMedia(
 	id: string,
-	height: number,
-	mimeType: string,
 	orderIndex: number,
+	mimeType: string,
 	videoUrl: string = MOCK_SAMPLE_MP4
 ): Media {
-	const thumbnailUrl = mockPicsumImageUrl(height, `${id}-poster`);
+	const poster = VIDEO_POSTER_SPEC;
 	return {
 		assetId: id,
 		type: 'MEDIA_TYPE_VIDEO',
@@ -152,10 +241,10 @@ function makeVideoMedia(
 			bucket: 'mock',
 			objectKey: videoUrl,
 			url: videoUrl,
-			thumbnailUrl,
+			thumbnailUrl: poster.url,
 			meta: {
-				width: MOCK_PICSUM_WIDTH,
-				height,
+				width: poster.width,
+				height: poster.height,
 				durationMs: '30000',
 				sizeBytes: '0',
 				mimeType
@@ -167,13 +256,13 @@ function makeVideoMedia(
 
 function makeMediaList(): Media[] {
 	return [
-		makeImageMedia('m1', 100, 'image/jpeg', 0),
-		makeImageMedia('m2', 200, 'image/webp', 1),
-		makeImageMedia('m3', 300, 'image/webp', 2),
-		makeImageMedia('m4', 400, 'image/webp', 3),
-		makeImageMedia('m5', 500, 'image/webp', 4),
-		makeVideoMedia('m6', 600, 'video/mp4', 5),
-		makeVideoMedia('m7', 700, 'video/mp4', 6)
+		makeImageMedia('m1', 0),
+		makeImageMedia('m2', 1),
+		makeImageMedia('m3', 2),
+		makeImageMedia('m4', 3),
+		makeImageMedia('m5', 4),
+		makeVideoMedia('m6', 5, 'video/mp4'),
+		makeVideoMedia('m7', 6, 'video/mp4', 'https://www.w3schools.com/html/mov_bbb.mp4')
 	];
 }
 
@@ -309,10 +398,10 @@ export function getMockPostComments(postId: string): V1CommentWithReplies[] {
 		likeCount: 10,
 		replyCount: 3,
 		media: [
-			makeCommentImageMedia('c1-img-0', 500, 'image/jpeg', 0),
-			makeCommentImageMedia('c1-img-1', 600, 'image/webp', 1),
-			makeCommentImageMedia('c1-img-2', 520, 'image/jpeg', 2),
-			makeCommentImageMedia('c1-img-3', 540, 'image/webp', 3)
+			makeCommentImageMedia('c1-img-0', 0),
+			makeCommentImageMedia('c1-img-1', 1),
+			makeCommentImageMedia('c1-img-2', 2),
+			makeCommentImageMedia('c1-img-3', 3)
 		]
 	});
 
@@ -335,7 +424,7 @@ export function getMockPostComments(postId: string): V1CommentWithReplies[] {
 			content: '回复 2：补充一张示意图～',
 			createTime: String(nowMs - 40 * 1000),
 			replyTo: { commentId: 'c1-r1', ...pickUserIdentity(authorB) },
-			media: [makeCommentImageMedia('c1-r2-img-0', 360, 'image/jpeg', 0)]
+			media: [makeCommentImageMedia('c1-r2-img-0', 0)]
 		}),
 		makeReply({
 			postId,
@@ -394,7 +483,7 @@ export function getMockPostComments(postId: string): V1CommentWithReplies[] {
 
 		const parentId = `c${idx}`;
 		const listCommentMedia: Media[] | undefined =
-			i % 7 === 0 ? [makeCommentImageMedia(`${parentId}-img-0`, 480, 'image/jpeg', 0)] : undefined;
+			i % 7 === 0 ? [makeCommentImageMedia(`${parentId}-img-0`, 0)] : undefined;
 		const top = makeCommentBase({
 			commentId: parentId,
 			postId,
