@@ -167,10 +167,13 @@ function makeVideoMedia(
 
 function makeMediaList(): Media[] {
 	return [
-		makeImageMedia('m1', 500, 'image/jpeg', 0),
-		makeImageMedia('m2', 600, 'image/webp', 1),
-		makeVideoMedia('m3', 450, 'video/mp4', 2),
-		makeVideoMedia('m4', 350, 'video/mp4', 3)
+		makeImageMedia('m1', 100, 'image/jpeg', 0),
+		makeImageMedia('m2', 200, 'image/webp', 1),
+		makeImageMedia('m3', 300, 'image/webp', 2),
+		makeImageMedia('m4', 400, 'image/webp', 3),
+		makeImageMedia('m5', 500, 'image/webp', 4),
+		makeVideoMedia('m6', 600, 'video/mp4', 5),
+		makeVideoMedia('m7', 700, 'video/mp4', 6)
 	];
 }
 
