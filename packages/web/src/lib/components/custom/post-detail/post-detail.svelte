@@ -8,7 +8,6 @@
 	 * - `post-media-area.svelte`：帖内多图/视频轮播，并内嵌 `ImageVideoPreview` 做全屏预览
 	 * - `CommentSection`：一级评论列表、排序、回复、举报/删除
 	 * - `EditCommentPopover`：发评/回复输入与图片草稿
-	 * - `UserProfilePopover`：作者头像等入口的简要资料
 	 *
 	 * **共享工具**：相对时间 `$lib/utils/format-time.formatTimeAgo`；媒体地址 `$lib/utils/media-url.getMediaDisplayUrl`（与预览组件一致）。
 	 *
@@ -52,7 +51,6 @@
 	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
-	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
 	import { tap } from '$lib/modules/gesture';
 	const defaultApi = createRealPostDetailApi({
 		uploadCommentMedia: (files) => uploadCommentMedia(files)
@@ -91,9 +89,6 @@
 	let currentUserAvatar = $state<string | null>(null);
 	let currentUserName = $state<string | null>(null);
 	let followStatus = $state<UserFollowStatus>({ isFollowing: false, isFollowedBy: false });
-	// 用户资料 Popover 状态
-	let isUserProfilePopoverOpen = $state(false);
-	let pendingUserProfileUserId = $state<string | null>(null);
 
 	// 监听 initialPost 变化，更新 post
 	$effect(() => {
@@ -639,7 +634,6 @@
 									<X class="size-5" />
 								</Button>
 							</div>
-							<!-- TODO: Stack 基建完成后，非本人用户使用 UserProfilePopover 打开 -->
 							{#if author?.userId && currentUserId && author.userId === currentUserId}
 								<a href={resolve('/app/profile')} class="cursor-pointer">
 									{#if author?.avatar}
@@ -657,16 +651,7 @@
 									{/if}
 								</a>
 							{:else}
-								<button
-									type="button"
-									class="cursor-pointer"
-									onclick={() => {
-										if (author?.userId) {
-											pendingUserProfileUserId = author.userId;
-											isUserProfilePopoverOpen = true;
-										}
-									}}
-								>
+								<div class="shrink-0" role="presentation">
 									{#if author?.avatar}
 										<img
 											src={author.avatar}
@@ -680,7 +665,7 @@
 											{author?.name?.slice(0, 1) ?? 'U'}
 										</div>
 									{/if}
-								</button>
+								</div>
 							{/if}
 
 							<div class="min-w-0">
@@ -935,15 +920,4 @@
 			</div>
 		</div>
 	</div>
-{/if}
-
-<!-- 用户资料 Popover -->
-{#if isUserProfilePopoverOpen && pendingUserProfileUserId}
-	<UserProfilePopover
-		userId={pendingUserProfileUserId}
-		onClose={() => {
-			isUserProfilePopoverOpen = false;
-			pendingUserProfileUserId = null;
-		}}
-	/>
 {/if}

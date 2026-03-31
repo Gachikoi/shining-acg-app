@@ -9,6 +9,7 @@
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
+	import { scrollBoundary } from '$lib/modules/gesture';
 
 	let {
 		mediaList = [] as Media[],
@@ -166,7 +167,7 @@
 		{/each}
 	</div>
 
-	<!-- 视频控制界面（可自动隐藏） -->
+	<!-- 视频控制界面（可自动隐藏）；scrollBoundary 使条内触摸时父级 swipe 被拒，避免拖进度条切页 -->
 	{#if currentMedia?.type === 'MEDIA_TYPE_VIDEO' && showControls}
 		<div
 			bind:this={controlsEl}
@@ -176,6 +177,7 @@
 				'video-controls absolute right-0 bottom-0 left-0 w-full px-3 pb-3 transition-opacity duration-300',
 				isFullscreen ? 'z-70' : 'z-20'
 			)}
+			use:scrollBoundary={{ axis: 'x', canScroll: (queryAxis) => queryAxis === 'x' }}
 			onclick={handleControlsClick}
 			onkeydown={(e) => e.stopPropagation()}
 		>

@@ -11,7 +11,7 @@
 	 * | `Image-preview.svelte` | 多图横滑条带，仅渲染当前与相邻帧以减轻内存 |
 	 * | `Video-preview.svelte` | 单条视频的 UI 与控制条，通过 `bind:` 回传 video 节点供父组件调 play/pause |
 	 *
-	 * **依赖**：展示 URL 统一经 `$lib/utils/media-url` 的 `getMediaDisplayUrl`；手势见 `$lib/modules/gesture`。移动端与桌面端行为（如忽略打开后误触关闭）见文件内常量注释。
+	 * **依赖**：展示 URL 统一经 `$lib/utils/media-url` 的 `getMediaDisplayUrl`；手势见 `$lib/modules/gesture`（含 `use:scrollBoundary`）。移动端与桌面端行为（如忽略打开后误触关闭）见文件内常量注释。
 	 */
 	import { Button } from '$lib/components/ui/button';
 	import { messageForOperationError } from '$lib/utils/operation-error-message';
@@ -21,8 +21,7 @@
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import { isMobileUA } from '$lib/utils/device';
-	import type { Axis } from '$lib/modules/gesture';
-	import { registerScrollBoundary, swipe, tap, longPress } from '$lib/modules/gesture';
+	import { scrollBoundary, swipe, tap, longPress, type SwipeState } from '$lib/modules/gesture';
 	import ImagePreview from './Image-preview.svelte';
 	import VideoPreview from './Video-preview.svelte';
 
@@ -32,7 +31,13 @@
 		initialIndex = 0,
 		autoplay = true,
 		fullScreen = true,
-		class: className = ''
+		class: className = '',
+		/** 帖内媒体槽位矩形，用于图片首尾拖拽松手后飞回动画；未传则仅关闭预览 */
+		getMediaSlotRect,
+		/** 图片首尾边缘拖拽时为 true，供 post-detail 媒体区盖空白层 */
+		edgePullBlank = $bindable(false),
+		/** 关闭时回传当前索引，便于父级同步 `activeIndex` */
+		onClose
 	}: {
 		open?: boolean;
 		mediaList?: Media[];
@@ -40,6 +45,9 @@
 		autoplay?: boolean;
 		fullScreen?: boolean;
 		class?: string;
+		getMediaSlotRect?: (index: number) => DOMRect | null;
+		edgePullBlank?: boolean;
+		onClose?: (lastIndex: number) => void;
 	} = $props();
 
 	// 检测移动端设备（通过 UA）
@@ -69,8 +77,6 @@
 	let isFullscreen = $state(false);
 	// 视频容器（用于调用浏览器 Fullscreen API，由子组件绑定）
 	let videoContainer: HTMLDivElement | null = $state(null);
-	// 视频控制条容器（用于让 swipe 在控件上让渡）
-	let videoControlsEl: HTMLDivElement | null = $state(null);
 	// 视频是否正在调整进度
 	let isSeeking = $state(false);
 	// 视频缓冲/卡顿中（用于 loading 动画）
@@ -86,6 +92,11 @@
 	let playbackRatePopoverOpen = $state(false);
 	// 横向拖拽跟随（swipe 驱动）
 	let panOffsetX = $state(0);
+	/** 仅图片：自由拖拽跟手位移（任意方向） */
+	let imageEdgePullDx = $state(0);
+	let imageEdgePullDy = $state(0);
+	/** 飞回槽位动画进行中：保持 open 直至结束，避免下层媒体区提前露出 */
+	let isFlyClosing = $state(false);
 	let isPanning = $state(false);
 	let gestureContainerEl: HTMLElement | null = $state(null);
 	let dialogEl: HTMLDivElement | null = $state(null);
@@ -94,6 +105,10 @@
 	const TAP_IGNORE_AFTER_OPEN_MS = 420;
 	const TAP_PAUSE_IGNORE_PLAY_MS = 220;
 	const PAN_MAX_OFFSET_RATIO = 1.2;
+	/** 拖拽位移超过 min(宽,高)×该比例且松手时，触发飞回槽位（仅图片） */
+	const IMAGE_EDGE_DISMISS_RATIO = 0.2;
+	/** 与 Image-preview 中缩放层过渡（约 880ms）对齐并留余量 */
+	const IMAGE_EDGE_SPRING_MS = 920;
 	// 轻击暂停后短时间忽略播放（避免同一次触摸的合成 click 触发播放按钮）
 	let lastPausedByTapTime = 0;
 	// 长按边缘 2x 倍速：松手恢复 1x，并显示提示（与中间区域长按下载菜单互斥）
@@ -138,6 +153,42 @@
 	const isImage = $derived(currentMedia?.type === 'MEDIA_TYPE_IMAGE');
 	const isVideo = $derived(currentMedia?.type === 'MEDIA_TYPE_VIDEO');
 
+	/** 相对屏宽归一化拖拽量：到 1 时认为「拉到最边缘」，图几乎出屏 */
+	const IMAGE_EDGE_PULL_DENOM_RATIO = 0.95;
+
+	const imageEdgePullDist = $derived.by(() => Math.hypot(imageEdgePullDx, imageEdgePullDy));
+
+	const imageEdgePullScale = $derived.by(() => {
+		if (!isImage || imageEdgePullDist === 0) return 1;
+		const r = gestureContainerEl?.getBoundingClientRect();
+		const w = r?.width ?? 400;
+		const h = r?.height ?? 400;
+		const denom = Math.min(w, h) * IMAGE_EDGE_PULL_DENOM_RATIO;
+		const t = Math.min(1, imageEdgePullDist / denom);
+		// 拖拽末端更小，弹回时 scale→1 更明显
+		return 1 - 0.76 * t;
+	});
+	const imageEdgePullTx = $derived.by(() => {
+		if (!isImage || imageEdgePullDist === 0) return 0;
+		return imageEdgePullDx;
+	});
+	const imageEdgePullTy = $derived.by(() => {
+		if (!isImage || imageEdgePullDist === 0) return 0;
+		return imageEdgePullDy;
+	});
+
+	/** 全屏黑底随拖拽变淡，透出下层帖内空白区 */
+	const dialogEdgeBackdropStyle = $derived.by(() => {
+		if (!fullScreen || !isImage || imageEdgePullDist === 0) return '';
+		const r = gestureContainerEl?.getBoundingClientRect();
+		const w = r?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 400);
+		const h = r?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 400);
+		const denom = Math.min(w, h) * IMAGE_EDGE_PULL_DENOM_RATIO;
+		const t = Math.min(1, imageEdgePullDist / denom);
+		const alpha = Math.max(0.04, 1 - 0.9 * t);
+		return `background-color: rgba(0,0,0,${alpha});`;
+	});
+
 	// 控制条不再自动隐藏（已取消自动隐藏功能）
 	function stopControlsHideTimer() {
 		if (controlsHideTimer) {
@@ -172,6 +223,10 @@
 			playbackRate = 1;
 			showControls = true;
 			panOffsetX = 0;
+			imageEdgePullDx = 0;
+			imageEdgePullDy = 0;
+			isFlyClosing = false;
+			edgePullBlank = false;
 			isPanning = false;
 			isVideoBuffering = false;
 			stopControlsHideTimer();
@@ -372,10 +427,95 @@
 		setTimeout(cleanup, MAX_MS + 60);
 	}
 
-	// 处理关闭
+	/**
+	 * 取消边缘拖拽后，待弹簧结束再撤帖内空白，避免下层图与全屏回弹不同步
+	 */
+	function scheduleEdgePullBlankAfterSpring() {
+		setTimeout(() => {
+			edgePullBlank = false;
+		}, IMAGE_EDGE_SPRING_MS);
+	}
+
+	/** 关闭预览；飞回流程在 {@link flyImageCloseToSlot} 结束处调用 */
 	function handleClose() {
 		blockClickThroughOnce();
+		onClose?.(currentIndex);
 		open = false;
+		isFlyClosing = false;
+		edgePullBlank = false;
+		imageEdgePullDx = 0;
+		imageEdgePullDy = 0;
+	}
+
+	/**
+	 * 图片边缘拖拽达到阈值：先记录几何 → 隐藏全屏层但保持 open → 飞行动画结束后再 handleClose（帖内空白与预览同时撤）
+	 *
+	 * @returns Promise，动画结束或降级关闭后 resolve
+	 */
+	function flyImageCloseToSlot(): Promise<void> {
+		const media = currentMedia;
+		const idx = currentIndex;
+		const host = gestureContainerEl;
+		if (!media || media.type !== 'MEDIA_TYPE_IMAGE' || !host || typeof document === 'undefined') {
+			handleClose();
+			return Promise.resolve();
+		}
+		const fromRect = host.getBoundingClientRect();
+		const src = getMediaDisplayUrl(media);
+
+		isFlyClosing = true;
+		imageEdgePullDx = 0;
+		imageEdgePullDy = 0;
+
+		if (!getMediaSlotRect) {
+			isFlyClosing = false;
+			handleClose();
+			return Promise.resolve();
+		}
+
+		const FLY_MS = 520;
+
+		return new Promise((resolve) => {
+			requestAnimationFrame(() => {
+				const toRect = getMediaSlotRect(idx);
+				if (!toRect || toRect.width < 4 || toRect.height < 4) {
+					isFlyClosing = false;
+					handleClose();
+					resolve();
+					return;
+				}
+				const img = document.createElement('img');
+				img.src = src;
+				img.decoding = 'async';
+				img.style.position = 'fixed';
+				img.style.left = `${fromRect.left}px`;
+				img.style.top = `${fromRect.top}px`;
+				img.style.width = `${fromRect.width}px`;
+				img.style.height = `${fromRect.height}px`;
+				img.style.objectFit = 'contain';
+				img.style.zIndex = '9999';
+				img.style.pointerEvents = 'none';
+				img.style.transition = 'none';
+				img.style.borderRadius = '0';
+				document.body.appendChild(img);
+				void img.offsetWidth;
+				img.style.transition = `left ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), top ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), width ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), height ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.42s ease`;
+				img.style.left = `${toRect.left}px`;
+				img.style.top = `${toRect.top}px`;
+				img.style.width = `${toRect.width}px`;
+				img.style.height = `${toRect.height}px`;
+				let finished = false;
+				const done = () => {
+					if (finished) return;
+					finished = true;
+					img.remove();
+					handleClose();
+					resolve();
+				};
+				img.addEventListener('transitionend', done, { once: true });
+				setTimeout(done, FLY_MS + 80);
+			});
+		});
 	}
 
 	function openDownloadMenuAtPoint(x: number, y: number) {
@@ -449,15 +589,120 @@
 	const swipeOptions = $derived.by(() => ({
 		onStart() {
 			isPanning = true;
+			imageEdgePullDx = 0;
+			imageEdgePullDy = 0;
 		},
-		onMove(state: { deltaX: number }) {
+		onMove(state: SwipeState) {
+			const dx = state.deltaX;
+			const dy = state.deltaY;
 			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
 			const max = w * PAN_MAX_OFFSET_RATIO;
-			panOffsetX = Math.max(-max, Math.min(max, state.deltaX));
+			const atFirst = currentIndex === 0;
+			const atLast = currentIndex === mediaList.length - 1;
+			const single = mediaList.length === 1;
+			const horizontalDominant = Math.abs(dx) >= Math.abs(dy) * 1.1;
+
+			// PC：图片仅横向分页跟手，禁用边缘回弹/飞回/帖内空白联动（移动端保留完整动效）
+			if (!isMobile && isImage) {
+				imageEdgePullDx = 0;
+				imageEdgePullDy = 0;
+				edgePullBlank = false;
+				if (mediaList.length <= 1) {
+					panOffsetX = 0;
+					return;
+				}
+				panOffsetX = Math.max(-max, Math.min(max, dx));
+				return;
+			}
+
+			if (!isImage) {
+				imageEdgePullDx = 0;
+				imageEdgePullDy = 0;
+				edgePullBlank = false;
+				panOffsetX = Math.max(-max, Math.min(max, dx));
+				return;
+			}
+
+			if (single) {
+				imageEdgePullDx = dx;
+				imageEdgePullDy = dy;
+				panOffsetX = 0;
+				edgePullBlank = true;
+				return;
+			}
+
+			if (atFirst) {
+				if (horizontalDominant && dx <= 0) {
+					imageEdgePullDx = 0;
+					imageEdgePullDy = 0;
+					edgePullBlank = false;
+					panOffsetX = Math.max(-max, Math.min(max, dx));
+					return;
+				}
+				imageEdgePullDx = dx;
+				imageEdgePullDy = dy;
+				panOffsetX = 0;
+				edgePullBlank = true;
+				return;
+			}
+
+			if (atLast) {
+				if (horizontalDominant && dx >= 0) {
+					imageEdgePullDx = 0;
+					imageEdgePullDy = 0;
+					edgePullBlank = false;
+					panOffsetX = Math.max(-max, Math.min(max, dx));
+					return;
+				}
+				imageEdgePullDx = dx;
+				imageEdgePullDy = dy;
+				panOffsetX = 0;
+				edgePullBlank = true;
+				return;
+			}
+
+			if (horizontalDominant) {
+				imageEdgePullDx = 0;
+				imageEdgePullDy = 0;
+				edgePullBlank = false;
+				panOffsetX = Math.max(-max, Math.min(max, dx));
+				return;
+			}
+
+			imageEdgePullDx = dx;
+			imageEdgePullDy = dy;
+			panOffsetX = 0;
+			edgePullBlank = true;
 		},
-		onEnd(state: { committed: boolean; direction: 'left' | 'right' }) {
+		onEnd(state: SwipeState) {
 			isPanning = false;
-			// 与 prevMedia/nextMedia 一致：首张继续「上一张」、末张继续「下一张」会 handleClose；仅 1 张时任意方向也会关闭
+			const rect = gestureContainerEl?.getBoundingClientRect();
+			const w = rect?.width ?? 400;
+			const h = rect?.height ?? 400;
+			const minDim = Math.min(w, h);
+			const pdx = imageEdgePullDx;
+			const pdy = imageEdgePullDy;
+			const pullDist = Math.hypot(pdx, pdy);
+			const thresholdPx = minDim * IMAGE_EDGE_DISMISS_RATIO;
+
+			const wasImageFreePull = isImage && edgePullBlank;
+
+			if (wasImageFreePull) {
+				imageEdgePullDx = 0;
+				imageEdgePullDy = 0;
+				panOffsetX = 0;
+				if (pullDist >= thresholdPx) {
+					void flyImageCloseToSlot();
+				} else {
+					scheduleEdgePullBlankAfterSpring();
+				}
+				return;
+			}
+
+			imageEdgePullDx = 0;
+			imageEdgePullDy = 0;
+			edgePullBlank = false;
+
 			if (state.committed && mediaList.length > 0) {
 				if (state.direction === 'right') prevMedia();
 				else nextMedia();
@@ -466,36 +711,13 @@
 		}
 	}));
 
-	/**
-	 * 全屏预览打开时：横向手势优先留在预览层（含首张/末张的特殊逻辑），避免与底层 SwipeablePane 抢 arena。
-	 * 与 post-media-area 不同，边缘滑动手势用于关闭预览，故在仍有媒体时始终声明可消费横向滑动。
-	 */
-	$effect(() => {
-		if (!open) return;
-		const el = gestureContainerEl;
-		if (!el) return;
-		return registerScrollBoundary(el, {
-			axis: 'x',
-			canScroll(queryAxis: Axis): boolean {
-				return queryAxis === 'x' && mediaList.length > 0;
-			}
-		});
-	});
-
-	// 在视频控制条区域内，阻止预览层 swipe 获取控制权（进度条/按钮拖动不应触发切换媒体）
-	$effect(() => {
-		if (!open) return;
-		if (!isVideo) return;
-		const el = videoControlsEl;
-		if (!el) return;
-		return registerScrollBoundary(el, {
-			axis: 'x',
-			canScroll(queryAxis: Axis): boolean {
-				// 只要触点在 controls 内，就认为“子区域可横向滚动”，从而让 Arena reject 父级 swipe
-				return queryAxis === 'x';
-			}
-		});
-	});
+	/** 虚拟横向分页：有媒体时声明 x 轴仍有“余量”，避免 arena 把本层 swipe 让给底层 SwipeablePane */
+	const previewScrollBoundaryOpts = $derived.by(() => ({
+		axis: 'x' as const,
+		canScroll(queryAxis: 'x' | 'y', _direction: number) {
+			return queryAxis === 'x' && mediaList.length > 0;
+		}
+	}));
 
 	const tapOptions = $derived.by(() => ({
 		excludeSelector: '.video-controls, .play-button-area, [data-preview-nav]',
@@ -973,10 +1195,13 @@
 		tabindex="-1"
 		bind:this={dialogEl}
 		class={cn(
-			'fixed z-60 flex flex-col items-center justify-center',
-			fullScreen ? 'inset-0 bg-black' : 'inset-0 bg-zinc-100',
+			'fixed inset-0 z-60 flex flex-col items-center justify-center',
+			fullScreen && !(isImage && imageEdgePullDist > 0) ? 'bg-black' : '',
+			!fullScreen ? 'bg-zinc-100' : '',
+			isFlyClosing && 'pointer-events-none opacity-0',
 			className
 		)}
+		style={dialogEdgeBackdropStyle}
 		onkeydown={handleDialogKeyDown}
 	>
 		<!-- 关闭按钮 -->
@@ -1000,6 +1225,7 @@
 			<div
 				bind:this={gestureContainerEl}
 				class="group relative flex h-full w-full items-center justify-center overflow-hidden"
+				use:scrollBoundary={previewScrollBoundaryOpts}
 				use:swipe={swipeOptions}
 				use:longPress={longPressOptions}
 				use:tap={tapOptions}
@@ -1042,7 +1268,15 @@
 				>
 					{#if isImage}
 						<!-- 图片 -->
-						<ImagePreview {mediaList} {currentIndex} {handleContextMenu} />
+						<ImagePreview
+							{mediaList}
+							{currentIndex}
+							{handleContextMenu}
+							edgePullScale={imageEdgePullScale}
+							edgePullTranslateX={imageEdgePullTx}
+							edgePullTranslateY={imageEdgePullTy}
+							edgePullInstant={isPanning}
+						/>
 					{:else if isVideo}
 						<!-- 视频 -->
 						<VideoPreview
@@ -1077,7 +1311,6 @@
 							{handleContextMenu}
 							bind:videoElement
 							bind:videoContainer
-							bind:controlsEl={videoControlsEl}
 						/>
 					{/if}
 				</div>

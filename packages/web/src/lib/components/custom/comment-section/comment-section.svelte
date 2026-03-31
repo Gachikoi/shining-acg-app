@@ -65,7 +65,6 @@
 	import ConfirmDialog from '$lib/components/custom/confirm-dialog/confirm-dialog.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
-	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
 	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
 	import { messageForOperationError } from '$lib/utils/operation-error-message';
 	import { toast } from 'svelte-sonner';
@@ -453,10 +452,6 @@
 		expandedContentIds = { ...expandedContentIds, [commentId]: !expandedContentIds[commentId] };
 	}
 
-	// 用户资料 Popover 状态
-	let isUserProfilePopoverOpen = $state(false);
-	let pendingUserProfileUserId = $state<string | null>(null);
-
 	function toggleActionMenu(comment: V1Comment | CommentWithReplies) {
 		const id = comment.commentId ?? null;
 		activeMenuCommentId = activeMenuCommentId === id ? null : id;
@@ -617,7 +612,6 @@
 				onclick={(e) => handleTopLevelCommentRowClick(e, comment)}
 				onkeydown={(e) => handleTopLevelCommentRowKeydown(e, comment)}
 			>
-				<!-- TODO: Stack 基建完成后，非本人用户使用 UserProfilePopover 打开 -->
 				{#if comment.author?.userId && currentUserId && comment.author.userId === currentUserId}
 					<a href={resolve('/app/profile')}>
 						{#if comment.author?.avatar}
@@ -631,22 +625,13 @@
 						{/if}
 					</a>
 				{:else}
-					<button
-						type="button"
-						class="shrink-0 cursor-pointer"
-						onclick={() => {
-							if (comment.author?.userId) {
-								pendingUserProfileUserId = comment.author.userId;
-								isUserProfilePopoverOpen = true;
-							}
-						}}
-					>
+					<div class="shrink-0" role="presentation" onclick={(e) => e.stopPropagation()}>
 						{#if comment.author?.avatar}
 							<img class="size-8 rounded-full object-cover" src={comment.author.avatar} alt="" />
 						{:else}
 							<div class="size-8 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
 						{/if}
-					</button>
+					</div>
 				{/if}
 				<div class="min-w-0 flex-1">
 					<div class="flex items-start justify-between gap-2">
@@ -770,15 +755,10 @@
 													{/if}
 												</a>
 											{:else}
-												<button
-													type="button"
+												<div
 													class="shrink-0"
-													onclick={() => {
-														if (reply.author?.userId) {
-															pendingUserProfileUserId = reply.author.userId;
-															isUserProfilePopoverOpen = true;
-														}
-													}}
+													role="presentation"
+													onclick={(e) => e.stopPropagation()}
 												>
 													{#if reply.author?.avatar}
 														<img
@@ -789,7 +769,7 @@
 													{:else}
 														<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
 													{/if}
-												</button>
+												</div>
 											{/if}
 											<div class="min-w-0 flex-1">
 												<span class={cn('text-xs', commentNameClass)}>
@@ -1055,14 +1035,3 @@
 	autoplay={false}
 	fullScreen={true}
 />
-
-<!-- 用户资料 Popover -->
-{#if isUserProfilePopoverOpen && pendingUserProfileUserId}
-	<UserProfilePopover
-		userId={pendingUserProfileUserId}
-		onClose={() => {
-			isUserProfilePopoverOpen = false;
-			pendingUserProfileUserId = null;
-		}}
-	/>
-{/if}
