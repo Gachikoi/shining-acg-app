@@ -1,17 +1,22 @@
+/**
+ * 从 `V1MediaAsset` 解析浏览器可直接请求的展示地址（帖子封面、轮播图、视频封面、评论附图等）。
+ *
+ * **优先级**：`single`（或 Live Photo 下的 image/video）上的 `url` → `thumbnailUrl`（适合视频首帧）→ `objectKey` 拼 `MEDIA_BASE`。
+ * **注意**：`MEDIA_BASE` 当前为空占位；若部署为 CDN/网关前缀，可在此统一拼接。`objectKey` 已为 `http(s)` 时原样返回。
+ */
 import type { V1MediaAsset as Media } from '$lib/api';
 
-/** 媒体资源基础 URL，与后端约定一致时可配置 */
+/** 对象存储或 CDN 根路径前缀；需与后端约定（SSR 时无 window，此处保持可配置） */
 const MEDIA_BASE: string = typeof window !== 'undefined' ? '' : '';
 
 /**
- * 根据媒体资产信息生成可访问的展示 URL。
- * 优先使用后端直接返回的 url/thumbnail_url，其次回退到 object_key + MEDIA_BASE。
+ * 返回用于 `<img src>` / `<video poster>` 等的展示 URL；无可用字段时返回空字符串。
  */
 export function getMediaDisplayUrl(media: Media | undefined): string {
 	if (!media) return '';
 
 	// 统一取出实际文件资产：优先单文件，其次 Live Photo 的图片/视频
-	const file = media.single ?? media.live_photo?.image ?? media.live_photo?.video ?? undefined;
+	const file = media.single ?? media.livePhoto?.image ?? media.livePhoto?.video ?? undefined;
 
 	if (!file) return '';
 
@@ -21,12 +26,12 @@ export function getMediaDisplayUrl(media: Media | undefined): string {
 	}
 
 	// 其次尝试缩略图 URL（例如视频首帧）
-	if (file.thumbnail_url && typeof file.thumbnail_url === 'string') {
-		return file.thumbnail_url;
+	if (file.thumbnailUrl && typeof file.thumbnailUrl === 'string') {
+		return file.thumbnailUrl;
 	}
 
 	// 兼容旧逻辑：回退到 object_key
-	const key = file.object_key;
+	const key = file.objectKey;
 	if (!key) return '';
 	if (key.startsWith('http://') || key.startsWith('https://')) return key;
 

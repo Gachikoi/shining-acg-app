@@ -49,21 +49,13 @@
 	 * - `_repliesLoading`: 回复加载中状态
 	 * - `_repliesExpanded`: 展开/收起状态
 	 */
-	import {
-		commentServiceListPostComments,
-		commentServiceListCommentReplies,
-		commentServiceSetCommentLike,
-		commentServiceDeleteComment,
-		reportServiceReportComment,
-		type CommentServiceListPostCommentsData,
-		type CommentServiceListCommentRepliesData,
-		type CommentServiceDeleteCommentData,
-		type ReportServiceReportCommentData,
-		type V1Comment,
-		type V1CommentWithReplies,
-		type V1CommentOrderType,
-		type V1ReportCommentRequest
+	import type {
+		V1Comment,
+		V1CommentWithReplies,
+		V1CommentOrderType,
+		V1ReportCommentRequest
 	} from '$lib/api';
+	import type { PostDetailApi } from '$lib/components/custom/post-detail/api';
 	import { Heart, MessageCircle, MoreHorizontal, LoaderCircle } from 'lucide-svelte';
 	import { formatTimeAgo } from '$lib/time';
 	import { cn } from '$lib/utils';
@@ -76,18 +68,16 @@
 		postId,
 		currentUserId,
 		initialCount,
+		api,
 		defaultOrder = 'COMMENT_ORDER_TYPE_MOST_LIKED' as V1CommentOrderType,
-		useMock = false,
-		mockComments,
 		onReply,
 		onTotalCountChange
 	}: {
 		postId: string;
 		currentUserId?: string | null;
 		initialCount?: string | number;
+		api: PostDetailApi;
 		defaultOrder?: V1CommentOrderType;
-		useMock?: boolean;
-		mockComments?: V1CommentWithReplies[];
 		onReply?: (comment: V1Comment) => void;
 		onTotalCountChange?: (delta: number) => void;
 	} = $props();
@@ -129,7 +119,8 @@
 		(() => (typeof initialCount === 'string' ? Number(initialCount) || 0 : (initialCount ?? 0)))()
 	);
 
-	const isMockEnabled = $derived(useMock && Array.isArray(mockComments));
+	/** 防止切换排序时，较慢的旧请求覆盖较新的列表结果 */
+	let listFetchSeq = 0;
 
 	function ensureNumber(value: string | number | undefined | null): number {
 		if (typeof value === 'number') return value;
@@ -154,40 +145,47 @@
 	}
 
 	async function fetchComments(append: boolean) {
-		if (!postId || isMockEnabled) return;
+		if (!postId) return;
 		if (append && !cursor) return;
 
+		const snapshotPostId = postId;
+		const snapshotOrder = orderType;
+		const snapshotCursor = append ? cursor : undefined;
+
+		let capturedSeq = 0;
 		if (append) loadingMore = true;
-		else loading = true;
+		else {
+			loading = true;
+			listFetchSeq += 1;
+			capturedSeq = listFetchSeq;
+		}
 		error = null;
 
 		try {
-			const query: CommentServiceListPostCommentsData['query'] = {
-				order_type: orderType,
-				'pagination.need_num': 20
-			};
-			if (append && cursor) {
-				query['pagination.cursor'] = cursor;
-			}
+			const res = await api.listPostComments(
+				snapshotPostId,
+				snapshotOrder,
+				20,
+				append && snapshotCursor ? snapshotCursor : undefined
+			);
 
-			const res = await commentServiceListPostComments({
-				path: { post_id: postId },
-				query
-			});
+			// 帖子或排序已变：丢弃（含「切换最新/最热」时的竞态）
+			if (postId !== snapshotPostId || orderType !== snapshotOrder) return;
+			if (append && cursor !== snapshotCursor) return;
+			if (!append && capturedSeq !== listFetchSeq) return;
 
-			const data = res.data;
-			const list = mapApiComments(data?.comments);
-			const nextCursor = data?.cursor;
+			const list = mapApiComments(res.comments);
+			const nextCursor = res.cursor;
 
 			if (!append) {
 				comments = list;
 			} else {
 				const byId = new SvelteMap<string, CommentWithReplies>();
 				for (const c of comments) {
-					byId.set(c.comment_id ?? '', c);
+					byId.set(c.commentId ?? '', c);
 				}
 				for (const c of list) {
-					const id = c.comment_id ?? '';
+					const id = c.commentId ?? '';
 					if (!byId.has(id)) {
 						byId.set(id, c);
 					}
@@ -196,15 +194,18 @@
 			}
 
 			cursor = nextCursor;
-			if (data?.comments && totalCount === 0) {
-				totalCount = data.comments.length;
+			if (res.comments && totalCount === 0) {
+				totalCount = res.comments.length;
 			}
 		} catch (err) {
 			console.error('加载评论失败', err);
 			error = '加载评论失败，请稍后重试';
 		} finally {
-			loading = false;
-			loadingMore = false;
+			if (append) {
+				loadingMore = false;
+			} else if (capturedSeq === listFetchSeq) {
+				loading = false;
+			}
 		}
 	}
 
@@ -216,40 +217,32 @@
 		if (orderType === type) return;
 		orderType = type;
 		cursor = undefined;
-		await fetchComments(false);
+		// 不在此处手动调用 fetchComments，由 $effect 自动追踪 orderType 变化并触发
 	}
 
 	async function loadMoreReplies(comment: CommentWithReplies) {
-		if (!comment.comment_id || comment._repliesLoading) return;
+		if (!comment.commentId || comment._repliesLoading) return;
 
 		comment._repliesLoading = true;
 		try {
-			const query: CommentServiceListCommentRepliesData['query'] = {
-				'pagination.need_num': 20
-			};
-			if (comment._repliesCursor) {
-				query['pagination.cursor'] = comment._repliesCursor;
-			}
+			const res = await api.listCommentReplies(
+				comment.commentId,
+				20,
+				comment._repliesCursor || undefined
+			);
 
-			const res = await commentServiceListCommentReplies({
-				path: { comment_id: comment.comment_id },
-				query
-			});
-
-			const data = res.data;
-			const nextCursor = data?.cursor;
-			const replies = data?.replies ?? [];
+			const replies = res.replies ?? [];
 
 			const existing = comment._replies ?? [];
 			const byId = new SvelteMap<string, V1Comment>();
-			for (const r of existing) byId.set(r.comment_id ?? '', r);
+			for (const r of existing) byId.set(r.commentId ?? '', r);
 			for (const r of replies) {
-				const id = r.comment_id ?? '';
+				const id = r.commentId ?? '';
 				if (!byId.has(id)) byId.set(id, r);
 			}
 
 			comment._replies = Array.from(byId.values());
-			comment._repliesCursor = nextCursor;
+			comment._repliesCursor = res.cursor;
 			comment._repliesExpanded = true;
 		} catch (err) {
 			console.error('加载回复失败', err);
@@ -259,36 +252,33 @@
 	}
 
 	async function handleToggleLike(target: V1Comment | CommentWithReplies) {
-		if (!target.comment_id) return;
-		if (likingCommentId === target.comment_id) return;
+		if (!target.commentId) return;
+		if (likingCommentId === target.commentId) return;
 
-		const currentStatus = target.relation_status?.is_liked ?? false;
+		const currentStatus = target.relationStatus?.isLiked ?? false;
 		const newStatus = !currentStatus;
 
 		// 乐观更新：先更新 UI，与 post-detail 一致
 		const patchTarget = target as V1Comment;
-		const currentCount = ensureNumber(patchTarget.stats?.like_count);
+		const currentCount = ensureNumber(patchTarget.stats?.likeCount);
 		if (patchTarget.stats) {
-			patchTarget.stats.like_count = String(currentCount + (newStatus ? 1 : -1));
+			patchTarget.stats.likeCount = String(currentCount + (newStatus ? 1 : -1));
 		}
-		if (patchTarget.relation_status) {
-			patchTarget.relation_status.is_liked = newStatus;
+		if (patchTarget.relationStatus) {
+			patchTarget.relationStatus.isLiked = newStatus;
 		}
 
-		likingCommentId = target.comment_id;
+		likingCommentId = target.commentId;
 		try {
-			await commentServiceSetCommentLike({
-				path: { comment_id: target.comment_id },
-				body: { is_liked: newStatus }
-			});
+			await api.setCommentLike(target.commentId, newStatus);
 		} catch (err) {
 			console.error('评论点赞失败', err);
 			// 回滚乐观更新
 			if (patchTarget.stats) {
-				patchTarget.stats.like_count = String(currentCount);
+				patchTarget.stats.likeCount = String(currentCount);
 			}
-			if (patchTarget.relation_status) {
-				patchTarget.relation_status.is_liked = currentStatus;
+			if (patchTarget.relationStatus) {
+				patchTarget.relationStatus.isLiked = currentStatus;
 			}
 		} finally {
 			likingCommentId = null;
@@ -296,9 +286,9 @@
 	}
 
 	export function applyNewComment(newComment: V1Comment) {
-		if (!newComment?.comment_id) return;
+		if (!newComment?.commentId) return;
 
-		const isReply = !!newComment.reply_context?.parent_comment_id;
+		const isReply = !!newComment.replyContext?.parentCommentId;
 
 		if (!isReply) {
 			// 一级评论：直接扁平为 CommentWithReplies，初始不带任何回复
@@ -315,11 +305,11 @@
 			return;
 		}
 
-		const parentId = newComment.reply_context?.parent_comment_id;
+		const parentId = newComment.replyContext?.parentCommentId;
 		if (!parentId) return;
 
 		const list = [...comments];
-		const target = list.find((c) => c.comment_id === parentId);
+		const target = list.find((c) => c.commentId === parentId);
 		if (!target) {
 			comments = list;
 			return;
@@ -329,9 +319,9 @@
 		// 展开状态下插入到末尾；未展开时也会在内部列表中累积，为后续「展开全部回复」做准备
 		target._replies = [...existing, newComment];
 
-		const currentReplyCount = ensureNumber(target.stats?.reply_count);
+		const currentReplyCount = ensureNumber(target.stats?.replyCount);
 		if (target.stats) {
-			target.stats.reply_count = String(currentReplyCount + 1);
+			target.stats.replyCount = String(currentReplyCount + 1);
 		}
 
 		comments = list;
@@ -340,7 +330,7 @@
 	}
 
 	async function handleDeleteComment(comment: V1Comment | CommentWithReplies) {
-		if (!comment.comment_id) return;
+		if (!comment.commentId) return;
 
 		// 打开确认对话框
 		commentToDelete = comment;
@@ -348,7 +338,7 @@
 	}
 
 	async function handleReportComment(comment: V1Comment | CommentWithReplies) {
-		if (!comment.comment_id) return;
+		if (!comment.commentId) return;
 
 		// 打开举报确认对话框
 		commentToReport = comment;
@@ -356,49 +346,34 @@
 	}
 
 	async function submitReport() {
-		if (!commentToReport?.comment_id) return;
+		if (!commentToReport?.commentId) return;
 
 		const body: V1ReportCommentRequest = {
-			comment_id: commentToReport.comment_id,
-			post_id: commentToReport.target_id ?? postId
+			commentId: commentToReport.commentId,
+			postId: commentToReport.targetId ?? postId
 		};
 
 		try {
-			const options: ReportServiceReportCommentData = {
-				body,
-				url: '/v1/reports/comments'
-			};
-			await reportServiceReportComment(options);
-			// 这里暂时只做静默处理，后续可接入全局 toast 系统
+			await api.reportComment(body);
 		} catch (err) {
 			console.error('举报评论失败', err);
-			throw err; // 抛出错误让 ConfirmDialog 处理
+			throw err;
 		} finally {
 			commentToReport = null;
 		}
 	}
 
 	$effect(() => {
-		if (isMockEnabled) {
-			// 使用 mock 数据时，只依赖 props（mockComments），避免因为依赖 comments 自身导致 $effect 死循环
-			const mapped = mapApiComments(mockComments);
-			comments = mapped;
-			totalCount = mapped.length;
-			cursor = undefined;
-			return;
-		}
-
-		// 非 mock 场景：根据当前 postId / orderType / refreshTrigger 拉取评论
 		fetchComments(false);
 	});
 
 	/**
 	 * 判断当前评论是否还有未展开的回复数量
-	 * - 接口层面的 reply_count 仅对「第一层评论」有意义
+	 * - 接口层面的 replyCount 仅对「第一层评论」有意义
 	 * - 这里保持完全依赖 stats.reply_count，不额外推断，保证与接口定义一致
 	 */
 	function getRemainingReplyCount(comment: CommentWithReplies): number {
-		const total = ensureNumber(comment.stats?.reply_count);
+		const total = ensureNumber(comment.stats?.replyCount);
 		const loaded = comment._replies?.length ?? 0;
 		return Math.max(0, total - loaded);
 	}
@@ -437,7 +412,7 @@
 	let pendingUserProfileUserId = $state<string | null>(null);
 
 	function toggleActionMenu(comment: V1Comment | CommentWithReplies) {
-		const id = comment.comment_id ?? null;
+		const id = comment.commentId ?? null;
 		activeMenuCommentId = activeMenuCommentId === id ? null : id;
 	}
 
@@ -481,11 +456,11 @@
 {/if}
 
 <ul class="divide-y divide-zinc-200 dark:divide-zinc-800">
-	{#each comments as comment (comment.comment_id)}
+	{#each comments as comment (comment.commentId)}
 		<li class="py-3">
 			<div class="flex items-start gap-2">
 				<!-- TODO: Stack 基建完成后，非本人用户使用 UserProfilePopover 打开 -->
-				{#if comment.author?.user_id && currentUserId && comment.author.user_id === currentUserId}
+				{#if comment.author?.userId && currentUserId && comment.author.userId === currentUserId}
 					<a href={resolve('/app/profile')}>
 						{#if comment.author?.avatar}
 							<img
@@ -502,8 +477,8 @@
 						type="button"
 						class="shrink-0 cursor-pointer"
 						onclick={() => {
-							if (comment.author?.user_id) {
-								pendingUserProfileUserId = comment.author.user_id;
+							if (comment.author?.userId) {
+								pendingUserProfileUserId = comment.author.userId;
 								isUserProfilePopoverOpen = true;
 							}
 						}}
@@ -521,24 +496,24 @@
 							{comment.author?.name ?? '用户'}
 						</span>
 						<span class="cursor-text text-xs text-zinc-500">
-							{formatTimeAgo(comment.create_time ?? '')}
+							{formatTimeAgo(comment.createTime ?? '')}
 						</span>
 					</div>
-					{#if comment.reply_context?.reply_to_user_name}
+					{#if comment.replyContext?.replyToUserName}
 						<p class="cursor-text text-sm font-medium text-zinc-900 dark:text-zinc-100">
-							回复 {comment.reply_context.reply_to_user_name}
+							回复 {comment.replyContext.replyToUserName}
 						</p>
 					{/if}
 					<div class="mt-0.5 space-y-1">
 						<p class="cursor-text text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-							{getDisplayedContent(comment.content ?? '', comment.comment_id ?? '')}
+							{getDisplayedContent(comment.content ?? '', comment.commentId ?? '')}
 						</p>
 						{#if hasLongContent(comment.content ?? '')}
 							<button
 								class="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-zinc-700 dark:hover:text-zinc-300"
-								onclick={() => toggleContentExpanded(comment.comment_id ?? '')}
+								onclick={() => toggleContentExpanded(comment.commentId ?? '')}
 							>
-								{expandedContentIds[comment.comment_id ?? ''] ? '收起' : '查看全文'}
+								{expandedContentIds[comment.commentId ?? ''] ? '收起' : '查看全文'}
 							</button>
 						{/if}
 					</div>
@@ -547,19 +522,19 @@
 							<button
 								class="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
 								onclick={() => handleToggleLike(comment)}
-								disabled={likingCommentId === comment.comment_id}
+								disabled={likingCommentId === comment.commentId}
 							>
-								{#if likingCommentId === comment.comment_id}
+								{#if likingCommentId === comment.commentId}
 									<LoaderCircle class="size-3.5 animate-spin" />
 								{:else}
 									<Heart
 										class={cn(
 											'size-3.5',
-											comment.relation_status?.is_liked ? 'fill-rose-500 text-rose-500' : ''
+											comment.relationStatus?.isLiked ? 'fill-rose-500 text-rose-500' : ''
 										)}
 									/>
 								{/if}
-								<span>{ensureNumber(comment.stats?.like_count)}</span>
+								<span>{ensureNumber(comment.stats?.likeCount)}</span>
 							</button>
 
 							<button
@@ -567,7 +542,7 @@
 								onclick={() => onReply?.(comment)}
 							>
 								<MessageCircle class="size-3.5" />
-								<span>{ensureNumber(comment.stats?.reply_count)}</span>
+								<span>{ensureNumber(comment.stats?.replyCount)}</span>
 							</button>
 						</div>
 
@@ -580,30 +555,31 @@
 								<MoreHorizontal class="size-4" />
 							</button>
 
-							{#if activeMenuCommentId === comment.comment_id}
+							{#if activeMenuCommentId === comment.commentId}
 								<div
 									class="absolute right-0 z-10 mt-1 w-28 rounded-md border border-zinc-200 bg-white py-1 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
 								>
-									<!-- 由于接口当前未返回“是否本人”或“可删除”字段，这里暂时同时展示两项。
-										 实际权限仍由后端根据登录态校验。 -->
-									<button
-										class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-red-50 dark:hover:bg-zinc-800"
-										onclick={() => {
-											handleDeleteComment(comment);
-											closeActionMenu();
-										}}
-									>
-										删除
-									</button>
-									<button
-										class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
-										onclick={() => {
-											handleReportComment(comment);
-											closeActionMenu();
-										}}
-									>
-										举报
-									</button>
+									{#if currentUserId && comment.author?.userId === currentUserId}
+										<button
+											class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-red-50 dark:hover:bg-zinc-800"
+											onclick={() => {
+												handleDeleteComment(comment);
+												closeActionMenu();
+											}}
+										>
+											删除
+										</button>
+									{:else}
+										<button
+											class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
+											onclick={() => {
+												handleReportComment(comment);
+												closeActionMenu();
+											}}
+										>
+											举报
+										</button>
+									{/if}
 								</div>
 							{/if}
 						</div>
@@ -611,10 +587,10 @@
 
 					{#if comment._replies && comment._replies.length > 0}
 						<ul class="mt-2 space-y-2 border-l border-zinc-200 pl-3 text-xs dark:border-zinc-700">
-							{#each comment._repliesExpanded ? comment._replies : comment._replies.slice(0, 1) as reply (reply.comment_id)}
+							{#each comment._repliesExpanded ? comment._replies : comment._replies.slice(0, 1) as reply (reply.commentId)}
 								<li class="text-zinc-600 dark:text-zinc-300">
 									<div class="flex items-start justify-between gap-2">
-										{#if reply.author?.user_id && currentUserId && reply.author.user_id === currentUserId}
+										{#if reply.author?.userId && currentUserId && reply.author.userId === currentUserId}
 											<a href={resolve('/app/profile')} class="shrink-0">
 												{#if reply.author?.avatar}
 													<img
@@ -631,8 +607,8 @@
 												type="button"
 												class="shrink-0"
 												onclick={() => {
-													if (reply.author?.user_id) {
-														pendingUserProfileUserId = reply.author.user_id;
+													if (reply.author?.userId) {
+														pendingUserProfileUserId = reply.author.userId;
 														isUserProfilePopoverOpen = true;
 													}
 												}}
@@ -652,24 +628,24 @@
 											<span class="font-medium text-zinc-800 dark:text-zinc-100">
 												{reply.author?.name ?? '用户'}
 											</span>
-											{#if reply.reply_context?.reply_to_user_name}
+											{#if reply.replyContext?.replyToUserName}
 												<span class="cursor-text font-medium text-zinc-800 dark:text-zinc-100">
-													回复 {reply.reply_context.reply_to_user_name}
+													回复 {reply.replyContext.replyToUserName}
 												</span>
 											{/if}
 											<span class="ml-2 cursor-text text-zinc-500">
-												{formatTimeAgo(reply.create_time ?? '')}
+												{formatTimeAgo(reply.createTime ?? '')}
 											</span>
 											<div class="mt-0.5 space-y-0.5">
 												<p class="cursor-text whitespace-pre-wrap">
-													{getDisplayedContent(reply.content ?? '', reply.comment_id ?? '')}
+													{getDisplayedContent(reply.content ?? '', reply.commentId ?? '')}
 												</p>
 												{#if hasLongContent(reply.content ?? '')}
 													<button
 														class="cursor-pointer text-[11px] font-medium text-zinc-500 transition hover:text-zinc-700 dark:hover:text-zinc-300"
-														onclick={() => toggleContentExpanded(reply.comment_id ?? '')}
+														onclick={() => toggleContentExpanded(reply.commentId ?? '')}
 													>
-														{expandedContentIds[reply.comment_id ?? ''] ? '收起' : '查看全文'}
+														{expandedContentIds[reply.commentId ?? ''] ? '收起' : '查看全文'}
 													</button>
 												{/if}
 											</div>
@@ -677,19 +653,19 @@
 												<button
 													class="flex items-center gap-0.5 rounded-full px-1 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
 													onclick={() => handleToggleLike(reply)}
-													disabled={likingCommentId === reply.comment_id}
+													disabled={likingCommentId === reply.commentId}
 												>
-													{#if likingCommentId === reply.comment_id}
+													{#if likingCommentId === reply.commentId}
 														<LoaderCircle class="size-3 animate-spin" />
 													{:else}
 														<Heart
 															class={cn(
 																'size-3',
-																reply.relation_status?.is_liked ? 'fill-rose-500 text-rose-500' : ''
+																reply.relationStatus?.isLiked ? 'fill-rose-500 text-rose-500' : ''
 															)}
 														/>
 													{/if}
-													<span>{ensureNumber(reply.stats?.like_count)}</span>
+													<span>{ensureNumber(reply.stats?.likeCount)}</span>
 												</button>
 												<button
 													class="flex items-center gap-0.5 rounded-full px-1 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
@@ -710,28 +686,31 @@
 												<MoreHorizontal class="size-3.5" />
 											</button>
 
-											{#if activeMenuCommentId === reply.comment_id}
+											{#if activeMenuCommentId === reply.commentId}
 												<div
 													class="absolute right-0 z-10 mt-1 w-28 cursor-pointer rounded-md border border-zinc-200 bg-white py-1 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
 												>
-													<button
-														class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-red-50 dark:hover:bg-zinc-800"
-														onclick={() => {
-															handleDeleteComment(reply);
-															closeActionMenu();
-														}}
-													>
-														删除
-													</button>
-													<button
-														class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
-														onclick={() => {
-															handleReportComment(reply);
-															closeActionMenu();
-														}}
-													>
-														举报
-													</button>
+													{#if currentUserId && reply.author?.userId === currentUserId}
+														<button
+															class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-red-50 dark:hover:bg-zinc-800"
+															onclick={() => {
+																handleDeleteComment(reply);
+																closeActionMenu();
+															}}
+														>
+															删除
+														</button>
+													{:else}
+														<button
+															class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
+															onclick={() => {
+																handleReportComment(reply);
+																closeActionMenu();
+															}}
+														>
+															举报
+														</button>
+													{/if}
 												</div>
 											{/if}
 										</div>
@@ -741,7 +720,7 @@
 						</ul>
 					{/if}
 
-					{#if ensureNumber(comment.stats?.reply_count) > 1}
+					{#if ensureNumber(comment.stats?.replyCount) > 1}
 						<div class="mt-1">
 							{#if !comment._repliesExpanded}
 								<button
@@ -762,7 +741,7 @@
 										? '加载回复中…'
 										: `展开 ${Math.max(
 												1,
-												ensureNumber(comment.stats?.reply_count) - (comment._replies?.length ?? 0)
+												ensureNumber(comment.stats?.replyCount) - (comment._replies?.length ?? 0)
 											)} 条回复`}
 								</button>
 							{:else if getRemainingReplyCount(comment) > 0}
@@ -814,20 +793,16 @@
 	confirmVariant="default"
 	confirmText="删除"
 	onConfirm={async () => {
-		if (!commentToDelete?.comment_id) return;
-		const commentId = commentToDelete.comment_id;
+		if (!commentToDelete?.commentId) return;
+		const commentId = commentToDelete.commentId;
 
 		try {
-			const options: CommentServiceDeleteCommentData = {
-				path: { comment_id: commentId },
-				url: '/v1/comments/{comment_id}'
-			};
-			await commentServiceDeleteComment(options);
+			await api.deleteComment(commentId);
 
 			let removedCount = 0;
 
 			// 尝试作为顶层评论删除
-			const topIndex = comments.findIndex((c) => c.comment_id === commentId);
+			const topIndex = comments.findIndex((c) => c.commentId === commentId);
 			if (topIndex !== -1) {
 				const top = comments[topIndex];
 				const repliesLen = top._replies?.length ?? 0;
@@ -837,14 +812,14 @@
 				// 尝试作为某个顶层评论的回复删除
 				for (const c of comments) {
 					if (!c._replies?.length) continue;
-					const idx = c._replies.findIndex((r) => r.comment_id === commentId);
+					const idx = c._replies.findIndex((r) => r.commentId === commentId);
 					if (idx !== -1) {
 						c._replies = [...c._replies.slice(0, idx), ...c._replies.slice(idx + 1)];
 						removedCount = 1;
 
-						const currentReplyCount = ensureNumber(c.stats?.reply_count);
+						const currentReplyCount = ensureNumber(c.stats?.replyCount);
 						if (c.stats) {
-							c.stats.reply_count = String(Math.max(0, currentReplyCount - 1));
+							c.stats.replyCount = String(Math.max(0, currentReplyCount - 1));
 						}
 						break;
 					}

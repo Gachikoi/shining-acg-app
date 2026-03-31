@@ -1,7 +1,10 @@
 /**
- * 即时性优先时间显示（用于帖子、评论、互动）
- * 规则：< 1 分钟 刚刚；1-59 分钟 xx 分钟前；1-23 小时 xx 小时前；
- * 1-6 天 x 天前；>= 7 天本年 MM-DD；非本年 YYYY-MM-DD
+ * 社区场景相对时间文案（帖子、评论、互动列表等）
+ *
+ * **输入**：`formatTimeAgo` 接受秒级时间戳、`Date` 可解析的 ISO 字符串、或毫秒级时间戳字符串（数值串且 >1e12 时会按毫秒换算为秒）。非法或空值返回 `''`。
+ *
+ * **输出规则**：<1 分钟 →「刚刚」；<1 小时 →「N 分钟前」；<24 小时 →「N 小时前」；<7 天 →「N 天前」；
+ * 满 7 天及以上：同年显示 `MM-DD`，跨年显示 `YYYY-MM-DD`。
  */
 export function formatTimeAgo(timestamp: string | number | undefined): string {
 	if (timestamp === undefined || timestamp === null) return '';
@@ -12,6 +15,8 @@ export function formatTimeAgo(timestamp: string | number | undefined): string {
 		ts = Math.floor(new Date(timestamp).getTime() / 1000);
 	} else {
 		ts = parseInt(timestamp, 10);
+		// API 类型为毫秒级时间戳字符串；纯数字且足够大时按毫秒处理
+		if (ts > 1e12) ts = Math.floor(ts / 1000);
 	}
 	if (Number.isNaN(ts)) return '';
 	const now = Math.floor(Date.now() / 1000);

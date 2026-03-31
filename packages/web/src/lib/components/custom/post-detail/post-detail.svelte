@@ -1,82 +1,67 @@
 <script lang="ts">
 	/**
-	 * @component
-	 * ## PostDetail - 帖子详情弹窗
+	 * @component PostDetail — 帖子详情（弹层/全屏）
 	 *
-	 * 全屏/弹窗式帖子详情组件，展示帖子内容、媒体、作者信息、评论区及交互操作。
-	 * 支持通过 post 属性直接传入数据，或通过 postId 从 API 获取。
+	 * **数据入口**（二选一）：传入 `post` 直接渲染；或传 `postId` 由 `api.getPost` 拉取。业务默认使用 `createRealPostDetailApi`；调试页可注入 `createMockPostDetailApi`（见 `routes/.../post-detail-debug`）。
+	 *
+	 * **子模块**
+	 * - `post-media-area.svelte`：帖内多图/视频轮播，并内嵌 `ImageVideoPreview` 做全屏预览
+	 * - `CommentSection`：一级评论列表、排序、回复、举报/删除
+	 * - `EditCommentPopover`：发评/回复输入与图片草稿
+	 * - `UserProfilePopover`：作者头像等入口的简要资料
+	 *
+	 * **共享工具**：相对时间文案 `$lib/time.formatTimeAgo`；媒体地址 `$lib/media-url.getMediaDisplayUrl`（与预览组件一致）。
 	 *
 	 * ### 功能特性
 	 *
-	 * - **媒体展示**：左侧/顶部展示图片/视频，支持滑动切换；点击进入全屏预览
-	 * - **作者信息**：展示头像、昵称、部门/认证标签，关注按钮
-	 * - **正文展示**：标题+内容，支持长内容折叠（超过1000字显示"查看全文"）
-	 * - **交互操作**：点赞、收藏、评论、分享
-	 * - **评论区**：集成 CommentSection 组件，支持评论展示、回复、点赞、删除
-	 * - **响应式布局**：桌面端左右分栏，移动端上下布局
+	 * - **媒体**：侧栏或顶部轮播，手势切图；点媒体进入 `ImageVideoPreview`
+	 * - **作者**：头像、昵称、部门/认证、关注（四种关系文案，数据来自 `api.getUser`）
+	 * - **正文**：标题 + 正文，超长折叠（约 1000 字「查看全文」）
+	 * - **互动**：点赞、收藏、评论入口、分享；评论走 `api` 与上传封装 `createMediaUploader`
+	 * - **布局**：宽屏左右分栏，窄屏上下堆叠
 	 *
-	 * ### 使用方式
+	 * ### Props 摘要
 	 *
-	 * **1. 通过 postId 从 API 获取**
-	 * ```svelte
-	 * <PostDetail postId="xxx" onClose={() => {}} />
-	 * ```
-	 *
-	 * **2. 直接传入 post 数据**
-	 * ```svelte
-	 * <PostDetail post={postData} onClose={() => {}} />
-	 * ```
-	 *
-	 * ### Props
-	 *
-	 * | 属性 | 类型 | 默认值 | 说明 |
-	 * |------|------|--------|------|
-	 * | post | V1Post | - | 直接传入的帖子数据（可选） |
-	 * | postId | string | - | 帖子 ID，从 API 获取时使用 |
-	 * | showComments | boolean | true | 是否展示评论区 |
-	 * | onClose | () => void | - | 关闭弹窗时的回调 |
-	 *
-	 * ### 回调说明
-	 *
-	 * - onClose: 点击关闭按钮/遮罩/按 ESC 时调用，由父组件控制是否卸载
+	 * | 属性 | 说明 |
+	 * |------|------|
+	 * | `post` | 已有 `V1Post` 时免请求 |
+	 * | `postId` | 与 `post` 互斥；会触发加载态与错误展示 |
+	 * | `showComments` | 是否挂载评论区 |
+	 * | `api` | `PostDetailApi` 实现，便于 Mock/E2E |
+	 * | `onClose` | 关闭按钮、遮罩、ESC；是否卸载由父级决定 |
 	 */
 
 	import type {
 		V1Post as Post,
 		V1Comment,
 		V1CreateCommentRequest,
-		V1CommentTargetType
+		V1CommentTargetType,
+		V1MediaAsset
 	} from '$lib/api';
-	import type { Snippet } from 'svelte';
-	import {
-		postServiceGetPost,
-		postServiceSetPostLike,
-		postServiceSetPostCollect,
-		commentServiceCreateComment,
-		userServiceSetFollow,
-		userServiceGetMe,
-		userServiceGetUser,
-		type UserServiceSetFollowBody
-	} from '$lib/api';
+	import { createRealPostDetailApi, type PostDetailApi, type UserFollowStatus } from './api';
 	import { formatTimeAgo } from '$lib/time';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import * as Popover from '$lib/components/ui/popover';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { X, Heart, MessageCircle, Star, Share, LoaderCircle } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { resolve } from '$app/paths';
+	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
+	import { fly } from 'svelte/transition';
 	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
 	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
 	import { tap } from '$lib/modules/gesture';
+	const defaultApi = createRealPostDetailApi({
+		uploadCommentMedia: (files) => uploadCommentMedia(files)
+	});
+
 	let {
 		post: initialPost,
 		postId,
 		showComments = true,
-		comments,
-		onSubmitComment,
+		api = defaultApi,
 		onClose
 	}: {
 		/** 直接传入的帖子数据（可选，用于已有数据直出渲染） */
@@ -85,24 +70,8 @@
 		postId?: string;
 		/** 是否展示评论区 */
 		showComments?: boolean;
-		/**
-		 * 可选：自定义评论区内容。
-		 * - 不传：组件内部渲染默认评论区（走真实 API）
-		 * - 传入：由父组件完全接管评论区渲染
-		 */
-		comments?: Snippet<
-			[
-				{
-					postId: string;
-					currentUserId: string | null;
-					initialCount: string | number | undefined;
-					onReply: (comment: V1Comment) => void;
-					onTotalCountChange: (delta: number) => void;
-				}
-			]
-		>;
-		/** 可选：覆盖评论提交逻辑（mock/测试场景使用，默认走真实 API） */
-		onSubmitComment?: (content: string, replyTo: V1Comment | null) => void | Promise<void>;
+		/** API 适配层，默认走真实后端；传入 mock 实现可脱离后端调试 */
+		api?: PostDetailApi;
 		/** 可选：点击关闭按钮/遮罩时的回调，由父组件控制是否卸载 Stack */
 		onClose?: () => void;
 	} = $props();
@@ -117,7 +86,7 @@
 	let currentUserId = $state<string | null>(null);
 	let actionError = $state<string | null>(null); // 用于局部错误提示，不影响整个弹窗
 	let notification = $state<string | null>(null); // 用于成功提示
-	let isFollowing = $state(false); // 关注状态，从 userServiceGetUser 获取
+	let followStatus = $state<UserFollowStatus>({ isFollowing: false, isFollowedBy: false });
 	// 用户资料 Popover 状态
 	let isUserProfilePopoverOpen = $state(false);
 	let pendingUserProfileUserId = $state<string | null>(null);
@@ -145,13 +114,12 @@
 	$effect(() => {
 		async function fetchCurrentUser() {
 			try {
-				const response = await userServiceGetMe({});
-				if (response.data?.profile?.userId) {
-					currentUserId = response.data.profile.userId;
+				const res = await api.getMe();
+				if (res.userId) {
+					currentUserId = res.userId;
 				}
 			} catch (err) {
 				console.error('获取当前用户信息失败:', err);
-				// 静默失败，不影响主流程
 			}
 		}
 		fetchCurrentUser();
@@ -160,21 +128,17 @@
 	// 通过 userServiceGetUser 获取作者的关注状态
 	$effect(() => {
 		async function fetchFollowingStatus() {
-			// 需要同时有 post、作者 ID、当前用户 ID 且不是自己
 			if (!post?.author?.userId || !currentUserId || post.author.userId === currentUserId) {
-				isFollowing = false;
+				followStatus = { isFollowing: false, isFollowedBy: false };
 				return;
 			}
 
 			isFetchingFollowing = true;
 			try {
-				const response = await userServiceGetUser({
-					path: { userId: post.author.userId }
-				});
-				isFollowing = response.data?.relationStatus?.isFollowing ?? false;
+				followStatus = await api.getUser(post.author.userId);
 			} catch (err) {
 				console.error('获取关注状态失败:', err);
-				isFollowing = false;
+				followStatus = { isFollowing: false, isFollowedBy: false };
 			} finally {
 				isFetchingFollowing = false;
 			}
@@ -187,11 +151,9 @@
 		error = null;
 		actionError = null;
 		try {
-			const response = await postServiceGetPost({
-				path: { postId: id }
-			});
-			if (response.data?.post) {
-				post = response.data.post;
+			const res = await api.getPost(id);
+			if (res.post) {
+				post = res.post;
 			} else {
 				error = '帖子不存在';
 			}
@@ -220,10 +182,7 @@
 
 		isLiking = true;
 		try {
-			await postServiceSetPostLike({
-				path: { postId: post.postId },
-				body: { isLiked: newIsLiked }
-			});
+			await api.setPostLike(post.postId, newIsLiked);
 		} catch (err) {
 			console.error('点赞操作失败:', err);
 			// 回滚乐观更新
@@ -258,10 +217,7 @@
 		isCollecting = true;
 		actionError = null;
 		try {
-			await postServiceSetPostCollect({
-				path: { postId: post.postId },
-				body: { isCollected: newIsCollected }
-			});
+			await api.setPostCollect(post.postId, newIsCollected);
 		} catch (err) {
 			console.error('收藏操作失败:', err);
 			// 回滚乐观更新
@@ -278,37 +234,41 @@
 		}
 	}
 
+	/**
+	 * 根据双向关注关系推导按钮文案：
+	 * - 未关注 + 未被关注 → "关注"
+	 * - 未关注 + 被关注   → "回关"
+	 * - 已关注 + 被关注   → "互相关注"
+	 * - 已关注 + 未被关注 → "已关注"
+	 */
+	const followButtonLabel = $derived.by(() => {
+		if (followStatus.isFollowing && followStatus.isFollowedBy) return '互相关注';
+		if (followStatus.isFollowing) return '已关注';
+		if (followStatus.isFollowedBy) return '回关';
+		return '关注';
+	});
+
 	async function handleFollow() {
-		// 未登录：触发登录引导（占位）
 		if (!currentUserId) {
-			// TODO: 实现登录功能后，替换为实际的登录弹窗触发
 			actionError = '请先登录后再关注';
 			return;
 		}
 
-		// 并发控制
 		if (!post?.author?.userId || isFollowingAction) return;
 
-		actionError = null; // 清除之前的错误提示
-		const currentIsFollowing = isFollowing;
-		const newIsFollowing = !currentIsFollowing;
+		actionError = null;
+		const prevStatus = { ...followStatus };
+		const newIsFollowing = !followStatus.isFollowing;
 
 		// 乐观更新
-		isFollowing = newIsFollowing;
+		followStatus = { ...followStatus, isFollowing: newIsFollowing };
 
 		isFollowingAction = true;
 		try {
-			const body: UserServiceSetFollowBody = {
-				isFollowing: newIsFollowing
-			};
-			await userServiceSetFollow({
-				path: { userId: post.author.userId },
-				body
-			});
+			await api.setFollow(post.author.userId, newIsFollowing);
 		} catch (err) {
 			console.error('关注操作失败:', err);
-			// 回滚乐观更新
-			isFollowing = currentIsFollowing;
+			followStatus = prevStatus;
 			actionError = '关注操作失败，请重试';
 		} finally {
 			isFollowingAction = false;
@@ -344,7 +304,18 @@
 	const publishLabel = $derived(formatTimeAgo(post?.publishTime ?? ''));
 
 	const CONTENT_LIMIT = 1000;
-	const rawContent = $derived(post?.content ?? '');
+
+	function flattenPostContent(units: Post['content'] | undefined): string {
+		if (!units?.length) return '';
+		let out = '';
+		for (const u of units) {
+			if (u.type === 'text') out += u.content;
+			else out += `@${u.name}`;
+		}
+		return out;
+	}
+
+	const rawContent = $derived(flattenPostContent(post?.content));
 	const hasLongContent = $derived(rawContent.length > CONTENT_LIMIT);
 	let isContentExpanded = $state(false);
 
@@ -356,6 +327,10 @@
 	let commentSectionEl = $state<HTMLElement | null>(null);
 	let commentEditorOpen = $state(false);
 	let commentReplyTo = $state<V1Comment | null>(null);
+	let commentEditorKeyboardInset = $state(0);
+	let commentEditorPanelEl = $state<HTMLElement | null>(null);
+	let commentEditorTriggerEl = $state<HTMLElement | null>(null);
+	const commentMediaUploader = createMediaUploader();
 
 	function getDisplayedContent() {
 		if (!hasLongContent || isContentExpanded) return rawContent;
@@ -377,6 +352,20 @@
 		commentEditorOpen = true;
 	}
 
+	function closeCommentEditor() {
+		commentEditorOpen = false;
+		commentReplyTo = null;
+	}
+
+	function handleContentAreaPointerDown(event: PointerEvent) {
+		if (!commentEditorOpen) return;
+		const target = event.target as Node | null;
+		if (!target) return;
+		if (commentEditorPanelEl?.contains(target)) return;
+		if (commentEditorTriggerEl?.contains(target)) return;
+		closeCommentEditor();
+	}
+
 	function handleCommentCountChange(delta: number) {
 		if (!post?.stats) return;
 		const raw = post.stats.commentCount;
@@ -385,22 +374,77 @@
 		post.stats.commentCount = String(next);
 	}
 
-	async function handleSubmitComment(content: string, replyTo: V1Comment | null) {
+	$effect(() => {
+		return () => {
+			commentMediaUploader.destroy();
+		};
+	});
+
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		const visualViewport = window.visualViewport;
+		if (!visualViewport) return;
+
+		const updateKeyboardInset = () => {
+			if (!commentEditorOpen) {
+				commentEditorKeyboardInset = 0;
+				return;
+			}
+			const inset = Math.max(
+				0,
+				window.innerHeight - (visualViewport.height + visualViewport.offsetTop)
+			);
+			commentEditorKeyboardInset = inset;
+		};
+
+		updateKeyboardInset();
+		visualViewport.addEventListener('resize', updateKeyboardInset);
+		visualViewport.addEventListener('scroll', updateKeyboardInset);
+		window.addEventListener('resize', updateKeyboardInset);
+
+		return () => {
+			visualViewport.removeEventListener('resize', updateKeyboardInset);
+			visualViewport.removeEventListener('scroll', updateKeyboardInset);
+			window.removeEventListener('resize', updateKeyboardInset);
+		};
+	});
+
+	async function uploadCommentMedia(mediaFiles: File[]): Promise<V1MediaAsset[]> {
+		if (mediaFiles.length === 0) return [];
+
+		try {
+			const params = buildPrepareUploadParams({
+				scene: 'MEDIA_SCENE_COMMENT_MEDIA',
+				files: mediaFiles
+			});
+			const batchId = await commentMediaUploader.upload(params);
+			const uploadResult = await commentMediaUploader.uppy.upload();
+			if (uploadResult?.failed && uploadResult.failed.length > 0) {
+				throw uploadResult.failed[0].error ?? new Error('评论图片上传失败');
+			}
+			return await commentMediaUploader.getBatchMedia(batchId);
+		} finally {
+			commentMediaUploader.clear();
+		}
+	}
+
+	async function handleSubmitComment(
+		content: string,
+		replyTo: V1Comment | null,
+		mediaFiles: File[]
+	) {
 		if (!post?.postId) return;
 
-		// 允许外部覆盖提交逻辑（mock/测试场景）
-		if (onSubmitComment) {
-			await onSubmitComment(content, replyTo);
-			commentEditorOpen = false;
-			commentReplyTo = null;
-			return;
-		}
+		const normalizedContent = content.trim();
+		if (!normalizedContent && mediaFiles.length === 0) return;
+
+		const uploadedMedia = await api.uploadCommentMedia(mediaFiles);
 
 		const body: V1CreateCommentRequest = {
 			targetId: post.postId,
 			targetType: 'COMMENT_TARGET_TYPE_POST' as V1CommentTargetType,
-			content,
-			media: []
+			content: normalizedContent,
+			media: uploadedMedia
 		};
 
 		if (replyTo && replyTo.commentId) {
@@ -414,16 +458,15 @@
 		}
 
 		try {
-			const res = await commentServiceCreateComment({ body });
-			const newComment = res.data?.comment;
-			if (newComment) {
-				commentSectionRef?.applyNewComment(newComment);
+			const res = await api.createComment(body);
+			if (res.comment) {
+				commentSectionRef?.applyNewComment(res.comment);
+				commentEditorOpen = false;
+				commentReplyTo = null;
 			}
 		} catch (err) {
 			console.error('发布评论失败', err);
-		} finally {
-			commentEditorOpen = false;
-			commentReplyTo = null;
+			actionError = '发布评论失败，请重试';
 		}
 	}
 </script>
@@ -548,7 +591,10 @@
 				</div>
 
 				<!-- 文本与操作区：头部 + 中间滚动区（含移动端媒体区）+ 底部操作栏 -->
-				<div class="flex h-full grow flex-col lg:w-1/2">
+				<div
+					class="relative flex h-full grow flex-col lg:w-1/2"
+					onpointerdown={handleContentAreaPointerDown}
+				>
 					<!-- 作者信息与统计 -->
 					<div class="flex-none px-4 pt-4 pb-4 lg:px-6 lg:pt-6 lg:pb-4">
 						<div class="flex min-w-0 items-center gap-3">
@@ -648,7 +694,7 @@
 										{#if isFollowingAction || isFetchingFollowing}
 											<LoaderCircle class="mr-1 size-4 animate-spin" />
 										{/if}
-										{isFollowing ? '已关注' : '关注'}
+										{followButtonLabel}
 									</Button>
 								{:else if !currentUserId}
 									<!-- 未登录用户显示关注按钮，点击引导登录 -->
@@ -705,57 +751,39 @@
 						{#if showComments}
 							<div class="mt-6" bind:this={commentSectionEl}>
 								{#if post.postId}
-									{#if comments}
-										{@render comments({
-											postId: post.postId,
-											currentUserId,
-											initialCount: post.stats?.commentCount,
-											onReply: openCommentEditor,
-											onTotalCountChange: handleCommentCountChange
-										})}
-									{:else}
-										<CommentSection
-											bind:this={commentSectionRef}
-											postId={post.postId}
-											{currentUserId}
-											initialCount={post.stats?.commentCount}
-											onReply={openCommentEditor}
-											onTotalCountChange={handleCommentCountChange}
-										/>
-									{/if}
+									<CommentSection
+										bind:this={commentSectionRef}
+										postId={post.postId}
+										{currentUserId}
+										{api}
+										initialCount={post.stats?.commentCount}
+										onReply={openCommentEditor}
+										onTotalCountChange={handleCommentCountChange}
+									/>
 								{/if}
 							</div>
 						{/if}
 					</div>
 
 					<!-- 底部操作栏 -->
-					<div class="flex-none border-t border-zinc-200 dark:border-zinc-800">
+					<div class="relative flex-none border-t border-zinc-200 dark:border-zinc-800">
 						<div class="flex items-center justify-between gap-0 px-4 py-2 lg:px-6">
-							<!-- 输入框触发器：统一使用 Popover + EditCommentPopover 作为编辑入口 -->
-							<Popover.Popover bind:open={commentEditorOpen}>
-								<Popover.PopoverTrigger
-									class="flex min-h-11 flex-1 items-center gap-2 rounded-full bg-zinc-200/70 px-3 py-1.5 text-left text-sm text-zinc-600 ring-0 outline-none hover:bg-zinc-300/80 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-700"
-									aria-label="输入评论"
+							<button
+								bind:this={commentEditorTriggerEl}
+								type="button"
+								class="flex min-h-11 flex-1 items-center gap-2 rounded-full bg-zinc-200/70 px-3 py-1.5 text-left text-sm text-zinc-600 ring-0 outline-none hover:bg-zinc-300/80 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-700"
+								aria-label="输入评论"
+								onclick={() => openCommentEditor(commentReplyTo)}
+							>
+								<div
+									class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-sm font-medium text-white"
 								>
-									<div
-										class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-sm font-medium text-white"
-									>
-										U
-									</div>
-									<span class="truncate">Ciallo～</span>
-								</Popover.PopoverTrigger>
-
-								<Popover.PopoverContent class="w-80 p-3" side="top" align="start">
-									<EditCommentPopover
-										replyTo={commentReplyTo}
-										onSubmit={handleSubmitComment}
-										onCancel={() => {
-											commentEditorOpen = false;
-											commentReplyTo = null;
-										}}
-									/>
-								</Popover.PopoverContent>
-							</Popover.Popover>
+									U
+								</div>
+								<span class="truncate">
+									{commentReplyTo ? `回复 @${commentReplyTo.author?.name ?? '用户'}` : 'Ciallo～'}
+								</span>
+							</button>
 
 							<div class="flex items-center gap-1">
 								<Button
@@ -771,7 +799,10 @@
 									{#if isLiking}
 										<LoaderCircle class="size-4 animate-spin" />
 									{:else}
-										<Heart class={cn('size-4', post.relationStatus?.isLiked && 'fill-current')} />
+										<Heart
+											class={cn('size-4', post.relationStatus?.isLiked && 'fill-current')}
+											fill={post.relationStatus?.isLiked ? 'currentColor' : 'none'}
+										/>
 									{/if}
 									{#if post.stats?.likeCount != null}
 										<span>{post.stats.likeCount}</span>
@@ -792,6 +823,7 @@
 									{:else}
 										<Star
 											class={cn('size-4', post.relationStatus?.isCollected && 'fill-current')}
+											fill={post.relationStatus?.isCollected ? 'currentColor' : 'none'}
 										/>
 									{/if}
 									{#if post.stats?.collectCount != null}
@@ -822,6 +854,27 @@
 								</Button>
 							</div>
 						</div>
+
+						{#if commentEditorOpen}
+							<div
+								bind:this={commentEditorPanelEl}
+								class="absolute inset-x-0 z-40"
+								style={`bottom: ${commentEditorKeyboardInset}px;`}
+								in:fly={{ y: 220, duration: 140 }}
+								out:fly={{ y: 220, duration: 110 }}
+							>
+								<div
+									class="w-full border-t border-zinc-200 bg-zinc-50 p-3 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+								>
+									<EditCommentPopover
+										postId={post.postId ?? null}
+										replyTo={commentReplyTo}
+										onSubmit={handleSubmitComment}
+										onCancel={closeCommentEditor}
+									/>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>

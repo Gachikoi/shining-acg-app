@@ -85,6 +85,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import { AtSign } from 'lucide-svelte';
 	import ShinRichPopover, { type MentionUser } from './shin-rich-popover.svelte';
 	import ShinRichMention from './shin-rich-mention.svelte';
 	import logo from '$lib/assets/logo.png';
@@ -108,6 +109,8 @@
 		onMentionClick?: (userId: string) => void;
 		/** 获取用户列表的函数，用于 @ 提及功能 */
 		fetchMentionUsers?: (query: string) => Promise<MentionUser[]>;
+		/** @ 按钮是否显示为图标（默认文字按钮） */
+		atButtonIconOnly?: boolean;
 	};
 
 	let {
@@ -118,6 +121,7 @@
 		initialContent,
 		onMentionClick,
 		fetchMentionUsers,
+		atButtonIconOnly = false,
 		...restProps
 	}: Props = $props();
 
@@ -233,10 +237,17 @@
 		<Button
 			variant="block"
 			type="button"
-			class="rounded-3xl px-3 py-1.5 text-accent-foreground"
+			class={cn(
+				'rounded-3xl px-3 py-1.5 text-accent-foreground',
+				atButtonIconOnly && 'min-h-9 min-w-9 rounded-full p-0'
+			)}
 			onclick={() => controller.handleAtButtonClick()}
 		>
-			@ 用户
+			{#if atButtonIconOnly}
+				<AtSign class="size-4" />
+			{:else}
+				@ 用户
+			{/if}
 		</Button>
 	</span>
 </div>
