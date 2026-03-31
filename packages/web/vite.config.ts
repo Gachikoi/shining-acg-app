@@ -49,5 +49,12 @@ export default defineConfig({
 	},
 	build: {
 		cssMinify: 'lightningcss'
+	},
+	/**
+	 * 将 @uppy/* 打入 SSR 产物，避免默认 external 后 Wrangler 再解析 node_modules 里
+	 * `import … with { type: 'json' }`（@uppy/core 读 package.json）在旧 esbuild 上失败。
+	 */
+	ssr: {
+		noExternal: [/^@uppy\//]
 	}
 });
