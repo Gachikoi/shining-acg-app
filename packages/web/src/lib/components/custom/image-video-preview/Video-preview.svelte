@@ -1,7 +1,11 @@
 <script lang="ts">
+	/**
+	 * ImageVideoPreview 子组件：当前索引对应视频的播放界面（控制条、倍速、全屏、音量等）。
+	 * 媒体节点通过 `bind:videoElement` / `bind:videoContainer` 交给父组件统一处理手势与自动播放策略。
+	 */
 	import type { V1MediaAsset as Media } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
-	import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from 'lucide-svelte';
+	import { Play, Volume2, VolumeX, Maximize, Minimize, Download } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
 	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
@@ -34,7 +38,9 @@
 		handleVolumeChange = () => {},
 		changePlaybackRate = () => {},
 		toggleFullscreen = () => {},
+		onDownloadClick = () => {},
 		handleContextMenu,
+		controlsEl = $bindable(null),
 		videoElement = $bindable(null),
 		videoContainer = $bindable(null)
 	}: {
@@ -65,7 +71,9 @@
 		handleVolumeChange?: (event: Event) => void;
 		changePlaybackRate?: (rate: number) => void;
 		toggleFullscreen?: () => void;
+		onDownloadClick?: (e: MouseEvent) => void;
 		handleContextMenu?: (event: MouseEvent) => void;
+		controlsEl?: HTMLDivElement | null;
 		videoElement?: HTMLVideoElement | null;
 		videoContainer?: HTMLDivElement | null;
 	} = $props();
@@ -83,7 +91,7 @@
 		class="flex h-full w-full transition-transform duration-300 ease-out"
 		style={`transform: translateX(-${currentIndex * 100}%);`}
 	>
-		{#each mediaList as media, index (media.asset_id ?? index)}
+		{#each mediaList as media, index (media.assetId ?? index)}
 			{#if index === currentIndex || index === currentIndex - 1 || index === currentIndex + 1 || mediaList.length <= 3}
 				<div class="relative flex h-full w-full flex-[0_0_100%] items-center justify-center">
 					{#if index === currentIndex}
@@ -161,37 +169,40 @@
 	<!-- 视频控制界面（可自动隐藏） -->
 	{#if currentMedia?.type === 'MEDIA_TYPE_VIDEO' && showControls}
 		<div
+			bind:this={controlsEl}
 			role="toolbar"
 			tabindex="-1"
 			class={cn(
-				'video-controls absolute bottom-4 left-1/2 w-[calc(100%-3rem)] max-w-5xl -translate-x-1/2 transition-opacity duration-300',
+				'video-controls absolute right-0 bottom-0 left-0 w-full px-3 pb-3 transition-opacity duration-300',
 				isFullscreen ? 'z-70' : 'z-20'
 			)}
 			onclick={handleControlsClick}
 			onkeydown={(e) => e.stopPropagation()}
 		>
 			<div
-				class="flex items-center justify-between gap-4 rounded-[40px] bg-white/90 px-4 py-3 text-zinc-900 shadow-lg backdrop-blur-sm transition-colors dark:bg-zinc-900/90 dark:text-zinc-100"
+				class="flex w-full flex-col gap-2 rounded-2xl bg-white/90 px-3 py-2.5 text-zinc-900 shadow-lg backdrop-blur-sm transition-colors dark:bg-zinc-900/90 dark:text-zinc-100"
 			>
-				<!-- 左侧：播放按钮 + 时间（当前/总时长） -->
-				<div class="flex items-center gap-3">
-					<Button
-						variant="ghost"
-						size="icon"
-						class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
-						onclick={(e) => {
-							e.stopPropagation();
-							togglePlay();
-						}}
-					>
-						{#if isVideoPlaying}
-							<Pause class="size-5" />
-						{:else}
-							<Play class="size-5" />
-						{/if}
-					</Button>
-					{#if Number.isFinite(videoDuration) && videoDuration > 0}
-						<div class="cursor-text text-sm font-medium">
+				<!-- 上：进度条（移动端占满预览宽度；缩小滑动条高度） -->
+				<input
+					type="range"
+					min="0"
+					max="1"
+					step="0.001"
+					value={videoProgress}
+					class="h-0.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
+					style={`background: linear-gradient(to right, rgb(161 161 170) 0%, rgb(161 161 170) ${Math.max(
+						0,
+						Math.min(100, videoProgress * 100)
+					)}%, rgb(39 39 42) ${Math.max(0, Math.min(100, videoProgress * 100))}%, rgb(39 39 42) 100%);`}
+					oninput={handleProgressChange}
+					onmousedown={handleProgressMouseDown}
+					onmouseup={handleProgressMouseUp}
+				/>
+
+				<!-- 下：左下角时间 / 右下角倍速+下载（PC 端额外提供音量/全屏） -->
+				<div class="flex items-end justify-between gap-3">
+					<div class={cn('cursor-text font-medium tabular-nums', isMobile ? 'text-xs' : 'text-sm')}>
+						{#if Number.isFinite(videoDuration) && videoDuration > 0}
 							{Math.floor((videoProgress * videoDuration) / 60)}:{Math.floor(
 								(videoProgress * videoDuration) % 60
 							)
@@ -199,115 +210,114 @@
 								.padStart(2, '0')}/{Math.floor(videoDuration / 60)}:{Math.floor(videoDuration % 60)
 								.toString()
 								.padStart(2, '0')}
-						</div>
-					{:else}
-						<div class="cursor-text text-sm font-medium">0:00/0:00</div>
-					{/if}
-				</div>
+						{:else}
+							0:00/0:00
+						{/if}
+					</div>
 
-				<!-- 中间：进度条 -->
-				<div class="flex-1 px-4">
-					<input
-						type="range"
-						min="0"
-						max="1"
-						step="0.001"
-						value={videoProgress}
-						class="h-1 w-full cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
-						oninput={handleProgressChange}
-						onmousedown={handleProgressMouseDown}
-						onmouseup={handleProgressMouseUp}
-					/>
-				</div>
-
-				<!-- 右侧：倍速 / 音量 / 全屏 -->
-				<div class="flex items-center gap-3">
-					<!-- 倍速（文字样式） -->
-					<Popover bind:open={playbackRatePopoverOpen}>
-						<PopoverTrigger
-							class="text-sm font-medium text-zinc-900 hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
-						>
-							<span>倍速 {playbackRate}x</span>
-						</PopoverTrigger>
-						<PopoverContent
-							class="z-100 mb-2 w-32 bg-zinc-900/95 p-1"
-							portalProps={{ disabled: isFullscreen }}
-							side="top"
-							sideOffset={8}
-							align="center"
-						>
-							<div class="flex flex-col gap-1">
-								{#each [0.5, 1, 1.5, 2] as rate (rate)}
-									<Button
-										variant={playbackRate === rate ? 'default' : 'ghost'}
-										size="sm"
-										class={cn(
-											'w-full justify-start text-xs',
-											playbackRate === rate ? 'bg-white text-black' : 'text-white hover:bg-white/20'
-										)}
-										onclick={(e) => {
-											e.stopPropagation();
-											changePlaybackRate(rate);
-										}}
-									>
-										{rate}x
-									</Button>
-								{/each}
-							</div>
-						</PopoverContent>
-					</Popover>
-
-					<!-- 音量（PC 端：图标 + 音量条；移动端不展示） -->
-					{#if !isMobile}
-						<div class="flex items-center gap-2">
-							<Button
-								variant="ghost"
-								size="icon"
-								class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
-								onclick={(e) => {
-									e.stopPropagation();
-									toggleMute();
-								}}
+					<div class="flex items-center gap-2">
+						<!-- 倍速（文字样式） -->
+						<Popover bind:open={playbackRatePopoverOpen}>
+							<PopoverTrigger
+								class={cn(
+									'font-medium text-zinc-900 hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300',
+									isMobile ? 'text-xs' : 'text-sm'
+								)}
 							>
-								{#if isMuted || volume === 0}
-									<VolumeX class="size-5" />
-								{:else}
-									<Volume2 class="size-5" />
-								{/if}
-							</Button>
-							<input
-								type="range"
-								min="0"
-								max="1"
-								step="0.05"
-								value={volume}
-								class="h-1 w-20 cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
-								oninput={(e) => {
-									e.stopPropagation();
-									handleVolumeChange(e);
-								}}
-							/>
-						</div>
-					{/if}
+								<span>倍速 {playbackRate}x</span>
+							</PopoverTrigger>
+							<PopoverContent
+								class="z-100 mb-2 w-32 bg-zinc-900/95 p-1"
+								portalProps={{ disabled: isFullscreen }}
+								side="top"
+								sideOffset={8}
+								align="end"
+							>
+								<div class="flex flex-col gap-1">
+									{#each [0.5, 1, 1.5, 2] as rate (rate)}
+										<Button
+											variant={playbackRate === rate ? 'default' : 'ghost'}
+											size="sm"
+											class={cn(
+												'w-full justify-start text-xs',
+												playbackRate === rate
+													? 'bg-white text-black'
+													: 'text-white hover:bg-white/20'
+											)}
+											onclick={(e) => {
+												e.stopPropagation();
+												changePlaybackRate(rate);
+											}}
+										>
+											{rate}x
+										</Button>
+									{/each}
+								</div>
+							</PopoverContent>
+						</Popover>
 
-					<!-- 全屏按钮（仅PC端显示） -->
-					{#if !isMobile}
+						<!-- 下载按钮（双端都显示：直接下载当前视频） -->
 						<Button
 							variant="ghost"
 							size="icon"
-							class="min-h-10 min-w-10 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
+							class="min-h-9 min-w-9 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
+							aria-label="下载"
 							onclick={(e) => {
 								e.stopPropagation();
-								toggleFullscreen();
+								onDownloadClick(e);
 							}}
 						>
-							{#if isFullscreen}
-								<Minimize class="size-5" />
-							{:else}
-								<Maximize class="size-5" />
-							{/if}
+							<Download class="size-5" />
 						</Button>
-					{/if}
+
+						<!-- 音量 + 全屏仅 PC -->
+						{#if !isMobile}
+							<div class="flex items-center gap-2">
+								<Button
+									variant="ghost"
+									size="icon"
+									class="min-h-9 min-w-9 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
+									onclick={(e) => {
+										e.stopPropagation();
+										toggleMute();
+									}}
+								>
+									{#if isMuted || volume === 0}
+										<VolumeX class="size-5" />
+									{:else}
+										<Volume2 class="size-5" />
+									{/if}
+								</Button>
+								<input
+									type="range"
+									min="0"
+									max="1"
+									step="0.05"
+									value={volume}
+									class="h-0.5 w-16 cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
+									oninput={(e) => {
+										e.stopPropagation();
+										handleVolumeChange(e);
+									}}
+								/>
+								<Button
+									variant="ghost"
+									size="icon"
+									class="min-h-9 min-w-9 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
+									onclick={(e) => {
+										e.stopPropagation();
+										toggleFullscreen();
+									}}
+								>
+									{#if isFullscreen}
+										<Minimize class="size-5" />
+									{:else}
+										<Maximize class="size-5" />
+									{/if}
+								</Button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 		</div>

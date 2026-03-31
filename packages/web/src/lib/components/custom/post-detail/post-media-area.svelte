@@ -1,10 +1,15 @@
 <script lang="ts">
+	/**
+	 * PostDetail 媒体区：展示帖子 `media` 列表的轮播与缩略切换，并打开 `ImageVideoPreview`。
+	 * 手势与 `ImageVideoPreview` 内逻辑独立；展示 URL 使用 `$lib/media-url.getMediaDisplayUrl`。
+	 */
 	import type { V1Post as Post } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
 	import { ChevronLeft, ChevronRight, Play } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
-	import { swipe, tap } from '$lib/modules/gesture';
+	import type { Axis } from '$lib/modules/gesture';
+	import { registerScrollBoundary, swipe, tap } from '$lib/modules/gesture';
 	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
 
 	const {
@@ -24,7 +29,7 @@
 			activeIndex = 0;
 		}
 	});
-	// 图片视频预览编辑器状态
+	// 图片视频预览器状态
 	let isPreviewEditorOpen = $state(false);
 	let previewEditorInitialIndex = $state(0);
 	let previewEditorAutoplay = $state(false);
@@ -73,6 +78,24 @@
 			panOffsetX = 0;
 		}
 	}));
+	/**
+	 * 与 SwipeablePane 父级横向 swipe 协作：在仍可切换当前帖内媒体时拒绝外层分类滑动；
+	 * 在首张/末张继续向外滑时 canScroll 为 false，内层 swipe 被拒，让渡给 SwipeablePane。
+	 */
+	$effect(() => {
+		const el = gestureContainerEl;
+		if (!el) return;
+		return registerScrollBoundary(el, {
+			axis: 'x',
+			canScroll(queryAxis: Axis, direction: number): boolean {
+				if (queryAxis !== 'x') return false;
+				if (mediaList.length <= 1) return false;
+				if (direction > 0) return activeIndex > 0;
+				return activeIndex < mediaList.length - 1;
+			}
+		});
+	});
+
 	const tapOptions = $derived.by(() => ({
 		excludeSelector: 'button',
 		onTap(detail: { target: EventTarget | null; clientX: number; clientY: number }) {
@@ -175,20 +198,22 @@
 			</button>
 
 			<!-- 媒体分页圆点 + 热区 -->
-			<div class="absolute bottom-3 left-1/2 -translate-x-1/2">
-				<div
-					class="flex cursor-pointer items-center gap-2 rounded-full bg-transparent px-3 py-1 transition-colors hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80"
-				>
+			<div
+				data-preview-nav
+				class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 opacity-60 transition-opacity group-hover:opacity-100"
+			>
+				<div class="flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5">
 					{#each mediaList as media, index (media.assetId ?? index)}
 						<button
 							type="button"
 							class={cn(
 								'h-2 w-2 cursor-pointer rounded-full transition-colors',
-								index === activeIndex
-									? 'bg-rose-500'
-									: 'bg-zinc-300/80 hover:bg-zinc-400 dark:bg-zinc-600/80 dark:hover:bg-zinc-500'
+								index === activeIndex ? 'bg-white' : 'bg-white/50 hover:bg-white/75'
 							)}
-							onclick={() => (activeIndex = index)}
+							onclick={(e) => {
+								e.stopPropagation();
+								activeIndex = index;
+							}}
 							aria-label={`查看第 ${index + 1} 张媒体`}
 						></button>
 					{/each}

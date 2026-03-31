@@ -1,20 +1,27 @@
 <script lang="ts">
 	/**
-	 * @component
-	 * ## ImageVideoPreview - 图片/视频预览器（父组件）
+	 * @component ImageVideoPreview（全屏/弹层媒体预览）
 	 *
-	 * 拆分为父子组件结构：
-	 * - index.svelte：父组件，负责公共逻辑（切换、下载、键盘事件、页码指示器、手势等）
-	 * - Image-preview.svelte：图片预览子组件
-	 * - Video-preview.svelte：视频预览子组件
+	 * **职责**：在帖子详情、发布预览等场景放大查看 `V1MediaAsset[]`；支持左右滑动/按钮切页、视频播放控制、下载、键盘导航。
+	 *
+	 * **结构**
+	 * | 文件 | 作用 |
+	 * |------|------|
+	 * | `index.svelte`（本文件） | 状态与手势：页码、`open`、swipe/tap/longPress、下载与倍速菜单、与 `VideoPreview` 的 play 竞态防护 |
+	 * | `Image-preview.svelte` | 多图横滑条带，仅渲染当前与相邻帧以减轻内存 |
+	 * | `Video-preview.svelte` | 单条视频的 UI 与控制条，通过 `bind:` 回传 video 节点供父组件调 play/pause |
+	 *
+	 * **依赖**：展示 URL 统一经 `$lib/media-url` 的 `getMediaDisplayUrl`；手势见 `$lib/modules/gesture`。移动端与桌面端行为（如忽略打开后误触关闭）见文件内常量注释。
 	 */
 	import { Button } from '$lib/components/ui/button';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import type { V1MediaAsset as Media } from '$lib/api';
 	import { X, Download } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { getMediaDisplayUrl } from '$lib/media-url';
 	import { isMobileUA } from '$lib/utils/device';
-	import { swipe, tap, longPress } from '$lib/modules/gesture';
+	import type { Axis } from '$lib/modules/gesture';
+	import { registerScrollBoundary, swipe, tap, longPress } from '$lib/modules/gesture';
 	import ImagePreview from './Image-preview.svelte';
 	import VideoPreview from './Video-preview.svelte';
 
@@ -61,6 +68,8 @@
 	let isFullscreen = $state(false);
 	// 视频容器（用于调用浏览器 Fullscreen API，由子组件绑定）
 	let videoContainer: HTMLDivElement | null = $state(null);
+	// 视频控制条容器（用于让 swipe 在控件上让渡）
+	let videoControlsEl: HTMLDivElement | null = $state(null);
 	// 视频是否正在调整进度
 	let isSeeking = $state(false);
 	// 视频缓冲/卡顿中（用于 loading 动画）
@@ -74,14 +83,14 @@
 	let contextMenuPosition = $state<{ x: number; y: number } | null>(null);
 	// 倍速选择 popover 状态
 	let playbackRatePopoverOpen = $state(false);
-	// 下载错误提示状态
-	let downloadError = $state<string | null>(null);
-	// 下载错误显示定时器
-	let downloadErrorTimer: ReturnType<typeof setTimeout> | null = null;
+	// 下载错误弹窗状态
+	let downloadErrorDialogOpen = $state(false);
+	let downloadErrorDialogMessage = $state<string>('');
 	// 横向拖拽跟随（swipe 驱动）
 	let panOffsetX = $state(0);
 	let isPanning = $state(false);
 	let gestureContainerEl: HTMLElement | null = $state(null);
+	let dialogEl: HTMLDivElement | null = $state(null);
 	// 刚打开预览后一段时间内忽略关闭（避免移动端「打开」触发的合成 click 落在预览层上误关）
 	let lastOpenedAt = 0;
 	const TAP_IGNORE_AFTER_OPEN_MS = 420;
@@ -89,8 +98,35 @@
 	const PAN_MAX_OFFSET_RATIO = 1.2;
 	// 轻击暂停后短时间忽略播放（避免同一次触摸的合成 click 触发播放按钮）
 	let lastPausedByTapTime = 0;
-	// 长按边缘 2x 倍速：松手恢复 1x，并显示提示
+	// 长按边缘 2x 倍速：松手恢复 1x，并显示提示（与中间区域长按下载菜单互斥）
 	let isEdgeTwoSpeedActive = $state(false);
+	const EDGE_TWO_SPEED_RATIO = 0.18;
+	const EDGE_TWO_SPEED_MIN_PX = 56;
+	const EDGE_TWO_SPEED_MAX_PX = 88;
+	// 开发态可视化边缘分割线，便于调试命中范围
+	const showEdgeZoneDebug = import.meta.env.DEV;
+
+	function getEdgeTwoSpeedWidthPx(containerWidth: number): number {
+		return Math.min(
+			EDGE_TWO_SPEED_MAX_PX,
+			Math.max(EDGE_TWO_SPEED_MIN_PX, containerWidth * EDGE_TWO_SPEED_RATIO)
+		);
+	}
+
+	/**
+	 * 二倍速/长按下载菜单判定统一基于“整个视频容器”，而非 video 画面本身。
+	 * 优先使用 gestureContainer，其次 videoContainer，最后 fallback。
+	 */
+	function getVideoGestureRect(fallback?: HTMLElement | null): DOMRect | null {
+		const host = gestureContainerEl ?? videoContainer ?? fallback ?? null;
+		if (!host) return null;
+		return host.getBoundingClientRect();
+	}
+
+	function isEdgeTwoSpeedZoneByClientX(clientX: number, rect: DOMRect): boolean {
+		const edgePx = getEdgeTwoSpeedWidthPx(rect.width);
+		return clientX < rect.left + edgePx || clientX > rect.right - edgePx;
+	}
 	// 刚关闭下载菜单后的短时间，避免随后触发的合成 click 误关预览（仅图片模式）
 	let lastDownloadMenuClosedAt = 0;
 	const DOWNLOAD_MENU_CLOSED_GRACE_MS = 450;
@@ -116,16 +152,10 @@
 		showControls = true;
 	}
 
-	// 显示下载错误提示
+	// 显示下载错误弹窗（用于权限/CORS/超时等需要用户注意的失败）
 	function showDownloadError(message: string) {
-		downloadError = message;
-		// 3秒后自动隐藏错误提示
-		if (downloadErrorTimer) {
-			clearTimeout(downloadErrorTimer);
-		}
-		downloadErrorTimer = setTimeout(() => {
-			downloadError = null;
-		}, 3000);
+		downloadErrorDialogMessage = message;
+		downloadErrorDialogOpen = true;
 	}
 
 	// 监听 initialIndex 变化
@@ -147,6 +177,12 @@
 			isPanning = false;
 			isVideoBuffering = false;
 			stopControlsHideTimer();
+			// 让预览层获得焦点，避免空格/ESC 等键盘事件冒泡到 post-detail
+			queueMicrotask(() => {
+				// 若组件很快卸载/关闭，避免空引用
+				if (!open) return;
+				dialogEl?.focus?.();
+			});
 		} else {
 			// 关闭时清理定时器
 			stopControlsHideTimer();
@@ -169,12 +205,45 @@
 			downloadPopoverOpen = false;
 			contextMenuPosition = null;
 			isEdgeTwoSpeedActive = false;
-			downloadError = null;
-			if (downloadErrorTimer) {
-				clearTimeout(downloadErrorTimer);
-				downloadErrorTimer = null;
-			}
+			downloadErrorDialogOpen = false;
+			downloadErrorDialogMessage = '';
 		}
+	});
+
+	// 下载菜单打开时：点击/触摸菜单外区域 -> 关闭菜单（不改变播放状态）
+	$effect(() => {
+		if (!open) return;
+		if (typeof document === 'undefined') return;
+
+		const closeDownloadMenuIfNeeded = (target: HTMLElement | null) => {
+			if (!downloadPopoverOpen) return;
+			// 点击菜单内：不处理
+			if (target?.closest?.('[data-download-menu]')) return;
+			// 点击预览导航/控件：不处理（避免误关菜单导致交互突兀）
+			if (target?.closest?.('[data-preview-nav]')) return;
+			if (target?.closest?.('.video-controls')) return;
+			if (target?.closest?.('.play-button-area')) return;
+
+			downloadPopoverOpen = false;
+			contextMenuPosition = null;
+			lastDownloadMenuClosedAt = Date.now();
+		};
+
+		const onPointerDownCapture = (e: PointerEvent) =>
+			closeDownloadMenuIfNeeded(e.target as HTMLElement | null);
+		const onMouseDownCapture = (e: MouseEvent) =>
+			closeDownloadMenuIfNeeded(e.target as HTMLElement | null);
+		const onTouchStartCapture = (e: TouchEvent) =>
+			closeDownloadMenuIfNeeded(e.target as HTMLElement | null);
+
+		document.addEventListener('pointerdown', onPointerDownCapture, true);
+		document.addEventListener('mousedown', onMouseDownCapture, true);
+		document.addEventListener('touchstart', onTouchStartCapture, { capture: true, passive: true });
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDownCapture, true);
+			document.removeEventListener('mousedown', onMouseDownCapture, true);
+			document.removeEventListener('touchstart', onTouchStartCapture, true);
+		};
 	});
 
 	async function requestPlay() {
@@ -223,18 +292,38 @@
 		requestPlay();
 	});
 
+	function stopCurrentVideoBeforeSwitch() {
+		const el = videoElement;
+		if (el) {
+			// 终止潜在的异步 play 请求，并立即暂停当前正在播放的视频
+			playRequestSeq++;
+			try {
+				el.pause();
+			} catch {
+				// ignore
+			}
+			el.currentTime = 0;
+			el.playbackRate = 1;
+		}
+		isVideoPlaying = false;
+		isVideoBuffering = false;
+		isEdgeTwoSpeedActive = false;
+		playbackRate = 1;
+		showControls = true;
+	}
+
 	// 切换上一张/下一张
 	function prevMedia() {
 		if (mediaList.length <= 1) {
 			handleClose();
 			return;
 		}
+		stopCurrentVideoBeforeSwitch();
 		if (currentIndex > 0) {
 			currentIndex = currentIndex - 1;
 		} else {
 			handleClose();
 		}
-		resetVideo();
 	}
 
 	function nextMedia() {
@@ -242,27 +331,54 @@
 			handleClose();
 			return;
 		}
+		stopCurrentVideoBeforeSwitch();
 		if (currentIndex < mediaList.length - 1) {
 			currentIndex = currentIndex + 1;
 		} else {
 			handleClose();
 		}
-		resetVideo();
 	}
 
-	function resetVideo() {
-		if (videoElement) {
-			requestPause();
-			videoElement.currentTime = 0;
-			playbackRate = 1;
-			videoElement.playbackRate = 1;
-			showControls = true;
-			isVideoBuffering = false;
-		}
+	function blockClickThroughOnce() {
+		// 兜底移动端“ghost click / click-through”：
+		// 预览层关闭后，同一次触摸可能会在下层（post-detail 遮罩）再合成一次 click，导致把整个帖子也关掉。
+		if (typeof document === 'undefined') return;
+
+		const startedAt = performance.now();
+		const MAX_MS = 520;
+
+		const handler = (e: Event) => {
+			// 仅短窗口内拦截一次
+			if (performance.now() - startedAt > MAX_MS) {
+				cleanup();
+				return;
+			}
+			try {
+				e.preventDefault?.();
+				(e as unknown as { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
+				e.stopPropagation?.();
+			} finally {
+				cleanup();
+			}
+		};
+
+		const cleanup = () => {
+			document.removeEventListener('click', handler, true);
+			document.removeEventListener('pointerdown', handler, true);
+			document.removeEventListener('pointerup', handler, true);
+		};
+
+		document.addEventListener('click', handler, true);
+		document.addEventListener('pointerdown', handler, true);
+		document.addEventListener('pointerup', handler, true);
+
+		// 双保险：即使事件没来，也会自动清理
+		setTimeout(cleanup, MAX_MS + 60);
 	}
 
 	// 处理关闭
 	function handleClose() {
+		blockClickThroughOnce();
 		open = false;
 	}
 
@@ -287,10 +403,15 @@
 		downloadPopoverOpen = true;
 	}
 
+	// function openDownloadMenuNearElement(el: HTMLElement) {
+	// 	const rect = el.getBoundingClientRect();
+	// 	openDownloadMenuAtPoint(rect.right - 6, rect.top - 6);
+	// }
+
 	// 统一轻击逻辑（含 PC click / 移动端 tap）：
 	// - 点下载菜单不触发其它动作
 	// - 点视频控制区/播放按钮交给控件自身处理
-	// - 视频：播放态轻击暂停；暂停态轻击播放；若下载菜单打开，轻击菜单外关闭菜单并播放
+	// - 视频：播放态轻击暂停；暂停态轻击播放；若下载菜单打开，轻击菜单外仅关闭菜单（不改变播放状态）
 	// - 图片：轻击关闭预览（下载菜单打开则仅关闭菜单）
 	function handleContentTap(target: EventTarget | null) {
 		const el = target as HTMLElement;
@@ -303,11 +424,6 @@
 			downloadPopoverOpen = false;
 			contextMenuPosition = null;
 			lastDownloadMenuClosedAt = Date.now();
-			// 需求：有下载菜单时，轻击菜单外 -> 关闭菜单并进入播放状态（仅视频）
-			if (isVideo) {
-				lastPausedByTapTime = 0;
-				requestPlay();
-			}
 			return;
 		}
 		// 视频：轻击切换播放/暂停（不关闭预览）
@@ -352,6 +468,38 @@
 			panOffsetX = 0;
 		}
 	}));
+
+	/**
+	 * 全屏预览打开时：横向手势优先留在预览层（含首张/末张的特殊逻辑），避免与底层 SwipeablePane 抢 arena。
+	 * 与 post-media-area 不同，边缘滑动手势用于关闭预览，故在仍有媒体时始终声明可消费横向滑动。
+	 */
+	$effect(() => {
+		if (!open) return;
+		const el = gestureContainerEl;
+		if (!el) return;
+		return registerScrollBoundary(el, {
+			axis: 'x',
+			canScroll(queryAxis: Axis): boolean {
+				return queryAxis === 'x' && mediaList.length > 0;
+			}
+		});
+	});
+
+	// 在视频控制条区域内，阻止预览层 swipe 获取控制权（进度条/按钮拖动不应触发切换媒体）
+	$effect(() => {
+		if (!open) return;
+		if (!isVideo) return;
+		const el = videoControlsEl;
+		if (!el) return;
+		return registerScrollBoundary(el, {
+			axis: 'x',
+			canScroll(queryAxis: Axis): boolean {
+				// 只要触点在 controls 内，就认为“子区域可横向滚动”，从而让 Arena reject 父级 swipe
+				return queryAxis === 'x';
+			}
+		});
+	});
+
 	const tapOptions = $derived.by(() => ({
 		excludeSelector: '.video-controls, .play-button-area, [data-preview-nav]',
 		onTap(detail: { target: EventTarget | null }) {
@@ -359,22 +507,21 @@
 		}
 	}));
 	const longPressOptions = $derived.by(() => ({
-		excludeSelector: '.video-controls, .play-button-area',
+		excludeSelector: '.video-controls',
 		touchOnly: true,
 		onPress(e: { x: number; clientX: number; clientY: number; currentTarget: HTMLElement }) {
 			if (downloadPopoverOpen) return;
-			const rect = e.currentTarget.getBoundingClientRect();
+			const rect = getVideoGestureRect(e.currentTarget);
 			if (isVideo) {
-				const xRatio = rect.width > 0 ? e.x / rect.width : 0.5;
-				if (xRatio < 0.2 || xRatio > 0.8) {
+				if (rect && isEdgeTwoSpeedZoneByClientX(e.clientX, rect)) {
 					isEdgeTwoSpeedActive = true;
 					changePlaybackRate(2);
 					return;
 				}
-				requestPause();
 				showControls = true;
 			}
 			openDownloadMenuAtPoint(e.clientX, e.clientY);
+			lastPausedByTapTime = Date.now();
 		},
 		onPressUp() {
 			if (isEdgeTwoSpeedActive) {
@@ -541,6 +688,39 @@
 		}
 	}
 
+	function handleDialogKeyDown(e: KeyboardEvent) {
+		// 忽略如果用户在输入框中
+		const target = e.target as HTMLElement;
+		if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+
+		switch (e.key) {
+			case 'Escape':
+				e.preventDefault();
+				e.stopPropagation();
+				handleClose();
+				return;
+			case 'ArrowLeft':
+				e.preventDefault();
+				e.stopPropagation();
+				if (mediaList.length > 1) prevMedia();
+				return;
+			case 'ArrowRight':
+				e.preventDefault();
+				e.stopPropagation();
+				if (mediaList.length > 1) nextMedia();
+				return;
+			case ' ':
+			case 'k':
+				if (!isVideo) return;
+				e.preventDefault();
+				e.stopPropagation();
+				if (isVideoPlaying) requestPause();
+				else requestPlay();
+				showControlsTemporarily();
+				return;
+		}
+	}
+
 	// 全局监听：随 open 打开/关闭绑定，避免关闭预览后仍占用全局事件
 	$effect(() => {
 		if (!open) return;
@@ -565,39 +745,6 @@
 		};
 		docWithWebkit.addEventListener?.('webkitfullscreenchange', handleFullscreenChange);
 
-		// 键盘导航支持
-		const handleKeyDown = (e: KeyboardEvent) => {
-			// 忽略如果用户在输入框中
-			const target = e.target as HTMLElement;
-			if (target?.closest('input, textarea, [contenteditable="true"]')) return;
-
-			switch (e.key) {
-				case 'Escape':
-					handleClose();
-					break;
-				case 'ArrowLeft':
-					if (mediaList.length > 1) {
-						prevMedia();
-					}
-					break;
-				case 'ArrowRight':
-					if (mediaList.length > 1) {
-						nextMedia();
-					}
-					break;
-				case ' ':
-				case 'k':
-					// 空格或 K 键切换播放/暂停
-					if (isVideo) {
-						e.preventDefault();
-						if (isVideoPlaying) requestPause();
-						else requestPlay();
-					}
-					break;
-			}
-		};
-		document.addEventListener('keydown', handleKeyDown);
-
 		// 移动端触摸事件：触摸时显示控制条，3秒后隐藏
 		const handleTouchStartForControls = () => {
 			if (isVideo) {
@@ -612,7 +759,6 @@
 		return () => {
 			document.removeEventListener('fullscreenchange', handleFullscreenChange);
 			docWithWebkit.removeEventListener?.('webkitfullscreenchange', handleFullscreenChange);
-			document.removeEventListener('keydown', handleKeyDown);
 			if (isMobile) {
 				document.removeEventListener('touchstart', handleTouchStartForControls);
 			}
@@ -672,6 +818,15 @@
 			return false;
 		}
 
+		const isCrossOrigin = (() => {
+			try {
+				if (typeof window === 'undefined') return true;
+				return new URL(mediaUrl, window.location.href).origin !== window.location.origin;
+			} catch {
+				return true;
+			}
+		})();
+
 		// 根据媒体类型设置文件名
 		const isMediaImage = media.type === 'MEDIA_TYPE_IMAGE';
 		const extension = isMediaImage ? 'jpg' : 'mp4';
@@ -686,9 +841,17 @@
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
 		try {
+			const headers = new Headers();
+			// 媒体可能走后端鉴权域名；与 hey-api 一致，从 localStorage 注入 Bearer token
+			if (typeof window !== 'undefined') {
+				const token = localStorage.getItem('token');
+				if (token) headers.set('Authorization', `Bearer ${token}`);
+			}
+
 			const response = await fetch(mediaUrl, {
 				mode: 'cors',
 				credentials: 'omit',
+				headers,
 				signal: controller.signal
 			});
 
@@ -716,15 +879,28 @@
 			try {
 				const a = document.createElement('a');
 				a.href = mediaUrl;
-				a.download = filename;
+				// 跨域资源在大多数浏览器中会忽略 download 属性；视频也常被直接打开播放而非下载。
+				// 同源/已允许下载时保留 download；跨域时让浏览器自行处理（打开新页/系统菜单保存）。
+				if (!isCrossOrigin) {
+					a.download = filename;
+				}
 				a.target = '_blank';
+				a.rel = 'noopener';
 				document.body.appendChild(a);
 				a.click();
 				document.body.removeChild(a);
+
+				// fetch 失败且跨域：提示用户该限制（避免“显示成功但实际没下载”的困惑）
+				if (isCrossOrigin) {
+					showDownloadError('由于跨域/鉴权限制，浏览器无法直接下载该视频。已尝试在新页面打开。');
+					return false;
+				}
 				return true;
 			} catch (linkError) {
 				console.error('直接链接下载也失败', linkError);
-				showDownloadError('下载失败，请尝试长按保存');
+				showDownloadError(
+					'下载失败：可能是跨域(CORS)/鉴权/网络限制导致。请尝试长按保存，或在新页面打开后使用浏览器菜单下载。'
+				);
 				return false;
 			}
 		}
@@ -733,12 +909,7 @@
 	// 下载当前媒体
 	function handleDownloadCurrent() {
 		if (currentMedia) {
-			downloadMedia(currentMedia).then((success) => {
-				if (!success && downloadError) {
-					// 显示错误提示（可以后续替换为 Toast）
-					console.warn(downloadError);
-				}
-			});
+			void downloadMedia(currentMedia);
 		}
 		downloadPopoverOpen = false;
 	}
@@ -754,10 +925,7 @@
 			const success = await downloadMedia(media);
 			if (!success) {
 				failCount++;
-				// 如果失败，提示用户并停止下载
-				if (downloadError) {
-					console.warn(`第 ${i + 1} 个文件下载失败:`, downloadError);
-				}
+				// 失败时继续统计，最终汇总提示
 			}
 			// 添加延迟避免浏览器阻止多个下载
 			if (i < mediaList.length - 1) {
@@ -766,37 +934,67 @@
 		}
 
 		if (failCount > 0) {
-			showDownloadError(`${failCount} 个文件下载失败`);
+			showDownloadError(`${failCount} 个文件下载失败，请重试或改为逐个保存`);
 		}
 		downloadPopoverOpen = false;
 	}
 
 	// 处理右键菜单
 	function handleContextMenu(event: MouseEvent) {
-		// 手机端禁用右键菜单
-		if (isMobile) {
-			event.preventDefault();
-			return;
-		}
 		event.preventDefault();
+		// 移动端长按 video 触发 contextmenu 时，也必须与边缘二倍速逻辑保持一致
+		if (isMobile && isVideo) {
+			const rect = getVideoGestureRect(event.currentTarget as HTMLElement | null);
+			if (rect && isEdgeTwoSpeedZoneByClientX(event.clientX, rect)) {
+				if (!isEdgeTwoSpeedActive) {
+					isEdgeTwoSpeedActive = true;
+					changePlaybackRate(2);
+				}
+				return;
+			}
+		}
 		openDownloadMenuAtPoint(event.clientX, event.clientY);
+	}
+
+	// 控制栏下载按钮：在按钮附近打开下载菜单
+	function handleControlsDownloadClick(e: MouseEvent) {
+		e.stopPropagation();
+		// 控制栏下载：直接下载当前媒体（视频）
+		if (currentMedia) {
+			void downloadMedia(currentMedia);
+		}
 	}
 </script>
 
 {#if open}
+	<AlertDialog.Root
+		bind:open={downloadErrorDialogOpen}
+		onOpenChange={(o) => !o && (downloadErrorDialogMessage = '')}
+	>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>下载失败</AlertDialog.Title>
+				<AlertDialog.Description>{downloadErrorDialogMessage}</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Action onclick={() => (downloadErrorDialogOpen = false)}
+					>知道了</AlertDialog.Action
+				>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
 	<div
 		role="dialog"
 		aria-label="图片视频预览"
 		tabindex="-1"
+		bind:this={dialogEl}
 		class={cn(
 			'fixed z-60 flex flex-col items-center justify-center',
 			fullScreen ? 'inset-0 bg-black' : 'inset-0 bg-zinc-100',
 			className
 		)}
-		onkeydown={(e) => {
-			e.stopPropagation();
-		}}
-		use:tap={tapOptions}
+		onkeydown={handleDialogKeyDown}
 	>
 		<!-- 关闭按钮 -->
 		<div class={cn('absolute top-4 left-4', isVideo && isFullscreen ? 'z-70' : 'z-10')}>
@@ -804,7 +1002,10 @@
 				variant="ghost"
 				size="icon"
 				class="min-h-11 min-w-11 text-white hover:bg-white/20"
-				onclick={handleClose}
+				onclick={(e) => {
+					e.stopPropagation();
+					handleClose();
+				}}
 				aria-label="关闭"
 			>
 				<X class="size-5" />
@@ -818,7 +1019,30 @@
 				class="group relative flex h-full w-full items-center justify-center overflow-hidden"
 				use:swipe={swipeOptions}
 				use:longPress={longPressOptions}
+				use:tap={tapOptions}
 			>
+				{#if showEdgeZoneDebug && isVideo}
+					{@const edgeDebugPx = getEdgeTwoSpeedWidthPx(
+						gestureContainerEl?.getBoundingClientRect().width ??
+							videoContainer?.getBoundingClientRect().width ??
+							0
+					)}
+					<div class="pointer-events-none absolute inset-0 z-40">
+						<div
+							class="absolute top-0 bottom-0 left-0 border-r border-cyan-300/90 bg-cyan-400/10"
+							style={`width: ${edgeDebugPx}px;`}
+						></div>
+						<div
+							class="absolute top-0 right-0 bottom-0 border-l border-cyan-300/90 bg-cyan-400/10"
+							style={`width: ${edgeDebugPx}px;`}
+						></div>
+						<div
+							class="absolute top-3 left-1/2 -translate-x-1/2 rounded bg-cyan-500/80 px-2 py-1 text-[10px] text-white"
+						>
+							2x 边缘区（开发环境）
+						</div>
+					</div>
+				{/if}
 				<div
 					class="h-full w-full"
 					style={`transform: translateX(${panOffsetX}px); transition: ${isPanning ? 'none' : 'transform 0.25s ease-out'};`}
@@ -856,9 +1080,11 @@
 							{handleVolumeChange}
 							{changePlaybackRate}
 							{toggleFullscreen}
+							onDownloadClick={handleControlsDownloadClick}
 							{handleContextMenu}
 							bind:videoElement
 							bind:videoContainer
+							bind:controlsEl={videoControlsEl}
 						/>
 					{/if}
 				</div>
@@ -932,10 +1158,10 @@
 						{currentIndex + 1} / {mediaList.length}
 					</div>
 
-					<!-- 底部小圆点指示器 -->
+					<!-- 底部小圆点指示器（需高于暂停态播放覆盖层 `.play-button-area`） -->
 					<div
 						data-preview-nav
-						class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 opacity-60 transition-opacity group-hover:opacity-100"
+						class="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 opacity-60 transition-opacity group-hover:opacity-100"
 					>
 						<div class="flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5">
 							<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
@@ -948,8 +1174,8 @@
 									)}
 									onclick={(e) => {
 										e.stopPropagation();
+										stopCurrentVideoBeforeSwitch();
 										currentIndex = index;
-										resetVideo();
 									}}
 									aria-label={`查看第 ${index + 1} 张媒体`}
 								></button>
@@ -997,15 +1223,6 @@
 			aria-live="polite"
 		>
 			二倍速
-		</div>
-	{/if}
-
-	<!-- 下载错误提示 -->
-	{#if downloadError}
-		<div
-			class="fixed bottom-20 left-1/2 z-70 -translate-x-1/2 rounded-lg bg-red-500 px-4 py-2 text-sm text-white shadow-lg"
-		>
-			{downloadError}
 		</div>
 	{/if}
 {/if}
