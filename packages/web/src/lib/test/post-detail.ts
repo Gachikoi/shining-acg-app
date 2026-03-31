@@ -8,11 +8,14 @@ import type {
 	V1CommentStats,
 	V1CommentRelationStatus
 } from '$lib/api';
+import { MOCK_PICSUM_WIDTH, mockPicsumImageUrl } from '$lib/test/mock-picsum-url';
 
 /**
  * 开发/联调时无后端可用，用此 mock 数据生成帖子与评论。
  * `getMockPost` 和 `getMockPostComments` 被 `api-mock.ts` 复用。
  * 字段形状严格对齐 `$lib/api`（types.gen.ts）。
+ * 评论可含附图：`MEDIA_SCENE_COMMENT_MEDIA`，见 `makeCommentImageMedia` 与 c1 / c1-r2 / i%7===0 等样例。
+ * 图片 URL 统一由 `$lib/test/mock-picsum-url` 生成；视频使用公开样例 MP4 + picsum 作封面。
  */
 
 const nowMs = Date.now();
@@ -34,12 +37,32 @@ const defaultUserStats: UserSummary['stats'] = {
 	viewCountReceived: '1024'
 };
 
+/** 与 userId 绑定的 Dicebear 头像，不同 id 外观不同 */
+function mockDicebearAvatar(seed: string): string {
+	return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
+
+/**
+ * PostDetail mock 当前用户 id（`createMockPostDetailApi` 中 `getMe` 与「新发评论」作者与此一致）。
+ */
+export const MOCK_POST_DETAIL_CURRENT_USER_ID = 'mock-current-user';
+
+/**
+ * 当前用户 mock 头像：与 {@link makeAuthor} 相同风格（Dicebear avataaars），便于与帖子/评论作者区分。
+ */
+export function mockPostDetailCurrentUserAvatarUrl(): string {
+	return mockDicebearAvatar(MOCK_POST_DETAIL_CURRENT_USER_ID);
+}
+
 function makeAuthor(partial?: Partial<UserSummary>): UserSummary {
+	const userId = partial?.userId ?? 'mock-user-1';
+	const avatar =
+		partial?.avatar != null && partial.avatar !== '' ? partial.avatar : mockDicebearAvatar(userId);
 	return {
-		userId: partial?.userId ?? 'mock-user-1',
+		userId,
 		name: partial?.name ?? '晒你测试用户',
 		remark: partial?.remark,
-		avatar: partial?.avatar ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ciallo～(∠・ω< )⌒★',
+		avatar,
 		qqNumber: partial?.qqNumber ?? '',
 		role: partial?.role ?? 'ROLE_USER',
 		verifiedTitle: partial?.verifiedTitle ?? '23 届部长',
@@ -69,14 +92,22 @@ function pickUserIdentity(user: UserSummary): { userId: string; userName: string
 	};
 }
 
-function makeImageMedia(
+/** 可公开访问的短视频样例（仅作 mock 播放；封面用 {@link mockPicsumImageUrl}） */
+const MOCK_SAMPLE_MP4 = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+
+/** 评论附图（场景为 COMMENT_MEDIA，与发帖媒体区分） */
+function makeCommentImageMedia(
 	id: string,
-	url: string,
-	width: number,
 	height: number,
 	mimeType: string,
 	orderIndex: number
 ): Media {
+	const m = makeImageMedia(id, height, mimeType, orderIndex);
+	return { ...m, scene: 'MEDIA_SCENE_COMMENT_MEDIA' };
+}
+
+function makeImageMedia(id: string, height: number, mimeType: string, orderIndex: number): Media {
+	const url = mockPicsumImageUrl(height, id);
 	return {
 		assetId: id,
 		type: 'MEDIA_TYPE_IMAGE',
@@ -90,7 +121,7 @@ function makeImageMedia(
 			objectKey: url,
 			url,
 			meta: {
-				width,
+				width: MOCK_PICSUM_WIDTH,
 				height,
 				durationMs: '0',
 				sizeBytes: '0',
@@ -103,12 +134,12 @@ function makeImageMedia(
 
 function makeVideoMedia(
 	id: string,
-	url: string,
-	width: number,
 	height: number,
 	mimeType: string,
-	orderIndex: number
+	orderIndex: number,
+	videoUrl: string = MOCK_SAMPLE_MP4
 ): Media {
+	const thumbnailUrl = mockPicsumImageUrl(height, `${id}-poster`);
 	return {
 		assetId: id,
 		type: 'MEDIA_TYPE_VIDEO',
@@ -119,12 +150,13 @@ function makeVideoMedia(
 			fileId: id,
 			type: 'MEDIA_TYPE_VIDEO',
 			bucket: 'mock',
-			objectKey: url,
-			url,
+			objectKey: videoUrl,
+			url: videoUrl,
+			thumbnailUrl,
 			meta: {
-				width,
+				width: MOCK_PICSUM_WIDTH,
 				height,
-				durationMs: '0',
+				durationMs: '30000',
 				sizeBytes: '0',
 				mimeType
 			},
@@ -135,24 +167,10 @@ function makeVideoMedia(
 
 function makeMediaList(): Media[] {
 	return [
-		makeImageMedia(
-			'm1',
-			'https://fastly.picsum.photos/id/581/1080/1350.jpg?hmac=cd2_S4wHGI58ibJA_C3J2XZHhN0MLKiiJqAfWuz-_dQ',
-			1080,
-			1350,
-			'image/jpeg',
-			0
-		),
-		makeImageMedia(
-			'm2',
-			'https://fastly.picsum.photos/id/522/800/600.jpg?hmac=yfhp98TsiK5ithmulNqY0wgo9UhYxPYDjvm3j89Ev0c',
-			800,
-			600,
-			'image/webp',
-			1
-		),
-		makeVideoMedia('m3', 'https://www.w3schools.com/html/mov_bbb.mp4', 1080, 1350, 'video/mp4', 2),
-		makeVideoMedia('m4', 'https://www.w3schools.com/html/mov_bbb.mp4', 1080, 1350, 'video/mp4', 3)
+		makeImageMedia('m1', 500, 'image/jpeg', 0),
+		makeImageMedia('m2', 600, 'image/webp', 1),
+		makeVideoMedia('m3', 450, 'video/mp4', 2),
+		makeVideoMedia('m4', 350, 'video/mp4', 3)
 	];
 }
 
@@ -214,6 +232,8 @@ function makeCommentBase(args: {
 	replyCount: number;
 	isLiked?: boolean;
 	replyContext?: V1Comment['replyContext'];
+	/** 评论附图，最多 6 张（与接口一致） */
+	media?: Media[];
 }): V1Comment {
 	return {
 		commentId: args.commentId,
@@ -221,7 +241,7 @@ function makeCommentBase(args: {
 		targetType: 'COMMENT_TARGET_TYPE_POST',
 		author: toUserBrief(args.author),
 		content: args.content,
-		media: [],
+		media: args.media ?? [],
 		createTime: args.createTime,
 		stats: makeCommentStats(args.likeCount, args.replyCount),
 		relationStatus: makeCommentRelation(args.isLiked ?? false),
@@ -246,6 +266,7 @@ function makeReply(args: {
 	replyTo: { commentId: string; userId: string; userName: string };
 	likeCount?: number;
 	isLiked?: boolean;
+	media?: Media[];
 }): V1Comment {
 	return makeCommentBase({
 		commentId: args.replyId,
@@ -256,6 +277,7 @@ function makeReply(args: {
 		likeCount: args.likeCount ?? 0,
 		replyCount: 0,
 		isLiked: args.isLiked ?? false,
+		media: args.media,
 		replyContext: {
 			parentCommentId: args.parentCommentId,
 			replyToCommentId: args.replyTo.commentId,
@@ -266,23 +288,29 @@ function makeReply(args: {
 }
 
 export function getMockPostComments(postId: string): V1CommentWithReplies[] {
-	const authorA = makeAuthor({ userId: 'u2', name: '路人甲', avatar: '' });
+	const authorA = makeAuthor({ userId: 'u2', name: '路人甲' });
 	const authorB = makeAuthor({
 		userId: 'u3',
 		name: '瓶子君152',
-		avatar: '',
 		departments: [{ id: '1', name: '轻音部' }]
 	});
-	const authorC = makeAuthor({ userId: 'u4', name: '测试用户 B', avatar: '' });
+	const authorC = makeAuthor({ userId: 'u4', name: '测试用户 B' });
 
 	const top1 = makeCommentBase({
 		commentId: 'c1',
 		postId,
 		author: authorA,
-		content: 'mock 评论 1：点赞数高，会排在最热前面。',
+		content:
+			'mock 评论 1：点赞数高，会排在最热前面。附四张图测试多图网格（第三格右下角「共 4 张」）与预览。',
 		createTime: fiveMinAgoMs,
 		likeCount: 10,
-		replyCount: 3
+		replyCount: 3,
+		media: [
+			makeCommentImageMedia('c1-img-0', 500, 'image/jpeg', 0),
+			makeCommentImageMedia('c1-img-1', 600, 'image/webp', 1),
+			makeCommentImageMedia('c1-img-2', 520, 'image/jpeg', 2),
+			makeCommentImageMedia('c1-img-3', 540, 'image/webp', 3)
+		]
 	});
 
 	const repliesTop1: V1Comment[] = [
@@ -301,9 +329,10 @@ export function getMockPostComments(postId: string): V1CommentWithReplies[] {
 			parentCommentId: 'c1',
 			replyId: 'c1-r2',
 			author: authorC,
-			content: '回复 2：补充一些细节～',
+			content: '回复 2：补充一张示意图～',
 			createTime: String(nowMs - 40 * 1000),
-			replyTo: { commentId: 'c1-r1', ...pickUserIdentity(authorB) }
+			replyTo: { commentId: 'c1-r1', ...pickUserIdentity(authorB) },
+			media: [makeCommentImageMedia('c1-r2-img-0', 360, 'image/jpeg', 0)]
 		}),
 		makeReply({
 			postId,
@@ -354,25 +383,28 @@ export function getMockPostComments(postId: string): V1CommentWithReplies[] {
 
 	for (let i = 4; i <= 28; i += 1) {
 		const idx = String(i);
-		const author = makeAuthor({ userId: `u${100 + i}`, name: `用户 ${idx}`, avatar: '' });
+		const author = makeAuthor({ userId: `u${100 + i}`, name: `用户 ${idx}` });
 		const content =
 			i % 5 === 0
 				? makeLongCommentText(`c${idx}`)
-				: `mock 评论 c${idx}：用于测试列表滚动与分隔线显示。`;
+				: `mock 评论 c${idx}：用于测试列表滚动与评论展示。`;
 
 		const parentId = `c${idx}`;
+		const listCommentMedia: Media[] | undefined =
+			i % 7 === 0 ? [makeCommentImageMedia(`${parentId}-img-0`, 480, 'image/jpeg', 0)] : undefined;
 		const top = makeCommentBase({
 			commentId: parentId,
 			postId,
 			author,
-			content,
+			content: i % 7 === 0 ? `${content}（本条含 1 张附图）` : content,
 			createTime: String(nowMs - i * 60 * 1000),
 			likeCount: i % 7 === 0 ? 12 : i % 3,
-			replyCount: 2
+			replyCount: 2,
+			media: listCommentMedia
 		});
 
-		const rAuthor1 = makeAuthor({ userId: `u${200 + i}`, name: `回复者 ${idx}-A`, avatar: '' });
-		const rAuthor2 = makeAuthor({ userId: `u${300 + i}`, name: `回复者 ${idx}-B`, avatar: '' });
+		const rAuthor1 = makeAuthor({ userId: `u${200 + i}`, name: `回复者 ${idx}-A` });
+		const rAuthor2 = makeAuthor({ userId: `u${300 + i}`, name: `回复者 ${idx}-B` });
 		const replies: V1Comment[] = [
 			makeReply({
 				postId,

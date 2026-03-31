@@ -1,13 +1,13 @@
 <script lang="ts">
 	/**
 	 * PostDetail 媒体区：展示帖子 `media` 列表的轮播与缩略切换，并打开 `ImageVideoPreview`。
-	 * 手势与 `ImageVideoPreview` 内逻辑独立；展示 URL 使用 `$lib/media-url.getMediaDisplayUrl`。
+	 * 手势与 `ImageVideoPreview` 内逻辑独立；展示 URL 使用 `$lib/utils/media-url.getMediaDisplayUrl`。
 	 */
 	import type { V1Post as Post } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
 	import { ChevronLeft, ChevronRight, Play } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
-	import { getMediaDisplayUrl } from '$lib/media-url';
+	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import type { Axis } from '$lib/modules/gesture';
 	import { registerScrollBoundary, swipe, tap } from '$lib/modules/gesture';
 	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
@@ -118,22 +118,22 @@
 <!-- 媒体滑动区：内部负责 swipe 手势、左右切换、圆点指示和预览 -->
 <div
 	bind:this={gestureContainerEl}
-	class="group relative flex h-full w-full items-center justify-center bg-black/80"
+	class="group relative flex h-full min-h-0 w-full min-w-0 items-center justify-center bg-black/80"
 	role="group"
 	aria-roledescription="carousel"
 	use:swipe={swipeOptions}
 	use:tap={tapOptions}
 >
 	{#if mediaList.length > 0 && activeIndex >= 0}
-		<!-- 媒体滑动视口 -->
-		<div class="relative h-full w-full overflow-hidden">
+		<!-- 媒体滑动视口：min-w-0 避免 flex 子项撑破；轨道用 translate3d 减少子像素缝隙 -->
+		<div class="relative h-full min-h-0 w-full min-w-0 overflow-hidden">
 			<div
-				class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)]"
-				style={`transform: translateX(calc(-${activeIndex * 100}% + ${panOffsetX}px));`}
+				class="flex h-full w-full transition-transform duration-260 ease-[cubic-bezier(0.22,0.61,0.36,1)] will-change-transform"
+				style={`transform: translate3d(calc(-${activeIndex * 100}% + ${panOffsetX}px), 0, 0);`}
 			>
 				{#each mediaList as media, index (media.assetId ?? index)}
 					<div
-						class="flex h-full w-full flex-[0_0_100%] items-center justify-center"
+						class="box-border flex h-full min-h-0 w-full min-w-full flex-[0_0_100%] shrink-0 basis-full items-center justify-center overflow-hidden bg-black"
 						data-media-index={index}
 					>
 						{#if media.type === 'MEDIA_TYPE_IMAGE'}

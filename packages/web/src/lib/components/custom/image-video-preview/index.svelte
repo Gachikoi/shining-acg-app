@@ -11,14 +11,15 @@
 	 * | `Image-preview.svelte` | 多图横滑条带，仅渲染当前与相邻帧以减轻内存 |
 	 * | `Video-preview.svelte` | 单条视频的 UI 与控制条，通过 `bind:` 回传 video 节点供父组件调 play/pause |
 	 *
-	 * **依赖**：展示 URL 统一经 `$lib/media-url` 的 `getMediaDisplayUrl`；手势见 `$lib/modules/gesture`。移动端与桌面端行为（如忽略打开后误触关闭）见文件内常量注释。
+	 * **依赖**：展示 URL 统一经 `$lib/utils/media-url` 的 `getMediaDisplayUrl`；手势见 `$lib/modules/gesture`。移动端与桌面端行为（如忽略打开后误触关闭）见文件内常量注释。
 	 */
 	import { Button } from '$lib/components/ui/button';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { messageForOperationError } from '$lib/utils/operation-error-message';
+	import { toast } from 'svelte-sonner';
 	import type { V1MediaAsset as Media } from '$lib/api';
 	import { X, Download } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
-	import { getMediaDisplayUrl } from '$lib/media-url';
+	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import { isMobileUA } from '$lib/utils/device';
 	import type { Axis } from '$lib/modules/gesture';
 	import { registerScrollBoundary, swipe, tap, longPress } from '$lib/modules/gesture';
@@ -83,9 +84,6 @@
 	let contextMenuPosition = $state<{ x: number; y: number } | null>(null);
 	// 倍速选择 popover 状态
 	let playbackRatePopoverOpen = $state(false);
-	// 下载错误弹窗状态
-	let downloadErrorDialogOpen = $state(false);
-	let downloadErrorDialogMessage = $state<string>('');
 	// 横向拖拽跟随（swipe 驱动）
 	let panOffsetX = $state(0);
 	let isPanning = $state(false);
@@ -103,8 +101,8 @@
 	const EDGE_TWO_SPEED_RATIO = 0.18;
 	const EDGE_TWO_SPEED_MIN_PX = 56;
 	const EDGE_TWO_SPEED_MAX_PX = 88;
-	// 开发态可视化边缘分割线，便于调试命中范围
-	const showEdgeZoneDebug = import.meta.env.DEV;
+	/** 开发态：视频 2x 边缘区辅助线是否显示（默认开，仅 DEV 显示切换按钮） */
+	let devVideoEdgeGuideVisible = $state(true);
 
 	function getEdgeTwoSpeedWidthPx(containerWidth: number): number {
 		return Math.min(
@@ -152,10 +150,10 @@
 		showControls = true;
 	}
 
-	// 显示下载错误弹窗（用于权限/CORS/超时等需要用户注意的失败）
 	function showDownloadError(message: string) {
-		downloadErrorDialogMessage = message;
-		downloadErrorDialogOpen = true;
+		toast.error(message, {
+			duration: message.length > 36 ? 4200 : 2800
+		});
 	}
 
 	// 监听 initialIndex 变化
@@ -205,8 +203,6 @@
 			downloadPopoverOpen = false;
 			contextMenuPosition = null;
 			isEdgeTwoSpeedActive = false;
-			downloadErrorDialogOpen = false;
-			downloadErrorDialogMessage = '';
 		}
 	});
 
@@ -461,7 +457,8 @@
 		},
 		onEnd(state: { committed: boolean; direction: 'left' | 'right' }) {
 			isPanning = false;
-			if (state.committed && mediaList.length > 1) {
+			// 与 prevMedia/nextMedia 一致：首张继续「上一张」、末张继续「下一张」会 handleClose；仅 1 张时任意方向也会关闭
+			if (state.committed && mediaList.length > 0) {
 				if (state.direction === 'right') prevMedia();
 				else nextMedia();
 			}
@@ -899,7 +896,10 @@
 			} catch (linkError) {
 				console.error('直接链接下载也失败', linkError);
 				showDownloadError(
-					'下载失败：可能是跨域(CORS)/鉴权/网络限制导致。请尝试长按保存，或在新页面打开后使用浏览器菜单下载。'
+					messageForOperationError(
+						linkError,
+						'下载失败：可能是跨域(CORS)/鉴权/网络限制导致。请尝试长按保存，或在新页面打开后使用浏览器菜单下载。'
+					)
 				);
 				return false;
 			}
@@ -967,23 +967,6 @@
 </script>
 
 {#if open}
-	<AlertDialog.Root
-		bind:open={downloadErrorDialogOpen}
-		onOpenChange={(o) => !o && (downloadErrorDialogMessage = '')}
-	>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>下载失败</AlertDialog.Title>
-				<AlertDialog.Description>{downloadErrorDialogMessage}</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => (downloadErrorDialogOpen = false)}
-					>知道了</AlertDialog.Action
-				>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
-
 	<div
 		role="dialog"
 		aria-label="图片视频预览"
@@ -1021,25 +1004,35 @@
 				use:longPress={longPressOptions}
 				use:tap={tapOptions}
 			>
-				{#if showEdgeZoneDebug && isVideo}
+				{#if import.meta.env.DEV && isVideo}
 					{@const edgeDebugPx = getEdgeTwoSpeedWidthPx(
 						gestureContainerEl?.getBoundingClientRect().width ??
 							videoContainer?.getBoundingClientRect().width ??
 							0
 					)}
 					<div class="pointer-events-none absolute inset-0 z-40">
-						<div
-							class="absolute top-0 bottom-0 left-0 border-r border-cyan-300/90 bg-cyan-400/10"
-							style={`width: ${edgeDebugPx}px;`}
-						></div>
-						<div
-							class="absolute top-0 right-0 bottom-0 border-l border-cyan-300/90 bg-cyan-400/10"
-							style={`width: ${edgeDebugPx}px;`}
-						></div>
-						<div
-							class="absolute top-3 left-1/2 -translate-x-1/2 rounded bg-cyan-500/80 px-2 py-1 text-[10px] text-white"
-						>
-							2x 边缘区（开发环境）
+						{#if devVideoEdgeGuideVisible}
+							<div
+								class="absolute top-0 bottom-0 left-0 border-r border-cyan-300/90 bg-cyan-400/10"
+								style={`width: ${edgeDebugPx}px;`}
+							></div>
+							<div
+								class="absolute top-0 right-0 bottom-0 border-l border-cyan-300/90 bg-cyan-400/10"
+								style={`width: ${edgeDebugPx}px;`}
+							></div>
+						{/if}
+						<div class="pointer-events-auto absolute top-3 right-4 z-50">
+							<Button
+								variant="secondary"
+								size="sm"
+								class="h-7 border border-white/25 bg-black/55 px-2 text-[10px] text-white hover:bg-black/75"
+								onclick={(e) => {
+									e.stopPropagation();
+									devVideoEdgeGuideVisible = !devVideoEdgeGuideVisible;
+								}}
+							>
+								开发模式 {devVideoEdgeGuideVisible ? '隐藏2倍速辅助线' : '显示2倍速辅助线'}
+							</Button>
 						</div>
 					</div>
 				{/if}

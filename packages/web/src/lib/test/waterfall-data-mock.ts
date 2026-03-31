@@ -1,4 +1,5 @@
 import type { V1PostPreview, V1UserSummary, FeedServiceGetFeedData } from '$lib/api/types.gen';
+import { mockPicsumImageUrl } from '$lib/test/mock-picsum-url';
 
 const TITLES = [
 	'春日樱花盛开',
@@ -61,7 +62,7 @@ function generatePost(id: string): V1PostPreview {
 				type: isOnlyVideo ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE',
 				bucket: 'test-bucket',
 				objectKey: `test/image_${id}.jpg`,
-				url: `https://picsum.photos/400/${aspectRatio.height}?random=${id}`,
+				url: mockPicsumImageUrl(aspectRatio.height, id),
 				meta: {
 					width: aspectRatio.width,
 					height: aspectRatio.height,

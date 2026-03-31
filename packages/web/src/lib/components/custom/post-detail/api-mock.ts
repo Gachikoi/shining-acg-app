@@ -1,11 +1,12 @@
 /**
  * PostDetail Mock API（`PostDetailApi` 实现）
  *
- * **数据**：初始帖子与评论来自 `$lib/test/post-detail`（`getMockPost` / `getMockPostComments`），`createMockPostDetailApi(postId?)` 为每个调试会话生成独立内存副本。
+ * **数据**：初始帖子与评论来自 `$lib/test/post-detail`（`getMockPost` / `getMockPostComments`），`createMockPostDetailApi(postId?)` 为每个调试会话生成独立内存副本。当前用户 id 与头像见 `MOCK_POST_DETAIL_CURRENT_USER_ID` / `mockPostDetailCurrentUserAvatarUrl`（与作者相同 Dicebear avataaars 风格）。
  *
  * **行为**：点赞/收藏/关注/发评/删评等会改同一内存对象；`listPostComments` 按 `V1CommentOrderType` 排序（如「最新」为创建时间降序）；请求统一带随机延迟以暴露加载态与竞态问题。
  *
  * **用途**：无后端时联调 UI（推荐配合 `post-detail-debug` 路由）。字段形状与 `types.gen.ts` 一致（camelCase）。
+ * 初始评论数据来自 `$lib/test/post-detail`，含带图一级评论与带图回复样例。
  */
 
 import type {
@@ -16,15 +17,19 @@ import type {
 	V1MediaAsset,
 	V1Post
 } from '$lib/api';
-import { getMockPost, getMockPostComments } from '$lib/test/post-detail';
+import {
+	getMockPost,
+	getMockPostComments,
+	MOCK_POST_DETAIL_CURRENT_USER_ID,
+	mockPostDetailCurrentUserAvatarUrl
+} from '$lib/test/post-detail';
+import type { PostDetailMe } from './api';
 import type { PostDetailApi } from './api';
 
 function delay(min = 120, max = 400): Promise<void> {
 	const ms = min + Math.random() * (max - min);
 	return new Promise((r) => setTimeout(r, ms));
 }
-
-const MOCK_CURRENT_USER_ID = 'mock-current-user';
 
 export function createMockPostDetailApi(postId?: string): PostDetailApi {
 	const id = postId ?? `mock-${crypto.randomUUID().slice(0, 8)}`;
@@ -128,9 +133,13 @@ export function createMockPostDetailApi(postId?: string): PostDetailApi {
 			}
 		},
 
-		async getMe() {
+		async getMe(): Promise<PostDetailMe> {
 			await delay(60, 150);
-			return { userId: MOCK_CURRENT_USER_ID };
+			return {
+				userId: MOCK_POST_DETAIL_CURRENT_USER_ID,
+				avatar: mockPostDetailCurrentUserAvatarUrl(),
+				name: '当前用户 (Mock)'
+			};
 		},
 
 		async getUser() {
@@ -189,9 +198,9 @@ export function createMockPostDetailApi(postId?: string): PostDetailApi {
 				content: body.content,
 				createTime: String(Date.now()),
 				author: {
-					userId: MOCK_CURRENT_USER_ID,
+					userId: MOCK_POST_DETAIL_CURRENT_USER_ID,
 					name: '当前用户 (Mock)',
-					avatar: '',
+					avatar: mockPostDetailCurrentUserAvatarUrl(),
 					qqNumber: '',
 					role: 'ROLE_USER'
 				},

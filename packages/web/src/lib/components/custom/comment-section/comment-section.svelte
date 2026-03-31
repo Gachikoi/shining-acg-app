@@ -53,16 +53,27 @@
 		V1Comment,
 		V1CommentWithReplies,
 		V1CommentOrderType,
+		V1MediaAsset,
 		V1ReportCommentRequest
 	} from '$lib/api';
 	import type { PostDetailApi } from '$lib/components/custom/post-detail/api';
-	import { Heart, MessageCircle, MoreHorizontal, LoaderCircle } from 'lucide-svelte';
-	import { formatTimeAgo } from '$lib/time';
+	import { tick } from 'svelte';
+	import { Heart, MessageCircle, MoreHorizontal } from 'lucide-svelte';
+	import { formatTimeAgo } from '$lib/utils/format-time';
+	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import { cn } from '$lib/utils';
 	import ConfirmDialog from '$lib/components/custom/confirm-dialog/confirm-dialog.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
 	import { UserProfilePopover } from '$lib/components/custom/user-profile-popover';
+	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
+	import { messageForOperationError } from '$lib/utils/operation-error-message';
+	import { toast } from 'svelte-sonner';
+
+	/** 评论区作者昵称、被回复者昵称统一浅灰 */
+	const commentNameClass = 'font-medium text-zinc-400';
+	const commentRowFocusClass =
+		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/70 dark:focus-visible:ring-zinc-500/60';
 
 	let {
 		postId,
@@ -110,7 +121,6 @@
 	let cursor = $state<string | undefined>(undefined);
 	let loading = $state(false);
 	let loadingMore = $state(false);
-	let error = $state<string | null>(null);
 	let deleteConfirmOpen = $state(false);
 	let reportConfirmOpen = $state(false);
 	let commentToDelete = $state<V1Comment | CommentWithReplies | null>(null);
@@ -126,6 +136,28 @@
 		if (typeof value === 'number') return value;
 		if (typeof value === 'string') return Number(value) || 0;
 		return 0;
+	}
+
+	/** 评论附图仅展示图片（与接口「最多 6 张图」一致；视频另用封面/播放器） */
+	function commentImageAssets(media: V1MediaAsset[] | undefined): V1MediaAsset[] {
+		return (media ?? []).filter((m) => m.type === 'MEDIA_TYPE_IMAGE');
+	}
+
+	/** 多图网格最多展示 3 个槽位；超过 3 张时第三张上显示「共 n 张」 */
+	function getGridSlotIndices(total: number): number[] {
+		if (total <= 3) return Array.from({ length: total }, (_, i) => i);
+		return [0, 1, 2];
+	}
+
+	let commentPreviewOpen = $state(false);
+	let commentPreviewMediaList = $state<V1MediaAsset[]>([]);
+	let commentPreviewInitialIndex = $state(0);
+
+	function openCommentImagePreview(images: V1MediaAsset[], index: number) {
+		if (images.length === 0) return;
+		commentPreviewMediaList = images;
+		commentPreviewInitialIndex = Math.min(Math.max(0, index), images.length - 1);
+		commentPreviewOpen = true;
 	}
 
 	function mapApiComments(list: V1CommentWithReplies[] | undefined): CommentWithReplies[] {
@@ -159,8 +191,6 @@
 			listFetchSeq += 1;
 			capturedSeq = listFetchSeq;
 		}
-		error = null;
-
 		try {
 			const res = await api.listPostComments(
 				snapshotPostId,
@@ -199,7 +229,7 @@
 			}
 		} catch (err) {
 			console.error('加载评论失败', err);
-			error = '加载评论失败，请稍后重试';
+			toast.error(messageForOperationError(err, '加载评论失败，请稍后重试'));
 		} finally {
 			if (append) {
 				loadingMore = false;
@@ -246,9 +276,22 @@
 			comment._repliesExpanded = true;
 		} catch (err) {
 			console.error('加载回复失败', err);
+			toast.error(messageForOperationError(err, '加载回复失败，请重试'));
 		} finally {
 			comment._repliesLoading = false;
 		}
+	}
+
+	/** 长评论折叠：与 post-detail 一致 */
+	const COMMENT_CONTENT_LIMIT = 1000;
+	let expandedContentIds = $state<Record<string, boolean>>({});
+	/** 点赞请求进行中时禁止重复点击 */
+	let likingCommentId = $state<string | null>(null);
+	/** 与 post-detail 一致：最短反馈时长，保证 zoom 动画播完再结束态/失败回滚 */
+	const LIKE_FEEDBACK_MIN_MS = 420;
+
+	function hasLongContent(content: string): boolean {
+		return (content?.length ?? 0) > COMMENT_CONTENT_LIMIT;
 	}
 
 	async function handleToggleLike(target: V1Comment | CommentWithReplies) {
@@ -269,29 +312,33 @@
 		}
 
 		likingCommentId = target.commentId;
+		const t0 = Date.now();
 		try {
 			await api.setCommentLike(target.commentId, newStatus);
 		} catch (err) {
 			console.error('评论点赞失败', err);
-			// 回滚乐观更新
+			const wait = Math.max(0, LIKE_FEEDBACK_MIN_MS - (Date.now() - t0));
+			await new Promise((r) => setTimeout(r, wait));
 			if (patchTarget.stats) {
 				patchTarget.stats.likeCount = String(currentCount);
 			}
 			if (patchTarget.relationStatus) {
 				patchTarget.relationStatus.isLiked = currentStatus;
 			}
+			toast.error(messageForOperationError(err, '点赞失败，请重试'));
 		} finally {
+			const wait = Math.max(0, LIKE_FEEDBACK_MIN_MS - (Date.now() - t0));
+			await new Promise((r) => setTimeout(r, wait));
 			likingCommentId = null;
 		}
 	}
 
-	export function applyNewComment(newComment: V1Comment) {
+	export async function applyNewComment(newComment: V1Comment) {
 		if (!newComment?.commentId) return;
 
 		const isReply = !!newComment.replyContext?.parentCommentId;
 
 		if (!isReply) {
-			// 一级评论：直接扁平为 CommentWithReplies，初始不带任何回复
 			const wrapped: CommentWithReplies = {
 				...newComment,
 				_replies: [],
@@ -302,31 +349,42 @@
 			comments = [wrapped, ...comments];
 			totalCount = totalCount + 1;
 			onTotalCountChange?.(1);
-			return;
-		}
+		} else {
+			const parentId = newComment.replyContext?.parentCommentId;
+			if (!parentId) return;
 
-		const parentId = newComment.replyContext?.parentCommentId;
-		if (!parentId) return;
+			const list = [...comments];
+			const target = list.find((c) => c.commentId === parentId);
+			if (!target) {
+				comments = list;
+				return;
+			}
 
-		const list = [...comments];
-		const target = list.find((c) => c.commentId === parentId);
-		if (!target) {
+			const existing = target._replies ?? [];
+			target._repliesExpanded = true;
+			target._replies = [...existing, newComment];
+
+			const currentReplyCount = ensureNumber(target.stats?.replyCount);
+			if (target.stats) {
+				target.stats.replyCount = String(currentReplyCount + 1);
+			}
+
 			comments = list;
-			return;
+			totalCount = totalCount + 1;
+			onTotalCountChange?.(1);
 		}
 
-		const existing = target._replies ?? [];
-		// 展开状态下插入到末尾；未展开时也会在内部列表中累积，为后续「展开全部回复」做准备
-		target._replies = [...existing, newComment];
-
-		const currentReplyCount = ensureNumber(target.stats?.replyCount);
-		if (target.stats) {
-			target.stats.replyCount = String(currentReplyCount + 1);
+		const cid = newComment.commentId ?? '';
+		if (cid && hasLongContent(newComment.content ?? '')) {
+			expandedContentIds = { ...expandedContentIds, [cid]: true };
 		}
 
-		comments = list;
-		totalCount = totalCount + 1;
-		onTotalCountChange?.(1);
+		await tick();
+		requestAnimationFrame(() => {
+			if (!cid) return;
+			const el = document.querySelector(`[data-comment-id="${CSS.escape(cid)}"]`);
+			el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		});
 	}
 
 	async function handleDeleteComment(comment: V1Comment | CommentWithReplies) {
@@ -384,15 +442,6 @@
 
 	let activeMenuCommentId = $state<string | null>(null);
 
-	/** 长评论折叠：与 post-detail 一致，超过该字数显示「查看全文」 */
-	const COMMENT_CONTENT_LIMIT = 1000;
-	/** 已展开全文的评论/回复 id */
-	let expandedContentIds = $state<Record<string, boolean>>({});
-
-	function hasLongContent(content: string): boolean {
-		return (content?.length ?? 0) > COMMENT_CONTENT_LIMIT;
-	}
-
 	function getDisplayedContent(content: string, commentId: string): string {
 		const raw = content ?? '';
 		if (raw.length <= COMMENT_CONTENT_LIMIT) return raw;
@@ -403,9 +452,6 @@
 	function toggleContentExpanded(commentId: string) {
 		expandedContentIds = { ...expandedContentIds, [commentId]: !expandedContentIds[commentId] };
 	}
-
-	/** 点赞请求进行中时禁止重复点击 */
-	let likingCommentId = $state<string | null>(null);
 
 	// 用户资料 Popover 状态
 	let isUserProfilePopoverOpen = $state(false);
@@ -419,7 +465,113 @@
 	function closeActionMenu() {
 		activeMenuCommentId = null;
 	}
+
+	/** 内层回复是否直接回复「父级首条评论」，而非回复另一条内层回复 */
+	function isDirectReplyToParent(reply: V1Comment): boolean {
+		const rc = reply.replyContext;
+		if (!rc?.parentCommentId || !rc.replyToCommentId) return false;
+		return rc.replyToCommentId === rc.parentCommentId;
+	}
+
+	/** 仅当回复的是内层子评论时展示「回复 @谁」 */
+	function showReplyToTargetUser(reply: V1Comment): boolean {
+		const rc = reply.replyContext;
+		if (!rc?.replyToUserName) return false;
+		return !isDirectReplyToParent(reply);
+	}
+
+	const REPLY_ROW_INTERACTIVE = 'a, button, input, textarea, select, label';
+
+	function isInteractiveCommentClickTarget(target: EventTarget | null): boolean {
+		const el = target instanceof HTMLElement ? target : null;
+		if (!el) return true;
+		return !!el.closest(REPLY_ROW_INTERACTIVE);
+	}
+
+	function openReplyEditor(target: V1Comment) {
+		onReply?.(target);
+	}
+
+	function handleTopLevelCommentRowClick(e: MouseEvent, comment: V1Comment) {
+		if (isInteractiveCommentClickTarget(e.target)) return;
+		openReplyEditor(comment);
+	}
+
+	function handleTopLevelCommentRowKeydown(e: KeyboardEvent, comment: V1Comment) {
+		if (e.key !== 'Enter' && e.key !== ' ') return;
+		if (isInteractiveCommentClickTarget(e.target)) return;
+		e.preventDefault();
+		openReplyEditor(comment);
+	}
+
+	function handleNestedReplyRowClick(e: MouseEvent, reply: V1Comment) {
+		if (isInteractiveCommentClickTarget(e.target)) return;
+		e.stopPropagation();
+		openReplyEditor(reply);
+	}
+
+	function handleNestedReplyRowKeydown(e: KeyboardEvent, reply: V1Comment) {
+		if (e.key !== 'Enter' && e.key !== ' ') return;
+		if (isInteractiveCommentClickTarget(e.target)) return;
+		e.preventDefault();
+		e.stopPropagation();
+		openReplyEditor(reply);
+	}
 </script>
+
+{#snippet commentImagesAttachments(images: V1MediaAsset[], compact: boolean)}
+	{#if images.length > 0}
+		{#if images.length === 1}
+			<button
+				type="button"
+				class={cn(
+					'mt-2 block w-full overflow-hidden rounded-md border border-zinc-200/90 text-left dark:border-zinc-700',
+					compact ? 'max-w-48' : 'max-w-sm'
+				)}
+				onclick={() => openCommentImagePreview(images, 0)}
+			>
+				<img
+					src={getMediaDisplayUrl(images[0])}
+					alt=""
+					class="aspect-4/3 max-h-72 w-full object-cover"
+					loading="lazy"
+				/>
+			</button>
+		{:else}
+			{@const total = images.length}
+			{@const showBadge = total > 3}
+			<div
+				class={cn(
+					'mt-2 grid gap-1',
+					total === 2 ? 'grid-cols-2' : 'grid-cols-3',
+					compact ? 'max-w-[180px]' : 'max-w-[240px]'
+				)}
+			>
+				{#each getGridSlotIndices(total) as slotIdx (slotIdx)}
+					<button
+						type="button"
+						class="relative aspect-square w-full overflow-hidden rounded-md border border-zinc-200/90 text-left dark:border-zinc-700"
+						onclick={() => openCommentImagePreview(images, slotIdx)}
+					>
+						<img
+							src={getMediaDisplayUrl(images[slotIdx])}
+							alt=""
+							class="h-full w-full object-cover"
+							loading="lazy"
+						/>
+						{#if showBadge && slotIdx === 2}
+							<span
+								class="absolute right-1 bottom-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] leading-none font-medium text-white"
+							>
+								共{total}张
+							</span>
+						{/if}
+					</button>
+				{/each}
+			</div>
+		{/if}
+	{/if}
+{/snippet}
 
 <div
 	class="mt-4 flex items-center justify-between border-b border-zinc-200 pb-2 dark:border-zinc-800"
@@ -451,14 +603,20 @@
 	</div>
 </div>
 
-{#if error}
-	<p class="py-4 text-center text-sm text-red-500">{error}</p>
-{/if}
-
-<ul class="divide-y divide-zinc-200 dark:divide-zinc-800">
+<ul class="space-y-1">
 	{#each comments as comment (comment.commentId)}
-		<li class="py-3">
-			<div class="flex items-start gap-2">
+		<li class="py-3" data-comment-id={comment.commentId ?? ''}>
+			<div
+				class={cn(
+					'-mx-1 flex cursor-pointer items-start gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-zinc-100/70 dark:hover:bg-zinc-800/50',
+					commentRowFocusClass
+				)}
+				role="button"
+				tabindex="0"
+				aria-label="回复该评论"
+				onclick={(e) => handleTopLevelCommentRowClick(e, comment)}
+				onkeydown={(e) => handleTopLevelCommentRowKeydown(e, comment)}
+			>
 				<!-- TODO: Stack 基建完成后，非本人用户使用 UserProfilePopover 打开 -->
 				{#if comment.author?.userId && currentUserId && comment.author.userId === currentUserId}
 					<a href={resolve('/app/profile')}>
@@ -491,62 +649,15 @@
 					</button>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="flex items-center gap-2">
-						<span class="cursor-pointer text-sm font-medium text-zinc-900 dark:text-zinc-100">
-							{comment.author?.name ?? '用户'}
-						</span>
-						<span class="cursor-text text-xs text-zinc-500">
-							{formatTimeAgo(comment.createTime ?? '')}
-						</span>
-					</div>
-					{#if comment.replyContext?.replyToUserName}
-						<p class="cursor-text text-sm font-medium text-zinc-900 dark:text-zinc-100">
-							回复 {comment.replyContext.replyToUserName}
-						</p>
-					{/if}
-					<div class="mt-0.5 space-y-1">
-						<p class="cursor-text text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-							{getDisplayedContent(comment.content ?? '', comment.commentId ?? '')}
-						</p>
-						{#if hasLongContent(comment.content ?? '')}
-							<button
-								class="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-zinc-700 dark:hover:text-zinc-300"
-								onclick={() => toggleContentExpanded(comment.commentId ?? '')}
-							>
-								{expandedContentIds[comment.commentId ?? ''] ? '收起' : '查看全文'}
-							</button>
-						{/if}
-					</div>
-					<div class="mt-2 flex items-center justify-between text-xs text-zinc-500">
-						<div class="flex items-center gap-4">
-							<button
-								class="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-								onclick={() => handleToggleLike(comment)}
-								disabled={likingCommentId === comment.commentId}
-							>
-								{#if likingCommentId === comment.commentId}
-									<LoaderCircle class="size-3.5 animate-spin" />
-								{:else}
-									<Heart
-										class={cn(
-											'size-3.5',
-											comment.relationStatus?.isLiked ? 'fill-rose-500 text-rose-500' : ''
-										)}
-									/>
-								{/if}
-								<span>{ensureNumber(comment.stats?.likeCount)}</span>
-							</button>
-
-							<button
-								class="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
-								onclick={() => onReply?.(comment)}
-							>
-								<MessageCircle class="size-3.5" />
-								<span>{ensureNumber(comment.stats?.replyCount)}</span>
-							</button>
+					<div class="flex items-start justify-between gap-2">
+						<div class="min-w-0 flex-1">
+							<div class="flex items-center gap-2">
+								<span class={cn('cursor-pointer text-sm', commentNameClass)}>
+									{comment.author?.name ?? '用户'}
+								</span>
+							</div>
 						</div>
-
-						<div class="relative">
+						<div class="relative shrink-0">
 							<button
 								class="flex size-7 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
 								onclick={() => toggleActionMenu(comment)}
@@ -584,135 +695,196 @@
 							{/if}
 						</div>
 					</div>
+					<div class="mt-0.5 space-y-1">
+						<p class="cursor-text text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
+							{getDisplayedContent(comment.content ?? '', comment.commentId ?? '')}
+						</p>
+						{#if hasLongContent(comment.content ?? '')}
+							<button
+								class="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-zinc-700 dark:hover:text-zinc-300"
+								onclick={() => toggleContentExpanded(comment.commentId ?? '')}
+							>
+								{expandedContentIds[comment.commentId ?? ''] ? '收起' : '查看全文'}
+							</button>
+						{/if}
+					</div>
+					{@render commentImagesAttachments(commentImageAssets(comment.media), false)}
+					<p class="mt-2 cursor-text text-xs text-zinc-500">
+						{formatTimeAgo(comment.createTime ?? '')}
+					</p>
+					<div class="mt-2 flex items-center gap-4 text-xs text-zinc-500">
+						<button
+							class="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+							onclick={() => handleToggleLike(comment)}
+							disabled={likingCommentId === comment.commentId}
+						>
+							{#key `${comment.commentId}-${likingCommentId === comment.commentId ? 'go' : 'idle'}`}
+								<Heart
+									class={cn(
+										'size-3.5 origin-center',
+										likingCommentId === comment.commentId &&
+											'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
+										comment.relationStatus?.isLiked ? 'fill-rose-500 text-rose-500' : ''
+									)}
+									fill={comment.relationStatus?.isLiked ? 'currentColor' : 'none'}
+								/>
+							{/key}
+							<span>{ensureNumber(comment.stats?.likeCount)}</span>
+						</button>
+
+						<button
+							class="flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+							onclick={() => onReply?.(comment)}
+						>
+							<MessageCircle class="size-3.5" />
+							<span>{ensureNumber(comment.stats?.replyCount)}</span>
+						</button>
+					</div>
 
 					{#if comment._replies && comment._replies.length > 0}
-						<ul class="mt-2 space-y-2 border-l border-zinc-200 pl-3 text-xs dark:border-zinc-700">
+						<ul class="mt-2 space-y-2 pl-2 text-xs">
 							{#each comment._repliesExpanded ? comment._replies : comment._replies.slice(0, 1) as reply (reply.commentId)}
-								<li class="text-zinc-600 dark:text-zinc-300">
-									<div class="flex items-start justify-between gap-2">
-										{#if reply.author?.userId && currentUserId && reply.author.userId === currentUserId}
-											<a href={resolve('/app/profile')} class="shrink-0">
-												{#if reply.author?.avatar}
-													<img
-														class="size-6 rounded-full object-cover"
-														src={reply.author.avatar}
-														alt=""
-													/>
-												{:else}
-													<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
-												{/if}
-											</a>
-										{:else}
-											<button
-												type="button"
-												class="shrink-0"
-												onclick={() => {
-													if (reply.author?.userId) {
-														pendingUserProfileUserId = reply.author.userId;
-														isUserProfilePopoverOpen = true;
-													}
-												}}
-											>
-												{#if reply.author?.avatar}
-													<img
-														class="size-6 rounded-full object-cover"
-														src={reply.author.avatar}
-														alt=""
-													/>
-												{:else}
-													<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
-												{/if}
-											</button>
-										{/if}
-										<div class="min-w-0 flex-1">
-											<span class="font-medium text-zinc-800 dark:text-zinc-100">
-												{reply.author?.name ?? '用户'}
-											</span>
-											{#if reply.replyContext?.replyToUserName}
-												<span class="cursor-text font-medium text-zinc-800 dark:text-zinc-100">
-													回复 {reply.replyContext.replyToUserName}
-												</span>
-											{/if}
-											<span class="ml-2 cursor-text text-zinc-500">
-												{formatTimeAgo(reply.createTime ?? '')}
-											</span>
-											<div class="mt-0.5 space-y-0.5">
-												<p class="cursor-text whitespace-pre-wrap">
-													{getDisplayedContent(reply.content ?? '', reply.commentId ?? '')}
-												</p>
-												{#if hasLongContent(reply.content ?? '')}
-													<button
-														class="cursor-pointer text-[11px] font-medium text-zinc-500 transition hover:text-zinc-700 dark:hover:text-zinc-300"
-														onclick={() => toggleContentExpanded(reply.commentId ?? '')}
-													>
-														{expandedContentIds[reply.commentId ?? ''] ? '收起' : '查看全文'}
-													</button>
-												{/if}
-											</div>
-											<div class="mt-0.5 flex items-center gap-3 text-[11px] text-zinc-500">
-												<button
-													class="flex items-center gap-0.5 rounded-full px-1 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-													onclick={() => handleToggleLike(reply)}
-													disabled={likingCommentId === reply.commentId}
-												>
-													{#if likingCommentId === reply.commentId}
-														<LoaderCircle class="size-3 animate-spin" />
-													{:else}
-														<Heart
-															class={cn(
-																'size-3',
-																reply.relationStatus?.isLiked ? 'fill-rose-500 text-rose-500' : ''
-															)}
+								<li data-comment-id={reply.commentId ?? ''}>
+									<div
+										class={cn(
+											'-mx-1 cursor-pointer rounded-md px-1 py-0.5 text-zinc-600 transition-colors hover:bg-zinc-100/70 dark:text-zinc-300 dark:hover:bg-zinc-800/50',
+											commentRowFocusClass
+										)}
+										role="button"
+										tabindex="0"
+										aria-label="回复该评论"
+										onclick={(e) => handleNestedReplyRowClick(e, reply)}
+										onkeydown={(e) => handleNestedReplyRowKeydown(e, reply)}
+									>
+										<div class="flex items-start justify-between gap-2">
+											{#if reply.author?.userId && currentUserId && reply.author.userId === currentUserId}
+												<a href={resolve('/app/profile')} class="shrink-0">
+													{#if reply.author?.avatar}
+														<img
+															class="size-6 rounded-full object-cover"
+															src={reply.author.avatar}
+															alt=""
 														/>
-													{/if}
-													<span>{ensureNumber(reply.stats?.likeCount)}</span>
-												</button>
-												<button
-													class="flex items-center gap-0.5 rounded-full px-1 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-													onclick={() => onReply?.(reply)}
-												>
-													<MessageCircle class="size-3" />
-													<!-- 按要求：内部评论只展示回复图标，不展示回复数量 -->
-												</button>
-											</div>
-										</div>
-
-										<div class="relative ml-1 shrink-0">
-											<button
-												class="flex size-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-												onclick={() => toggleActionMenu(reply)}
-												aria-label="更多操作"
-											>
-												<MoreHorizontal class="size-3.5" />
-											</button>
-
-											{#if activeMenuCommentId === reply.commentId}
-												<div
-													class="absolute right-0 z-10 mt-1 w-28 cursor-pointer rounded-md border border-zinc-200 bg-white py-1 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
-												>
-													{#if currentUserId && reply.author?.userId === currentUserId}
-														<button
-															class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-red-50 dark:hover:bg-zinc-800"
-															onclick={() => {
-																handleDeleteComment(reply);
-																closeActionMenu();
-															}}
-														>
-															删除
-														</button>
 													{:else}
-														<button
-															class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
-															onclick={() => {
-																handleReportComment(reply);
-																closeActionMenu();
-															}}
+														<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+													{/if}
+												</a>
+											{:else}
+												<button
+													type="button"
+													class="shrink-0"
+													onclick={() => {
+														if (reply.author?.userId) {
+															pendingUserProfileUserId = reply.author.userId;
+															isUserProfilePopoverOpen = true;
+														}
+													}}
+												>
+													{#if reply.author?.avatar}
+														<img
+															class="size-6 rounded-full object-cover"
+															src={reply.author.avatar}
+															alt=""
+														/>
+													{:else}
+														<div class="size-6 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+													{/if}
+												</button>
+											{/if}
+											<div class="min-w-0 flex-1">
+												<span class={cn('text-xs', commentNameClass)}>
+													{reply.author?.name ?? '用户'}
+												</span>
+												{#if showReplyToTargetUser(reply)}
+													<p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+														回复 <span class={commentNameClass}
+															>{reply.replyContext?.replyToUserName}</span
 														>
-															举报
+													</p>
+												{/if}
+												<div class="mt-0.5 space-y-0.5">
+													<p class="cursor-text whitespace-pre-wrap">
+														{getDisplayedContent(reply.content ?? '', reply.commentId ?? '')}
+													</p>
+													{#if hasLongContent(reply.content ?? '')}
+														<button
+															class="cursor-pointer text-[11px] font-medium text-zinc-500 transition hover:text-zinc-700 dark:hover:text-zinc-300"
+															onclick={() => toggleContentExpanded(reply.commentId ?? '')}
+														>
+															{expandedContentIds[reply.commentId ?? ''] ? '收起' : '查看全文'}
 														</button>
 													{/if}
 												</div>
-											{/if}
+												{@render commentImagesAttachments(commentImageAssets(reply.media), true)}
+												<p class="mt-2 cursor-text text-[11px] text-zinc-500">
+													{formatTimeAgo(reply.createTime ?? '')}
+												</p>
+												<div class="mt-2 flex items-center gap-3 text-[11px] text-zinc-500">
+													<button
+														class="flex items-center gap-0.5 rounded-full px-1 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+														onclick={() => handleToggleLike(reply)}
+														disabled={likingCommentId === reply.commentId}
+													>
+														{#key `${reply.commentId}-${likingCommentId === reply.commentId ? 'go' : 'idle'}`}
+															<Heart
+																class={cn(
+																	'size-3 origin-center',
+																	likingCommentId === reply.commentId &&
+																		'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
+																	reply.relationStatus?.isLiked ? 'fill-rose-500 text-rose-500' : ''
+																)}
+																fill={reply.relationStatus?.isLiked ? 'currentColor' : 'none'}
+															/>
+														{/key}
+														<span>{ensureNumber(reply.stats?.likeCount)}</span>
+													</button>
+													<button
+														class="flex items-center gap-0.5 rounded-full px-1 py-0.5 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+														onclick={() => onReply?.(reply)}
+													>
+														<MessageCircle class="size-3" />
+														<!-- 按要求：内部评论只展示回复图标，不展示回复数量 -->
+													</button>
+												</div>
+											</div>
+
+											<div class="relative ml-1 shrink-0">
+												<button
+													class="flex size-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+													onclick={() => toggleActionMenu(reply)}
+													aria-label="更多操作"
+												>
+													<MoreHorizontal class="size-3.5" />
+												</button>
+
+												{#if activeMenuCommentId === reply.commentId}
+													<div
+														class="absolute right-0 z-10 mt-1 w-28 cursor-pointer rounded-md border border-zinc-200 bg-white py-1 text-xs shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+													>
+														{#if currentUserId && reply.author?.userId === currentUserId}
+															<button
+																class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-red-50 dark:hover:bg-zinc-800"
+																onclick={() => {
+																	handleDeleteComment(reply);
+																	closeActionMenu();
+																}}
+															>
+																删除
+															</button>
+														{:else}
+															<button
+																class="flex w-full cursor-pointer items-center px-3 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
+																onclick={() => {
+																	handleReportComment(reply);
+																	closeActionMenu();
+																}}
+															>
+																举报
+															</button>
+														{/if}
+													</div>
+												{/if}
+											</div>
 										</div>
 									</div>
 								</li>
@@ -832,6 +1004,7 @@
 			}
 		} catch (err) {
 			console.error('删除评论失败', err);
+			toast.error(messageForOperationError(err, '删除失败，请重试'));
 		} finally {
 			commentToDelete = null;
 		}
@@ -854,7 +1027,14 @@
 	confirmVariant="default"
 	confirmText="举报"
 	onConfirm={async () => {
-		await submitReport();
+		try {
+			await submitReport();
+			toast.success('举报成功');
+		} catch (err) {
+			console.error('举报评论失败', err);
+			toast.error(messageForOperationError(err, '举报失败，请重试'));
+			throw err;
+		}
 	}}
 	onCancel={() => {
 		commentToReport = null;
@@ -867,6 +1047,14 @@
 		<p>确定要举报该评论吗？</p>
 	{/snippet}
 </ConfirmDialog>
+
+<ImageVideoPreview
+	bind:open={commentPreviewOpen}
+	mediaList={commentPreviewMediaList}
+	initialIndex={commentPreviewInitialIndex}
+	autoplay={false}
+	fullScreen={true}
+/>
 
 <!-- 用户资料 Popover -->
 {#if isUserProfilePopoverOpen && pendingUserProfileUserId}

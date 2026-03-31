@@ -9,12 +9,12 @@
   - post-media-area.svelte
       帖内多图/视频轮播；点击媒体进入全屏预览。
   - ImageVideoPreview（$lib/components/custom/image-video-preview）
-      全屏查看 V1MediaAsset 列表；图片横滑 + 视频控制，依赖 media-url 解析地址。
+      全屏查看 V1MediaAsset 列表；图片横滑 + 视频控制，依赖 utils/media-url 解析地址。
   - CommentSection
       一级评论列表、最热/最新、回复展开、删除/举报等（经 PostDetailApi）。
   - EditCommentPopover
       发评/回复：富文本、@、图片草稿；提交走同一套 Mock API。
-  - time.ts / media-url.ts
+  - utils/format-time.ts（formatTimeAgo）/ utils/media-url.ts
       详情里相对时间与媒体 URL 与线上一致，Mock 不绕开这两处工具。
 
   Mock：createMockPostDetailApi(postId) 注入 PostDetail 的 api 属性；数据在内存中变更，可重复打开「重新生成并打开」换新会话。
@@ -59,7 +59,7 @@
 			<li>正文：标题、长内容折叠「查看全文/收起内容」</li>
 			<li>评论区：最热/最新排序、多级回复、展开/收起、长评论折叠（CommentSection）</li>
 			<li>评论编辑器：回复引用、字数限制、图片上传（EditCommentPopover）</li>
-			<li>底部操作栏：点赞、收藏、评论、分享</li>
+			<li>底部操作栏：点赞、收藏、评论、转发（与 PC 一致，转发在最右侧）</li>
 			<li>关注按钮：关注/取消关注状态切换</li>
 		</ul>
 	</div>
