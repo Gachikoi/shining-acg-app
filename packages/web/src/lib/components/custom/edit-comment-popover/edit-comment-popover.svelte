@@ -17,6 +17,8 @@
 		extractContentFromShinRichTextarea
 	} from '$lib/components/custom/shin-rich';
 	import { Image as ImageIcon, Plus } from 'lucide-svelte';
+	import { messageForOperationError } from '$lib/utils/operation-error-message';
+	import { toast } from 'svelte-sonner';
 
 	/**
 	 * EditCommentPopover — 评论/回复输入区（富文本 + 可选图片）
@@ -26,7 +28,7 @@
 	 * **能力**
 	 * - 正文：`ShinRichTextarea`，支持 @ 提及（关注列表拉取）、纯文本长度上限 300（与 `maxLength` 一致）
 	 * - 图片：最多 6 张、单张 ≤100MB；预览用 blob URL，提交时通过 `onSubmit` 传出 `File[]`
-	 * - `replyTo` 有值时表示回复某人，占位符会带 `@昵称`；`editorKey` 区分主评与不同父评论的草稿
+	 * - `replyTo` 有值时占位符为 `回复 @昵称`，编辑器正文不预填 @（与父/子评论一致），仍可用富文本 @ 提及
 	 *
 	 * **草稿策略**（见 `<script module>` 内 Map）：文本/图片在内存中缓存，刷新页面会丢失；提交成功由父组件配合清空图片缓存。
 	 *
@@ -65,10 +67,7 @@
 	let contentEditableRef = $state<HTMLDivElement | null>(null);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
 	let imageItems = $state<CommentImageItem[]>([]);
-	let localError = $state<string | null>(null);
 	let submitting = $state(false);
-	let showMaxImageTip = $state(false);
-	let maxImageTipTimer: ReturnType<typeof setTimeout> | null = null;
 	let caretInitializedKey = $state<string | null>(null);
 	let activeDraftPostKey = $state<string | null>(null);
 	let activeDraftTextKey = $state<string | null>(null);
@@ -91,18 +90,7 @@
 				return cached.map((unit) => ({ ...unit }));
 			}
 		}
-		if (!replyTo?.author?.name) return [];
-		if (!replyTo.author.userId) {
-			return [{ type: 'text', content: `@${replyTo.author.name} ` }];
-		}
-		return [
-			{
-				type: 'mention',
-				user_id: replyTo.author.userId,
-				name: replyTo.author.name
-			},
-			{ type: 'text', content: ' ' }
-		];
+		return [];
 	});
 
 	function normalizeText(raw: string): string {
@@ -120,11 +108,7 @@
 
 	function openImagePicker() {
 		if (imageItems.length >= MAX_IMAGES) {
-			showMaxImageTip = true;
-			if (maxImageTipTimer) clearTimeout(maxImageTipTimer);
-			maxImageTipTimer = setTimeout(() => {
-				showMaxImageTip = false;
-			}, 1500);
+			toast.error('最多只能上传 6 张图片');
 			return;
 		}
 		fileInputRef?.click();
@@ -172,10 +156,9 @@
 	}
 
 	function appendImageFiles(files: File[]) {
-		localError = null;
 		const remain = MAX_IMAGES - imageItems.length;
 		if (remain <= 0) {
-			localError = `最多上传 ${MAX_IMAGES} 张图片`;
+			toast.error(`最多上传 ${MAX_IMAGES} 张图片`);
 			return;
 		}
 
@@ -195,7 +178,7 @@
 		if (normalizedPostId) saveDraftFiles(normalizedPostId);
 
 		if (rejectedCount > 0) {
-			localError = `仅支持图片（单张不超过 100MB），且最多 ${MAX_IMAGES} 张`;
+			toast.error(`仅支持图片（单张不超过 100MB），且最多 ${MAX_IMAGES} 张`);
 		}
 	}
 
@@ -214,7 +197,6 @@
 			URL.revokeObjectURL(target.previewUrl);
 		}
 		imageItems = imageItems.filter((item) => item.id !== imageId);
-		localError = null;
 		if (normalizedPostId) saveDraftFiles(normalizedPostId);
 	}
 
@@ -233,7 +215,6 @@
 		const text = getEditorContent();
 		if ((!text && imageItems.length === 0) || submitting) return;
 		submitting = true;
-		localError = null;
 		try {
 			await onSubmit(
 				text,
@@ -249,7 +230,7 @@
 			}
 			onCancel();
 		} catch (error) {
-			localError = error instanceof Error ? error.message : '发送失败，请重试';
+			toast.error(messageForOperationError(error, '发送失败，请重试'));
 		} finally {
 			submitting = false;
 		}
@@ -257,7 +238,6 @@
 
 	$effect(() => {
 		return () => {
-			if (maxImageTipTimer) clearTimeout(maxImageTipTimer);
 			if (activeDraftPostKey) {
 				saveDraftFiles(activeDraftPostKey);
 			}
@@ -348,6 +328,26 @@
 	onchange={handleFileChange}
 />
 
+<div class="flex items-center justify-between gap-2">
+	<div class="relative">
+		<Button
+			variant="block"
+			size="icon"
+			class="rounded-3xl px-3 py-1.5 text-accent-foreground"
+			onclick={openImagePicker}
+			disabled={submitting}
+		>
+			<ImageIcon class="size-4" />
+		</Button>
+	</div>
+	<div class="flex justify-end gap-2">
+		<Button size="sm" onclick={handleSubmit} disabled={submitting}>
+			{submitting ? '发送中…' : '发送'}
+		</Button>
+		<Button variant="ghost" size="sm" onclick={onCancel} disabled={submitting}>取消</Button>
+	</div>
+</div>
+
 {#if imageItems.length > 0}
 	<div class="scrollbar-hide mb-2 flex gap-2 overflow-x-auto pb-1">
 		{#each imageItems as item (item.id)}
@@ -379,34 +379,3 @@
 		{/if}
 	</div>
 {/if}
-
-{#if localError}
-	<p class="mb-2 text-xs text-red-500">{localError}</p>
-{/if}
-
-<div class="flex items-center justify-between gap-2">
-	<div class="relative">
-		<Button
-			variant="block"
-			size="icon"
-			class="rounded-3xl px-3 py-1.5 text-accent-foreground"
-			onclick={openImagePicker}
-			disabled={submitting}
-		>
-			<ImageIcon class="size-4" />
-		</Button>
-		{#if showMaxImageTip}
-			<div
-				class="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-md bg-zinc-900 px-2 py-1 text-xs whitespace-nowrap text-white shadow-lg"
-			>
-				最多只能上传 6 张图片
-			</div>
-		{/if}
-	</div>
-	<div class="flex justify-end gap-2">
-		<Button size="sm" onclick={handleSubmit} disabled={submitting}>
-			{submitting ? '发送中…' : '发送'}
-		</Button>
-		<Button variant="ghost" size="sm" onclick={onCancel} disabled={submitting}>取消</Button>
-	</div>
-</div>

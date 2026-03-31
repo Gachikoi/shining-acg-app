@@ -40,13 +40,20 @@ export interface UserFollowStatus {
 	isFollowedBy: boolean;
 }
 
+/** `getMe` 返回，供底部输入条头像等使用 */
+export type PostDetailMe = {
+	userId: string;
+	avatar?: string;
+	name?: string;
+};
+
 export interface PostDetailApi {
 	getPost(postId: string): Promise<{ post: V1Post }>;
 
 	setPostLike(postId: string, isLiked: boolean): Promise<void>;
 	setPostCollect(postId: string, isCollected: boolean): Promise<void>;
 
-	getMe(): Promise<{ userId: string }>;
+	getMe(): Promise<PostDetailMe>;
 	getUser(userId: string): Promise<UserFollowStatus>;
 	setFollow(userId: string, isFollowing: boolean): Promise<void>;
 
@@ -96,9 +103,14 @@ export function createRealPostDetailApi(deps: {
 
 		async getMe() {
 			const res = await userServiceGetMe({});
-			const userId = res.data?.profile?.userId;
+			const profile = res.data?.profile;
+			const userId = profile?.userId;
 			if (!userId) throw new Error('获取用户信息失败');
-			return { userId };
+			return {
+				userId,
+				avatar: profile.avatar,
+				name: profile.name
+			};
 		},
 
 		async getUser(userId) {

@@ -10,7 +10,7 @@
 	 * - `EditCommentPopover`：发评/回复输入与图片草稿
 	 * - `UserProfilePopover`：作者头像等入口的简要资料
 	 *
-	 * **共享工具**：相对时间文案 `$lib/time.formatTimeAgo`；媒体地址 `$lib/media-url.getMediaDisplayUrl`（与预览组件一致）。
+	 * **共享工具**：相对时间 `$lib/utils/format-time.formatTimeAgo`；媒体地址 `$lib/utils/media-url.getMediaDisplayUrl`（与预览组件一致）。
 	 *
 	 * ### 功能特性
 	 *
@@ -39,10 +39,11 @@
 		V1MediaAsset
 	} from '$lib/api';
 	import { createRealPostDetailApi, type PostDetailApi, type UserFollowStatus } from './api';
-	import { formatTimeAgo } from '$lib/time';
+	import { formatTimeAgo } from '$lib/utils/format-time';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { messageForOperationError } from '$lib/utils/operation-error-message';
+	import { toast } from 'svelte-sonner';
 	import { X, Heart, MessageCircle, Star, Share, LoaderCircle } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
 	import { resolve } from '$app/paths';
@@ -56,6 +57,9 @@
 	const defaultApi = createRealPostDetailApi({
 		uploadCommentMedia: (files) => uploadCommentMedia(files)
 	});
+
+	/** 点赞/收藏 zoom 动画最短展示时间，与评论区一致 */
+	const LIKE_FEEDBACK_MIN_MS = 420;
 
 	let {
 		post: initialPost,
@@ -84,8 +88,8 @@
 	let isFollowingAction = $state(false); // 关注操作进行中状态
 	let isFetchingFollowing = $state(false); // 获取关注状态中
 	let currentUserId = $state<string | null>(null);
-	let actionError = $state<string | null>(null); // 用于局部错误提示，不影响整个弹窗
-	let notification = $state<string | null>(null); // 用于成功提示
+	let currentUserAvatar = $state<string | null>(null);
+	let currentUserName = $state<string | null>(null);
 	let followStatus = $state<UserFollowStatus>({ isFollowing: false, isFollowedBy: false });
 	// 用户资料 Popover 状态
 	let isUserProfilePopoverOpen = $state(false);
@@ -117,6 +121,8 @@
 				const res = await api.getMe();
 				if (res.userId) {
 					currentUserId = res.userId;
+					currentUserAvatar = res.avatar?.trim() ? res.avatar : null;
+					currentUserName = res.name?.trim() ? res.name : null;
 				}
 			} catch (err) {
 				console.error('获取当前用户信息失败:', err);
@@ -149,7 +155,6 @@
 	async function fetchPost(id: string) {
 		isLoading = true;
 		error = null;
-		actionError = null;
 		try {
 			const res = await api.getPost(id);
 			if (res.post) {
@@ -171,7 +176,6 @@
 		const currentIsLiked = post.relationStatus?.isLiked ?? false;
 		const newIsLiked = !currentIsLiked;
 
-		// 乐观更新
 		if (post.stats) {
 			const currentCount = Number(post.stats.likeCount ?? '0') || 0;
 			post.stats.likeCount = String(currentCount + (newIsLiked ? 1 : -1));
@@ -181,11 +185,13 @@
 		}
 
 		isLiking = true;
+		const t0 = Date.now();
 		try {
 			await api.setPostLike(post.postId, newIsLiked);
 		} catch (err) {
 			console.error('点赞操作失败:', err);
-			// 回滚乐观更新
+			const wait = Math.max(0, LIKE_FEEDBACK_MIN_MS - (Date.now() - t0));
+			await new Promise((r) => setTimeout(r, wait));
 			if (post.stats) {
 				const currentCount = Number(post.stats.likeCount ?? '0') || 0;
 				post.stats.likeCount = String(currentCount + (newIsLiked ? -1 : 1));
@@ -193,8 +199,10 @@
 			if (post.relationStatus) {
 				post.relationStatus.isLiked = currentIsLiked;
 			}
-			actionError = '点赞操作失败，请重试';
+			toast.error(messageForOperationError(err, '点赞失败，请重试'));
 		} finally {
+			const wait = Math.max(0, LIKE_FEEDBACK_MIN_MS - (Date.now() - t0));
+			await new Promise((r) => setTimeout(r, wait));
 			isLiking = false;
 		}
 	}
@@ -205,7 +213,6 @@
 		const currentIsCollected = post.relationStatus?.isCollected ?? false;
 		const newIsCollected = !currentIsCollected;
 
-		// 乐观更新
 		if (post.stats) {
 			const currentCount = Number(post.stats.collectCount ?? '0') || 0;
 			post.stats.collectCount = String(currentCount + (newIsCollected ? 1 : -1));
@@ -215,12 +222,13 @@
 		}
 
 		isCollecting = true;
-		actionError = null;
+		const t0 = Date.now();
 		try {
 			await api.setPostCollect(post.postId, newIsCollected);
 		} catch (err) {
 			console.error('收藏操作失败:', err);
-			// 回滚乐观更新
+			const wait = Math.max(0, LIKE_FEEDBACK_MIN_MS - (Date.now() - t0));
+			await new Promise((r) => setTimeout(r, wait));
 			if (post.stats) {
 				const currentCount = Number(post.stats.collectCount ?? '0') || 0;
 				post.stats.collectCount = String(currentCount + (newIsCollected ? -1 : 1));
@@ -228,8 +236,10 @@
 			if (post.relationStatus) {
 				post.relationStatus.isCollected = currentIsCollected;
 			}
-			actionError = '收藏操作失败，请重试';
+			toast.error(messageForOperationError(err, '收藏失败，请重试'));
 		} finally {
+			const wait = Math.max(0, LIKE_FEEDBACK_MIN_MS - (Date.now() - t0));
+			await new Promise((r) => setTimeout(r, wait));
 			isCollecting = false;
 		}
 	}
@@ -250,13 +260,12 @@
 
 	async function handleFollow() {
 		if (!currentUserId) {
-			actionError = '请先登录后再关注';
+			toast.error('请先登录后再关注');
 			return;
 		}
 
 		if (!post?.author?.userId || isFollowingAction) return;
 
-		actionError = null;
 		const prevStatus = { ...followStatus };
 		const newIsFollowing = !followStatus.isFollowing;
 
@@ -269,7 +278,7 @@
 		} catch (err) {
 			console.error('关注操作失败:', err);
 			followStatus = prevStatus;
-			actionError = '关注操作失败，请重试';
+			toast.error(messageForOperationError(err, '关注失败，请重试'));
 		} finally {
 			isFollowingAction = false;
 		}
@@ -286,16 +295,10 @@
 			// 使用 Clipboard API
 			await navigator.clipboard.writeText(shareText);
 
-			// 显示成功提示
-			actionError = null;
-			notification = '已复制分享链接至剪切板，快去分享给好友吧！';
-			// 3秒后自动关闭通知
-			setTimeout(() => {
-				notification = null;
-			}, 3000);
+			toast.success('已复制链接到剪贴板');
 		} catch (err) {
 			console.error('分享失败:', err);
-			actionError = '分享失败，请重试';
+			toast.error(messageForOperationError(err, '转发失败，请重试'));
 		}
 	}
 
@@ -320,11 +323,14 @@
 	let isContentExpanded = $state(false);
 
 	type CommentSectionHandle = {
-		applyNewComment: (comment: V1Comment) => void;
+		applyNewComment: (comment: V1Comment) => void | Promise<void>;
 	};
 
 	let commentSectionRef = $state<CommentSectionHandle | null>(null);
 	let commentSectionEl = $state<HTMLElement | null>(null);
+	/** 右侧正文区滚动容器：用于「未在顶部」时在头像区底边显示分割线 */
+	let mainScrollEl = $state<HTMLDivElement | null>(null);
+	let isHeaderDividerVisible = $state(false);
 	let commentEditorOpen = $state(false);
 	let commentReplyTo = $state<V1Comment | null>(null);
 	let commentEditorKeyboardInset = $state(0);
@@ -346,6 +352,23 @@
 			commentSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		}
 	}
+
+	function syncHeaderDividerFromScroll() {
+		const el = mainScrollEl;
+		isHeaderDividerVisible = !!el && el.scrollTop > 1;
+	}
+
+	let lastScrollResetPostId = $state<string | undefined>(undefined);
+	$effect(() => {
+		const id = post?.postId;
+		const el = mainScrollEl;
+		if (!id || !el) return;
+		if (lastScrollResetPostId !== id) {
+			lastScrollResetPostId = id;
+			el.scrollTop = 0;
+			syncHeaderDividerFromScroll();
+		}
+	});
 
 	function openCommentEditor(target: V1Comment | null = null) {
 		commentReplyTo = target;
@@ -460,13 +483,14 @@
 		try {
 			const res = await api.createComment(body);
 			if (res.comment) {
-				commentSectionRef?.applyNewComment(res.comment);
+				await commentSectionRef?.applyNewComment(res.comment);
+				toast.success('评论已发布');
 				commentEditorOpen = false;
 				commentReplyTo = null;
 			}
 		} catch (err) {
 			console.error('发布评论失败', err);
-			actionError = '发布评论失败，请重试';
+			toast.error(messageForOperationError(err, '发布评论失败，请重试'));
 		}
 	}
 </script>
@@ -483,13 +507,13 @@
 		<div
 			class={cn(
 				'absolute inset-0 lg:inset-y-6 lg:right-1/7 lg:left-1/7',
-				'flex items-center justify-center'
+				'flex items-stretch justify-center'
 			)}
 		>
 			<div
 				class={cn(
-					'flex h-full w-full flex-col items-center justify-center bg-zinc-100 text-zinc-900',
-					'lg:h-auto lg:max-h-[calc(100vh-3rem)] lg:rounded-2xl',
+					'max-w-10xl flex h-full w-full flex-col items-center justify-center bg-zinc-100 text-zinc-900',
+					'lg:max-h-[calc(100vh-3rem)] lg:rounded-2xl',
 					'dark:bg-zinc-900 dark:text-zinc-50',
 					'rounded-none shadow-xl'
 				)}
@@ -522,15 +546,15 @@
 		<div
 			class={cn(
 				'absolute inset-0 lg:inset-y-6 lg:right-1/7 lg:left-1/7',
-				'flex items-center justify-center'
+				'flex items-stretch justify-center'
 			)}
 		>
 			<div
 				class={cn(
-					'flex h-full w-full flex-col items-center justify-center bg-zinc-100 text-zinc-900',
-					'lg:h-auto lg:max-h-[calc(100vh-3rem)] lg:rounded-2xl',
+					'max-w-10xl flex h-full w-full flex-col items-center justify-center bg-zinc-100 px-6 text-zinc-900',
+					'lg:max-h-[calc(100vh-3rem)] lg:rounded-2xl',
 					'dark:bg-zinc-900 dark:text-zinc-50',
-					'rounded-none px-6 shadow-xl'
+					'rounded-none shadow-xl'
 				)}
 			>
 				<p class="text-sm text-red-500">{error}</p>
@@ -586,7 +610,7 @@
 					'rounded-none shadow-xl lg:rounded-2xl'
 				)}
 			>
-				<div class={cn('hidden shrink-0 lg:flex lg:h-auto lg:w-1/2')}>
+				<div class={cn('hidden min-h-0 min-w-0 shrink-0 lg:flex lg:h-auto lg:w-1/2')}>
 					<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
 				</div>
 
@@ -595,8 +619,13 @@
 					class="relative flex h-full grow flex-col lg:w-1/2"
 					onpointerdown={handleContentAreaPointerDown}
 				>
-					<!-- 作者信息与统计 -->
-					<div class="flex-none px-4 pt-4 pb-4 lg:px-6 lg:pt-6 lg:pb-4">
+					<!-- 作者信息与统计：正文区向下滚动后显示底部分割线，与下方媒体/正文区分 -->
+					<div
+						class={cn(
+							'flex-none px-4 pt-4 pb-4 transition-colors lg:px-6 lg:pt-6 lg:pb-4',
+							isHeaderDividerVisible && 'border-b border-zinc-200/95 dark:border-zinc-700/90'
+						)}
+					>
 						<div class="flex min-w-0 items-center gap-3">
 							<!-- 关闭按钮（移动端：头像左侧；桌面端：隐藏，使用左侧区域的悬浮关闭按钮时机，如后续需要） -->
 							<div class="flex lg:hidden">
@@ -684,34 +713,40 @@
 								</div>
 							</div>
 							<div class="ml-auto flex flex-col items-end gap-2">
-								{#if post.author?.userId && post.author.userId !== currentUserId}
-									<Button
-										variant="default"
-										class="text-md min-w-20 cursor-pointer font-bold"
-										disabled={isFollowingAction || isFetchingFollowing}
-										onclick={handleFollow}
-									>
-										{#if isFollowingAction || isFetchingFollowing}
-											<LoaderCircle class="mr-1 size-4 animate-spin" />
-										{/if}
-										{followButtonLabel}
-									</Button>
-								{:else if !currentUserId}
-									<!-- 未登录用户显示关注按钮，点击引导登录 -->
-									<Button
-										variant="default"
-										class="text-md min-w-20 font-bold"
-										onclick={() => {
-											actionError = '请先登录后再关注';
-										}}
-									>
-										关注
-									</Button>
-								{/if}
+								<div class="flex items-center gap-1">
+									{#if post.author?.userId && post.author.userId !== currentUserId}
+										<Button
+											variant="default"
+											class="text-md min-w-20 cursor-pointer font-bold"
+											disabled={isFollowingAction || isFetchingFollowing}
+											onclick={handleFollow}
+										>
+											{#if isFollowingAction || isFetchingFollowing}
+												<LoaderCircle class="mr-1 size-4 animate-spin" />
+											{/if}
+											{followButtonLabel}
+										</Button>
+									{:else if !currentUserId}
+										<!-- 未登录用户显示关注按钮，点击引导登录 -->
+										<Button
+											variant="default"
+											class="text-md min-w-20 font-bold"
+											onclick={() => {
+												toast.error('请先登录后再关注');
+											}}
+										>
+											关注
+										</Button>
+									{/if}
+								</div>
 							</div>
 						</div>
 					</div>
-					<div class="scrollbar-hide flex-1 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-4">
+					<div
+						bind:this={mainScrollEl}
+						class="scrollbar-hide flex-1 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-4"
+						onscroll={syncHeaderDividerFromScroll}
+					>
 						<div class={cn('mb-4 lg:hidden', 'h-[60vh]')}>
 							<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
 						</div>
@@ -765,45 +800,60 @@
 						{/if}
 					</div>
 
-					<!-- 底部操作栏 -->
+					<!-- 底部操作栏：左侧约 1/3 为评论入口，右侧约 2/3 为赞/藏/评/转（转发最右） -->
 					<div class="relative flex-none border-t border-zinc-200 dark:border-zinc-800">
-						<div class="flex items-center justify-between gap-0 px-4 py-2 lg:px-6">
+						<div class="flex min-h-11 items-stretch gap-1 px-4 py-2 lg:gap-1.5 lg:px-6">
 							<button
 								bind:this={commentEditorTriggerEl}
 								type="button"
-								class="flex min-h-11 flex-1 items-center gap-2 rounded-full bg-zinc-200/70 px-3 py-1.5 text-left text-sm text-zinc-600 ring-0 outline-none hover:bg-zinc-300/80 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-700"
+								class="flex min-h-11 min-w-0 flex-1 basis-0 items-center gap-1.5 rounded-full bg-zinc-200/70 px-2.5 py-1.5 text-left text-sm text-zinc-600 ring-0 outline-none hover:bg-zinc-300/80 sm:gap-2 sm:px-3 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-700"
 								aria-label="输入评论"
 								onclick={() => openCommentEditor(commentReplyTo)}
 							>
-								<div
-									class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-sm font-medium text-white"
-								>
-									U
-								</div>
-								<span class="truncate">
+								{#if currentUserAvatar}
+									<img
+										src={currentUserAvatar}
+										alt=""
+										class="size-8 shrink-0 rounded-full object-cover"
+									/>
+								{:else}
+									<div
+										class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-sm font-medium text-white"
+									>
+										{(currentUserName ?? 'U').slice(0, 1)}
+									</div>
+								{/if}
+								<span class="min-w-0 truncate">
 									{commentReplyTo ? `回复 @${commentReplyTo.author?.name ?? '用户'}` : 'Ciallo～'}
 								</span>
 							</button>
 
-							<div class="flex items-center gap-1">
+							<div
+								class="scrollbar-hide flex min-h-11 min-w-0 flex-[2] basis-0 items-center justify-end gap-0.5 overflow-x-auto lg:gap-1"
+							>
 								<Button
 									variant="ghost"
 									size="sm"
 									disabled={isLiking}
 									class={cn(
-										'flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800',
-										post.relationStatus?.isLiked && 'text-rose-500'
+										'flex min-h-11 min-w-10 cursor-pointer items-center gap-0.5 rounded-full px-1.5 sm:min-w-11 sm:gap-1',
+										post.relationStatus?.isLiked
+											? '!text-rose-500 hover:!bg-rose-500/12 hover:!text-rose-500'
+											: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
 									)}
 									onclick={handleLike}
 								>
-									{#if isLiking}
-										<LoaderCircle class="size-4 animate-spin" />
-									{:else}
+									{#key `${isLiking ? 'go' : 'idle'}`}
 										<Heart
-											class={cn('size-4', post.relationStatus?.isLiked && 'fill-current')}
+											class={cn(
+												'size-4 origin-center',
+												isLiking &&
+													'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
+												post.relationStatus?.isLiked && 'fill-current !text-rose-500'
+											)}
 											fill={post.relationStatus?.isLiked ? 'currentColor' : 'none'}
 										/>
-									{/if}
+									{/key}
 									{#if post.stats?.likeCount != null}
 										<span>{post.stats.likeCount}</span>
 									{/if}
@@ -813,19 +863,24 @@
 									size="sm"
 									disabled={isCollecting}
 									class={cn(
-										'flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800',
-										post.relationStatus?.isCollected && 'text-amber-500'
+										'flex min-h-11 min-w-10 cursor-pointer items-center gap-0.5 rounded-full px-1.5 sm:min-w-11 sm:gap-1',
+										post.relationStatus?.isCollected
+											? '!text-amber-400 hover:!bg-amber-400/12 hover:!text-amber-400'
+											: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
 									)}
 									onclick={handleCollect}
 								>
-									{#if isCollecting}
-										<LoaderCircle class="size-4 animate-spin" />
-									{:else}
+									{#key `${isCollecting ? 'go' : 'idle'}`}
 										<Star
-											class={cn('size-4', post.relationStatus?.isCollected && 'fill-current')}
+											class={cn(
+												'size-4 origin-center',
+												isCollecting &&
+													'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
+												post.relationStatus?.isCollected && 'fill-current !text-amber-400'
+											)}
 											fill={post.relationStatus?.isCollected ? 'currentColor' : 'none'}
 										/>
-									{/if}
+									{/key}
 									{#if post.stats?.collectCount != null}
 										<span>{post.stats.collectCount}</span>
 									{/if}
@@ -833,7 +888,7 @@
 								<Button
 									variant="ghost"
 									size="sm"
-									class="flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+									class="flex min-h-11 min-w-10 cursor-pointer items-center gap-0.5 rounded-full px-1.5 text-zinc-700 hover:bg-zinc-100 sm:min-w-11 sm:gap-1 dark:text-zinc-100 dark:hover:bg-zinc-800"
 									onclick={() => {
 										scrollToComments();
 										openCommentEditor(null);
@@ -847,10 +902,10 @@
 								<Button
 									variant="ghost"
 									size="sm"
-									class="flex min-h-11 min-w-11 cursor-pointer items-center gap-1 rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"
+									class="flex min-h-11 min-w-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-full px-1.5 text-zinc-700 hover:bg-zinc-100 sm:min-w-11 sm:gap-1 dark:text-zinc-100 dark:hover:bg-zinc-800"
 									onclick={handleShare}
 								>
-									<Share class="size-4" />
+									<Share class="size-4 shrink-0" />
 								</Button>
 							</div>
 						</div>
@@ -880,36 +935,6 @@
 			</div>
 		</div>
 	</div>
-{/if}
-
-<!-- 局部错误提示（不影响整个弹窗） -->
-{#if actionError}
-	<AlertDialog.Root open={true} onOpenChange={(open) => !open && (actionError = null)}>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>操作失败</AlertDialog.Title>
-				<AlertDialog.Description>{actionError}</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => (actionError = null)}>知道了</AlertDialog.Action>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
-{/if}
-
-<!-- 成功提示通知 -->
-{#if notification}
-	<AlertDialog.Root open={true} onOpenChange={(open) => !open && (notification = null)}>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>操作成功</AlertDialog.Title>
-				<AlertDialog.Description>{notification}</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Action onclick={() => (notification = null)}>好的</AlertDialog.Action>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
 {/if}
 
 <!-- 用户资料 Popover -->

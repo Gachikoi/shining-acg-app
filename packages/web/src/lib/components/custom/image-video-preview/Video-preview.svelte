@@ -7,7 +7,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Play, Volume2, VolumeX, Maximize, Minimize, Download } from 'lucide-svelte';
 	import { cn } from '$lib/utils';
-	import { getMediaDisplayUrl } from '$lib/media-url';
+	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
 
 	let {

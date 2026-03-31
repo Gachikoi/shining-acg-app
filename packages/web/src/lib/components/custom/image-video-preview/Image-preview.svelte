@@ -4,7 +4,7 @@
 	 * 仅对当前索引及相邻项挂载 `<img>`，减少大图同时解码数量；URL 来自 `getMediaDisplayUrl`。
 	 */
 	import type { V1MediaAsset as Media } from '$lib/api';
-	import { getMediaDisplayUrl } from '$lib/media-url';
+	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 
 	const {
 		mediaList = [] as Media[],
