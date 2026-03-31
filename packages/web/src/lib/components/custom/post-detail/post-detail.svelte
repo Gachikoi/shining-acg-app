@@ -342,6 +342,16 @@
 		onClose?.();
 	}
 
+	/**
+	 * 头像加载失败：隐藏 img，仅显示外层圆形容器背景（不使用 alt 文案占位）。
+	 *
+	 * @param e - img error 事件
+	 */
+	function onAvatarImageError(e: Event) {
+		const el = e.currentTarget;
+		if (el instanceof HTMLImageElement) el.style.display = 'none';
+	}
+
 	function scrollToComments() {
 		if (commentSectionEl) {
 			commentSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -637,11 +647,17 @@
 							{#if author?.userId && currentUserId && author.userId === currentUserId}
 								<a href={resolve('/app/profile')} class="cursor-pointer">
 									{#if author?.avatar}
-										<img
-											src={author.avatar}
-											alt={author.name ?? '用户头像'}
-											class="size-11 rounded-full object-cover"
-										/>
+										<div
+											class="size-11 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+										>
+											<img
+												src={author.avatar}
+												alt=""
+												role="presentation"
+												class="size-11 rounded-full object-cover"
+												onerror={onAvatarImageError}
+											/>
+										</div>
 									{:else}
 										<div
 											class="flex size-11 items-center justify-center rounded-full bg-zinc-300 text-sm font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
@@ -653,11 +669,17 @@
 							{:else}
 								<div class="shrink-0" role="presentation">
 									{#if author?.avatar}
-										<img
-											src={author.avatar}
-											alt={author.name ?? '用户头像'}
-											class="size-11 rounded-full object-cover"
-										/>
+										<div
+											class="size-11 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+										>
+											<img
+												src={author.avatar}
+												alt=""
+												role="presentation"
+												class="size-11 rounded-full object-cover"
+												onerror={onAvatarImageError}
+											/>
+										</div>
 									{:else}
 										<div
 											class="flex size-11 items-center justify-center rounded-full bg-zinc-300 text-sm font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100"
@@ -796,11 +818,17 @@
 								onclick={() => openCommentEditor(commentReplyTo)}
 							>
 								{#if currentUserAvatar}
-									<img
-										src={currentUserAvatar}
-										alt=""
-										class="size-8 shrink-0 rounded-full object-cover"
-									/>
+									<div
+										class="size-8 shrink-0 overflow-hidden rounded-full bg-zinc-400 dark:bg-zinc-600"
+									>
+										<img
+											src={currentUserAvatar}
+											alt=""
+											role="presentation"
+											class="size-8 rounded-full object-cover"
+											onerror={onAvatarImageError}
+										/>
+									</div>
 								{:else}
 									<div
 										class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-sm font-medium text-white"

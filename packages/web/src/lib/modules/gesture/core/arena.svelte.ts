@@ -171,10 +171,10 @@ export function tryAcquire(params: AcquireParams): boolean {
 					return false;
 				}
 			} else if (isSelf) {
-				// 自身区域：到边界时仅“滚动类手势”需要让渡给外层。
-				// 像 tap/long-press 这类离散手势不应被 scrollBoundary 阻断
-				const shouldYieldOnBoundary = params.type === 'swipe' || params.type === 'pull-refresh';
-				if (shouldYieldOnBoundary && !canScroll) return false;
+				// 自身区域：如果自身已经不能滚动了，拒绝自身手势，以便让渡给外层
+				if (!canScroll) {
+					return false;
+				}
 			}
 		}
 	}
