@@ -10,9 +10,10 @@
  * - **速度计算**：VelocityTracker 采样，支持"轻扫"快速提交
  * - **竞技场集成**：通过 arena.tryAcquire 与 scrollBoundary 协调边界让渡
  * - **动画保护**：onEnd 返回的 Promise 被包装为 AnimationToken 注册到 arena
- * - **Safari 兼容**：额外 touchmove { passive: false } 阻止滚动
- * - **横向 wheel 与历史导航**：在挂载节点上设置 `overscroll-behavior-x: none`，避免 Chrome/Safari（尤其 macOS 触控板）
- *   将横向滚动手势链式到视口后触发「前进/后退」；与 MDN 对 overscroll-behavior 的说明一致
+ * - **Safari 兼容**：touchmove { passive: false }；pending 阶段对左/右缘起笔或已判定为横向占优的序列尽早 preventDefault，
+ *   避免 WebKit 在 pointer 通道尚未 active 时就把手势判给「边缘返回」导航
+ * - **横向 wheel 与历史导航**：挂载节点设置 `overscroll-behavior-x: none` + `touch-action: pan-x`，与文档级 `touch-action: pan-y` 配合，
+ *   减少 Chrome/Safari 将横向手势交给浏览器历史（参见 MDN overscroll-behavior / touch-action）
  *
  * @example
  * ```svelte
@@ -113,6 +114,12 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * 量级参考调试日志中噪声（约 0.01–0.05）与有效差（约 0.15+）。
 	 */
 	const SWITCH_VELOCITY_MARGIN_PX_PER_MS = 0.08;
+
+	/**
+	 * Safari（尤其 iOS）左缘右滑返回、右缘左滑前进的热区宽度（视口坐标系，与 stack-item 的 edgeZone 同量级）。
+	 * 起笔落在此带内时，pending 阶段需在首个 touchmove 起拦截，否则 WebKit 会在指针通道 active 之前接管为导航。
+	 */
+	const EDGE_NAV_GUARD_PX = 36;
 
 	/**
 	 * 多指时仅按「瞬时 |vx|」取最大会把 driver 在相邻 pointermove 间来回切：
@@ -280,7 +287,6 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				resetPointer();
 				return;
 			}
-			console.log('tryAcquire', leadingTrack.startX, leadingTrack.startY);
 			const direction = dx > 0 ? 1 : -1;
 			const granted = tryAcquire({
 				id,
@@ -470,21 +476,43 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	 * 防御策略：
 	 * - active 阶段：始终 preventDefault，阻止浏览器滚动干扰
 	 * - pending 阶段（方向未决）：
-	 *     · 位移不足阈值 → preventDefault 延缓浏览器接管
-	 *     · 位移超过阈值且明确纵向（dy > dx）→ 不阻止，让浏览器处理纵向滚动
-	 *     · 位移超过阈值且横向（dx >= dy）→ preventDefault 保护 swipe 手势
-	 *
-	 * 与旧实现的区别：旧实现 pending 阶段无条件 preventDefault，
-	 * 导致每次纵向滚动的前几帧被阻塞，产生可感知的微卡顿。
-	 * 新实现在能判定方向时立即放行纵向滚动。
+	 *     · 从左/右缘起笔且位移未过方向阈值 → preventDefault，避免 Safari 在首个 touchmove 就判给边缘导航
+	 *     · 位移超过阈值且明确纵向（|dy| ≥ |dx|）→ 不阻止，让浏览器处理纵向滚动
+	 *     · 位移超过阈值且横向占优 → preventDefault，在 tryAcquire 通过前阻断 WebKit 导航
 	 */
 	function onTouchMove(e: TouchEvent) {
 		if (!e.cancelable) return;
 
-		// active 阶段：始终阻止
 		if (shouldPreventScroll) {
 			e.preventDefault();
 			return;
+		}
+
+		if (pointerPhase !== 'pending' || driverId === null) return;
+
+		const track = trackedPointers.get(driverId);
+		if (!track) return;
+
+		const t = e.touches[0];
+		if (!t || e.touches.length !== 1) return;
+
+		const dx = t.clientX - track.startX;
+		const dy = t.clientY - track.startY;
+		const absDx = Math.abs(dx);
+		const absDy = Math.abs(dy);
+		const w = node.clientWidth;
+		const startedNearHorizontalEdge =
+			track.startX < EDGE_NAV_GUARD_PX || track.startX > w - EDGE_NAV_GUARD_PX;
+
+		if (Math.max(absDx, absDy) < threshold()) {
+			if (startedNearHorizontalEdge) {
+				e.preventDefault();
+			}
+			return;
+		}
+
+		if (absDx > absDy) {
+			e.preventDefault();
 		}
 	}
 
@@ -622,15 +650,16 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// 事件绑定与生命周期
 	// ═══════════════════════════════════════════════════════════════
 
-	/** 阻断横向 overscroll 向父级/视口传递，减轻触控板横向 wheel 触发浏览器历史导航 */
+	/** 阻断横向 overscroll；声明本节点以横向手势为主，配合文档 touch-action: pan-y 与 pending touchmove 兜底 */
 	node.style.overscrollBehaviorX = 'none';
+	node.style.touchAction = 'pan-x';
 	node.addEventListener('pointerdown', onPointerDown);
 	node.addEventListener('pointermove', onPointerMove);
 	node.addEventListener('pointerup', onPointerUp);
 	node.addEventListener('pointercancel', onPointerCancel);
 	node.addEventListener('lostpointercapture', onLostPointerCapture);
 	node.addEventListener('wheel', onWheel, { passive: false });
-	/** touch-action: none 不足以保证不触发 pointercancel，必须在 touch 层用 preventDefault 兜底 */
+	/** touch 层与 pointer 并行；Safari 上需在 passive: false 下拦截边缘导航 */
 	node.addEventListener('touchmove', onTouchMove, { passive: false });
 
 	return {
@@ -652,6 +681,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			node.removeEventListener('lostpointercapture', onLostPointerCapture);
 			node.removeEventListener('wheel', onWheel);
 			node.removeEventListener('touchmove', onTouchMove);
+			node.style.removeProperty('overscroll-behavior-x');
+			node.style.removeProperty('touch-action');
 		}
 	};
 };

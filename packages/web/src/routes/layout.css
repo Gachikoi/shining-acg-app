@@ -122,8 +122,6 @@
 	body {
 		overflow: hidden;
 		height: 100%;
-		/* 阻断横向 overscroll 到视口，避免触控板横向滑动 / 横向 wheel 触发浏览器前进后退（MDN: overscroll-behavior） */
-		overscroll-behavior-x: none;
 	}
 
 	body {
