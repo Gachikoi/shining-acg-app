@@ -48,6 +48,7 @@
 	import { remToPx } from '$lib/modules/device';
 	import { cn } from '$lib/utils';
 	import type { Snapshot } from '../$types';
+	import { BusinessIds } from '$lib/constants';
 
 	const homeFeedRouteState = createFeedRouteStateStore();
 
@@ -68,7 +69,7 @@
 
 	// ─── 缓存 ──────────────────────────────────────────────────────
 
-	const feedCache = createDbCache<V1GetFeedResponse>('feed');
+	const feedCache = createDbCache<V1GetFeedResponse>(BusinessIds.FEED);
 
 	// ─── 分类配置 ──────────────────────────────────────────────────
 
@@ -109,8 +110,8 @@
 
 		const contentType =
 			CATEGORY_OPTIONS.find((c) => c.value === categoryId)?.contentType ?? 'waterfall';
-		const onError = (_error: unknown, context: 'init' | 'refresh' | 'loadMore') => {
-			if (context === 'refresh') toast.error('网络请求失败，请检查您的网络连接');
+		const onError = (_error: unknown) => {
+			toast.error('网络请求失败，请检查您的网络连接');
 		};
 
 		if (contentType === 'list') {
@@ -268,7 +269,7 @@
 				{@const store = getOrCreateStore(category.value)}
 				{#if category.contentType === 'list'}
 					<!-- <FeedList
-						businessId='feed'
+						businessId={BusinessIds.FEED}
 						categoryId={category.value}
 						items={store.items}
 						loading={store.loadingMore}
@@ -284,7 +285,7 @@
 						hasMore={store.hasMore}
 						showSkeleton={store.showSkeleton}
 						refreshing={store.refreshing}
-						businessId="feed"
+						businessId={BusinessIds.FEED}
 						categoryId={category.value}
 						onLoadMore={store.loadMore}
 						onRefresh={store.refresh}

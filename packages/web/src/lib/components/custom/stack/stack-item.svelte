@@ -455,7 +455,6 @@
 		applyInitLayoutVars(sizeEl);
 		moveAndScaleTo(initTranslateX, initTranslateY, initScale, false);
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const _ = getComputedStyle(el!).transform; // 读取样式，强制触发 layout，防止在 onMount 瞬间先触发 initLayout 的 moveAndScaleTo 又紧接着触发 runPushAnimation 的 moveAndScaleTo 导致没有动画效果
 	};
 

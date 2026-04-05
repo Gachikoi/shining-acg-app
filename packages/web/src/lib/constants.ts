@@ -19,3 +19,8 @@ export enum LocalStorageKeys {
 	TOKEN = 'token',
 	USER_ID = 'user_id'
 }
+
+export enum BusinessIds {
+	HOT_POST = 'hot-post',
+	FEED = 'feed'
+}

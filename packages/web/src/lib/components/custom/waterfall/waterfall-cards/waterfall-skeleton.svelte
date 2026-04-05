@@ -14,7 +14,7 @@
 </script>
 
 <article
-	class="overflow-hidden rounded-sm border border-zinc-100 sm:rounded-md md:rounded-xl lg:rounded-2xl dark:border-zinc-900"
+	class="overflow-hidden rounded-sm border border-zinc-100 bg-white sm:rounded-md md:rounded-xl lg:rounded-2xl dark:border-zinc-900 dark:bg-black"
 	{style}
 >
 	<!-- 封面区域：与 waterfall-card figure 对齐 -->

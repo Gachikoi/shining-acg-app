@@ -61,7 +61,7 @@
 		type PullRefreshConfig
 	} from '$lib/modules/gesture';
 	import { calculateVisibleRange } from '$lib/modules/virtual-scroll';
-	import { formatStat } from '$lib/utils';
+	import { cn, formatStat } from '$lib/utils.js';
 	import { onDestroy, onMount } from 'svelte';
 	import type { Action } from 'svelte/action';
 	import { Spring } from 'svelte/motion';
@@ -104,7 +104,8 @@
 		categoryId,
 		onLoadMore,
 		onRefresh,
-		config
+		config,
+		scrollContainerClass
 	}: {
 		/** 帖子数据列表 */
 		posts: V1PostPreview[];
@@ -125,6 +126,8 @@
 		onRefresh?: () => Promise<void>;
 		/** 布局配置（可选，不传则使用默认值） */
 		config?: Partial<WaterfallConfig>;
+		/** 滚动容器额外 class（如官网全宽：px-0） */
+		scrollContainerClass?: string;
 	} = $props();
 
 	// ─── DOM 元素引用 ──────────────────────────────────────────────
@@ -604,7 +607,7 @@
 
 <!-- 滚动容器 + 下拉刷新 action -->
 <div
-	class="h-full overflow-y-scroll px-1 sm:px-2 md:px-4 lg:px-6"
+	class={cn('h-full w-full overflow-y-scroll px-1 sm:px-2 md:px-4 lg:px-6', scrollContainerClass)}
 	bind:this={scrollContainer}
 	use:pullRefresh={{
 		pullDistance,
@@ -671,17 +674,14 @@
 								index={i}
 								title={post.displayTitle || ''}
 								cover={{
-									url: resolveCacheUrl(
-										post.cover?.single?.url || '',
-										`${businessId}-${categoryId}`
-									), // 添加 feed 前缀以避免缓存桶命名冲突
+									url: resolveCacheUrl(post.cover?.single?.url || '', businessId, categoryId), // 添加 feed 前缀以避免缓存桶命名冲突
 									ratio:
 										post.cover?.single?.meta?.width && post.cover.single.meta?.height
 											? post.cover.single.meta.width / post.cover.single.meta.height
 											: 1
 								}}
 								author={{
-									avatar: resolveCacheUrl(post.author?.avatar, `${businessId}-${categoryId}`),
+									avatar: resolveCacheUrl(post.author?.avatar, businessId, categoryId),
 									name: post.author?.name || '',
 									id: post.author?.userId || ''
 								}}

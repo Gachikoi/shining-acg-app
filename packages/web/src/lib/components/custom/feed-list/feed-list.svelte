@@ -123,7 +123,7 @@
 						<div class="size-10 rounded-full bg-muted sm:size-12"></div>
 					{:else}
 						<img
-							src={resolveCacheUrl(user.avatar, `${businessId}-${categoryId}`)}
+							src={resolveCacheUrl(user.avatar, businessId, categoryId)}
 							alt={user.name}
 							class="size-10 rounded-full bg-muted object-cover sm:size-12"
 						/>

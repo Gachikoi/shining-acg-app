@@ -9,7 +9,7 @@ import { createConcurrencyLimiter } from './lib/utils';
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const SOURCE_CODE_CACHE = `source-code/${version}` as const;
-let mediaCategories: Set<string> = new Set(['feed-general', 'feed-following', 'feed-user']); // TODO处理初态
+let mediaCategories: Set<string> = new Set(['feed/general', 'feed/following', 'feed/user']); // TODO处理初态
 
 const SOURCE_CODE_ASSETS = [...build, ...files, '/'];
 
