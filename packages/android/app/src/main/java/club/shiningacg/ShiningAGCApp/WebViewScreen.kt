@@ -1,6 +1,7 @@
 package club.shiningacg.ShiningAGCApp
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
@@ -14,21 +15,32 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
-import androidx.webkit.WebSettingsCompat
-import androidx.webkit.WebViewFeature
 import android.webkit.JavascriptInterface
 import org.json.JSONObject
 import android.os.Build
@@ -87,18 +99,57 @@ fun openInCustomTab(
     customTabsIntent.launchUrl(context, url.toUri())
 }
 
+private const val MIN_WEBVIEW_VERSION = 99
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebViewScreen(
     url: String,
     modifier: Modifier = Modifier,
 ) {
-    // 获取 Context 和主题色用于 Chrome Custom Tabs
     val context = LocalContext.current
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
 
-    // 检测系统是否处于深色模式
-    val isDarkTheme = isSystemInDarkTheme()
+    val webViewMajorVersion = remember {
+        WebView.getCurrentWebViewPackage()
+            ?.versionName?.split(".")?.firstOrNull()?.toIntOrNull() ?: 0
+    }
+
+    if (webViewMajorVersion < MIN_WEBVIEW_VERSION) {
+        WebViewUpdatePrompt(modifier = modifier)
+        return
+    }
+
+    var webViewNativeReady by remember { mutableStateOf(false) }
+    var webViewNativeError by remember { mutableStateOf<Throwable?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            WebView(context).destroy()
+            webViewNativeReady = true
+        } catch (e: Throwable) {
+            Log.e("WebViewScreen", "WebView native library failed to load", e)
+            webViewNativeError = e
+        }
+    }
+
+    webViewNativeError?.let { err ->
+        WebViewNativeLoadFailedPrompt(
+            modifier = modifier,
+            throwable = err,
+        )
+        return
+    }
+
+    if (!webViewNativeReady) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     val filePathCallback = remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
     val pendingFileChooserParams = remember { mutableStateOf<WebChromeClient.FileChooserParams?>(null) }
@@ -134,9 +185,16 @@ fun WebViewScreen(
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_MEDIA_VIDEO
             ) == PackageManager.PERMISSION_GRANTED
         } else {
-            true // Older Android uses manifest-declared permission
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -149,9 +207,12 @@ fun WebViewScreen(
 
     fun getGalleryPermissions(): Array<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
         } else {
-            emptyArray() // No runtime permission needed for older Android
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
 
@@ -324,6 +385,104 @@ fun WebViewScreen(
         )
     }
 }
+@Composable
+private fun WebViewUpdatePrompt(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "浏览器内核版本过低",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "请更新 Android System WebView 至版本 $MIN_WEBVIEW_VERSION 或以上，以确保应用正常运行。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = {
+            try {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, "market://details?id=com.google.android.webview".toUri())
+                )
+            } catch (_: Exception) {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=com.google.android.webview".toUri())
+                )
+            }
+        }) {
+            Text("前往更新")
+        }
+    }
+}
+
+/**
+ * 版本号满足要求但无法加载 libwebviewchromium（常见于模拟器 ABI 与 WebView 包不一致、或安装不完整）。
+ */
+@Composable
+private fun WebViewNativeLoadFailedPrompt(
+    modifier: Modifier = Modifier,
+    throwable: Throwable,
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "无法启动浏览器组件",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "系统已安装 Android System WebView，但无法加载其原生库。若在模拟器上出现，请改用与镜像 ABI 一致的 WebView（或带 Google Play 的 x86_64/arm64-v8a 镜像），或在 Play 商店重新安装「Android System WebView」。真机通常无此问题。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        if (BuildConfig.DEBUG) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = throwable.message ?: throwable.javaClass.simpleName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = {
+                try {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, "market://details?id=com.google.android.webview".toUri()),
+                    )
+                } catch (_: Exception) {
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            "https://play.google.com/store/apps/details?id=com.google.android.webview".toUri(),
+                        ),
+                    )
+                }
+            },
+        ) {
+            Text("打开 Play 商店")
+        }
+    }
+}
+
 private class WebAppInterface(private val context: android.content.Context) {
     @JavascriptInterface
     fun postMessage(message: String) {
