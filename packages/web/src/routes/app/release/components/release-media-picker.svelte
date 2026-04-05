@@ -7,9 +7,9 @@
 	 * - **排序**：列表根使用 `use:sortableList`（SortableJS）；整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
 	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
 	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
+	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
 	 */
 	import { PlusIcon } from 'lucide-svelte';
-	import type { Attachment } from 'svelte/attachments';
 	import { Label } from '$lib/components/ui/label';
 	import { sortableList } from '$lib/modules/sortable-list';
 	import type { DraftMediaItem } from '$lib/stores/release';
@@ -50,7 +50,6 @@
 		mediaInteractionsDisabled: boolean;
 	} = $props();
 
-	let mediaFileInputRef: HTMLInputElement | null = null;
 	let menuOpen = $state(false);
 	let menuIndex = $state(0);
 	let menuAnchorLeft = $state(0);
@@ -74,17 +73,24 @@
 		onReorder(fromIndex, toIndex);
 	}
 
-	const captureMediaFileInput: Attachment<HTMLInputElement> = (element) => {
-		mediaFileInputRef = element;
-		return () => {
-			if (mediaFileInputRef === element) {
-				mediaFileInputRef = null;
-			}
-		};
-	};
+	/**
+	 * 重置窗口滚动位置
+	 * @description
+	 * 在 Android WebView 中，系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位。
+	 */
+	function resetWindowScrollAfterPicker(): void {
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				window.scrollTo(0, 0);
+				document.documentElement.scrollTop = 0;
+				document.body.scrollTop = 0;
+			});
+		});
+	}
 
-	function handleAddMediaClick(): void {
-		mediaFileInputRef?.click();
+	function handleReleaseFileChange(e: Event): void {
+		onFileSelect(e);
+		resetWindowScrollAfterPicker();
 	}
 
 	function tryOpenMenu(index: number, clientX: number, clientY: number): void {
@@ -195,15 +201,6 @@
 <Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 <p class="text-sm text-muted-foreground">最多 {maxCount} 张，已选 {items.length} 张</p>
 
-<input
-	{@attach captureMediaFileInput}
-	type="file"
-	accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
-	multiple
-	class="hidden"
-	onchange={onFileSelect}
-/>
-
 <div
 	class="mt-3 flex flex-wrap gap-2"
 	aria-busy={mediaInteractionsDisabled}
@@ -264,14 +261,19 @@
 		</div>
 	{/each}
 	{#if items.length < maxCount}
-		<button
-			type="button"
+		<label
 			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-			onclick={handleAddMediaClick}
 			aria-label="添加图片/视频"
 		>
+			<input
+				type="file"
+				accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
+				multiple
+				class="sr-only"
+				onchange={handleReleaseFileChange}
+			/>
 			<PlusIcon class="size-4 text-muted-foreground" />
-		</button>
+		</label>
 	{/if}
 </div>
 
