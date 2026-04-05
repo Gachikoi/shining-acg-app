@@ -1,33 +1,51 @@
 <script lang="ts">
-	import { NAV_ITEMS } from '$lib/constants/site';
+	import { page } from '$app/state';
+	import shiningLogo from '$lib/assets/shining-logo.jpg';
+	import { NAV_ITEMS } from './constants';
+
+	let {
+		onNavigateHash
+	}: {
+		/** 若提供，则拦截默认锚点跳转，由父级统一平滑滚动 + snap */
+		onNavigateHash?: (hash: string) => void;
+	} = $props();
+
+	/** 与 background、锚点一致：首屏无 hash 视为首页 */
+	const navHash = $derived(page.url.hash.length > 0 ? page.url.hash : NAV_ITEMS[0].hash);
 </script>
 
 <nav
-	class="fixed top-0 left-0 z-50 flex h-20 w-full items-center justify-between border-b border-zinc-100 bg-white/80 px-8 backdrop-blur-md transition-all duration-300"
+	class="fixed top-0 left-0 z-20 flex h-20 w-full items-center justify-between border-b border-zinc-100 bg-white pr-8 pl-16 backdrop-blur-md transition-all duration-300"
 >
 	<!-- Logo Area -->
-	<div class="group flex cursor-pointer items-center gap-2">
+	<div class="group flex h-full cursor-pointer items-center gap-4">
+		<img src={shiningLogo} alt="晒你动漫社" width="48" height="48" />
 		<div
-			class="bg-brand-500 shadow-brand-500/30 flex h-10 w-10 items-center justify-center rounded-lg text-xl font-bold text-white shadow-lg transition-transform group-hover:scale-105"
+			class="flex flex-col justify-center *:font-mono *:font-black *:tracking-tighter *:text-zinc-900"
 		>
-			M
+			<span class="text-lg">晒你动漫社</span>
+			<span class="text-sm">Shining ACG Fan Club</span>
 		</div>
-		<span class="font-tech text-2xl font-bold tracking-wider text-zinc-800"> miHoYo </span>
 	</div>
 
-	<!-- Center Links -->
-	<div class="hidden items-center gap-10 md:flex">
-		{#each NAV_ITEMS as item (item.href)}
-			<!-- eslint-disable -->
+	<!-- Navbar Links -->
+	<div class="flex items-center gap-10">
+		{#each NAV_ITEMS as item (item.hash)}
 			<a
-				href={item.href}
-				class="relative py-2 text-sm font-medium tracking-wide transition-colors {item.active
-					? 'text-brand-500'
-					: 'text-zinc-500 hover:text-zinc-900'}"
+				href={item.hash}
+				onclick={(e) => {
+					if (onNavigateHash) {
+						e.preventDefault();
+						onNavigateHash(item.hash);
+					}
+				}}
+				class="relative border-b-2 py-2 text-sm font-medium tracking-wide transition-colors duration-200 {navHash ===
+				item.hash
+					? 'border-red-500 text-zinc-900'
+					: 'border-transparent text-zinc-500 hover:text-zinc-900'}"
 			>
-				<!-- eslint-enable -->
 				{item.label}
-				{#if item.active}
+				{#if navHash === item.hash}
 					<span
 						class="bg-brand-500 absolute bottom-0 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
 					></span>

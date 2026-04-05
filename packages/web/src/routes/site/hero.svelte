@@ -6,7 +6,7 @@
 </script>
 
 <div
-	class="relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center px-6 py-20 lg:h-[70vh] lg:flex-row lg:justify-between lg:px-24 lg:py-0"
+	class="z-10 mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center px-6 py-20 lg:h-[70vh] lg:flex-row lg:justify-between lg:px-24 lg:py-0"
 >
 	<!-- Left/Center: Visual Content -->
 	<div class="group relative flex h-[50vh] w-full items-center justify-center lg:h-[70vh] lg:w-3/5">
