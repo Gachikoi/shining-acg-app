@@ -4,7 +4,7 @@
 	 * @description
 	 * 发布页「选择图片/视频」（需求 6.2.5.1-2）：缩略图网格、`+` 选文件、封面红环标识。
 	 * - **触摸 / 鼠标**：**轻点**（未拖动即松手）打开菜单。触摸长按会触发合成 `contextmenu`：仅 `preventDefault` 抑制系统菜单，**不**打开业务菜单，以免打断拖拽用 Pointer；**桌面鼠标右键**仍打开菜单。
-	 * - **排序**：仅缩略图包在 sortable 根内（`display: contents` 内层 + 外层 `flex-wrap`）；「添加」`+` **不得**作为 Sortable 子节点，否则会参与索引/插入。整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
+	 * - **排序**：仅缩略图包在 sortable 根内（`display: contents` 内层 + 外层 `flex-wrap`）；「添加」`+` **不得**作为 Sortable 子节点，否则会参与索引/插入。拖拽结束后 `ensureAddMediaButtonIsLast` 将 `+` 移回网格根最后子节点，避免重排后跑到媒体项前。整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
 	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
 	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
 	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
@@ -59,6 +59,9 @@
 	let menuAdjusted = $state({ left: 0, top: 0 });
 	/** 与 `{#each … (urls[index])}` 一致，用预览 URL 标记被拖项 */
 	let draggingUrl = $state<string | null>(null);
+	/** 外层 `flex` 根（`+` 与 sortable 根为兄弟，重排后把 `+` 移回最后） */
+	let mediaGridRef = $state<HTMLDivElement | null>(null);
+	let addMediaButtonRef = $state<HTMLLabelElement | null>(null);
 
 	let lastMenuOpenAt = 0;
 	let lastMenuOpenIndex = -1;
@@ -66,12 +69,29 @@
 	/** 成功重排后 Sortable 仍可能触发 `click`，用宏任务窗口抑制误开菜单 */
 	let suppressNextCardClick = false;
 
+	/**
+	 * Sortable 结束或数据重排后，将「添加」按钮移回网格根的最后子节点，避免 `+` 被插到媒体项前面。
+	 */
+	function ensureAddMediaButtonIsLast(): void {
+		const grid = mediaGridRef;
+		const add = addMediaButtonRef;
+		if (!grid || !add) return;
+		if (add.parentElement !== grid) return;
+		if (grid.lastElementChild !== add) {
+			grid.appendChild(add);
+		}
+	}
+
 	function handleSortableReorder(fromIndex: number, toIndex: number): void {
 		suppressNextCardClick = true;
 		setTimeout(() => {
 			suppressNextCardClick = false;
 		}, 0);
 		onReorder(fromIndex, toIndex);
+		// 等 Svelte 根据新顺序 patch 完 DOM 再归位 `+`
+		requestAnimationFrame(() => {
+			requestAnimationFrame(ensureAddMediaButtonIsLast);
+		});
 	}
 
 	/**
@@ -202,7 +222,11 @@
 <Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 <p class="text-sm text-muted-foreground">最多 {maxCount} 张，已选 {items.length} 张</p>
 
-<div class="mt-3 flex flex-wrap gap-2" aria-busy={mediaInteractionsDisabled}>
+<div
+	bind:this={mediaGridRef}
+	class="mt-3 flex flex-wrap gap-2"
+	aria-busy={mediaInteractionsDisabled}
+>
 	<!-- `+` 选文件在外层 flex 中与内层并列；Sortable 仅包裹缩略图，避免 + 参与 oldIndex/newIndex -->
 	<div
 		class="contents"
@@ -217,6 +241,7 @@
 			},
 			onDragEnd: () => {
 				draggingUrl = null;
+				ensureAddMediaButtonIsLast();
 			},
 			delay: DELAY
 		}}
@@ -277,6 +302,7 @@
 	</div>
 	{#if items.length < maxCount}
 		<label
+			bind:this={addMediaButtonRef}
 			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
 			aria-label="添加图片/视频"
 		>
