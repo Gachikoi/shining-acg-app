@@ -4,13 +4,14 @@
 	 * @description
 	 * 发布页「选择图片/视频」（需求 6.2.5.1-2）：缩略图网格、`+` 选文件、封面红环标识。
 	 * - **触摸 / 鼠标**：**轻点**（未拖动即松手）打开菜单。触摸长按会触发合成 `contextmenu`：仅 `preventDefault` 抑制系统菜单，**不**打开业务菜单，以免打断拖拽用 Pointer；**桌面鼠标右键**仍打开菜单。
-	 * - **排序**：列表根使用 `use:sortableList`（SortableJS）；整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
+	 * - **排序**：仅缩略图包在 sortable 根内（`display: contents` 内层 + 外层 `flex-wrap`）；「添加」`+` **不得**作为 Sortable 子节点，否则会参与索引/插入。整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
 	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
 	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
 	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
 	 */
-	import { PlusIcon } from 'lucide-svelte';
+	import { PlusIcon, Play } from 'lucide-svelte';
 	import { Label } from '$lib/components/ui/label';
+	import { isVideoItem } from '$lib/modules/media-cover';
 	import { sortableList } from '$lib/modules/sortable-list';
 	import type { DraftMediaItem } from '$lib/stores/release';
 	import { cn } from '$lib/utils.js';
@@ -201,65 +202,79 @@
 <Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 <p class="text-sm text-muted-foreground">最多 {maxCount} 张，已选 {items.length} 张</p>
 
-<div
-	class="mt-3 flex flex-wrap gap-2"
-	aria-busy={mediaInteractionsDisabled}
-	use:sortableList={{
-		itemSelector: '[data-release-media-item]',
-		itemCount: items.length,
-		orderKey: urls.join('\0'),
-		disabled: () => mediaInteractionsDisabled,
-		onReorder: handleSortableReorder,
-		onDragStart: (item) => {
-			draggingUrl = item.getAttribute('data-preview-url');
-		},
-		onDragEnd: () => {
-			draggingUrl = null;
-		},
-		delay: DELAY
-	}}
->
-	{#each items as _, index (urls[index])}
-		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-		<div
-			class={cn(
-				'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
-				selectedCoverIndex === index &&
-					'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
-				draggingUrl !== null && urls[index] === draggingUrl && 'opacity-60'
-			)}
-			data-release-media-item
-			data-preview-url={urls[index]}
-			aria-label={`媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
-			onclick={(e) => {
-				if (mediaInteractionsDisabled || suppressNextCardClick) return;
-				tryOpenMenu(index, e.clientX, e.clientY);
-			}}
-			oncontextmenu={(e) => onCardContextMenu(e, index)}
-			use:longPress={{
-				delay: DELAY,
-				onPress: (detail) => {
-					draggingUrl = detail.currentTarget.getAttribute('data-preview-url');
-				},
-				onPressUp: () => {
-					draggingUrl = null;
-				}
-			}}
-		>
-			<img
-				src={urls[index]}
-				alt={`媒体 ${index + 1}`}
-				class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
-				draggable="false"
-			/>
-			<!-- <div
+<div class="mt-3 flex flex-wrap gap-2" aria-busy={mediaInteractionsDisabled}>
+	<!-- `+` 选文件在外层 flex 中与内层并列；Sortable 仅包裹缩略图，避免 + 参与 oldIndex/newIndex -->
+	<div
+		class="contents"
+		use:sortableList={{
+			itemSelector: '[data-release-media-item]',
+			itemCount: items.length,
+			orderKey: urls.join('\0'),
+			disabled: () => mediaInteractionsDisabled,
+			onReorder: handleSortableReorder,
+			onDragStart: (item) => {
+				draggingUrl = item.getAttribute('data-preview-url');
+			},
+			onDragEnd: () => {
+				draggingUrl = null;
+			},
+			delay: DELAY
+		}}
+	>
+		{#each items as _, index (urls[index])}
+			<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+			<div
+				class={cn(
+					'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
+					selectedCoverIndex === index &&
+						'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
+					draggingUrl !== null && urls[index] === draggingUrl && 'opacity-60'
+				)}
+				data-release-media-item
+				data-preview-url={urls[index]}
+				aria-label={isVideoItem(items[index])
+					? `视频 ${index + 1}，轻点打开操作菜单，拖动调整顺序`
+					: `媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
+				onclick={(e) => {
+					if (mediaInteractionsDisabled || suppressNextCardClick) return;
+					tryOpenMenu(index, e.clientX, e.clientY);
+				}}
+				oncontextmenu={(e) => onCardContextMenu(e, index)}
+				use:longPress={{
+					delay: DELAY,
+					onPress: (detail) => {
+						draggingUrl = detail.currentTarget.getAttribute('data-preview-url');
+					},
+					onPressUp: () => {
+						draggingUrl = null;
+					}
+				}}
+			>
+				<img
+					src={urls[index]}
+					alt={isVideoItem(items[index]) ? `视频 ${index + 1}` : `媒体 ${index + 1}`}
+					class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
+					draggable="false"
+				/>
+				{#if isVideoItem(items[index])}
+					<div
+						class="pointer-events-none absolute inset-0 flex items-center justify-center"
+						aria-hidden="true"
+					>
+						<div class="rounded-full bg-black/40 p-2 shadow-sm backdrop-blur-sm dark:bg-black/50">
+							<Play class="size-6 fill-white text-white" aria-hidden="true" />
+						</div>
+					</div>
+				{/if}
+				<!-- <div
 				class="release-media-sort-hint pointer-events-none absolute bottom-0 left-0 flex items-end justify-start rounded-tr-md bg-zinc-900/50 p-2 text-zinc-100 dark:bg-zinc-950/60"
 				aria-hidden="true"
 			>
 				<GripVerticalIcon class="size-4 shrink-0" aria-hidden="true" />
 			</div> -->
-		</div>
-	{/each}
+			</div>
+		{/each}
+	</div>
 	{#if items.length < maxCount}
 		<label
 			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
