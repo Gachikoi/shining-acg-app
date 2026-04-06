@@ -4,7 +4,7 @@
 	 * @description
 	 * 发布页「选择图片/视频」（需求 6.2.5.1-2）：缩略图网格、`+` 选文件、封面红环标识。
 	 * - **触摸 / 鼠标**：**轻点**（未拖动即松手）打开菜单。触摸长按会触发合成 `contextmenu`：仅 `preventDefault` 抑制系统菜单，**不**打开业务菜单，以免打断拖拽用 Pointer；**桌面鼠标右键**仍打开菜单。
-	 * - **排序**：仅缩略图包在 sortable 根内（`display: contents` 内层 + 外层 `flex-wrap`）；「添加」`+` **不得**作为 Sortable 子节点，否则会参与索引/插入。拖拽结束后 `ensureAddMediaButtonIsLast` 将 `+` 移回网格根最后子节点，避免重排后跑到媒体项前。整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
+	 * - **排序**：缩略图与「添加」`+` **同一真实 DOM 父节点**（`flex-wrap` + `use:sortableList`），避免 `display:contents` 作 Sortable 根时展平布局与插节点不一致导致某张卡跑到 `+` 后。`+` 放在 `{#each}` 之后且仅 `[data-release-media-item]` 可拖。`{#each}` 须以 **`DraftMediaItem` 引用** 为 key。`ensureAddMediaButtonIsLast` 将 `+` 移回该容器最后子节点。整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。
 	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
 	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
 	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
@@ -57,9 +57,9 @@
 	let menuAnchorTop = $state(0);
 	let menuPanelRef = $state<HTMLDivElement | null>(null);
 	let menuAdjusted = $state({ left: 0, top: 0 });
-	/** 与 `{#each … (urls[index])}` 一致，用预览 URL 标记被拖项 */
-	let draggingUrl = $state<string | null>(null);
-	/** 外层 `flex` 根（`+` 与 sortable 根为兄弟，重排后把 `+` 移回最后） */
+	/** 与 `{#each … (item)}` 一致，用 `DraftMediaItem` 引用标记被拖项（避免多视频共用同一占位 data URL 时 key 重复） */
+	let draggingItem = $state<DraftMediaItem | null>(null);
+	/** 网格根：同时作为 Sortable 根与 `flex-wrap` 容器（缩略图与 `+` 为直接子节点） */
 	let mediaGridRef = $state<HTMLDivElement | null>(null);
 	let addMediaButtonRef = $state<HTMLLabelElement | null>(null);
 
@@ -70,7 +70,7 @@
 	let suppressNextCardClick = false;
 
 	/**
-	 * Sortable 结束或数据重排后，将「添加」按钮移回网格根的最后子节点，避免 `+` 被插到媒体项前面。
+	 * Sortable 结束或数据重排后，将「添加」按钮移回同一网格根的最后子节点（与缩略图同父），避免 `+` 被插乱。
 	 */
 	function ensureAddMediaButtonIsLast(): void {
 		const grid = mediaGridRef;
@@ -226,80 +226,80 @@
 	bind:this={mediaGridRef}
 	class="mt-3 flex flex-wrap gap-2"
 	aria-busy={mediaInteractionsDisabled}
+	use:sortableList={{
+		itemSelector: '[data-release-media-item]',
+		itemCount: items.length,
+		orderKey: urls.join('\0'),
+		disabled: () => mediaInteractionsDisabled,
+		onReorder: handleSortableReorder,
+		onDragStart: (el) => {
+			const raw = el.getAttribute('data-release-media-index');
+			const i = raw == null ? NaN : Number(raw);
+			draggingItem = Number.isInteger(i) && i >= 0 && i < items.length ? items[i]! : null;
+		},
+		onDragEnd: () => {
+			draggingItem = null;
+			ensureAddMediaButtonIsLast();
+		},
+		delay: DELAY
+	}}
 >
-	<!-- `+` 选文件在外层 flex 中与内层并列；Sortable 仅包裹缩略图，避免 + 参与 oldIndex/newIndex -->
-	<div
-		class="contents"
-		use:sortableList={{
-			itemSelector: '[data-release-media-item]',
-			itemCount: items.length,
-			orderKey: urls.join('\0'),
-			disabled: () => mediaInteractionsDisabled,
-			onReorder: handleSortableReorder,
-			onDragStart: (item) => {
-				draggingUrl = item.getAttribute('data-preview-url');
-			},
-			onDragEnd: () => {
-				draggingUrl = null;
-				ensureAddMediaButtonIsLast();
-			},
-			delay: DELAY
-		}}
-	>
-		{#each items as _, index (urls[index])}
-			<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-			<div
-				class={cn(
-					'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
-					selectedCoverIndex === index &&
-						'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
-					draggingUrl !== null && urls[index] === draggingUrl && 'opacity-60'
-				)}
-				data-release-media-item
-				data-preview-url={urls[index]}
-				aria-label={isVideoItem(items[index])
-					? `视频 ${index + 1}，轻点打开操作菜单，拖动调整顺序`
-					: `媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
-				onclick={(e) => {
-					if (mediaInteractionsDisabled || suppressNextCardClick) return;
-					tryOpenMenu(index, e.clientX, e.clientY);
-				}}
-				oncontextmenu={(e) => onCardContextMenu(e, index)}
-				use:longPress={{
-					delay: DELAY,
-					onPress: (detail) => {
-						draggingUrl = detail.currentTarget.getAttribute('data-preview-url');
-					},
-					onPressUp: () => {
-						draggingUrl = null;
-					}
-				}}
-			>
-				<img
-					src={urls[index]}
-					alt={isVideoItem(items[index]) ? `视频 ${index + 1}` : `媒体 ${index + 1}`}
-					class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
-					draggable="false"
-				/>
-				{#if isVideoItem(items[index])}
-					<div
-						class="pointer-events-none absolute inset-0 flex items-center justify-center"
-						aria-hidden="true"
-					>
-						<div class="rounded-full bg-black/40 p-2 shadow-sm backdrop-blur-sm dark:bg-black/50">
-							<Play class="size-6 fill-white text-white" aria-hidden="true" />
-						</div>
+	{#each items as item, index (item)}
+		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+		<div
+			class={cn(
+				'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
+				selectedCoverIndex === index &&
+					'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
+				draggingItem !== null && draggingItem === item && 'opacity-60'
+			)}
+			data-release-media-item
+			data-release-media-index={String(index)}
+			data-preview-url={urls[index]}
+			aria-label={isVideoItem(item)
+				? `视频 ${index + 1}，轻点打开操作菜单，拖动调整顺序`
+				: `媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
+			onclick={(e) => {
+				if (mediaInteractionsDisabled || suppressNextCardClick) return;
+				tryOpenMenu(index, e.clientX, e.clientY);
+			}}
+			oncontextmenu={(e) => onCardContextMenu(e, index)}
+			use:longPress={{
+				delay: DELAY,
+				onPress: (detail) => {
+					const raw = detail.currentTarget.getAttribute('data-release-media-index');
+					const i = raw == null ? NaN : Number(raw);
+					draggingItem = Number.isInteger(i) && i >= 0 && i < items.length ? items[i]! : null;
+				},
+				onPressUp: () => {
+					draggingItem = null;
+				}
+			}}
+		>
+			<img
+				src={urls[index]}
+				alt={isVideoItem(item) ? `视频 ${index + 1}` : `媒体 ${index + 1}`}
+				class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
+				draggable="false"
+			/>
+			{#if isVideoItem(item)}
+				<div
+					class="pointer-events-none absolute inset-0 flex items-center justify-center"
+					aria-hidden="true"
+				>
+					<div class="rounded-full bg-black/40 p-2 shadow-sm backdrop-blur-sm dark:bg-black/50">
+						<Play class="size-6 fill-white text-white" aria-hidden="true" />
 					</div>
-				{/if}
-				<!-- <div
+				</div>
+			{/if}
+			<!-- <div
 				class="release-media-sort-hint pointer-events-none absolute bottom-0 left-0 flex items-end justify-start rounded-tr-md bg-zinc-900/50 p-2 text-zinc-100 dark:bg-zinc-950/60"
 				aria-hidden="true"
 			>
 				<GripVerticalIcon class="size-4 shrink-0" aria-hidden="true" />
 			</div> -->
-			</div>
-		{/each}
-	</div>
+		</div>
+	{/each}
 	{#if items.length < maxCount}
 		<label
 			bind:this={addMediaButtonRef}
