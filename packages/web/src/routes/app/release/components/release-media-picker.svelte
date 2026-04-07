@@ -3,8 +3,8 @@
 	 * @component ReleaseMediaPicker
 	 * @description
 	 * 发布页「选择图片/视频」（需求 6.2.5.1-2）：缩略图网格、`+` 选文件、封面红环标识。
-	 * - **触摸 / 鼠标**：**轻点**（未拖动即松手）打开菜单。触摸长按会触发合成 `contextmenu`：仅 `preventDefault` 抑制系统菜单，**不**打开业务菜单，以免打断拖拽用 Pointer；**桌面鼠标右键**仍打开菜单。
-	 * - **排序**：缩略图与「添加」`+` **同一真实 DOM 父节点**（`flex-wrap` + `use:sortableList`），避免 `display:contents` 作 Sortable 根时展平布局与插节点不一致导致某张卡跑到 `+` 后。`+` 放在 `{#each}` 之后且仅 `[data-release-media-item]` 可拖。`{#each}` 须以 **`DraftMediaItem` 引用** 为 key。`ensureAddMediaButtonIsLast` 将 `+` 移回该容器最后子节点。整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。
+	 * - **触摸 / 鼠标**：**轻点**打开菜单；默认外层格 `touch-pan-y`，从图上可纵向滑页。触摸排序 delay 流程中约 80ms 后对该格与子节点锁 `touch-none`，长按后再拖不会误滚页面；进入拖拽后同锁。**桌面鼠标右键**仍打开菜单。
+	 * - **排序**：`ReorderGrid`（`absolute` + `translate` + 拖拽期 `slotOrder`），`+` 为 footer 槽位，无需 DOM 归位。`{#each}` 以 **`DraftMediaItem` 引用** 为 key。触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分；鼠标先小幅移动再进入拖拽。
 	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
 	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
 	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
@@ -12,10 +12,9 @@
 	import { PlusIcon, Play } from 'lucide-svelte';
 	import { Label } from '$lib/components/ui/label';
 	import { isVideoItem } from '$lib/modules/media-cover';
-	import { sortableList } from '$lib/modules/sortable-list';
+	import { ReorderGrid } from '$lib/modules/reorder-grid';
 	import type { DraftMediaItem } from '$lib/stores/release';
 	import { cn } from '$lib/utils.js';
-	import { longPress } from '$lib/modules/gesture';
 
 	/** 连点/右键与单击合并为单次打开（ms） */
 	const MENU_DEDUPE_MS = 320;
@@ -45,7 +44,7 @@
 		/** 当前作为封面的项下标，用于红环与 `设为封面` 状态 */
 		selectedCoverIndex: number;
 		onSelectCoverIndex: (index: number) => void;
-		/** 由 Sortable `onEnd` 提交，应对应 `reorderMedia` */
+		/** 拖拽结束提交，对应 `reorderMedia` */
 		onReorder: (fromIndex: number, toIndex: number) => void;
 		/** 为 true 时禁用缩略图一切手势（如 `upload.isUploading`） */
 		mediaInteractionsDisabled: boolean;
@@ -59,39 +58,19 @@
 	let menuAdjusted = $state({ left: 0, top: 0 });
 	/** 与 `{#each … (item)}` 一致，用 `DraftMediaItem` 引用标记被拖项（避免多视频共用同一占位 data URL 时 key 重复） */
 	let draggingItem = $state<DraftMediaItem | null>(null);
-	/** 网格根：同时作为 Sortable 根与 `flex-wrap` 容器（缩略图与 `+` 为直接子节点） */
-	let mediaGridRef = $state<HTMLDivElement | null>(null);
-	let addMediaButtonRef = $state<HTMLLabelElement | null>(null);
 
 	let lastMenuOpenAt = 0;
 	let lastMenuOpenIndex = -1;
 
-	/** 成功重排后 Sortable 仍可能触发 `click`，用宏任务窗口抑制误开菜单 */
+	/** 成功重排后拖拽结束仍可能触发 `click`，用宏任务窗口抑制误开菜单 */
 	let suppressNextCardClick = false;
 
-	/**
-	 * Sortable 结束或数据重排后，将「添加」按钮移回同一网格根的最后子节点（与缩略图同父），避免 `+` 被插乱。
-	 */
-	function ensureAddMediaButtonIsLast(): void {
-		const grid = mediaGridRef;
-		const add = addMediaButtonRef;
-		if (!grid || !add) return;
-		if (add.parentElement !== grid) return;
-		if (grid.lastElementChild !== add) {
-			grid.appendChild(add);
-		}
-	}
-
-	function handleSortableReorder(fromIndex: number, toIndex: number): void {
+	function handleGridReorder(fromIndex: number, toIndex: number): void {
 		suppressNextCardClick = true;
 		setTimeout(() => {
 			suppressNextCardClick = false;
 		}, 0);
 		onReorder(fromIndex, toIndex);
-		// 等 Svelte 根据新顺序 patch 完 DOM 再归位 `+`
-		requestAnimationFrame(() => {
-			requestAnimationFrame(ensureAddMediaButtonIsLast);
-		});
 	}
 
 	/**
@@ -222,33 +201,44 @@
 <Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 <p class="text-sm text-muted-foreground">最多 {maxCount} 张，已选 {items.length} 张</p>
 
-<div
-	bind:this={mediaGridRef}
-	class="mt-3 flex flex-wrap gap-2"
+{#snippet addMediaFooter()}
+	<label
+		class="flex h-full w-full cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
+		aria-label="添加图片/视频"
+	>
+		<input
+			type="file"
+			accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
+			multiple
+			class="sr-only"
+			onchange={handleReleaseFileChange}
+		/>
+		<PlusIcon class="size-4 text-muted-foreground" />
+	</label>
+{/snippet}
+
+<ReorderGrid
+	class="mt-3 gap-2"
+	{items}
+	itemCellClass="h-24 w-24 shrink-0"
+	disabled={mediaInteractionsDisabled}
 	aria-busy={mediaInteractionsDisabled}
-	use:sortableList={{
-		itemSelector: '[data-release-media-item]',
-		itemCount: items.length,
-		orderKey: urls.join('\0'),
-		disabled: () => mediaInteractionsDisabled,
-		onReorder: handleSortableReorder,
-		onDragStart: (el) => {
-			const raw = el.getAttribute('data-release-media-index');
-			const i = raw == null ? NaN : Number(raw);
-			draggingItem = Number.isInteger(i) && i >= 0 && i < items.length ? items[i]! : null;
-		},
-		onDragEnd: () => {
-			draggingItem = null;
-			ensureAddMediaButtonIsLast();
-		},
-		delay: DELAY
+	delay={DELAY}
+	delayOnTouchOnly={true}
+	onReorder={handleGridReorder}
+	onDragStart={(i) => {
+		draggingItem = i >= 0 && i < items.length ? items[i]! : null;
 	}}
+	onDragEnd={() => {
+		draggingItem = null;
+	}}
+	footer={items.length < maxCount ? addMediaFooter : undefined}
 >
-	{#each items as item, index (item)}
+	{#snippet item(item, index)}
 		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 		<div
 			class={cn(
-				'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
+				'relative h-full w-full cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
 				selectedCoverIndex === index &&
 					'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
 				draggingItem !== null && draggingItem === item && 'opacity-60'
@@ -264,17 +254,6 @@
 				tryOpenMenu(index, e.clientX, e.clientY);
 			}}
 			oncontextmenu={(e) => onCardContextMenu(e, index)}
-			use:longPress={{
-				delay: DELAY,
-				onPress: (detail) => {
-					const raw = detail.currentTarget.getAttribute('data-release-media-index');
-					const i = raw == null ? NaN : Number(raw);
-					draggingItem = Number.isInteger(i) && i >= 0 && i < items.length ? items[i]! : null;
-				},
-				onPressUp: () => {
-					draggingItem = null;
-				}
-			}}
 		>
 			<img
 				src={urls[index]}
@@ -292,31 +271,9 @@
 					</div>
 				</div>
 			{/if}
-			<!-- <div
-				class="release-media-sort-hint pointer-events-none absolute bottom-0 left-0 flex items-end justify-start rounded-tr-md bg-zinc-900/50 p-2 text-zinc-100 dark:bg-zinc-950/60"
-				aria-hidden="true"
-			>
-				<GripVerticalIcon class="size-4 shrink-0" aria-hidden="true" />
-			</div> -->
 		</div>
-	{/each}
-	{#if items.length < maxCount}
-		<label
-			bind:this={addMediaButtonRef}
-			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-			aria-label="添加图片/视频"
-		>
-			<input
-				type="file"
-				accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
-				multiple
-				class="sr-only"
-				onchange={handleReleaseFileChange}
-			/>
-			<PlusIcon class="size-4 text-muted-foreground" />
-		</label>
-	{/if}
-</div>
+	{/snippet}
+</ReorderGrid>
 
 {#if menuOpen}
 	<div
