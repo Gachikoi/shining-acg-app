@@ -30,28 +30,28 @@
 	 * | `onClose` | 关闭按钮、遮罩、ESC；是否卸载由父级决定 |
 	 */
 
+	import { resolve } from '$app/paths';
 	import type {
 		V1Post as Post,
 		V1Comment,
-		V1CreateCommentRequest,
 		V1CommentTargetType,
+		V1CreateCommentRequest,
 		V1MediaAsset
 	} from '$lib/api';
-	import { createRealPostDetailApi, type PostDetailApi, type UserFollowStatus } from './api';
-	import { formatTimeAgo } from '$lib/utils/format-time';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { messageForOperationError } from '$lib/utils/operation-error-message';
-	import { toast } from 'svelte-sonner';
-	import { X, Heart, MessageCircle, Star, Share, LoaderCircle } from 'lucide-svelte';
-	import { cn } from '$lib/utils';
-	import { resolve } from '$app/paths';
-	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
-	import { fly } from 'svelte/transition';
-	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
+	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
 	import { tap } from '$lib/modules/gesture';
+	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
+	import { cn } from '$lib/utils';
+	import { formatTimeAgo } from '$lib/utils/format-time';
+	import { messageForOperationError } from '$lib/utils/operation-error-message';
+	import { Heart, LoaderCircle, MessageCircle, Share, Star, X } from 'lucide-svelte';
+	import { toast } from 'svelte-sonner';
+	import { fly } from 'svelte/transition';
+	import { createRealPostDetailApi, type PostDetailApi, type UserFollowStatus } from './api';
 	const defaultApi = createRealPostDetailApi({
 		uploadCommentMedia: (files) => uploadCommentMedia(files)
 	});

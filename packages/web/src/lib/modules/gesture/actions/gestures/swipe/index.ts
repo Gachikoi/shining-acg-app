@@ -3,4 +3,9 @@
  */
 
 export { swipe } from './swipe.svelte';
-export type { SwipeOptions, SwipeState } from './types';
+export type {
+	SwipeHorizontalDirection,
+	SwipeOptions,
+	SwipeState,
+	SwipeVerticalDirection
+} from './types';

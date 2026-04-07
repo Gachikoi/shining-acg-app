@@ -3,6 +3,7 @@ import type {
 	V1MediaAsset as Media,
 	V1UserSummary as UserSummary,
 	V1UserBrief,
+	V1PostPreview,
 	V1Comment,
 	V1CommentWithReplies,
 	V1CommentStats,
@@ -303,6 +304,45 @@ export function getMockPost(postId: string): Post {
 		},
 		publishTime: twoHoursAgoMs,
 		updateTime: twoHoursAgoMs
+	};
+}
+
+/**
+ * 将瀑布流卡片预览映射为详情页完整帖子，供 Stack 入栈或从 Feed 打开详情时使用（Mock）。
+ *
+ * @param preview - Feed 瀑布流单卡 `V1PostPreview`
+ * @param stackDepth - 当前栈下标（0 为首层），与 `preview.postId` 组合成唯一 `postId`，避免 Mock API 会话冲突
+ * @returns 可传入 `PostDetail` 的 `V1Post`
+ */
+export function mockPostFromPreview(preview: V1PostPreview, stackDepth: number): Post {
+	const postId = `stack-${preview.postId}-${stackDepth}`;
+	const base = getMockPost(postId);
+	const pa = preview.author;
+	return {
+		...base,
+		postId,
+		title: preview.displayTitle ?? base.title,
+		author: {
+			...base.author,
+			userId: pa?.userId ?? base.author.userId,
+			name: pa?.name ?? base.author.name,
+			avatar: pa?.avatar ?? base.author.avatar,
+			remark: pa?.remark ?? base.author.remark,
+			qqNumber: pa?.qqNumber ?? base.author.qqNumber,
+			role: pa?.role ?? base.author.role
+		},
+		stats: {
+			likeCount: preview.stats?.likeCount ?? base.stats.likeCount,
+			commentCount: preview.stats?.commentCount ?? base.stats.commentCount,
+			collectCount: preview.stats?.collectCount ?? base.stats.collectCount,
+			viewCount: preview.stats?.viewCount ?? base.stats.viewCount
+		},
+		relationStatus: {
+			isLiked: preview.relationStatus?.isLiked ?? false,
+			isCollected: preview.relationStatus?.isCollected ?? false
+		},
+		publishTime: preview.publishTime ?? base.publishTime,
+		updateTime: preview.updateTime ?? base.updateTime
 	};
 }
 

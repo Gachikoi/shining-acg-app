@@ -138,7 +138,7 @@ export const tap: Action<HTMLElement, TapOptions | undefined> = (node, initialOp
 	}
 
 	/**
-	 * 指针捕获丢失：与 swipe/pull-refresh 相同的冒泡过滤规则
+	 * 指针捕获丢失：与 swipe/feed-stream 相同的冒泡过滤规则
 	 */
 	function onLostPointerCapture(e: PointerEvent) {
 		if (e.pointerId !== pointerId) return;

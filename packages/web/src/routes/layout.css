@@ -115,7 +115,7 @@
 
 @layer base {
 	* {
-		@apply scrollbar-hidden border-border outline-ring/50;
+		@apply box-border scrollbar-hidden outline-ring/50;
 	}
 
 	html,

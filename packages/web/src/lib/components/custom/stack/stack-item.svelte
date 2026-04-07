@@ -46,6 +46,7 @@
 	import type { SwipeOptions, SwipeState } from '$lib/modules/gesture';
 	import { edgeZone, swipe } from '$lib/modules/gesture';
 	import { onDestroy, onMount, type SvelteComponent, untrack } from 'svelte';
+	import { waitForElementTransitions } from '$lib/utils/animation';
 	import { Loading } from '../command-loading';
 	import stackController from './stack.svelte';
 	import type { StackItem, StackPageLifecycleStatus } from './types';
@@ -109,40 +110,6 @@
 	};
 
 	/**
-	 * 等待写在 `el` **自身**上的 CSS transition 全部结束。
-	 *
-	 * 仅用 `transitionend` 时：子节点 transition 会冒泡到 `el` 导致误 resolve；更糟的是当起止状态无实际插值时
-	 * 某些引擎不派发 `transitionend`，Promise 永久挂起（与本次 onEnd 后无法滑动一致）。
-	 * Web Animations 的 `getAnimations({ subtree: false })` + `finished` 与「是否产生过渡」一致。
-	 *
-	 * 双 `requestAnimationFrame`：保证样式已提交且 UA 已为本元素登记 transition（单帧内可能仍为空）。
-	 *
-	 * @param el - 已写入 `transition` / `transform` / `clipPath` 的容器
-	 * @returns transition 结束或确认未产生过渡时 resolve
-	 */
-	function waitForOwnCssTransitions(el: HTMLElement): Promise<void> {
-		return new Promise((resolve) => {
-			const finish = () => {
-				el.style.transition = 'none';
-				resolve();
-			};
-			// 第一个 rAf 在 dom 渲染前执行，这时 transition 还没有影响到 dom, el.getAnimations 可能取不到动画，所以用双 rAF
-			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					const anims = el.getAnimations({ subtree: false });
-					if (anims.length === 0) {
-						finish();
-						return;
-					}
-					void Promise.all(anims.map((a) => a.finished.catch(() => {}))).then(() => {
-						finish();
-					});
-				});
-			});
-		});
-	}
-
-	/**
 	 * 将当前层水平平移到指定 translateX。
 	 *
 	 * @param x - 目标 translateX（px）
@@ -163,7 +130,7 @@
 
 		if (!withAnimation) return;
 
-		return waitForOwnCssTransitions(el!);
+		return waitForElementTransitions(el!);
 	}) as {
 		(x: number, options: { withAnimation: true; needClamp?: boolean }): Promise<void>;
 		(x: number, options: { withAnimation: false; needClamp?: boolean }): void;
@@ -193,7 +160,7 @@
 
 		if (!withAnimation) return;
 
-		return waitForOwnCssTransitions(el!);
+		return waitForElementTransitions(el!);
 	}) as {
 		(x: number, y: number, scale: number, withAnimation: true): Promise<void>;
 		(x: number, y: number, scale: number, withAnimation: false): void;

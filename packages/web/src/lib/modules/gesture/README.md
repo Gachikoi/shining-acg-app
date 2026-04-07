@@ -1,6 +1,6 @@
 # Svelte 5 手势系统架构 (Gesture Arena)
 
-本模块实现了一套高可靠、可打断的 Svelte 5 手势处理机制。灵感来源于 Flutter 的 Gesture Arena，用于解决复杂的嵌套手势冲突（如：`SwipeablePane` 与 `StackItem` 的横向滑动冲突、`PullRefresh` 与滚动容器的纵向冲突）。
+本模块实现了一套高可靠、可打断的 Svelte 5 手势处理机制。灵感来源于 Flutter 的 Gesture Arena，用于解决复杂的嵌套手势冲突（如：`SwipeablePane` 与 `StackItem` 的横向滑动冲突、`feedStream` 与滚动容器的纵向冲突）。
 
 ## 核心设计理念
 
@@ -15,17 +15,17 @@
 
 本仓库内所有 `use:…` 实现均位于 `actions/`；其中 **`registry`** 与 **`gestures`** 都是 Svelte Action，区别仅在于职责：
 
-| 目录                | 职责                                                                                                                        |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `actions/registry/` | 登记型：在挂载时向竞技场 `register*`，为 `tryAcquire` 提供边缘几何或滚动边界查询（`edge-zone`、`scroll-boundary`）。        |
-| `actions/gestures/` | 交互闭环型：监听 pointer/wheel，完成 `tryAcquire` → 跟踪 → `release`/动画（`swipe`、`pull-refresh`、`long-press`、`tap`）。 |
+| 目录                | 职责                                                                                                                       |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `actions/registry/` | 登记型：在挂载时向竞技场 `register*`，为 `tryAcquire` 提供边缘几何或滚动边界查询（`edge-zone`、`scroll-boundary`）。       |
+| `actions/gestures/` | 交互闭环型：监听 pointer/wheel，完成 `tryAcquire` → 跟踪 → `release`/动画（`swipe`、`feed-stream`、`long-press`、`tap`）。 |
 
 - `core/arena.svelte.ts`：竞技场单例，竞态裁决（互斥、边缘优先、边界让渡、动画保护）。
 - `core/types.ts`、`core/utils.ts`：共享类型与工具函数。
 - `actions/registry/edge-zone/`：`use:edgeZone`。
 - `actions/registry/scroll-boundary/`：`use:scrollBoundary`。
 - `actions/gestures/swipe/`：`use:swipe`（Pointer + Wheel）。
-- `actions/gestures/pull-refresh/`：`use:pullRefresh`（含 Safari 橡皮筋相关处理）。
+- `actions/gestures/feed-stream/`：`use:feedStream`（下拉 + 滚动 RAF + 触底；Safari 相关处理）。
 - `actions/gestures/long-press/`、`actions/gestures/tap/`：对应 Action。
 
 ## 冲突解决机制详解

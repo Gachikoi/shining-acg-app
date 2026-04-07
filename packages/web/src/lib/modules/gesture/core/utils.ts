@@ -2,7 +2,7 @@
  * @file 手势系统公共工具函数
  * @description
  * 多手势共用的工具：ID 生成、wheel 事件标准化等。
- * 各手势专属工具见对应子目录：swipe/utils、pull-refresh/utils。
+ * 各手势专属工具见对应子目录：swipe/utils、feed-stream/。
  */
 
 // ─── Wheel 事件标准化 ────────────────────────────────────────────
@@ -37,7 +37,7 @@ let idCounter = 0;
 /**
  * 生成唯一识别器 ID
  *
- * @param prefix - ID 前缀（如 'swipe'、'pull-refresh'）
+ * @param prefix - ID 前缀（如 'swipe'、'feed-stream'）
  * @returns 格式为 `${prefix}-${counter}` 的唯一字符串
  */
 export function generateId(prefix: string): string {

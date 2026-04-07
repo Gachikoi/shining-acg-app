@@ -9,10 +9,10 @@
  */
 
 import type {
+	FeedServiceGetFeedData,
 	V1FeedFilter,
 	V1PostPreview,
-	V1UserSummary,
-	FeedServiceGetFeedData
+	V1UserSummary
 } from '$lib/api/types.gen';
 import { calculateLayoutBase } from '$lib/components/custom/waterfall/waterfall-container/waterfall-layout';
 import { generatePosts, generateUsers, mockFetchFeed } from '$lib/test/waterfall-data-mock';

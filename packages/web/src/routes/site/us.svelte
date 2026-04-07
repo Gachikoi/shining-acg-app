@@ -3,7 +3,7 @@
 -->
 <section
 	id="us"
-	class="flex min-h-screen w-full shrink-0 snap-start scroll-mt-20 flex-col items-center justify-center px-6 pt-20"
+	class="flex w-full flex-col items-center justify-center px-6"
 	aria-label="了解我们"
 >
 	<h2 class="font-tech text-3xl font-bold tracking-tight text-zinc-900 md:text-4xl">了解我们</h2>

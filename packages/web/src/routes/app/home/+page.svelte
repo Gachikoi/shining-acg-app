@@ -45,10 +45,11 @@
 		V1PostPreview,
 		V1UserSummary
 	} from '$lib/api/types.gen';
+	import FeedList from '$lib/components/custom/feed-list/feed-list.svelte';
+	import { BusinessIds } from '$lib/constants';
 	import { remToPx } from '$lib/modules/device';
 	import { cn } from '$lib/utils';
 	import type { Snapshot } from '../$types';
-	import { BusinessIds } from '$lib/constants';
 
 	const homeFeedRouteState = createFeedRouteStateStore();
 
@@ -86,6 +87,8 @@
 
 	/** 内容区容器 DOM 引用 */
 	let contentAreaEl: HTMLElement | undefined = $state();
+	let contentAreaWidth = $state(0);
+	let contentAreaHeight = $state(0);
 
 	/** 筛选上下文 getter——注入到 feed-api 的 fetch 工厂中 */
 	function getFilters(): V1FeedFilter {
@@ -103,8 +106,12 @@
 	 * @param categoryId - 分类 ID
 	 * @returns FeedStore 实例
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function getOrCreateStore(categoryId: string): FeedStore<any> {
+	function getOrCreateStore(
+		categoryId: string,
+		contentAreaWidth: number,
+		contentAreaHeight: number
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	): FeedStore<any> {
 		let store = feedStores.get(categoryId);
 		if (store) return store;
 
@@ -117,10 +124,10 @@
 		if (contentType === 'list') {
 			store = createFeedStore<V1UserSummary>(categoryId, {
 				needNum: estimateNeedNum('list', {
-					containerWidth: contentAreaEl?.clientWidth ?? 0,
-					containerHeight: contentAreaEl?.clientHeight ?? 0,
-					minItemWidth: contentAreaEl?.clientWidth ?? 0,
-					avgItemRatio: remToPx(13) / (contentAreaEl?.clientWidth ?? 0), // 13 为用户列表项高度大致的 rem 值
+					containerWidth: contentAreaWidth,
+					containerHeight: contentAreaHeight,
+					minItemWidth: contentAreaWidth,
+					avgItemRatio: remToPx(6.25) / contentAreaWidth, // 13 为用户列表项高度大致的 rem 值
 					gap: 0
 				}),
 				cache: feedCache,
@@ -131,12 +138,14 @@
 				onError
 			});
 		} else {
+			const ref = feedRefs[categoryId];
+			const waterfallRef = isWaterfallRef(ref) ? ref : undefined;
 			store = createFeedStore<V1PostPreview>(categoryId, {
 				needNum: estimateNeedNum('waterfall', {
-					containerWidth: contentAreaEl?.clientWidth ?? 0,
-					containerHeight: contentAreaEl?.clientHeight ?? 0,
-					gap: waterfallRefs[categoryId]?.resolveGapPx() ?? 8,
-					minItemWidth: waterfallRefs[categoryId]?.DEFAULT_CONFIG.minCardWidth ?? 280
+					containerWidth: contentAreaWidth,
+					containerHeight: contentAreaHeight,
+					gap: waterfallRef?.resolveGapPx() ?? 8,
+					minItemWidth: waterfallRef?.DEFAULT_CONFIG.minCardWidth ?? 280
 				}),
 				cache: feedCache,
 				cacheAdapter: POST_CACHE_ADAPTER,
@@ -155,7 +164,28 @@
 	// ─── SwipeablePane 引用 ──────────────────────────────────────
 
 	let swipeablePaneRef: ReturnType<typeof SwipeablePane> | undefined = $state();
-	let waterfallRefs = $state<Record<string, ReturnType<typeof WaterfallContainer> | undefined>>({});
+
+	/**
+	 * 各面板 Feed 组件实例字典。
+	 * 值为 WaterfallContainer 或 FeedList 实例，两者均暴露 scrollToTopAndRefresh()。
+	 */
+	let feedRefs = $state<
+		Record<string, ReturnType<typeof WaterfallContainer> | ReturnType<typeof FeedList> | undefined>
+	>({});
+
+	/**
+	 * WaterfallContainer 实例类型守卫。
+	 * 以 `resolveGapPx` 方法作为判别属性：该方法仅存在于 WaterfallContainer，
+	 * FeedList 没有此方法，可安全用于收窄联合类型。
+	 *
+	 * @param ref - feedRefs 中的组件实例（联合类型）
+	 * @returns ref 是否为 WaterfallContainer 实例
+	 */
+	function isWaterfallRef(
+		ref: ReturnType<typeof WaterfallContainer> | ReturnType<typeof FeedList> | undefined
+	): ref is ReturnType<typeof WaterfallContainer> {
+		return ref != null && 'resolveGapPx' in ref;
+	}
 
 	/**
 	 * Tab 按钮点击处理
@@ -167,7 +197,7 @@
 		const targetValue = CATEGORY_OPTIONS[targetIndex]?.value;
 		// 使用单例路由状态中的 currentCategoryId 判断，避免动画中途重复跳转。
 		if (targetValue === homeFeedRouteState.state.currentCategoryId) {
-			waterfallRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
+			feedRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
 			return;
 		}
 		swipeablePaneRef?.jumpToIndex(targetIndex);
@@ -190,7 +220,7 @@
 
 	// ─── 生命周期 ───────────────────────────────────────────────────
 	const handleHomeRefresh = () => {
-		waterfallRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
+		feedRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
 	};
 
 	onMount(() => {
@@ -226,11 +256,19 @@
 		if (!store) return;
 
 		if (store.phase === 'skeleton') {
-			if (waterfallRefs[categoryId]) {
-				waterfallRefs[categoryId].scrollToTopAndRefresh();
-			} else {
-				store.refresh();
-			}
+			const helper = () => {
+				// 如果内容容器宽高已经测量好了，则进行刷新操作；如果没有，等待下一帧
+				if (contentAreaEl && contentAreaEl.clientWidth > 0 && contentAreaEl.clientHeight > 0) {
+					if (feedRefs[categoryId]) {
+						feedRefs[categoryId].scrollToTopAndRefresh();
+					} else {
+						store.refresh();
+					}
+				} else {
+					requestAnimationFrame(helper);
+				}
+			};
+			helper();
 		}
 	});
 </script>
@@ -257,7 +295,12 @@
 	</div>
 
 	<!-- 内容区域 -->
-	<div class="flex-1 overflow-hidden" bind:this={contentAreaEl}>
+	<div
+		class="flex-1 overflow-hidden"
+		bind:this={contentAreaEl}
+		bind:clientWidth={contentAreaWidth}
+		bind:clientHeight={contentAreaHeight}
+	>
 		<SwipeablePane
 			bind:this={swipeablePaneRef}
 			categories={CATEGORY_OPTIONS}
@@ -266,30 +309,40 @@
 			onIndexChange={onPaneIndexChange}
 		>
 			{#snippet children(category)}
-				{@const store = getOrCreateStore(category.value)}
-				{#if category.contentType === 'list'}
-					<!-- <FeedList
-						businessId={BusinessIds.FEED}
-						categoryId={category.value}
-						items={store.items}
-						loading={store.loadingMore}
-						hasMore={store.hasMore}
-						showSkeleton={store.showSkeleton}
-						onLoadMore={() => store.loadMore()}
-					/> -->
-				{:else}
-					<WaterfallContainer
-						bind:this={waterfallRefs[category.value]}
-						posts={store.items}
-						loading={store.loadingMore}
-						hasMore={store.hasMore}
-						showSkeleton={store.showSkeleton}
-						refreshing={store.refreshing}
-						businessId={BusinessIds.FEED}
-						categoryId={category.value}
-						onLoadMore={store.loadMore}
-						onRefresh={store.refresh}
-					/>
+				<!--
+					维度守卫：contentAreaWidth/contentAreaHeight 均为 0 时（首帧 DOM 尚未测量）
+					不渲染任何内容，防止 getOrCreateStore 以 0 作为入参计算出错误的 needNum。
+					bind:clientWidth/clientHeight 在首次 paint 后即更新，延迟极短，无感知。
+				-->
+				{#if contentAreaWidth > 0 && contentAreaHeight > 0}
+					{@const store = getOrCreateStore(category.value, contentAreaWidth, contentAreaHeight)}
+					{#if category.contentType === 'list'}
+						<FeedList
+							bind:this={feedRefs[category.value]}
+							items={store.items}
+							businessId={BusinessIds.FEED}
+							categoryId={category.value}
+							hasMore={store.hasMore}
+							showSkeleton={store.showSkeleton}
+							loading={store.loadingMore}
+							refreshing={store.refreshing}
+							onLoadMore={store.loadMore}
+							onRefresh={store.refresh}
+						/>
+					{:else}
+						<WaterfallContainer
+							bind:this={feedRefs[category.value]}
+							posts={store.items}
+							businessId={BusinessIds.FEED}
+							categoryId={category.value}
+							hasMore={store.hasMore}
+							showSkeleton={store.showSkeleton}
+							loading={store.loadingMore}
+							refreshing={store.refreshing}
+							onLoadMore={store.loadMore}
+							onRefresh={store.refresh}
+						/>
+					{/if}
 				{/if}
 			{/snippet}
 		</SwipeablePane>
@@ -299,9 +352,7 @@
 	<Button
 		size="icon"
 		class="absolute right-4 bottom-8 z-50 hidden h-12 w-12 rounded-md shadow-lg md:flex"
-		onclick={() => {
-			waterfallRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh();
-		}}
+		onclick={() => feedRefs[homeFeedRouteState.state.currentCategoryId]?.scrollToTopAndRefresh()}
 	>
 		<LucideRefreshCw class="h-6 w-6" />
 	</Button>

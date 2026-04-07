@@ -1,4 +1,4 @@
-import type { V1PostPreview, V1UserSummary, FeedServiceGetFeedData } from '$lib/api/types.gen';
+import type { FeedServiceGetFeedData, V1PostPreview, V1UserSummary } from '$lib/api/types.gen';
 
 const TITLES = [
 	'春日樱花盛开',

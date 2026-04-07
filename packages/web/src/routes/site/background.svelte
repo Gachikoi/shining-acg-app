@@ -101,8 +101,9 @@
 		右下角：提示向下滚动（鼠标轮廓 + 自上而下循环运动的箭头 + 竖线）
 	-->
 	<div
-		class="scroll-hint pointer-events-none absolute right-16 bottom-12 z-0 flex flex-col items-center text-zinc-800 select-none dark:text-zinc-400"
+		class="scroll-hint pointer-events-none absolute right-16 bottom-12 z-0 flex flex-col items-center text-zinc-800 transition-all duration-500 select-none dark:text-zinc-400"
 		aria-hidden="true"
+		style:opacity={NAV_ITEMS[NAV_ITEMS.length - 1].hash === hashKey ? '0' : '1'}
 	>
 		<!-- 鼠标图标（lucide Mouse） -->
 		<Mouse class="h-12 w-8 shrink-0" strokeWidth={2} aria-hidden="true" />

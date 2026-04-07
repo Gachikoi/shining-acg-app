@@ -356,8 +356,8 @@
 
 			if (visualState.primaryIndex !== currentIndex) {
 				targetIndex = visualState.primaryIndex;
-			} else if (Math.abs(state.velocityX) > state.velocityThresholdUsed) {
-				// 如果位移没有达到阈值，则判断速度是否达到阈值
+			} else if (state.commitTriggeredBy === 'velocity') {
+				// 位移未达阈值，但速度触发提交（轻扫）
 				if (state.velocityX < 0 && currentIndex < categories.length - 1) {
 					if (state.deltaX < 0 || startIndex > currentIndex) {
 						// 前者是只允许位移和速度同向时提交，后者是在位移和速度反向时允许回到手势起始点

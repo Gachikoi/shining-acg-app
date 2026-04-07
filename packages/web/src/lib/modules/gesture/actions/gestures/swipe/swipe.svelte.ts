@@ -1,7 +1,7 @@
 /**
- * @file 水平滑动手势 Svelte Action（Pointer Events + wheel 双通道）
+ * @file 水平 / 纵向滑动手势 Svelte Action（Pointer Events + wheel 双通道）
  * @description
- * 检测水平滑动手势，用于 Tab 面板切换、侧滑返回等场景。
+ * 检测横向或纵向滑动手势（由 `axis` 指定），用于 Tab 面板切换、侧滑返回、纵向抽屉等场景。
  *
  * 核心特性：
  * - **Pointer 通道**：pointerdown → 方向锁定 → arena 竞争 → 跟手 → 提交/取消
@@ -15,7 +15,7 @@
  * - **横向 wheel 与历史导航**：挂载节点设置 `overscroll-behavior-x: none` + `touch-action: pan-x`，与文档级 `touch-action: pan-y` 配合，
  *   减少 Chrome/Safari 将横向手势交给浏览器历史（参见 MDN overscroll-behavior / touch-action）
  *
- * @example
+ * @example 横向
  * ```svelte
  * <div use:swipe={{
  *   onMove: (s) => offset.set(s.deltaX, { instant: true }),
@@ -24,6 +24,11 @@
  *     else await offset.set(0);
  *   },
  * }}>
+ * ```
+ *
+ * @example 纵向：`axis: 'y'`，Wheel 仅处理 |deltaY| 占优序列
+ * ```svelte
+ * <div use:swipe={{ axis: 'y', onMove: (s) => offsetY.set(s.deltaY, { instant: true }) }}>
  * ```
  */
 
@@ -55,6 +60,8 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	const commitThreshold = () => opts.commitThreshold ?? 0.25;
 	const velocityThreshold = () => opts.velocityThreshold ?? 0.3;
 	const interruptible = () => opts.interruptible ?? true;
+	/** 是否纵向主轴（与 `opts.axis` 同步，在 update 中刷新） */
+	const isVertical = () => (opts.axis ?? 'x') === 'y';
 
 	let lock = false;
 
@@ -96,14 +103,20 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// ── Wheel 通道状态 ────────────────────────────────────────────
 
 	let wheelPhase: WheelPhase = 'idle';
-	/** 累计原始横向位移（px） */
-	let wheelAccumX = 0;
+	/** 主轴累计位移（px），横向为 X、纵向为 Y，与 `isVertical()` 一致 */
+	let wheelAccum = 0;
 	/** 防抖定时器 */
 	let wheelDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	/** rAF 帧 ID */
 	let wheelRafId: number | null = null;
-	/** 待处理的 wheel deltaX */
-	let pendingWheelDeltaX = 0;
+	/** 待合并进 `wheelAccum` 的主轴 wheel delta（与 `normalizeWheelDelta` 同号） */
+	let pendingWheelDelta = 0;
+
+	/**
+	 * pointer / wheel 共用：当前通道进入 active 时读一次主轴 `clientHeight`/`clientWidth`。
+	 * 两通道不会同时 active；`resetPointer` / `resetWheel` 时清零。
+	 */
+	let axisDimensionPx = 0;
 
 	// ═══════════════════════════════════════════════════════════════
 	// Pointer 通道
@@ -116,12 +129,6 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	const SWITCH_VELOCITY_MARGIN_PX_PER_MS = 0.08;
 
 	/**
-	 * Safari（尤其 iOS）左缘右滑返回、右缘左滑前进的热区宽度（视口坐标系，与 stack-item 的 edgeZone 同量级）。
-	 * 起笔落在此带内时，pending 阶段需在首个 touchmove 起拦截，否则 WebKit 会在指针通道 active 之前接管为导航。
-	 */
-	const EDGE_NAV_GUARD_PX = 36;
-
-	/**
 	 * 多指时仅按「瞬时 |vx|」取最大会把 driver 在相邻 pointermove 间来回切：
 	 * 当前事件的指针刚 addSample，另一指速度仍是上一帧；双零时 Map 顺序还会与 driverId 不一致（见调试日志）。
 	 *
@@ -132,13 +139,16 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		leadingPointerId: number;
 		leadingTrack: PointerTrack;
 	} {
-		let bestAbsVx = -1;
+		const vertical = isVertical();
+		let bestAbsV = -1;
 		let velocityWinnerId: number | null = null;
 		let velocityWinnerTrack: PointerTrack | null = null;
 		for (const [pid, p] of trackedPointers) {
-			const absVx = Math.abs(p.trackerX.getVelocity());
-			if (absVx > bestAbsVx) {
-				bestAbsVx = absVx;
+			const absV = vertical
+				? Math.abs(p.trackerY.getVelocity())
+				: Math.abs(p.trackerX.getVelocity());
+			if (absV > bestAbsV) {
+				bestAbsV = absV;
 				velocityWinnerId = pid;
 				velocityWinnerTrack = p;
 			}
@@ -156,8 +166,10 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			return { leadingPointerId: velocityWinnerId, leadingTrack: velocityWinnerTrack };
 		}
 
-		const currentAbsVx = Math.abs(currentTrack.trackerX.getVelocity());
-		if (bestAbsVx < currentAbsVx + SWITCH_VELOCITY_MARGIN_PX_PER_MS) {
+		const currentAbsV = vertical
+			? Math.abs(currentTrack.trackerY.getVelocity())
+			: Math.abs(currentTrack.trackerX.getVelocity());
+		if (bestAbsV < currentAbsV + SWITCH_VELOCITY_MARGIN_PX_PER_MS) {
 			return {
 				leadingPointerId: currentDriverId,
 				leadingTrack: currentTrack
@@ -283,16 +295,17 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			const absDy = Math.abs(dy);
 			if (Math.max(absDx, absDy) < threshold()) return;
 
-			if (absDx <= absDy) {
+			const horizontal = !isVertical();
+			if (horizontal ? absDx <= absDy : absDy <= absDx) {
 				resetPointer();
 				return;
 			}
-			const direction = dx > 0 ? 1 : -1;
+			const direction = horizontal ? (dx > 0 ? 1 : -1) : dy > 0 ? 1 : -1;
 			const granted = tryAcquire({
 				id,
 				type: GESTURE_TYPE,
 				node,
-				axis: 'x',
+				axis: horizontal ? 'x' : 'y',
 				direction,
 				pointerTarget,
 				startX: leadingTrack.startX,
@@ -309,12 +322,12 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				p.startX = p.currentX;
 				p.startY = p.currentY;
 			}
-			// startX 发生变化，重新计算 dx、dy
 			dx = accumulatedDeltaX + leadingTrack.currentX - leadingTrack.startX;
 			dy = accumulatedDeltaY + leadingTrack.currentY - leadingTrack.startY;
 
 			pointerPhase = 'active';
 			shouldPreventScroll = true;
+			axisDimensionPx = isVertical() ? node.clientHeight : node.clientWidth;
 		}
 
 		// ── 跟手阶段（rAF 节流）：仅 driver 指针的 move 驱动 onMove，避免重复累计 ──
@@ -332,14 +345,22 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 					const velocityX = pendingDriverTrack.trackerX.getVelocity();
 					const velocityY = pendingDriverTrack.trackerY.getVelocity();
 
+					const moveDirection = isVertical()
+						? (velocityY !== 0 ? velocityY : pendingDeltaY) > 0
+							? 'down'
+							: 'up'
+						: (velocityX !== 0 ? velocityX : pendingDeltaX) > 0
+							? 'right'
+							: 'left';
+
 					opts.onMove?.({
 						deltaX: pendingDeltaX,
 						deltaY: pendingDeltaY,
 						velocityX,
 						velocityY,
-						direction: (velocityX !== 0 ? velocityX : pendingDeltaX) > 0 ? 'right' : 'left',
+						direction: moveDirection,
 						committed: false,
-						velocityThresholdUsed: velocityThreshold(), // TODO 良好的设计应该通过 committed 来表明超过阈值，而不是在这里返回阈值
+						commitTriggeredBy: null,
 						source: 'pointer'
 					});
 				});
@@ -367,21 +388,32 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 				pointerRafId = null;
 			}
 
-			// 计算方向
-			const direction = (vx !== 0 ? vx : dx) > 0 ? 'right' : 'left';
+			const vertical = isVertical();
+			const direction = vertical
+				? (vy !== 0 ? vy : dy) > 0
+					? 'down'
+					: 'up'
+				: (vx !== 0 ? vx : dx) > 0
+					? 'right'
+					: 'left';
 
-			// 计算提交状态
-			const distanceCommit = Math.abs(dx) > node.clientWidth * commitThreshold();
-			const velocityCommit = Math.abs(vx) > velocityThreshold();
-			const committed = velocityCommit || distanceCommit;
+			const axisDim =
+				axisDimensionPx > 0 ? axisDimensionPx : vertical ? node.clientHeight : node.clientWidth;
+			const distanceCommit = vertical
+				? Math.abs(dy) > axisDim * commitThreshold()
+				: Math.abs(dx) > axisDim * commitThreshold();
+			const velocityCommit = vertical
+				? Math.abs(vy) > velocityThreshold()
+				: Math.abs(vx) > velocityThreshold();
+			const committed = !isCancel && (velocityCommit || distanceCommit);
 			const state: SwipeState = {
 				deltaX: pointerPhase === 'active' ? dx : 0,
 				deltaY: pointerPhase === 'active' ? dy : 0,
 				velocityX: pointerPhase === 'active' ? vx : 0,
 				velocityY: pointerPhase === 'active' ? vy : 0,
 				direction,
-				committed: isCancel ? false : committed,
-				velocityThresholdUsed: velocityThreshold(),
+				committed,
+				commitTriggeredBy: committed ? (velocityCommit ? 'velocity' : 'displacement') : null,
 				source: 'pointer'
 			};
 
@@ -465,20 +497,17 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		// 其他
 		shouldPreventScroll = false;
 		autoRecoveryUsed = false;
+		axisDimensionPx = 0;
 	}
 
 	/**
-	 * touchmove 滚动阻止（Safari 兼容 + 移动端 pointercancel 防御）
+	 * touchmove 滚动阻止
 	 *
-	 * 移动端浏览器会在前几次 touchmove 中决定是否接管滚动手势。
+	 * 移动端浏览器会在 touchmove 中决定是否接管滚动手势。
 	 * 一旦接管，所有后续 pointer 事件被 pointercancel 取消，手势识别器来不及判定方向。
 	 *
 	 * 防御策略：
 	 * - active 阶段：始终 preventDefault，阻止浏览器滚动干扰
-	 * - pending 阶段（方向未决）：
-	 *     · 从左/右缘起笔且位移未过方向阈值 → preventDefault，避免 Safari 在首个 touchmove 就判给边缘导航
-	 *     · 位移超过阈值且明确纵向（|dy| ≥ |dx|）→ 不阻止，让浏览器处理纵向滚动
-	 *     · 位移超过阈值且横向占优 → preventDefault，在 tryAcquire 通过前阻断 WebKit 导航
 	 */
 	function onTouchMove(e: TouchEvent) {
 		if (!e.cancelable) return;
@@ -487,54 +516,35 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			e.preventDefault();
 			return;
 		}
-
-		if (pointerPhase !== 'pending' || driverId === null) return;
-
-		const track = trackedPointers.get(driverId);
-		if (!track) return;
-
-		const t = e.touches[0];
-		if (!t || e.touches.length !== 1) return;
-
-		const dx = t.clientX - track.startX;
-		const dy = t.clientY - track.startY;
-		const absDx = Math.abs(dx);
-		const absDy = Math.abs(dy);
-		const w = node.clientWidth;
-		const startedNearHorizontalEdge =
-			track.startX < EDGE_NAV_GUARD_PX || track.startX > w - EDGE_NAV_GUARD_PX;
-
-		if (Math.max(absDx, absDy) < threshold()) {
-			if (startedNearHorizontalEdge) {
-				e.preventDefault();
-			}
-			return;
-		}
-
-		if (absDx > absDy) {
-			e.preventDefault();
-		}
 	}
 
 	// ═══════════════════════════════════════════════════════════════
 	// Wheel 通道
 	// ═══════════════════════════════════════════════════════════════
+	/**
+	 * 触控板 / 鼠标滚轮驱动：与 Pointer 通道互斥，经 arena `tryAcquire` 占用后跟手。
+	 * 仅当滚轮位移在**当前主轴**上占优时才处理，否则交给浏览器做页面滚动。
+	 */
 	function onWheel(e: WheelEvent) {
 		if (opts.disabled?.()) return;
 
 		const { deltaX, deltaY } = normalizeWheelDelta(e);
+		const vertical = isVertical();
+		// 仅处理主轴占优的序列：横向要求 |deltaX| > |deltaY|，纵向要求 |deltaY| > |deltaX|
+		if (vertical ? Math.abs(deltaY) <= Math.abs(deltaX) : Math.abs(deltaX) <= Math.abs(deltaY)) {
+			return;
+		}
 
-		// 仅处理横向为主的 wheel 事件
-		if (Math.abs(deltaX) <= Math.abs(deltaY)) return;
+		const primaryDelta = vertical ? deltaY : deltaX;
 
 		// 序列开始：尝试获取 arena 控制权
 		if (wheelPhase === 'idle') {
-			const direction = deltaX > 0 ? -1 : 1;
+			const direction = vertical ? (primaryDelta > 0 ? 1 : -1) : primaryDelta > 0 ? -1 : 1;
 			const granted = tryAcquire({
 				id,
 				type: GESTURE_TYPE,
 				node,
-				axis: 'x',
+				axis: vertical ? 'y' : 'x',
 				direction,
 				pointerTarget: (e.target as HTMLElement) ?? node
 			});
@@ -542,40 +552,49 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			if (!granted) return;
 
 			wheelPhase = 'active';
-			wheelAccumX = 0;
+			wheelAccum = 0;
+			axisDimensionPx = vertical ? node.clientHeight : node.clientWidth;
 			opts.onStart?.();
 		}
 
 		if (wheelPhase !== 'active') return;
 
-		// 阻止浏览器默认横向滚动
+		// 阻止浏览器默认的主轴滚动（横向/纵向），避免与手势跟手冲突
 		if (e.cancelable) e.preventDefault();
 
-		// 累计 deltaX
-		pendingWheelDeltaX += deltaX;
+		// 累计主轴 delta（与 rAF 合并，避免单帧内多次回调）
+		pendingWheelDelta += primaryDelta;
 
-		// 防抖：60ms 无事件视为序列结束
+		// 防抖：60ms 内无新的 wheel 事件则视为序列结束；仅在没有 wheel 时才 finish，不在达到阈值时立刻 commit：1. 避免跟手被「提前 commit」打断；2. 避免惯性滚动又触发新一轮 onStart
 		if (wheelDebounceTimer !== null) clearTimeout(wheelDebounceTimer);
 		wheelDebounceTimer = setTimeout(finishWheelSequence, 60);
 
-		// rAF 更新
+		// rAF 合并后回调 onMove，与 pointer 通道一致
 		if (wheelRafId === null) {
 			wheelRafId = requestAnimationFrame(() => {
 				wheelRafId = null;
 				if (wheelPhase !== 'active') return;
 
-				// deltaX > 0 表示内容向右滚（等同于手指左滑），取反以匹配 pointer 语义
-				wheelAccumX += -pendingWheelDeltaX;
-				pendingWheelDeltaX = 0;
+				// 与 pointer 语义对齐：滚轮方向取反后累计（例如横向 deltaX>0 表示内容右移，手势表现为向左）
+				wheelAccum += -pendingWheelDelta;
+				pendingWheelDelta = 0;
+
+				const moveDirection = vertical
+					? wheelAccum > 0
+						? 'down'
+						: 'up'
+					: wheelAccum > 0
+						? 'right'
+						: 'left';
 
 				opts.onMove?.({
-					deltaX: wheelAccumX,
-					deltaY: 0,
+					deltaX: vertical ? 0 : wheelAccum,
+					deltaY: vertical ? wheelAccum : 0,
 					velocityX: 0,
 					velocityY: 0,
-					direction: wheelAccumX > 0 ? 'right' : 'left',
+					direction: moveDirection,
 					committed: false,
-					velocityThresholdUsed: velocityThreshold(),
+					commitTriggeredBy: null,
 					source: 'wheel'
 				});
 			});
@@ -587,23 +606,29 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		wheelDebounceTimer = null;
 		if (wheelPhase !== 'active') return;
 
-		const containerWidth = node.clientWidth;
-		const committed = Math.abs(wheelAccumX) > containerWidth * commitThreshold();
-		const direction: 'left' | 'right' = wheelAccumX > 0 ? 'right' : 'left';
+		const vertical = isVertical();
+		const committed = Math.abs(wheelAccum) > axisDimensionPx * commitThreshold();
+		const direction = vertical
+			? wheelAccum > 0
+				? 'down'
+				: 'up'
+			: wheelAccum > 0
+				? 'right'
+				: 'left';
 
 		const state: SwipeState = {
-			deltaX: wheelAccumX,
-			deltaY: 0,
+			deltaX: vertical ? 0 : wheelAccum,
+			deltaY: vertical ? wheelAccum : 0,
 			velocityX: 0,
 			velocityY: 0,
 			direction,
 			committed,
-			velocityThresholdUsed: velocityThreshold(),
+			// wheel 通道无速度测量，提交原因始终为位移（累计 wheelAccum > commitThreshold × dimension）
+			commitTriggeredBy: committed ? 'displacement' : null,
 			source: 'wheel'
 		};
 
 		release(id);
-
 		const result = opts.onEnd?.(state);
 		if (result instanceof Promise) {
 			registerAnimation(result);
@@ -615,8 +640,9 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	/** 重置 wheel 通道全部状态 */
 	function resetWheel() {
 		wheelPhase = 'idle';
-		wheelAccumX = 0;
-		pendingWheelDeltaX = 0;
+		wheelAccum = 0;
+		pendingWheelDelta = 0;
+		axisDimensionPx = 0;
 		if (wheelRafId !== null) {
 			cancelAnimationFrame(wheelRafId);
 			wheelRafId = null;
@@ -650,9 +676,22 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	// 事件绑定与生命周期
 	// ═══════════════════════════════════════════════════════════════
 
-	/** 阻断横向 overscroll；声明本节点以横向手势为主，配合文档 touch-action: pan-y 与 pending touchmove 兜底 */
-	node.style.overscrollBehaviorX = 'none';
-	node.style.touchAction = 'pan-x';
+	/**
+	 * 按主轴设置 touch-action 与 overscroll-behavior，与文档级 touch-action 配合：
+	 * - 横向：`pan-x` + `overscroll-behavior-x: none`（纵向交给父级滚动）
+	 * - 纵向：`pan-y` + `overscroll-behavior-y: none`（横向交给父级）
+	 */
+	function applyAxisStyles(): void {
+		if (isVertical()) {
+			node.style.overscrollBehaviorY = 'none';
+			node.style.touchAction = 'pan-y';
+		} else {
+			node.style.overscrollBehaviorX = 'none';
+			node.style.touchAction = 'pan-x';
+		}
+	}
+
+	applyAxisStyles();
 	node.addEventListener('pointerdown', onPointerDown);
 	node.addEventListener('pointermove', onPointerMove);
 	node.addEventListener('pointerup', onPointerUp);
@@ -665,6 +704,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	return {
 		update(newOptions: SwipeOptions) {
 			opts = { ...newOptions };
+			applyAxisStyles();
 		},
 		destroy() {
 			// 清理进行中的手势
@@ -682,6 +722,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 			node.removeEventListener('wheel', onWheel);
 			node.removeEventListener('touchmove', onTouchMove);
 			node.style.removeProperty('overscroll-behavior-x');
+			node.style.removeProperty('overscroll-behavior-y');
 			node.style.removeProperty('touch-action');
 		}
 	};

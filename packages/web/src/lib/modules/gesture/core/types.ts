@@ -2,7 +2,7 @@
  * @file 手势系统公共类型定义
  * @description
  * GestureArena 竞技场、边界让渡与动画保护所需的公共类型。
- * 各手势专属类型见对应子目录：swipe/types、pull-refresh/types、scroll-boundary/types、edge-zone/types。
+ * 各手势专属类型见对应子目录：swipe/types、feed-stream/types、scroll-boundary/types、edge-zone/types。
  */
 
 // ─── 基础类型 ─────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ export type GestureSource = 'pointer' | 'wheel';
  * 手势识别器向竞技场申请控制权时传入的参数
  *
  * @property id - 识别器实例唯一 ID
- * @property type - 手势类型标识（如 'swipe'、'pull-refresh'）
+ * @property type - 手势类型标识（如 'swipe'、'feed-stream'）
  * @property node - 绑定了该手势的 DOM 节点
  * @property axis - 手势主轴
  * @property direction - 移动方向：正值表示坐标增大方向（右 / 下），负值反之

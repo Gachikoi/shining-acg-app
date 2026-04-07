@@ -6,7 +6,7 @@
 	let {
 		onNavigateHash
 	}: {
-		/** 若提供，则拦截默认锚点跳转，由父级统一平滑滚动 + snap */
+		/** 若提供，则拦截默认锚点跳转，由父级统一平滑滚动 */
 		onNavigateHash?: (hash: string) => void;
 	} = $props();
 

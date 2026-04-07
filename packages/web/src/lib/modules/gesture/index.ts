@@ -12,6 +12,6 @@ export { scrollBoundary } from './actions/registry/scroll-boundary';
 
 // ─── 各 Action 专属类型（自子模块再导出） ─────────────────────────
 
+export * from './actions/gestures';
 export type { EdgeZoneOptions } from './actions/registry/edge-zone';
 export type { ScrollBoundaryOptions } from './actions/registry/scroll-boundary';
-export * from './actions/gestures';
