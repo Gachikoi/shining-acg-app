@@ -40,7 +40,7 @@
 		waitForElementTransitions
 	} from '$lib/utils/animation';
 	import type { Snippet } from 'svelte';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import FeedPullHeader from './feed-pull-header.svelte';
 	import FeedStreamFooter from './feed-stream-footer.svelte';
 
@@ -53,11 +53,8 @@
 		onLoadMore,
 		onRefresh,
 		onScrollFrame,
-		getContentHeight,
-		onViewportResize,
 		elasticConfig = {},
 		features = { pull: true, loadMore: true },
-		scrollContainerClass,
 		children
 	}: {
 		/** 数据条目总数（供 FeedStreamFooter 判断是否展示「没有更多」）*/
@@ -80,31 +77,10 @@
 		onRefresh?: () => Promise<void>;
 		/** scroll RAF 回调，透传给 feedStream（虚拟滚动 scrollTop 同步） */
 		onScrollFrame?: (payload: FeedScrollFramePayload) => void;
-		/**
-		 * 内容高度 getter，透传给 feedStream 用于触底计算。
-		 * 虚拟列表必传（否则 feedStream 退回 node.scrollHeight 估算）。
-		 */
-		getContentHeight?: () => number;
-		/**
-		 * 视口尺寸变化回调，由内部 ResizeObserver 驱动。
-		 * 替代对外暴露 scrollContainerEl：waterfall 等子组件通过此回调获得视口宽高，
-		 * 并在首次触发时尝试恢复布局快照，无需持有 DOM 元素引用。
-		 *
-		 * @param width - 滚动容器内容宽度（content-box px，不含 padding）
-		 * @param height - 滚动容器可见高度（content-box px）
-		 */
-		onViewportResize?: (width: number, height: number) => void;
 		/** Feed 流手势配置；未填字段使用包内默认（见 `resolveFeedStreamConfig`） */
 		elasticConfig?: Partial<FeedStreamConfig>;
 		/** 下拉 / 触底能力开关 */
 		features?: FeedStreamFeatures;
-		/**
-		 * 滚动容器额外 class。
-		 * 常见用途：将 padding 放在此处，使 ResizeObserver content-box 宽度自动减去 padding，
-		 * 子组件（如 waterfall）可直接用 containerWidth 计算布局无需再减 padding。
-		 * 例：`scrollContainerClass="px-4"` → containerWidth = 容器宽度 - 32px
-		 */
-		scrollContainerClass?: string;
 		/** 默认 snippet：实际 feed 流内容 */
 		children: Snippet;
 	} = $props();
@@ -151,7 +127,7 @@
 
 	// ─── ResizeObserver ──────────────────────────────────────────
 
-	let viewportObserver: ResizeObserver;
+	// let viewportObserver: ResizeObserver;
 
 	// ─── Pull 动画核心（全程直接 DOM 操作） ─────────────────────
 
@@ -300,7 +276,7 @@
 				: undefined,
 			onScrollFrame,
 			// 不能直接用 contentShiftEl.scrollHeight 的原因是，scrollHeight 包含了 Header 和 Footer，不能精确反映内容高度
-			getContentHeight: getContentHeight ?? (() => contentShiftEl?.scrollHeight ?? 0),
+			getContentHeight: () => contentShiftEl!.scrollHeight - PULL_LAYOUT_OFFSET_PX,
 			hasMore: () => hasMore,
 			loading: () => loading || showSkeleton,
 			onLoadMore: loadMoreEnabled ? onLoadMore : undefined
@@ -360,20 +336,6 @@
 		if (contentShiftEl) {
 			contentShiftEl.style.transform = computeTranslateY(0);
 		}
-
-		// ResizeObserver：感知滚动容器视口宽高变化，通知外部子组件（如 waterfall 触发布局重算）
-		viewportObserver = new ResizeObserver(([entry]) => {
-			// contentRect 为 content-box（不含 padding），若 scrollContainerClass 含 padding，
-			// 则 width 已是去掉 padding 后的可用宽度，子组件可直接用于布局计算
-			const w = Math.round(entry.contentRect.width);
-			const h = Math.round(entry.contentRect.height);
-			onViewportResize?.(w, h);
-		});
-		viewportObserver.observe(scrollContainer);
-	});
-
-	onDestroy(() => {
-		viewportObserver?.disconnect();
 	});
 </script>
 
@@ -381,7 +343,7 @@
   scrollbar-hidden overflow-y-scroll：使容器可滚动（feedStream scroll 监听依赖此属性）。
 -->
 <div
-	class={cn('h-full w-full overflow-y-scroll', scrollContainerClass)}
+	class={cn('h-full w-full overflow-y-scroll')}
 	bind:this={scrollContainer}
 	use:feedStream={feedStreamOptions}
 >

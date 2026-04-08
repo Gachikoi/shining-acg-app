@@ -8,7 +8,7 @@
   - 卡片高度实测：ResizeObserver 实时监听 DOM 高度并修正布局
 
   下拉刷新、触底加载、弹性动画：完全委托给 FeedContainer，通过
-  `onViewportResize` / `onScrollFrame` / `getContentHeight` / `onRefresh` / `onLoadMore` 回调接入。
+  `onScrollFrame` / `onRefresh` / `onLoadMore` 回调接入。
 
   数据由外部通过 props 传入，组件不负责数据获取逻辑。
 -->
@@ -99,7 +99,7 @@
 		onLoadMore,
 		onRefresh,
 		config,
-		scrollContainerClass
+		className
 	}: {
 		/** 帖子数据列表 */
 		posts: V1PostPreview[];
@@ -125,7 +125,7 @@
 		/** 布局配置（可选，不传则使用默认值） */
 		config?: Partial<WaterfallConfig>;
 		/** 滚动容器额外 class（如官网全宽：px-0） */
-		scrollContainerClass?: string;
+		className?: string;
 	} = $props();
 
 	// ─── FeedContainer 实例引用 ──────────────────────────────────
@@ -138,8 +138,16 @@
 
 	// ─── DOM 元素引用 ──────────────────────────────────────────────
 
-	/** 卡片绝对定位容器元素（用于设置高度） */
-	let containerElement: HTMLElement;
+	let containerWrapperEl: HTMLElement | null = null;
+	/**
+	 * 卡片绝对定位容器元素（用于设置高度）。
+	 * `$state` 以便 `bind:this` 赋值后触发 `$effect` 同步首帧视口高度。
+	 */
+	let contentElement = $state<HTMLElement | undefined>();
+	/**
+	 * 容器根节点 ResizeObserver：感知容器宽度变化，触发布局重算。
+	 */
+	let containerWrapperObserver: ResizeObserver;
 	/**
 	 * 卡片高度 ResizeObserver：仅观察各卡片内层 div，负责感知卡片实际渲染高度。
 	 * 单一职责：只做高度测量，不关心容器宽度（视口宽高由 FeedContainer 的 onViewportResize 提供）。
@@ -148,10 +156,10 @@
 
 	// ─── 布局状态 ──────────────────────────────────────────────────
 
-	/** 视口宽度（px），由 FeedContainer.onViewportResize 回调更新 */
-	let containerWidth = $state(0);
-	/** 视口高度（px），由 FeedContainer.onViewportResize 回调更新 */
-	let containerHeight = $state(0);
+	/** 视口宽度（px） */
+	let containerWidth = 0;
+	/** 视口高度（px） */
+	let containerHeight = 0;
 	/** 各列高度数组 */
 	let columnHeights: number[] = $state([]);
 	/** 所有卡片的绝对定位信息 */
@@ -159,7 +167,7 @@
 	/** 当前虚拟滚动可见范围 */
 	let visibleRange = $state({ start: 0, end: 0 });
 	/** 缓存的容器滚动位置（px），由 onScrollFrame 同步，避免读取 scrollTop 引发强制回流 */
-	let currentScrollTop = $state(0);
+	let currentScrollTop = 0;
 	/** 瀑布流内容总高度（px） */
 	let maxHeight = $state(0);
 	/** 已计算布局的卡片数量（用于增量计算） */
@@ -306,8 +314,8 @@
 		// persist 时已 `new Map` 拷贝，此处拿到的是独立副本，可与当前组件内 Map 安全替换
 		measuredHeights = snapshot.measuredHeights;
 
-		if (containerElement) {
-			containerElement.style.height = `${maxHeight}px`;
+		if (contentElement) {
+			contentElement.style.height = `${maxHeight}px`;
 		}
 
 		// 通过 FeedContainer 的 scrollTo 恢复 scrollTop，并同步 currentScrollTop，供虚拟滚动与后续 Pass 2 一致
@@ -340,7 +348,7 @@
 			cardPositions.length = 0;
 			columnHeights.length = 0;
 			maxHeight = 0;
-			if (containerElement) containerElement.style.height = '0px';
+			if (contentElement) contentElement.style.height = '0px';
 		}
 
 		if (containerWidth === 0 || posts.length === 0) return;
@@ -367,8 +375,8 @@
 
 		lastCalculatedCount = posts.length;
 
-		if (containerElement) {
-			containerElement.style.height = `${maxHeight}px`;
+		if (contentElement) {
+			contentElement.style.height = `${maxHeight}px`;
 		}
 	}
 
@@ -377,7 +385,7 @@
 	 * 完全依赖缓存的 currentScrollTop 和 containerHeight 避免布局抖动。
 	 */
 	function updateVisibleRange(): void {
-		if (!containerElement || containerHeight === 0) return;
+		if (!contentElement || containerHeight === 0) return;
 
 		const result = calculatePositionedVisibleRange({
 			items: cardPositions,
@@ -390,30 +398,6 @@
 	}
 
 	// ─── FeedContainer 回调 ──────────────────────────────────────
-
-	/**
-	 * FeedContainer 视口尺寸变化通知。
-	 * 替代原先在本组件内 `containerObserver.observe(scrollContainer)` 的做法：
-	 * FeedContainer 只观察外层滚动容器（content-box），不观察内层 `containerElement`。
-	 * 这样 `recalculateLayout` 写入 `containerElement.style.height` 不会触发被观察元素的尺寸回调，
-	 * 避免 ResizeObserver 反馈环与 WKWebView 上的 “loop completed with undelivered notifications”。
-	 * 首次触发时优先尝试恢复布局快照；失败则全量重算。
-	 *
-	 * @param w - 滚动容器内容宽度（px）
-	 * @param h - 滚动容器可见高度（px）
-	 */
-	function handleViewportResize(w: number, h: number): void {
-		const widthChanged = w !== containerWidth;
-		const heightChanged = h !== containerHeight;
-		if (!widthChanged && !heightChanged) return;
-
-		containerWidth = w;
-		containerHeight = h;
-
-		if (restoreLayoutSnapshot(businessId, categoryId, containerWidth)) return;
-		recalculateLayout(true);
-		updateVisibleRange();
-	}
 
 	/**
 	 * FeedContainer scroll RAF 回调，同步 scrollTop 并更新虚拟滚动可见范围。
@@ -530,11 +514,29 @@
 				updateVisibleRange();
 			}
 		});
+
+		containerWrapperObserver = new ResizeObserver(([entry]) => {
+			const w = Math.round(entry.contentRect.width);
+			const h = Math.round(entry.contentRect.height);
+			if (w === containerWidth && h === containerHeight) return;
+
+			containerWidth = w;
+			containerHeight = h;
+
+			// 挂载首次触发时，如果能重用快照，则直接恢复并退出
+			if (restoreLayoutSnapshot(businessId, categoryId, containerWidth)) {
+				return;
+			}
+			recalculateLayout(true);
+			updateVisibleRange();
+		});
+		containerWrapperObserver.observe(containerWrapperEl!);
 	});
 
 	onDestroy(() => {
 		persistLayoutSnapshot();
 		cardObserver?.disconnect();
+		containerWrapperObserver?.disconnect();
 	});
 
 	// ─── 暴露给外部的方法 ──────────────────────────────────────────
@@ -549,56 +551,62 @@
 	}
 </script>
 
-<FeedContainer
-	bind:this={feedContainerRef}
-	{loading}
-	{hasMore}
-	{showSkeleton}
-	{refreshing}
-	itemCount={posts.length}
-	elasticConfig={mergedConfig.feedElasticConfig}
-	features={{ pull: !!onRefresh, loadMore: true }}
-	onRefresh={onRefresh ? refreshDataAndLayout : undefined}
-	onLoadMore={runLoadMoreLayout}
-	onScrollFrame={handleScrollFrame}
-	onViewportResize={handleViewportResize}
-	scrollContainerClass={cn('px-1 sm:px-2 md:px-4 lg:px-6', scrollContainerClass)}
+<div
+	bind:this={containerWrapperEl}
+	class={cn('h-full w-full px-1 sm:px-2 md:px-4 lg:px-6', className)}
 >
-	<!--
+	<FeedContainer
+		bind:this={feedContainerRef}
+		{loading}
+		{hasMore}
+		{showSkeleton}
+		{refreshing}
+		itemCount={posts.length}
+		elasticConfig={mergedConfig.feedElasticConfig}
+		features={{ pull: !!onRefresh, loadMore: true }}
+		onRefresh={onRefresh ? refreshDataAndLayout : undefined}
+		onLoadMore={runLoadMoreLayout}
+		onScrollFrame={handleScrollFrame}
+	>
+		<!--
     瀑布流卡片区域：绝对定位 + 占位高度。
     注意：padding 已移至 scrollContainerClass（由 FeedContainer 的 ResizeObserver 在 content-box
     层面报告），故此处 containerElement 的 clientWidth 直接等于 containerWidth（已减去 padding），
     不再需要在卡片布局计算中手动减去 padding。
   -->
-	<div class="relative w-full" style="min-height: {maxHeight}px;" bind:this={containerElement}>
-		{#each visiblePosts as post, i (post.postId)}
-			{@const absoluteIndex = visibleRange.start + i}
-			<div
-				class="absolute"
-				style="top: {cardPositions[absoluteIndex]?.top}px; left: {cardPositions[absoluteIndex]
-					?.left}px; width: {cardPositions[absoluteIndex]?.width}px; height: {cardPositions[
-					absoluteIndex
-				]?.height}px;"
-			>
-				<div use:measureCardHeight={post.postId || ''}>
-					{#if showSkeleton}
-						<WaterfallSkeletonCard
-							aspectRatio={post.cover?.single?.meta?.width && post.cover.single.meta?.height
-								? post.cover.single.meta.width / post.cover.single.meta.height
-								: 1}
-						/>
-					{:else}
-						<WaterfallCard
-							{post}
-							index={absoluteIndex}
-							{businessId}
-							{categoryId}
-							{isShowViews}
-							{isShowTime}
-						/>
-					{/if}
-				</div>
+		<!-- 必须用 posts 的引用做 key！！！否则在 refresh 后，再次计算 visiblePosts 并且 start 发生变化时，就会造成整个页面卡死 -->
+		{#key posts}
+			<div class="relative w-full" style="min-height: {maxHeight}px;" bind:this={contentElement}>
+				{#each visiblePosts as post, i (post.postId)}
+					{@const absoluteIndex = visibleRange.start + i}
+					<div
+						class="absolute"
+						style="top: {cardPositions[absoluteIndex]?.top}px; left: {cardPositions[absoluteIndex]
+							?.left}px; width: {cardPositions[absoluteIndex]?.width}px; height: {cardPositions[
+							absoluteIndex
+						]?.height}px;"
+					>
+						<div use:measureCardHeight={post.postId || ''}>
+							{#if showSkeleton}
+								<WaterfallSkeletonCard
+									aspectRatio={post.cover?.single?.meta?.width && post.cover.single.meta?.height
+										? post.cover.single.meta.width / post.cover.single.meta.height
+										: 1}
+								/>
+							{:else}
+								<WaterfallCard
+									{post}
+									index={absoluteIndex}
+									{businessId}
+									{categoryId}
+									{isShowViews}
+									{isShowTime}
+								/>
+							{/if}
+						</div>
+					</div>
+				{/each}
 			</div>
-		{/each}
-	</div>
-</FeedContainer>
+		{/key}
+	</FeedContainer>
+</div>

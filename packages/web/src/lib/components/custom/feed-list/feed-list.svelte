@@ -47,10 +47,9 @@
 	import { resolveCacheUrl } from '$lib/modules/cache';
 	import { breakpoint } from '$lib/modules/device';
 	import { scrollBoundary, type FeedStreamConfig } from '$lib/modules/gesture';
-	import { formatStat } from '$lib/utils';
+	import { cn, formatStat } from '$lib/utils';
 	import { calculateGridVisibleRange } from '$lib/utils/virtual-scroll';
-	import { onDestroy } from 'svelte';
-	import type { Action } from 'svelte/action';
+	import { onMount } from 'svelte';
 
 	/** 关注关系状态枚举（模拟，后续从 API 获取） */
 	type RelationState = 'none' | 'following' | 'followed_by' | 'mutual';
@@ -66,7 +65,8 @@
 		onLoadMore,
 		onRefresh,
 		elasticConfig = {},
-		features = { pull: true, loadMore: true }
+		features = { pull: true, loadMore: true },
+		className = ''
 	}: {
 		businessId: string;
 		categoryId: string;
@@ -88,6 +88,7 @@
 		elasticConfig?: Partial<FeedStreamConfig>;
 		/** 下拉 / 触底能力开关 */
 		features?: { pull?: boolean; loadMore?: boolean };
+		className?: string;
 	} = $props();
 
 	// ─── FeedContainer 实例引用 ──────────────────────────────────
@@ -97,6 +98,10 @@
 	 * 用于调用 `scrollTo` / `scrollToTopAndRefresh`，无需持有原始 DOM 元素。
 	 */
 	let feedContainerRef: ReturnType<typeof FeedContainer> | undefined = $state();
+	/**
+	 * 列表容器根节点
+	 */
+	let containerWrapperEl: HTMLElement | null = null;
 
 	// ─── 快照管理 ────────────────────────────────────────────────
 
@@ -128,55 +133,12 @@
 		return true;
 	}
 
-	onDestroy(() => {
-		persistScrollSnapshot();
-		firstItemHeightObserver?.disconnect();
-	});
-
 	// ─── 虚拟滚动状态 ────────────────────────────────────────────
 
 	/**
-	 * 用户行高（px），按「边框盒」计：含 `p-4` 等 padding，与滚动条目中每行实际占位一致。
-	 * 采用「只测量第一个 list-item」策略：\n
-	 * - 首次渲染先用兜底值 80px（避免首屏空白 / 计算异常）\n
-	 * - 当列表顶部第一个 item 渲染出来时用 ResizeObserver 的 border box 实测一次并更新\n
-	 * 这样 `topSpacerHeight` / `bottomSpacerHeight` 会随实测值变得更准确。
+	 * 列表项高度，和 CSS 对齐
 	 */
-	const ITEM_HEIGHT_FALLBACK = 80;
-	let itemHeightPx = $state(ITEM_HEIGHT_FALLBACK);
-
-	/** 只用于测量首个 list-item 高度的 ResizeObserver（测一次后断开）。 */
-	let firstItemHeightObserver: ResizeObserver | undefined;
-
-	/**
-	 * Svelte action：只测量“第一个 list-item（absoluteIndex===0）”的高度。
-	 * 测量一次后断开 observer，避免持续监听带来的额外开销。
-	 */
-	const measureFirstItemHeight: Action<HTMLElement, void> = (node) => {
-		$effect(() => {
-			if (firstItemHeightObserver) return;
-
-			firstItemHeightObserver = new ResizeObserver(([entry]) => {
-				/** 单行在布局中的高度须含 padding；contentRect 仅为内容盒，故取 border box */
-				const border = entry.borderBoxSize?.[0];
-				const h = border
-					? Math.round(border.blockSize)
-					: Math.round(entry.target.getBoundingClientRect().height);
-				if (h > 0 && h !== itemHeightPx) {
-					itemHeightPx = h;
-					firstItemHeightObserver?.disconnect();
-					firstItemHeightObserver = undefined;
-				}
-			});
-
-			firstItemHeightObserver.observe(node);
-
-			return () => {
-				firstItemHeightObserver?.disconnect();
-				firstItemHeightObserver = undefined;
-			};
-		});
-	};
+	const ITEM_HEIGHT = 100;
 
 	/** 视口高度（px），由 FeedContainer.onViewportResize 更新 */
 	let containerHeight = $state(0);
@@ -191,7 +153,7 @@
 		containerHeight > 0
 			? calculateGridVisibleRange({
 					count: items.length,
-					itemHeight: itemHeightPx,
+					itemHeight: ITEM_HEIGHT,
 					scrollTop: currentScrollTop,
 					viewportHeight: containerHeight
 				})
@@ -205,14 +167,14 @@
 	 * 上方占位高度（px）：等于隐藏行数 × itemHeight 估算。
 	 * 代替实际 DOM 节点撑开滚动区域，保证 scrollTop 对应正确的视觉位置。
 	 */
-	const topSpacerHeight = $derived(visibleRange.start * itemHeightPx);
+	const topSpacerHeight = $derived(visibleRange.start * ITEM_HEIGHT);
 
 	/**
 	 * 下方占位高度（px）：等于尾部隐藏行数 × itemHeight 估算。
 	 * 确保 feedStream 触底计算（contentH - scrollTop - viewportH）得到正确的剩余距离。
 	 */
 	const bottomSpacerHeight = $derived(
-		Math.max(0, (items.length - 1 - visibleRange.end) * itemHeightPx)
+		Math.max(0, (items.length - 1 - visibleRange.end) * ITEM_HEIGHT)
 	);
 
 	// ─── FeedContainer 回调 ──────────────────────────────────────
@@ -224,23 +186,6 @@
 	 */
 	function handleScrollFrame({ scrollTop }: { scrollTop: number }): void {
 		currentScrollTop = scrollTop;
-		console.log('handleScrollFrame', scrollTop);
-	}
-
-	/**
-	 * FeedContainer 视口尺寸变化回调：更新 containerHeight 触发可见范围重算。
-	 * 首次从 0 变为有效高度时尝试从快照恢复滚动位置。
-	 * 宽度（w）对等高线性列表无用，忽略。
-	 *
-	 * @param _w - 视口宽度（未使用）
-	 * @param h - 视口高度（px）
-	 */
-	function handleViewportResize(_w: number, h: number): void {
-		const isFirstResize = containerHeight === 0 && h > 0;
-		containerHeight = h;
-		if (isFirstResize) {
-			restoreScrollSnapshot();
-		}
 	}
 
 	// ─── 关注按钮 ────────────────────────────────────────────────
@@ -283,114 +228,137 @@
 	export function scrollToTopAndRefresh(): void {
 		feedContainerRef?.scrollToTopAndRefresh();
 	}
+
+	let containerWrapperObserver: ResizeObserver;
+
+	onMount(() => {
+		restoreScrollSnapshot();
+
+		containerWrapperObserver = new ResizeObserver(([entry]) => {
+			const h = Math.round(entry.contentRect.height);
+			if (h === containerHeight) return;
+			containerHeight = h;
+		});
+		containerWrapperObserver.observe(containerWrapperEl!);
+
+		return () => {
+			persistScrollSnapshot();
+			containerWrapperObserver?.disconnect();
+		};
+	});
 </script>
 
-<FeedContainer
-	bind:this={feedContainerRef}
-	{loading}
-	{hasMore}
-	{showSkeleton}
-	{refreshing}
-	itemCount={items.length}
-	{elasticConfig}
-	features={{ pull: features.pull !== false && !!onRefresh, loadMore: features.loadMore !== false }}
-	{onRefresh}
-	{onLoadMore}
-	onScrollFrame={handleScrollFrame}
-	onViewportResize={handleViewportResize}
-	scrollContainerClass="px-2 md:px-4 lg:px-6"
->
-	<!--
+<div bind:this={containerWrapperEl} class={cn('h-full w-full px-2 md:px-4 lg:px-6', className)}>
+	<FeedContainer
+		bind:this={feedContainerRef}
+		{loading}
+		{hasMore}
+		{showSkeleton}
+		{refreshing}
+		itemCount={items.length}
+		{elasticConfig}
+		features={{
+			pull: features.pull !== false && !!onRefresh,
+			loadMore: features.loadMore !== false
+		}}
+		{onRefresh}
+		{onLoadMore}
+		onScrollFrame={handleScrollFrame}
+	>
+		<!--
     虚拟滚动列表：
     - topSpacerHeight：上方 padding 代替隐藏的头部行（不渲染 DOM，但撑开滚动高度）
     - bottomSpacerHeight：下方 padding 代替隐藏的尾部行
     - 只渲染 visibleItems（当前可见切片），DOM 数量随 viewportHeight / itemHeightPx 线性增长
   -->
-	<div style:padding-top="{topSpacerHeight}px" style:padding-bottom="{bottomSpacerHeight}px">
-		{#each visibleItems as user (user.userId ?? Math.random())}
-			{@const relation = mockRelation(user)}
-			{@const btn = RELATION_BUTTON[relation]}
-			{@const likeAndCollect =
-				formatStat(user.stats?.likeCountReceived ?? '0') +
-				formatStat(user.stats?.collectCountReceived ?? '0')}
-			<div
-				class="flex items-center gap-3 rounded-2xl p-4 hover:bg-zinc-100 sm:gap-6 hover:dark:bg-zinc-900"
-				class:animate-pulse={showSkeleton}
-				use:measureFirstItemHeight
-			>
-				<!-- 头像 -->
-				<div class="shrink-0">
-					{#if showSkeleton}
-						<div class="size-10 rounded-full bg-muted sm:size-12"></div>
-					{:else}
-						<img
-							src={resolveCacheUrl(user.avatar, businessId, categoryId)}
-							alt={user.name}
-							class="size-10 rounded-full bg-muted object-cover sm:size-12"
-						/>
-					{/if}
-				</div>
-
-				<!-- 用户信息 -->
-				<div class="min-w-0 flex-1">
-					{#if showSkeleton}
-						<div class="mb-1.5 h-4 w-32 rounded bg-muted"></div>
-						<div class="mb-1 h-3 w-40 rounded bg-muted"></div>
-						<div class="h-3 w-48 rounded bg-muted"></div>
-					{:else}
-						<!-- 第一行：用户名 + 认证 + 部门标签 -->
-						<div class="flex items-center gap-2">
-							<span class="shrink-0 truncate font-semibold">
-								{user.name}
-							</span>
-							<ScrollBadgeRow>
-								{#if user.verifiedTitle}
-									<VerifiedTitleBadge title={user.verifiedTitle} />
-								{/if}
-								{#if user.departments && user.departments.length > 0}
-									<div class="scrollbar-none flex shrink-0 gap-1 overflow-x-auto">
-										{#each user.departments as dept (dept.id)}
-											<DepartmentBadge name={dept.name} />
-										{/each}
-									</div>
-								{/if}
-							</ScrollBadgeRow>
+		<div style:padding-top="{topSpacerHeight}px" style:padding-bottom="{bottomSpacerHeight}px">
+			<!-- 必须用 items 的引用做 key！！！否则在 refresh 后，再次计算 visibleItems 并且 start 发生变化时，就会造成整个页面卡死 -->
+			{#key items}
+				{#each visibleItems as user (user.userId ?? Math.random())}
+					{@const relation = mockRelation(user)}
+					{@const btn = RELATION_BUTTON[relation]}
+					{@const likeAndCollect =
+						formatStat(user.stats?.likeCountReceived ?? '0') +
+						formatStat(user.stats?.collectCountReceived ?? '0')}
+					<div
+						class="flex items-center gap-3 rounded-2xl p-4 hover:bg-zinc-100 sm:gap-6 hover:dark:bg-zinc-900"
+						class:animate-pulse={showSkeleton}
+					>
+						<!-- 头像 -->
+						<div class="shrink-0">
+							{#if showSkeleton}
+								<div class="size-10 rounded-full bg-muted sm:size-12"></div>
+							{:else}
+								<img
+									src={resolveCacheUrl(user.avatar, businessId, categoryId)}
+									alt={user.name}
+									class="size-10 rounded-full bg-muted object-cover sm:size-12"
+								/>
+							{/if}
 						</div>
 
-						<!-- 第二行：QQ 号 -->
-						{#if user.qqNumber}
-							<p class="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-								QQ 号：{user.qqNumber}
-							</p>
-						{/if}
+						<!-- 用户信息 -->
+						<div class="min-w-0 flex-1">
+							{#if showSkeleton}
+								<div class="mb-1.5 h-4 w-32 rounded bg-muted"></div>
+								<div class="mb-1 h-3 w-40 rounded bg-muted"></div>
+								<div class="h-3 w-48 rounded bg-muted"></div>
+							{:else}
+								<!-- 第一行：用户名 + 认证 + 部门标签 -->
+								<div class="flex items-center gap-2">
+									<span class="shrink-0 truncate font-semibold">
+										{user.name}
+									</span>
+									<ScrollBadgeRow>
+										{#if user.verifiedTitle}
+											<VerifiedTitleBadge title={user.verifiedTitle} />
+										{/if}
+										{#if user.departments && user.departments.length > 0}
+											<div class="scrollbar-none flex shrink-0 gap-1 overflow-x-auto">
+												{#each user.departments as dept (dept.id)}
+													<DepartmentBadge name={dept.name} />
+												{/each}
+											</div>
+										{/if}
+									</ScrollBadgeRow>
+								</div>
 
-						<!-- 第三行：统计数据 -->
-						<!-- role="region" 满足 a11y 要求：带触摸事件的非交互元素需声明 ARIA 角色 -->
-						<div
-							role="region"
-							aria-label="用户统计数据"
-							class="mt-0.5 flex min-w-0 flex-1 overflow-x-scroll text-sm text-zinc-500 dark:text-zinc-400"
-							use:scrollBoundary={{ axis: 'x' }}
-						>
-							<span class="shrink-0">粉丝：{formatStat(user.stats?.followerCount)}</span>
-							<span class="mx-1">|</span>
-							<span class="shrink-0">获赞和收藏：{formatStat(likeAndCollect.toString())}</span>
+								<!-- 第二行：QQ 号 -->
+								{#if user.qqNumber}
+									<p class="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+										QQ 号：{user.qqNumber}
+									</p>
+								{/if}
+
+								<!-- 第三行：统计数据 -->
+								<!-- role="region" 满足 a11y 要求：带触摸事件的非交互元素需声明 ARIA 角色 -->
+								<div
+									role="region"
+									aria-label="用户统计数据"
+									class="mt-0.5 flex min-w-0 flex-1 overflow-x-scroll text-sm text-zinc-500 dark:text-zinc-400"
+									use:scrollBoundary={{ axis: 'x' }}
+								>
+									<span class="shrink-0">粉丝：{formatStat(user.stats?.followerCount)}</span>
+									<span class="mx-1">|</span>
+									<span class="shrink-0">获赞和收藏：{formatStat(likeAndCollect.toString())}</span>
+								</div>
+							{/if}
 						</div>
-					{/if}
-				</div>
 
-				<!-- 操作按钮 -->
-				<div class="shrink-0">
-					{#if showSkeleton}
-						<div class="h-8 w-20 rounded-md bg-muted"></div>
-					{:else}
-						<!-- size 在模板中实时读取 breakpoint.isSm，此处是 $derived 追踪上下文，完全响应式 -->
-						<Button variant={btn.variant} size={breakpoint.isSm ? 'fix' : 'fix-sm'}>
-							{btn.label}
-						</Button>
-					{/if}
-				</div>
-			</div>
-		{/each}
-	</div>
-</FeedContainer>
+						<!-- 操作按钮 -->
+						<div class="shrink-0">
+							{#if showSkeleton}
+								<div class="h-8 w-20 rounded-md bg-muted"></div>
+							{:else}
+								<!-- size 在模板中实时读取 breakpoint.isSm，此处是 $derived 追踪上下文，完全响应式 -->
+								<Button variant={btn.variant} size={breakpoint.isSm ? 'fix' : 'fix-sm'}>
+									{btn.label}
+								</Button>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			{/key}
+		</div>
+	</FeedContainer>
+</div>

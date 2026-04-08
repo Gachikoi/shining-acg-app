@@ -190,7 +190,6 @@ export interface GridVirtualScrollParams {
  */
 export function calculateGridVisibleRange(params: GridVirtualScrollParams): VisibleRange {
 	const { count, itemHeight, columnCount = 1, scrollTop, viewportHeight, bufferPx = 800 } = params;
-	// console.log('calculateGridVisibleRange', scrollTop, itemHeight);
 	if (count === 0 || itemHeight <= 0) return { start: 0, end: 0 };
 
 	const rowCount = Math.ceil(count / columnCount);
@@ -202,6 +201,5 @@ export function calculateGridVisibleRange(params: GridVirtualScrollParams): Visi
 
 	const start = startRow * columnCount;
 	const end = Math.min(count - 1, (endRow + 1) * columnCount - 1);
-
 	return { start, end };
 }
