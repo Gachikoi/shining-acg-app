@@ -5,7 +5,7 @@
  *
  * 核心特性：
  * - **Pointer 通道**：pointerdown → 方向锁定 → arena 竞争 → 跟手 → 提交/取消
- * - **Wheel 通道**：检测横向 deltaX 序列，60ms 防抖判定结束，累计位移触发切换
+ * - **Wheel 通道**：检测主轴占优的 wheel 序列，默认 60ms 防抖判定结束；可选 `wheelEarlyFinishOnThreshold` 在累计位移达 `commitThreshold`×主轴尺寸时立即结束
  * - **方向锁定**：首次移动超过阈值后，|dx| > |dy| 才进入水平滑动
  * - **速度计算**：VelocityTracker 采样，支持"轻扫"快速提交
  * - **竞技场集成**：通过 arena.tryAcquire 与 scrollBoundary 协调边界让渡
@@ -35,6 +35,7 @@
 import type { Action } from 'svelte/action';
 import { release, startAnimation, tryAcquire } from '../../../core/arena.svelte';
 import { generateId, normalizeWheelDelta } from '../../../core/utils';
+import { DEFAULT_POINTER_SLOP_PX } from '../constants';
 import type { PointerPhase, PointerTrack, WheelPhase } from '../types';
 import type { SwipeOptions, SwipeState } from './types';
 import { createPointerTrack } from './utils';
@@ -55,9 +56,11 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 	/** 当前配置（通过 update 可热更新） */
 	let opts: SwipeOptions = { ...initialOptions };
 
-	/** 默认值访问器 */
-	const threshold = () => opts.threshold ?? 10;
+	/** 方向锁定行程（px）；默认见 `DEFAULT_POINTER_SLOP_PX`，与 `feed-stream` 一致 */
+	const threshold = () => opts.threshold ?? DEFAULT_POINTER_SLOP_PX;
 	const commitThreshold = () => opts.commitThreshold ?? 0.25;
+	/** 为 true 时 wheel 累计位移达到提交比例即结束序列（默认 false，仅靠防抖结束） */
+	const wheelEarlyFinishOnThreshold = () => opts.wheelEarlyFinishOnThreshold ?? false;
 	const velocityThreshold = () => opts.velocityThreshold ?? 0.3;
 	const interruptible = () => opts.interruptible ?? true;
 	/** 是否纵向主轴（与 `opts.axis` 同步，在 update 中刷新） */
@@ -565,7 +568,7 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		// 累计主轴 delta（与 rAF 合并，避免单帧内多次回调）
 		pendingWheelDelta += primaryDelta;
 
-		// 防抖：60ms 内无新的 wheel 事件则视为序列结束；仅在没有 wheel 时才 finish，不在达到阈值时立刻 commit：1. 避免跟手被「提前 commit」打断；2. 避免惯性滚动又触发新一轮 onStart
+		// 防抖：60ms 内无新的 wheel 事件则视为序列结束（若启用 `wheelEarlyFinishOnThreshold`，达到位移阈值时会在 rAF 内提前 `finishWheelSequence` 并清除本定时器）
 		if (wheelDebounceTimer !== null) clearTimeout(wheelDebounceTimer);
 		wheelDebounceTimer = setTimeout(finishWheelSequence, 60);
 
@@ -597,13 +600,32 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 					commitTriggeredBy: null,
 					source: 'wheel'
 				});
+
+				/**
+				 * 可选：累计主轴位移已达提交阈值则立即结束 wheel 序列（清除防抖定时器并 `finishWheelSequence`），
+				 * 避免触控板惯性阶段长时间停留在「active」或依赖静默窗口才收尾。
+				 */
+				if (
+					wheelEarlyFinishOnThreshold() &&
+					axisDimensionPx > 0 &&
+					Math.abs(wheelAccum) >= axisDimensionPx * commitThreshold()
+				) {
+					if (wheelDebounceTimer !== null) {
+						clearTimeout(wheelDebounceTimer);
+						wheelDebounceTimer = null;
+					}
+					finishWheelSequence();
+				}
 			});
 		}
 	}
 
 	/** wheel 序列结束：评估是否达到提交阈值 */
 	function finishWheelSequence() {
-		wheelDebounceTimer = null;
+		if (wheelDebounceTimer !== null) {
+			clearTimeout(wheelDebounceTimer);
+			wheelDebounceTimer = null;
+		}
 		if (wheelPhase !== 'active') return;
 
 		const vertical = isVertical();

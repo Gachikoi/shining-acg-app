@@ -66,5 +66,7 @@
    - 必须调用 `tryAcquire` 并在获准后再执行 `preventDefault`；
    - 尽量不用 `setPointerCapture`，它会与浏览器默认的隐式指针捕获行为发生冲突，除非你明确知道你需要的客制化行为；
    - 一定要保证手势从开始检测到 `tryAcquire` 过程中全为同步代码。此手势系统依赖事件冒泡的同步执行来确保事件由子元素先处理后再由父元素处理，由此保证子元素上手势的优先级大于父元素。如果在 `tryAcquire` 之前事件处理函数中存在异步代码，则会打乱这种优先级。
+   - **同类手势的 threshold / 判别门槛一致**：凡可能在嵌套节点上同时参与竞技场、且依赖「移动超过某值才确认手势」的识别器，都应约定**同一语义下的阈值一致**（不限于 pointer 滑动）。否则同一输入序列下，子、父对「是否已可 `tryAcquire`」会不同步，破坏冒泡顺序下子先父后与互斥共同保证的优先级。例如：`use:swipe` 与 `use:feedStream` 的 pointer 方向锁定行程默认共用 `actions/gestures/constants.ts` 的 `DEFAULT_POINTER_SLOP_PX`（`feedStream` 固定该值，`swipe` 可配 `threshold`，嵌套时建议与内层对齐）；若将「单击」与「双击」拆成两个独立 Action，二者用于区分 tap / 候选 double-tap 的**移动容差**也应一致，避免一笔操作下仅一侧先满足「可仲裁」。
+   - **wheel 通道与 idle**：`wheel` 同样沿 DOM 冒泡同步派发，嵌套容器上可注册多个 listener。通道处于 **`idle` 时须在第一次收到的 `wheel` 事件处理中同步调用 `tryAcquire`**（不在此前插入 `await`、定时器再仲裁），否则可能出现内层尚未占用竞技场、外层已因后续 wheel 先进入 active 的时序错位。本仓库中 `use:swipe`、`use:feedStream` 的 wheel 路径均遵循「idle → 本 handler 内立即 `tryAcquire`」；自定义 wheel 手势也应保持同一约定。
 2. **Safari 兼容**：在 `pending`（方向未决）阶段，通过精确计算 `dx` 和 `dy` 动态决定是否 `e.preventDefault()` 以规避 Safari 移动端自带的橡皮筋拦截，不能无脑 preventDefault。
 3. **指针补救 (Auto Recovery)**：如果手势在一开始被判定为无效方向释放了指针，但用户未松手且改变了方向，`onPointerMove` 中的 `autoRecovery` 逻辑会重新发起手势追踪。

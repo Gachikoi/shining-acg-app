@@ -50,8 +50,9 @@ export interface SwipeState {
  * use:swipe Action 配置选项
  *
  * @property axis - 手势主轴：`x` 为横向（默认），`y` 为纵向；样式见 `swipe.svelte.ts` 内 `applyAxisStyles`
- * @property threshold - 方向锁定阈值（px）
+ * @property threshold - 方向锁定阈值（px）；默认 `DEFAULT_POINTER_SLOP_PX`（`use:feedStream` 固定用该值，不可覆盖）
  * @property commitThreshold - 提交切换的距离比例（相对容器**宽度**或**高度**，随 axis 变化）
+ * @property wheelEarlyFinishOnThreshold - wheel 通道：为 `true` 时，序列内累计主轴位移达到 `commitThreshold`×容器尺寸即立即结束序列并走 `onEnd`；默认 `false`（仍依赖防抖静默窗口结束）
  * @property velocityThreshold - 提交切换的速度阈值（px/ms）
  * @property disabled - 动态禁用
  * @property interruptible - 手势后动画是否可被同类型打断
@@ -63,6 +64,8 @@ export interface SwipeOptions {
 	axis?: 'x' | 'y';
 	threshold?: number;
 	commitThreshold?: number;
+	/** wheel 序列是否在累计位移达到 `commitThreshold`×主轴尺寸时立即结束（默认不提前结束） */
+	wheelEarlyFinishOnThreshold?: boolean;
 	velocityThreshold?: number;
 	disabled?: () => boolean;
 	interruptible?: boolean;

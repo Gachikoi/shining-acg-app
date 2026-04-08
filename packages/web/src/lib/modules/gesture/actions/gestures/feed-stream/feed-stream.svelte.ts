@@ -7,6 +7,7 @@
 import type { Action } from 'svelte/action';
 import { release, tryAcquire } from '../../../core/arena.svelte';
 import { generateId, normalizeWheelDelta } from '../../../core/utils';
+import { DEFAULT_POINTER_SLOP_PX } from '../constants';
 import type { PointerPhase } from '../types';
 import type { FeedStreamGestureOptions, WheelPullPhase } from './types';
 import {
@@ -140,7 +141,8 @@ export const feedStream: Action<HTMLElement, FeedStreamGestureOptions> = (node, 
 		const dy = e.clientY - startY;
 
 		if (pointerPhase === 'pending') {
-			if (Math.abs(dy) < 10 && Math.abs(dx) < 10) return;
+			// 与 `use:swipe` 默认同标量，不可配置（`DEFAULT_POINTER_SLOP_PX`）
+			if (Math.abs(dy) < DEFAULT_POINTER_SLOP_PX && Math.abs(dx) < DEFAULT_POINTER_SLOP_PX) return;
 
 			if (Math.abs(dx) > Math.abs(dy)) {
 				resetPointerState();
@@ -301,23 +303,24 @@ export const feedStream: Action<HTMLElement, FeedStreamGestureOptions> = (node, 
 
 		const { deltaY } = normalizeWheelDelta(e);
 
+		// 必须先尝试获取 arena 控制权，否则会丧失手势在子元素中的手势优先权
 		if (wheelPullPhase === 'idle') {
-			if (node.scrollTop <= 1 && deltaY < 0) {
-				const granted = tryAcquire({
-					id,
-					type: GESTURE_TYPE,
-					node,
-					axis: 'y',
-					direction: 1,
-					pointerTarget: (e.target as HTMLElement) ?? node
-				});
+			const granted = tryAcquire({
+				id,
+				type: GESTURE_TYPE,
+				node,
+				axis: 'y',
+				direction: 1,
+				pointerTarget: (e.target as HTMLElement) ?? node
+			});
 
-				if (!granted) {
-					wheelPullPhase = 'scrolling';
-				} else {
-					wheelPullPhase = 'pulling';
-					opts.onPullActiveChange?.(true);
-				}
+			if (!granted) {
+				return;
+			}
+
+			if (node.scrollTop <= 1 && deltaY < 0) {
+				wheelPullPhase = 'pulling';
+				opts.onPullActiveChange?.(true);
 			} else {
 				wheelPullPhase = 'scrolling';
 			}

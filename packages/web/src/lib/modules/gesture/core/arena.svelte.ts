@@ -71,8 +71,6 @@ function isPointerInEdgeInsets(
 		const x = params.startX;
 		const inLeft = left > 0 && x >= rect.left && x <= rect.left + left;
 		const inRight = right > 0 && x >= rect.right - right && x <= rect.right;
-		console.log('left', inLeft, x, rect.left, rect.left + left);
-		console.log('right', inRight, x, rect.right - right, rect.right);
 		return inLeft || inRight;
 	}
 
@@ -80,8 +78,6 @@ function isPointerInEdgeInsets(
 		const y = params.startY;
 		const inTop = top > 0 && y >= rect.top && y <= rect.top + top;
 		const inBottom = bottom > 0 && y >= rect.bottom - bottom && y <= rect.bottom;
-		console.log('top', inTop, y, rect.top, rect.top + top);
-		console.log('bottom', inBottom, y, rect.bottom - bottom, rect.bottom);
 		return inTop || inBottom;
 	}
 
