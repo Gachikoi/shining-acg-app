@@ -75,14 +75,16 @@
 	// ─── 分类配置 ──────────────────────────────────────────────────
 
 	const CATEGORY_OPTIONS: CategoryOption[] = [
-		{ label: '0', value: 'general', contentType: 'waterfall' },
-		{ label: '1', value: 'following', contentType: 'waterfall' },
-		{ label: '2', value: 'user', contentType: 'list' },
-		{ label: '3', value: 'shining', contentType: 'waterfall' },
-		{ label: '4', value: 'search', contentType: 'waterfall' },
-		{ label: '5', value: 'message', contentType: 'waterfall' },
-		{ label: '6', value: 'profile', contentType: 'waterfall' },
-		{ label: '7', value: 'setting', contentType: 'waterfall' }
+		{ label: '综合', value: 'general', contentType: 'waterfall' },
+		{ label: '关注', value: 'following', contentType: 'waterfall' },
+		{ label: '用户', value: 'user', contentType: 'list' },
+		{ label: '模玩', value: 'shining', contentType: 'waterfall' },
+		{ label: '绘画', value: 'painting', contentType: 'waterfall' },
+		{ label: '轻文', value: 'light_novel', contentType: 'waterfall' },
+		{ label: '小说', value: 'novel', contentType: 'waterfall' },
+		{ label: '音乐', value: 'music', contentType: 'waterfall' },
+		{ label: '游戏', value: 'game', contentType: 'waterfall' },
+		{ label: '其他', value: 'other', contentType: 'waterfall' }
 	];
 
 	/** 内容区容器 DOM 引用 */
@@ -275,17 +277,17 @@
 
 <div class="flex h-full w-full flex-col">
 	<!-- 顶部 Tab 切换 -->
-	<div class="flex w-full shrink-0 items-center bg-background px-1 py-2 sm:px-2 md:px-4 lg:px-6">
-		<div class="flex space-x-2 overflow-x-scroll">
+	<div class="flex w-full shrink-0 items-center bg-background px-1 sm:px-2 md:px-4 lg:px-6">
+		<div class="flex items-center space-x-2 overflow-x-scroll pt-1 pb-3">
 			{#each CATEGORY_OPTIONS as option, index (option.value)}
 				<Button
 					variant="ghost"
 					class={cn(
 						option.value === homeFeedRouteState.state.currentCategoryId
-							? 'bg-zinc-100 dark:bg-zinc-900'
-							: 'text-zinc-500 dark:text-zinc-400'
+							? 'bg-zinc-100 font-semibold dark:bg-zinc-900'
+							: 'font-normal text-zinc-500 dark:text-zinc-400'
 					)}
-					size="sm"
+					size="default"
 					onclick={() => handleCategoryChange(index)}
 				>
 					{option.label}

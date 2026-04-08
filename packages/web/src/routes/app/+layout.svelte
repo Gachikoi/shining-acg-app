@@ -55,13 +55,13 @@
 
 	onMount(() => {
 		// startRealtimeAppManager();
-		window.addEventListener('wheel', onWheel, { passive: false, capture: true });
-		window.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+		window.addEventListener('wheel', onWheel, { passive: false });
+		window.addEventListener('touchmove', onTouchMove, { passive: false });
 
 		return () => {
 			// stopRealtimeAppManager();
-			window.removeEventListener('wheel', onWheel, { capture: true });
-			window.removeEventListener('touchmove', onTouchMove, { capture: true });
+			window.removeEventListener('wheel', onWheel);
+			window.removeEventListener('touchmove', onTouchMove);
 		};
 	});
 
