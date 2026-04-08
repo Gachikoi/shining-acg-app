@@ -105,11 +105,6 @@ export default defineConfig({
 				changeOrigin: true,
 				ws: true,
 				rewrite: (path) => path.replace(/^\/api/, '')
-			},
-			/** Debug ingest：浏览器用相对路径 `/ingest/...`，便于手机代理到本机 dev 时上报 NDJSON */
-			'/ingest': {
-				target: 'http://127.0.0.1:7296',
-				changeOrigin: true
 			}
 		}
 	},
