@@ -7,7 +7,12 @@
 	import AboutWebsite from './about-website.svelte';
 	import Activity from './activity.svelte';
 	import Background from './background.svelte';
-	import { DEPARTMENTS, NAV_ITEMS } from './constants';
+	import {
+		DEPARTMENTS,
+		NAV_ITEMS,
+		SITE_SWIPE_COMMIT_FRACTION,
+		SITE_SWIPE_WHEEL_EARLY_FINISH_ON_THRESHOLD
+	} from './constants';
 	import Declaration from './declaration.svelte';
 	import Department from './department.svelte';
 	import Home from './home.svelte';
@@ -23,9 +28,6 @@
 	 * 平滑滚动到 section 进行中：为 true 时禁止再次 `navigateToHash` 与 swipe 提交，避免打断当前动画。
 	 */
 	let sectionNavAnimating = $state(false);
-
-	/** 与 `swipe` 的 `commitThreshold` / `velocityThreshold` 一致，供按视口高度判定用 */
-	const SITE_SWIPE_COMMIT_FRACTION = 0.1;
 
 	/** `scrollend` 未触发时的兜底解锁时长（ms），避免锁死 */
 	const SECTION_NAV_SCROLL_END_FALLBACK_MS = 900;
@@ -127,6 +129,7 @@
 	const siteSwipeOptions: SwipeOptions = {
 		axis: 'y',
 		commitThreshold: SITE_SWIPE_COMMIT_FRACTION,
+		wheelEarlyFinishOnThreshold: SITE_SWIPE_WHEEL_EARLY_FINISH_ON_THRESHOLD,
 		disabled: () => sectionNavAnimating,
 		onEnd: (s) => {
 			applySwipeSectionNavigation(s);

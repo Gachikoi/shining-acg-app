@@ -51,6 +51,17 @@ export const NAV_ITEMS: SiteNavItem[] = [
 	}
 ];
 
+/**
+ * 官网主列纵向 swipe：`commitThreshold` 与 `+layout.svelte` 中 `SwipeOptions` 一致（相对视口高度比例）。
+ */
+export const SITE_SWIPE_COMMIT_FRACTION = 0.1;
+
+/**
+ * 官网 wheel 通道：累计位移达到 `SITE_SWIPE_COMMIT_FRACTION`×容器高度时立即结束序列。
+ * 对应 `SwipeOptions.wheelEarlyFinishOnThreshold`。
+ */
+export const SITE_SWIPE_WHEEL_EARLY_FINISH_ON_THRESHOLD = true;
+
 export const DEPARTMENTS = [
 	{
 		id: '1',

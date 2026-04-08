@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Activity, Department } from '$lib/types/site';
+	import type { Activity, Department } from './types';
 	import Hero from './hero.svelte';
 
 	let { item }: { item: Department | Activity } = $props();
