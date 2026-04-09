@@ -1,29 +1,32 @@
 <script lang="ts">
 	/**
-	 * ImageVideoPreview 子组件：纯图片横滑轨道。
-	 * 边缘拖拽缩放回弹：单一 matrix（translate + scale）+ 同一时间曲线，便于浏览器按「倒放」插值，避免分层不同步造成闪现。
+	 * @component ImagePreview
+	 *
+	 * **职责**：渲染“图片视图”（多图横滑轨道 + 当前帧 edge pull 的 transform/transition）。
+	 * **不负责**：edge pull 的手势计算、阈值判断与飞回动画 —— 这些由 `controllers/image-controller.svelte.ts` 提供。
+	 *
+	 * 设计要点：edge pull 仅通过 `transform: translate3d(...) scale(...)` 动画，避免布局抖动。
 	 */
 	import type { V1MediaAsset as Media } from '$lib/api';
 	import { getMediaDisplayUrl } from '$lib/utils/media-url';
+	import type { ImageController } from '../controllers/image-controller.svelte';
 
 	const {
 		mediaList = [] as Media[],
 		currentIndex = 0,
 		handleContextMenu,
-		edgePullScale = 1,
-		edgePullTranslateX = 0,
-		edgePullTranslateY = 0,
-		/** true 时关闭 transform 过渡（手指未抬起） */
-		edgePullInstant = false
+		controller
 	}: {
 		mediaList?: Media[];
 		currentIndex?: number;
 		handleContextMenu?: (event: MouseEvent) => void;
-		edgePullScale?: number;
-		edgePullTranslateX?: number;
-		edgePullTranslateY?: number;
-		edgePullInstant?: boolean;
+		controller: ImageController;
 	} = $props();
+
+	const edgePullScale = $derived(controller.state.imageEdgePullScale);
+	const edgePullTranslateX = $derived(controller.state.imageEdgePullDx);
+	const edgePullTranslateY = $derived(controller.state.imageEdgePullDy);
+	const edgePullInstant = $derived(controller.state.isPanning);
 
 	/** 弹回时长：与 `index.svelte` 的 `IMAGE_EDGE_SPRING_MS` 一致，便于松手后整段动画再关预览、撤帖内遮罩 */
 	const EDGE_SPRING_S = 1.15;

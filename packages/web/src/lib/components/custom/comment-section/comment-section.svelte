@@ -120,6 +120,10 @@
 	let cursor = $state<string | undefined>(undefined);
 	let loading = $state(false);
 	let loadingMore = $state(false);
+	let activeCommentRowId = $state<string | null>(null);
+	let scrollY = $state(0);
+	let windowInnerHeight = $state(0);
+	let lastAutoLoadMoreAt = 0;
 	let deleteConfirmOpen = $state(false);
 	let reportConfirmOpen = $state(false);
 	let commentToDelete = $state<V1Comment | CommentWithReplies | null>(null);
@@ -241,6 +245,30 @@
 	async function loadMoreComments() {
 		await fetchComments(true);
 	}
+
+	$effect(() => {
+		if (!cursor) return;
+		if (loading || loadingMore) return;
+		if (comments.length === 0) return;
+
+		// 通过 window 滚动位置判断接近底部时自动加载（替代点击按钮）
+		const thresholdPx = 320;
+		const cooldownMs = 650;
+
+		const y = scrollY;
+		const h = windowInnerHeight;
+		if (!h) return;
+
+		const doc = document.documentElement;
+		const reachedBottom = y + h + thresholdPx >= doc.scrollHeight;
+		if (!reachedBottom) return;
+
+		const now = Date.now();
+		if (now - lastAutoLoadMoreAt < cooldownMs) return;
+		lastAutoLoadMoreAt = now;
+
+		loadMoreComments();
+	});
 
 	async function toggleOrder(type: V1CommentOrderType) {
 		if (orderType === type) return;
@@ -489,6 +517,7 @@
 
 	function handleTopLevelCommentRowClick(e: MouseEvent, comment: V1Comment) {
 		if (isInteractiveCommentClickTarget(e.target)) return;
+		activeCommentRowId = comment.commentId ?? null;
 		openReplyEditor(comment);
 	}
 
@@ -496,11 +525,13 @@
 		if (e.key !== 'Enter' && e.key !== ' ') return;
 		if (isInteractiveCommentClickTarget(e.target)) return;
 		e.preventDefault();
+		activeCommentRowId = comment.commentId ?? null;
 		openReplyEditor(comment);
 	}
 
 	function handleNestedReplyRowClick(e: MouseEvent, reply: V1Comment) {
 		if (isInteractiveCommentClickTarget(e.target)) return;
+		activeCommentRowId = reply.commentId ?? null;
 		e.stopPropagation();
 		openReplyEditor(reply);
 	}
@@ -509,8 +540,16 @@
 		if (e.key !== 'Enter' && e.key !== ' ') return;
 		if (isInteractiveCommentClickTarget(e.target)) return;
 		e.preventDefault();
+		activeCommentRowId = reply.commentId ?? null;
 		e.stopPropagation();
 		openReplyEditor(reply);
+	}
+
+	function handleDocumentClickForRowActiveState(e: MouseEvent) {
+		const el = e.target instanceof HTMLElement ? e.target : null;
+		if (!el) return;
+		if (el.closest('[data-comment-row]')) return;
+		activeCommentRowId = null;
 	}
 
 	/**
@@ -533,6 +572,9 @@
 		if (el instanceof HTMLImageElement) el.style.display = 'none';
 	}
 </script>
+
+<svelte:window bind:scrollY bind:innerHeight={windowInnerHeight} />
+<svelte:document onclick={handleDocumentClickForRowActiveState} />
 
 {#snippet commentImagesAttachments(images: V1MediaAsset[], compact: boolean)}
 	{#if images.length > 0}
@@ -627,9 +669,12 @@
 		<li class="py-3" data-comment-id={comment.commentId ?? ''}>
 			<div
 				class={cn(
-					'-mx-1 flex cursor-pointer items-start gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-zinc-100/70 dark:hover:bg-zinc-800/50',
+					'-mx-1 flex cursor-pointer items-start gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-zinc-100/70 active:bg-zinc-200/70 dark:hover:bg-zinc-800/50 dark:active:bg-zinc-700/50',
+					activeCommentRowId === (comment.commentId ?? null) &&
+						'bg-zinc-100/90 dark:bg-zinc-800/60',
 					commentRowFocusClass
 				)}
+				data-comment-row="top"
 				role="button"
 				tabindex="0"
 				aria-label="回复该评论"
@@ -772,9 +817,12 @@
 								<li data-comment-id={reply.commentId ?? ''}>
 									<div
 										class={cn(
-											'-mx-1 cursor-pointer rounded-md px-1 py-0.5 text-zinc-600 transition-colors hover:bg-zinc-100/70 dark:text-zinc-300 dark:hover:bg-zinc-800/50',
+											'-mx-1 cursor-pointer rounded-md px-1 py-0.5 text-zinc-600 transition-colors hover:bg-zinc-100/70 active:bg-zinc-200/70 dark:text-zinc-300 dark:hover:bg-zinc-800/50 dark:active:bg-zinc-700/50',
+											activeCommentRowId === (reply.commentId ?? null) &&
+												'bg-zinc-100/90 dark:bg-zinc-800/60',
 											commentRowFocusClass
 										)}
+										data-comment-row="reply"
 										role="button"
 										tabindex="0"
 										aria-label="回复该评论"
@@ -786,7 +834,7 @@
 												<a href={resolve('/app/profile')} class="shrink-0">
 													{#if reply.author?.avatar}
 														<div
-															class="size-6 shrink-0 overflow-hidden rounded-full bg-zinc-300 dark:bg-zinc-600"
+															class="size-6 shrink-0 overflow-hidden rounded-full bg-zinc-300 active:bg-zinc-200/70 dark:bg-zinc-600 dark:active:bg-zinc-700/50"
 														>
 															<img
 																class="size-6 rounded-full object-cover"
@@ -982,13 +1030,10 @@
 {/if}
 
 {#if cursor}
-	<button
-		class="w-full py-2 text-sm text-zinc-500 transition hover:text-zinc-700 disabled:opacity-50 dark:hover:text-zinc-300"
-		onclick={loadMoreComments}
-		disabled={loadingMore}
-	>
-		{loadingMore ? '加载中…' : '加载更多'}
-	</button>
+	<div class="w-full py-2 text-center text-sm text-zinc-500">
+		{loadingMore ? '加载中…' : '继续上拉加载更多'}
+		<button class="sr-only" onclick={loadMoreComments} disabled={loadingMore}>加载更多</button>
+	</div>
 {/if}
 
 <!-- 删除评论确认对话框 -->

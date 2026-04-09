@@ -4,17 +4,19 @@
 	 *
 	 * **职责**：在帖子详情、发布预览等场景放大查看 `V1MediaAsset[]`；支持左右滑动/按钮切页、视频播放控制、下载、键盘导航。
 	 *
-	 * **结构**
+	 * **目录结构（本组件族）**
 	 * | 文件 | 作用 |
 	 * |------|------|
-	 * | `index.svelte`（本文件） | 状态与手势：页码、`open`、swipe/tap/longPress、下载与倍速菜单、与 `VideoPreview` 的 play 竞态防护 |
-	 * | `Image-preview.svelte` | 多图横滑条带，仅渲染当前与相邻帧以减轻内存 |
-	 * | `Video-preview.svelte` | 单条视频的 UI 与控制条，通过 `bind:` 回传 video 节点供父组件调 play/pause |
+	 * | `index.svelte`（本文件） | 预览壳 + 手势分发 + 生命周期协调（尽量不放业务细节） |
+	 * | `views/Image-preview.svelte` | 图片视图（渲染 + transform/transition） |
+	 * | `views/Video-preview.svelte` | 视频视图（渲染 + 控制条 UI） |
+	 * | `controllers/*.svelte.ts` | 图片/视频/下载域控制器（状态机 + 动作 + 副作用绑定） |
+	 * | `gestures/*` | 手势计算纯函数 |
+	 * | `utils/*` | 动画/几何工具 fly-to-rect|
 	 *
 	 * **依赖**：展示 URL 统一经 `$lib/utils/media-url` 的 `getMediaDisplayUrl`；手势见 `$lib/modules/gesture`（含 `use:scrollBoundary`）。移动端与桌面端行为（如忽略打开后误触关闭）见文件内常量注释。
 	 */
 	import { Button } from '$lib/components/ui/button';
-	import { messageForOperationError } from '$lib/utils/operation-error-message';
 	import { toast } from 'svelte-sonner';
 	import type { V1MediaAsset as Media } from '$lib/api';
 	import { X, Download } from 'lucide-svelte';
@@ -22,9 +24,11 @@
 	import { getMediaDisplayUrl } from '$lib/utils/media-url';
 	import { isMobileUA } from '$lib/utils/device';
 	import { scrollBoundary, swipe, tap, longPress, type SwipeState } from '$lib/modules/gesture';
-	import ImagePreview from './Image-preview.svelte';
-	import VideoPreview from './Video-preview.svelte';
-	import { applyCommittedCarouselSwipe, computeImageSwipeMove } from './image-preview-swipe-logic';
+	import ImagePreview from './views/Image-preview.svelte';
+	import VideoPreview from './views/Video-preview.svelte';
+	import { createDownloadController } from './controllers/download-controller.svelte';
+	import { createVideoController } from './controllers/video-controller.svelte';
+	import { createImageController, type EdgePullMode } from './controllers/image-controller.svelte';
 
 	let {
 		open = $bindable(false),
@@ -33,10 +37,16 @@
 		autoplay = true,
 		fullScreen = true,
 		class: className = '',
-		/** 帖内媒体槽位矩形，用于图片首尾拖拽松手后飞回动画；未传则仅关闭预览 */
+		/** 帖内媒体槽位矩形，用于图片首尾拖拽松手后飞回动画；未传则仅关闭预览（兼容旧命名） */
 		getMediaSlotRect,
+		/** 更通用的 dismiss 目标矩形；若提供则优先使用 */
+		getDismissTargetRect,
+		/** 边缘拖拽模式：none 禁用图片首尾自由拖拽/回弹/飞回 */
+		edgePullMode = 'rubber-band',
 		/** 图片首尾边缘拖拽时为 true，供 post-detail 媒体区盖空白层 */
 		edgePullBlank = $bindable(false),
+		/** 更通用的边缘拖拽状态输出（复用对象，避免 move 高频分配） */
+		onEdgePullStateChange,
 		/** 关闭时回传当前索引，便于父级同步 `activeIndex` */
 		onClose
 	}: {
@@ -47,7 +57,19 @@
 		fullScreen?: boolean;
 		class?: string;
 		getMediaSlotRect?: (index: number) => DOMRect | null;
+		getDismissTargetRect?: (index: number) => DOMRect | null;
+		edgePullMode?: 'none' | 'rubber-band';
 		edgePullBlank?: boolean;
+		onEdgePullStateChange?: (state: {
+			mode: 'none' | 'rubber-band';
+			isEdgePulling: boolean;
+			dx: number;
+			dy: number;
+			dist: number;
+			scale: number;
+			backdropAlpha: number;
+			isBlank: boolean;
+		}) => void;
 		onClose?: (lastIndex: number) => void;
 	} = $props();
 
@@ -56,102 +78,24 @@
 
 	// 当前显示的媒体索引
 	let currentIndex = $state(0);
-	// 视频播放状态
-	let isVideoPlaying = $state(false);
-	// 视频播放速度
-	let playbackRate = $state(1);
-	// 视频音量
-	let volume = $state(1);
-	// 视频是否静音
-	let isMuted = $state(false);
-	// 视频控制界面是否显示（可自动隐藏）
-	let showControls = $state(true);
-	// 控制条自动隐藏定时器
-	let controlsHideTimer: ReturnType<typeof setTimeout> | null = null;
-	// 视频元素引用（由子组件绑定）
-	let videoElement: HTMLVideoElement | null = $state(null);
-	// 视频进度
-	let videoProgress = $state(0);
-	// 视频时长
-	let videoDuration = $state(0);
-	// 视频是否全屏
-	let isFullscreen = $state(false);
-	// 视频容器（用于调用浏览器 Fullscreen API，由子组件绑定）
-	let videoContainer: HTMLDivElement | null = $state(null);
-	// 视频是否正在调整进度
-	let isSeeking = $state(false);
-	// 视频缓冲/卡顿中（用于 loading 动画）
-	let isVideoBuffering = $state(false);
-	// 统一管理 play() 请求，避免 play/pause 竞态导致 AbortError
-	let playRequestSeq = 0;
-	let lastAutoplayKey: string | null = null;
-	// 下载 popover 状态
-	let downloadPopoverOpen = $state(false);
-	// 右键菜单位置
-	let contextMenuPosition = $state<{ x: number; y: number } | null>(null);
-	// 倍速选择 popover 状态
-	let playbackRatePopoverOpen = $state(false);
-	// 横向拖拽跟随（swipe 驱动）
-	let panOffsetX = $state(0);
-	/** 仅图片：自由拖拽跟手位移（任意方向） */
-	let imageEdgePullDx = $state(0);
-	let imageEdgePullDy = $state(0);
-	/** 飞回槽位动画进行中：保持 open 直至结束，避免下层媒体区提前露出 */
-	let isFlyClosing = $state(false);
-	/** 首尾边缘拖拽未达阈值：弹回收尾定时器（撤帖内遮罩等），与 `IMAGE_EDGE_SPRING_MS` 对齐 */
-	let edgeSpringCloseTimer: ReturnType<typeof setTimeout> | null = null;
-	let isPanning = $state(false);
 
-	function clearEdgeSpringCloseTimer() {
-		if (edgeSpringCloseTimer !== null) {
-			clearTimeout(edgeSpringCloseTimer);
-			edgeSpringCloseTimer = null;
-		}
-	}
+	// UI：控制条是否显示（目前仍由父组件管理；后续可继续下沉到 controller）
+	let showControls = $state(true);
+
+	// DOM refs
 	let gestureContainerEl: HTMLElement | null = $state(null);
 	let dialogEl: HTMLDivElement | null = $state(null);
+
 	// 刚打开预览后一段时间内忽略关闭（避免移动端「打开」触发的合成 click 落在预览层上误关）
 	let lastOpenedAt = 0;
 	const TAP_IGNORE_AFTER_OPEN_MS = 420;
 	const TAP_PAUSE_IGNORE_PLAY_MS = 220;
-	/** 拖拽位移超过 min(宽,高)×该比例且松手时，触发飞回槽位（仅图片） */
-	const IMAGE_EDGE_DISMISS_RATIO = 0.2;
-	/** 与 `Image-preview` 的 `EDGE_SPRING_S`（1.15s）对齐并留余量 */
-	const IMAGE_EDGE_SPRING_MS = 1150;
-	// 轻击暂停后短时间忽略播放（避免同一次触摸的合成 click 触发播放按钮）
-	let lastPausedByTapTime = 0;
-	// 长按边缘 2x 倍速：松手恢复 1x，并显示提示（与中间区域长按下载菜单互斥）
-	let isEdgeTwoSpeedActive = $state(false);
-	const EDGE_TWO_SPEED_RATIO = 0.18;
-	const EDGE_TWO_SPEED_MIN_PX = 56;
-	const EDGE_TWO_SPEED_MAX_PX = 88;
+
+	// 刚关闭下载菜单后的短时间，避免随后触发的合成 click 误关预览（仅图片模式）
+	const DOWNLOAD_MENU_CLOSED_GRACE_MS = 450;
+
 	/** 开发态：视频 2x 边缘区辅助线是否显示（默认开，仅 DEV 显示切换按钮） */
 	let devVideoEdgeGuideVisible = $state(true);
-
-	function getEdgeTwoSpeedWidthPx(containerWidth: number): number {
-		return Math.min(
-			EDGE_TWO_SPEED_MAX_PX,
-			Math.max(EDGE_TWO_SPEED_MIN_PX, containerWidth * EDGE_TWO_SPEED_RATIO)
-		);
-	}
-
-	/**
-	 * 二倍速/长按下载菜单判定统一基于“整个视频容器”，而非 video 画面本身。
-	 * 优先使用 gestureContainer，其次 videoContainer，最后 fallback。
-	 */
-	function getVideoGestureRect(fallback?: HTMLElement | null): DOMRect | null {
-		const host = gestureContainerEl ?? videoContainer ?? fallback ?? null;
-		if (!host) return null;
-		return host.getBoundingClientRect();
-	}
-
-	function isEdgeTwoSpeedZoneByClientX(clientX: number, rect: DOMRect): boolean {
-		const edgePx = getEdgeTwoSpeedWidthPx(rect.width);
-		return clientX < rect.left + edgePx || clientX > rect.right - edgePx;
-	}
-	// 刚关闭下载菜单后的短时间，避免随后触发的合成 click 误关预览（仅图片模式）
-	let lastDownloadMenuClosedAt = 0;
-	const DOWNLOAD_MENU_CLOSED_GRACE_MS = 450;
 
 	// 当前媒体
 	const currentMedia = $derived(
@@ -162,65 +106,65 @@
 	const isImage = $derived(currentMedia?.type === 'MEDIA_TYPE_IMAGE');
 	const isVideo = $derived(currentMedia?.type === 'MEDIA_TYPE_VIDEO');
 
-	/** 相对屏宽归一化拖拽量：到 1 时认为「拉到最边缘」，图几乎出屏 */
-	const IMAGE_EDGE_PULL_DENOM_RATIO = 0.95;
+	// Controllers
+	const download = createDownloadController();
+	const video = createVideoController({ isMobile: isMobileUA() });
+	let videoElement = $state<HTMLVideoElement | null>(null);
+	let videoContainer = $state<HTMLDivElement | null>(null);
 
-	const imageEdgePullDist = $derived.by(() => Math.hypot(imageEdgePullDx, imageEdgePullDy));
-
-	const imageEdgePullScale = $derived.by(() => {
-		if (!isImage || imageEdgePullDist === 0) return 1;
-		const r = gestureContainerEl?.getBoundingClientRect();
-		const w = r?.width ?? 400;
-		const h = r?.height ?? 400;
-		const denom = Math.min(w, h) * IMAGE_EDGE_PULL_DENOM_RATIO;
-		const t = Math.min(1, imageEdgePullDist / denom);
-		// 拖拽末端更小，弹回时 scale→1 更明显
-		return 1 - 0.76 * t;
+	$effect(() => {
+		video.bindings.setVideoElement(videoElement);
 	});
-	const imageEdgePullTx = $derived.by(() => {
-		if (!isImage || imageEdgePullDist === 0) return 0;
-		return imageEdgePullDx;
-	});
-	const imageEdgePullTy = $derived.by(() => {
-		if (!isImage || imageEdgePullDist === 0) return 0;
-		return imageEdgePullDy;
+	$effect(() => {
+		video.bindings.setVideoContainer(videoContainer);
 	});
 
-	/**
-	 * 全屏黑底透明度（1=纯黑）。与拖拽位移同步；松手弹回时配合 `edgePullBackdropTransition` 做 CSS 过渡，避免与图片 transform 弹回脱节。
-	 */
-	let imageEdgeBackdropAlpha = $state(1);
-	let edgePullBackdropTransition = $state(false);
+	$effect(() => {
+		return video.actions.attachBufferingListeners(
+			() => open,
+			() => isVideo
+		);
+	});
 
-	/**
-	 * @param dist - 边缘拖拽位移长度（px）
-	 * @returns 与原先 `dialogEdgeBackdropStyle` 一致的黑底 alpha
-	 */
-	function pullDistToBackdropAlpha(dist: number): number {
-		const r = gestureContainerEl?.getBoundingClientRect();
-		const w = r?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 400);
-		const h = r?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 400);
-		const denom = Math.min(w, h) * IMAGE_EDGE_PULL_DENOM_RATIO;
-		const t = Math.min(1, dist / denom);
-		return Math.max(0.04, 1 - 0.9 * t);
+	function getVideoGestureRect(fallback?: HTMLElement | null): DOMRect | null {
+		const host = gestureContainerEl ?? video.state.videoContainer ?? fallback ?? null;
+		return host?.getBoundingClientRect() ?? null;
 	}
 
-	function syncImageEdgeBackdropAlpha() {
-		if (!fullScreen || !isImage) {
-			imageEdgeBackdropAlpha = 1;
-			return;
+	function getPreviewFlySourceRect(): DOMRect | null {
+		const host = gestureContainerEl;
+		if (!host) return null;
+		const img = host.querySelector<HTMLImageElement>('[data-preview-fly-source]');
+		const r = img?.getBoundingClientRect();
+		if (!r || r.width < 2 || r.height < 2) return null;
+		return r;
+	}
+
+	const image = createImageController({
+		fullScreen: () => fullScreen,
+		isMobile: () => isMobile,
+		isImage: () => isImage,
+		mediaCount: () => mediaList.length,
+		getCurrentIndex: () => currentIndex,
+		getMediaDisplayUrl: () => (currentMedia ? getMediaDisplayUrl(currentMedia) : ''),
+		getGestureRect: () => gestureContainerEl?.getBoundingClientRect() ?? null,
+		getPreviewFlySourceRect,
+		getDismissTargetRect: () => {
+			const fn = getDismissTargetRect ?? getMediaSlotRect;
+			return fn ? fn(currentIndex) : null;
+		},
+		onRequestClose: () => handleClose(),
+		onRequestPrev: () => prevMedia(),
+		onRequestNext: () => nextMedia(),
+		onEdgePullBlankChange: (b) => {
+			edgePullBlank = b;
 		}
-		const d = Math.hypot(imageEdgePullDx, imageEdgePullDy);
-		imageEdgeBackdropAlpha = d > 0 ? pullDistToBackdropAlpha(d) : 1;
-	}
+	});
 
-	// 控制条不再自动隐藏（已取消自动隐藏功能）
-	function stopControlsHideTimer() {
-		if (controlsHideTimer) {
-			clearTimeout(controlsHideTimer);
-			controlsHideTimer = null;
-		}
-	}
+	$effect(() => {
+		image.config.setEdgePullMode(edgePullMode as EdgePullMode);
+		image.config.setOnEdgePullStateChange(onEdgePullStateChange);
+	});
 
 	function showControlsTemporarily() {
 		showControls = true;
@@ -230,6 +174,14 @@
 		toast.error(message, {
 			duration: message.length > 36 ? 4200 : 2800
 		});
+	}
+
+	async function downloadMediaWithToast(media: Media): Promise<boolean> {
+		const res = await download.actions.downloadMedia(media);
+		if (!res.ok && res.errorMessage) {
+			showDownloadError(res.errorMessage);
+		}
+		return res.ok;
 	}
 
 	// 监听 initialIndex 变化
@@ -242,22 +194,11 @@
 	// 监听 open 变化，重置状态
 	$effect(() => {
 		if (open) {
-			clearEdgeSpringCloseTimer();
-			edgePullBackdropTransition = false;
-			imageEdgeBackdropAlpha = 1;
 			lastOpenedAt = Date.now();
-			isVideoPlaying = false;
-			lastAutoplayKey = null;
-			playbackRate = 1;
 			showControls = true;
-			panOffsetX = 0;
-			imageEdgePullDx = 0;
-			imageEdgePullDy = 0;
-			isFlyClosing = false;
-			edgePullBlank = false;
-			isPanning = false;
-			isVideoBuffering = false;
-			stopControlsHideTimer();
+			download.actions.close();
+			video.actions.resetOnOpen();
+			image.actions.resetOnOpen();
 			// 让预览层获得焦点，避免空格/ESC 等键盘事件冒泡到 post-detail
 			queueMicrotask(() => {
 				// 若组件很快卸载/关闭，避免空引用
@@ -265,27 +206,9 @@
 				dialogEl?.focus?.();
 			});
 		} else {
-			// 关闭时清理定时器
-			stopControlsHideTimer();
-			// 关闭时退出全屏（如果仍处于全屏）
-			if (
-				typeof document !== 'undefined' &&
-				document.fullscreenElement &&
-				document.fullscreenElement === videoContainer
-			) {
-				document.exitFullscreen?.().catch(() => {});
-			}
-			// 关闭时暂停视频
-			if (videoElement) {
-				playRequestSeq++;
-				videoElement.pause();
-				videoElement.currentTime = 0;
-			}
-			isVideoBuffering = false;
-			// 关闭下载菜单
-			downloadPopoverOpen = false;
-			contextMenuPosition = null;
-			isEdgeTwoSpeedActive = false;
+			download.actions.close();
+			video.actions.teardownOnClose();
+			video.actions.deactivateEdgeTwoSpeed();
 		}
 	});
 
@@ -295,17 +218,14 @@
 		if (typeof document === 'undefined') return;
 
 		const closeDownloadMenuIfNeeded = (target: HTMLElement | null) => {
-			if (!downloadPopoverOpen) return;
+			if (!download.state.isOpen) return;
 			// 点击菜单内：不处理
 			if (target?.closest?.('[data-download-menu]')) return;
 			// 点击预览导航/控件：不处理（避免误关菜单导致交互突兀）
 			if (target?.closest?.('[data-preview-nav]')) return;
 			if (target?.closest?.('.video-controls')) return;
 			if (target?.closest?.('.play-button-area')) return;
-
-			downloadPopoverOpen = false;
-			contextMenuPosition = null;
-			lastDownloadMenuClosedAt = Date.now();
+			download.actions.close();
 		};
 
 		const onPointerDownCapture = (e: PointerEvent) =>
@@ -325,69 +245,14 @@
 		};
 	});
 
-	async function requestPlay() {
-		if (!open) return;
-		if (!isVideo) return;
-		if (!videoElement) return;
-		// 若菜单还开着，不在此处自动关菜单；由调用方按交互规则处理
-		const seq = ++playRequestSeq;
-		try {
-			const p = videoElement.play();
-			if (p && typeof (p as Promise<void>).then === 'function') {
-				await p;
-			}
-		} catch {
-			// 常见：NotAllowedError（自动播放被阻止）/ AbortError（被 pause 打断）
-			// 这里不向外抛，保持 UI 为暂停态即可
-			if (seq !== playRequestSeq) return;
-		}
-	}
-
-	function requestPause() {
-		if (!videoElement) return;
-		playRequestSeq++;
-		try {
-			videoElement.pause();
-		} catch {
-			// ignore
-		}
-		isVideoBuffering = false;
-		// 暂停时关闭下载菜单，避免“点别处暂停但菜单仍开着”
-		downloadPopoverOpen = false;
-		contextMenuPosition = null;
-	}
-
-	// 进入视频预览（滑动切换进入 or 直接打开就是视频）时自动尝试播放一次
+	// 进入视频预览（滑动切换进入 or 直接打开就是视频）时自动尝试播放一次（每个视频仅一次）
 	$effect(() => {
-		if (!open) return;
-		if (!autoplay) return;
-		if (!isVideo) return;
-		if (!videoElement) return;
-		// 每次切换进入某个视频时，自动播放只尝试一次（避免重复触发）
-		const key = `${currentMedia?.assetId ?? currentIndex}`;
-		if (lastAutoplayKey === key) return;
-		lastAutoplayKey = key;
-		showControls = true;
-		requestPlay();
+		video.actions.syncAutoplay(open, autoplay, currentIndex, currentMedia);
 	});
 
 	function stopCurrentVideoBeforeSwitch() {
-		const el = videoElement;
-		if (el) {
-			// 终止潜在的异步 play 请求，并立即暂停当前正在播放的视频
-			playRequestSeq++;
-			try {
-				el.pause();
-			} catch {
-				// ignore
-			}
-			el.currentTime = 0;
-			el.playbackRate = 1;
-		}
-		isVideoPlaying = false;
-		isVideoBuffering = false;
-		isEdgeTwoSpeedActive = false;
-		playbackRate = 1;
+		video.actions.stopBeforeSwitch();
+		video.actions.deactivateEdgeTwoSpeed();
 		showControls = true;
 	}
 
@@ -455,125 +320,19 @@
 		setTimeout(cleanup, MAX_MS + 60);
 	}
 
-	/** 关闭预览；飞回流程在 {@link flyImageCloseToSlot} 结束处调用 */
+	/** 关闭预览 */
 	function handleClose() {
-		clearEdgeSpringCloseTimer();
-		edgePullBackdropTransition = false;
-		imageEdgeBackdropAlpha = 1;
+		download.actions.close();
+		video.actions.deactivateEdgeTwoSpeed();
 		blockClickThroughOnce();
 		onClose?.(currentIndex);
 		open = false;
-		isFlyClosing = false;
 		edgePullBlank = false;
-		imageEdgePullDx = 0;
-		imageEdgePullDy = 0;
-	}
-
-	/**
-	 * 全屏预览内当前帧图片在视口中的显示矩形（`object-fit: contain` 后的真实框，非 gesture 容器）。
-	 *
-	 * @returns 无节点或尺寸无效时 null
-	 */
-	function getPreviewFlySourceRect(): DOMRect | null {
-		const host = gestureContainerEl;
-		if (!host) return null;
-		const img = host.querySelector<HTMLImageElement>('[data-preview-fly-source]');
-		const r = img?.getBoundingClientRect();
-		if (!r || r.width < 2 || r.height < 2) return null;
-		return r;
-	}
-
-	/**
-	 * 图片边缘拖拽达到阈值：先记录几何 → 隐藏全屏层但保持 open → 飞行动画结束后再 handleClose（帖内空白与预览同时撤）
-	 *
-	 * @returns Promise，动画结束或降级关闭后 resolve
-	 */
-	function flyImageCloseToSlot(): Promise<void> {
-		clearEdgeSpringCloseTimer();
-		const media = currentMedia;
-		const idx = currentIndex;
-		const host = gestureContainerEl;
-		if (!media || media.type !== 'MEDIA_TYPE_IMAGE' || !host || typeof document === 'undefined') {
-			handleClose();
-			return Promise.resolve();
-		}
-		const fromRect = getPreviewFlySourceRect() ?? host.getBoundingClientRect();
-		const src = getMediaDisplayUrl(media);
-
-		isFlyClosing = true;
-		imageEdgePullDx = 0;
-		imageEdgePullDy = 0;
-
-		if (!getMediaSlotRect) {
-			isFlyClosing = false;
-			handleClose();
-			return Promise.resolve();
-		}
-
-		const FLY_MS = 520;
-
-		return new Promise((resolve) => {
-			requestAnimationFrame(() => {
-				const toRect = getMediaSlotRect(idx);
-				if (!toRect || toRect.width < 4 || toRect.height < 4) {
-					isFlyClosing = false;
-					handleClose();
-					resolve();
-					return;
-				}
-				const img = document.createElement('img');
-				img.src = src;
-				img.decoding = 'async';
-				img.style.position = 'fixed';
-				img.style.left = `${fromRect.left}px`;
-				img.style.top = `${fromRect.top}px`;
-				img.style.width = `${fromRect.width}px`;
-				img.style.height = `${fromRect.height}px`;
-				img.style.objectFit = 'contain';
-				img.style.zIndex = '9999';
-				img.style.pointerEvents = 'none';
-				img.style.transition = 'none';
-				img.style.borderRadius = '0';
-				document.body.appendChild(img);
-				void img.offsetWidth;
-				img.style.transition = `left ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), top ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), width ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), height ${FLY_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.42s ease`;
-				img.style.left = `${toRect.left}px`;
-				img.style.top = `${toRect.top}px`;
-				img.style.width = `${toRect.width}px`;
-				img.style.height = `${toRect.height}px`;
-				let finished = false;
-				const done = () => {
-					if (finished) return;
-					finished = true;
-					img.remove();
-					handleClose();
-					resolve();
-				};
-				img.addEventListener('transitionend', done, { once: true });
-				setTimeout(done, FLY_MS + 80);
-			});
-		});
+		showControls = true;
 	}
 
 	function openDownloadMenuAtPoint(x: number, y: number) {
-		const menuWidth = 192; // w-48 = 12rem = 192px
-		const menuHeight = 100; // 估算菜单高度
-		const padding = 8; // 边距
-
-		let adjustedX = x;
-		let adjustedY = y;
-
-		// 检测右边界
-		if (adjustedX + menuWidth + padding > window.innerWidth) {
-			adjustedX = window.innerWidth - menuWidth - padding;
-		}
-		// 检测下边界
-		if (adjustedY + menuHeight + padding > window.innerHeight) {
-			adjustedY = window.innerHeight - menuHeight - padding;
-		}
-
-		contextMenuPosition = { x: adjustedX, y: adjustedY };
-		downloadPopoverOpen = true;
+		download.actions.openAtPoint(x, y);
 	}
 
 	// 统一轻击逻辑（含 PC click / 移动端 tap）：
@@ -588,30 +347,18 @@
 		if (el?.closest('.play-button-area')) return;
 		// 点击小圆点/左右切换按钮等导航区只切换内容，不关闭预览
 		if (el?.closest('[data-preview-nav]')) return;
-		if (downloadPopoverOpen) {
-			downloadPopoverOpen = false;
-			contextMenuPosition = null;
-			lastDownloadMenuClosedAt = Date.now();
+		if (download.state.isOpen) {
+			download.actions.close();
 			return;
 		}
 		// 视频：轻击切换播放/暂停（不关闭预览）
 		if (isVideo) {
-			if (isVideoPlaying) {
-				lastPausedByTapTime = Date.now();
-				requestPause();
-				showControlsTemporarily();
-			} else {
-				if (Date.now() - lastPausedByTapTime < TAP_PAUSE_IGNORE_PLAY_MS) {
-					lastPausedByTapTime = 0;
-					return;
-				}
-				requestPlay();
-				showControlsTemporarily();
-			}
+			video.actions.togglePlay(TAP_PAUSE_IGNORE_PLAY_MS);
+			showControlsTemporarily();
 			return;
 		}
 		// 图片：刚关闭下载菜单后的短时间不关预览，避免合成 click 误关
-		if (Date.now() - lastDownloadMenuClosedAt < DOWNLOAD_MENU_CLOSED_GRACE_MS) return;
+		if (Date.now() - download.state.lastClosedAt < DOWNLOAD_MENU_CLOSED_GRACE_MS) return;
 		// 刚打开后忽略：避免移动端「打开」产生的合成 click 落在预览层上误关
 		if (Date.now() - lastOpenedAt < TAP_IGNORE_AFTER_OPEN_MS) return;
 		handleClose();
@@ -620,88 +367,13 @@
 	// 同一交互层上 swipe + tap + long-press
 	const swipeOptions = $derived.by(() => ({
 		onStart() {
-			const hadPendingSettle = edgeSpringCloseTimer !== null;
-			clearEdgeSpringCloseTimer();
-			edgePullBackdropTransition = false;
-			if (hadPendingSettle) {
-				edgePullBlank = false;
-			}
-			isPanning = true;
-			imageEdgePullDx = 0;
-			imageEdgePullDy = 0;
-			syncImageEdgeBackdropAlpha();
+			image.actions.onSwipeStart();
 		},
 		onMove(state: SwipeState) {
-			const w = gestureContainerEl?.getBoundingClientRect?.().width ?? 400;
-			const m = computeImageSwipeMove({
-				deltaX: state.deltaX,
-				deltaY: state.deltaY,
-				containerWidth: w,
-				currentIndex,
-				mediaCount: mediaList.length,
-				isMobile,
-				isImage
-			});
-			panOffsetX = m.panOffsetX;
-			imageEdgePullDx = m.imageEdgePullDx;
-			imageEdgePullDy = m.imageEdgePullDy;
-			edgePullBlank = m.edgePullBlank;
-			syncImageEdgeBackdropAlpha();
+			image.actions.onSwipeMove(state);
 		},
 		onEnd(state: SwipeState) {
-			const rect = gestureContainerEl?.getBoundingClientRect();
-			const w = rect?.width ?? 400;
-			const h = rect?.height ?? 400;
-			const minDim = Math.min(w, h);
-			const pdx = imageEdgePullDx;
-			const pdy = imageEdgePullDy;
-			const pullDist = Math.hypot(pdx, pdy);
-			const thresholdPx = minDim * IMAGE_EDGE_DISMISS_RATIO;
-			const wasImageFreePull = isImage && edgePullBlank;
-
-			if (wasImageFreePull) {
-				panOffsetX = 0;
-				if (pullDist >= thresholdPx) {
-					isPanning = false;
-					imageEdgePullDx = 0;
-					imageEdgePullDy = 0;
-					syncImageEdgeBackdropAlpha();
-					void flyImageCloseToSlot();
-					return;
-				}
-				// 未达飞回阈值：弹回后保持全屏；仅撤帖内遮罩（与 `IMAGE_EDGE_SPRING_MS` 对齐）
-				isPanning = false;
-				edgePullBackdropTransition = true;
-				requestAnimationFrame(() => {
-					imageEdgePullDx = 0;
-					imageEdgePullDy = 0;
-					requestAnimationFrame(() => {
-						imageEdgeBackdropAlpha = 1;
-					});
-					clearEdgeSpringCloseTimer();
-					edgeSpringCloseTimer = setTimeout(() => {
-						edgeSpringCloseTimer = null;
-						edgePullBackdropTransition = false;
-						edgePullBlank = false;
-					}, IMAGE_EDGE_SPRING_MS);
-				});
-				return;
-			}
-
-			isPanning = false;
-			imageEdgePullDx = 0;
-			imageEdgePullDy = 0;
-			edgePullBlank = false;
-			syncImageEdgeBackdropAlpha();
-
-			// 首尾横向橡皮筋：committed 不代表「退出预览」，仅在有邻页时才 prev/next（否则会误调 `prevMedia`/`nextMedia` 内的 `handleClose`）
-			applyCommittedCarouselSwipe(state, {
-				mediaCount: mediaList.length,
-				currentIndex,
-				onPrev: prevMedia,
-				onNext: nextMedia
-			});
-			panOffsetX = 0;
+			image.actions.onSwipeEnd(state);
 		}
 	}));
 
@@ -725,183 +397,20 @@
 		excludeSelector: '.video-controls',
 		touchOnly: true,
 		onPress(e: { x: number; clientX: number; clientY: number; currentTarget: HTMLElement }) {
-			if (downloadPopoverOpen) return;
+			if (download.state.isOpen) return;
 			const rect = getVideoGestureRect(e.currentTarget);
 			if (isVideo) {
-				if (rect && isEdgeTwoSpeedZoneByClientX(e.clientX, rect)) {
-					isEdgeTwoSpeedActive = true;
-					changePlaybackRate(2);
+				if (rect && video.actions.tryActivateEdgeTwoSpeed(e.clientX, rect)) {
 					return;
 				}
 				showControls = true;
 			}
 			openDownloadMenuAtPoint(e.clientX, e.clientY);
-			lastPausedByTapTime = Date.now();
 		},
 		onPressUp() {
-			if (isEdgeTwoSpeedActive) {
-				isEdgeTwoSpeedActive = false;
-				changePlaybackRate(1);
-			}
+			video.actions.deactivateEdgeTwoSpeed();
 		}
 	}));
-
-	// 视频播放控制
-	function togglePlay() {
-		if (isVideoPlaying) {
-			requestPause();
-			showControlsTemporarily();
-		} else {
-			if (Date.now() - lastPausedByTapTime < TAP_PAUSE_IGNORE_PLAY_MS) {
-				lastPausedByTapTime = 0;
-				return;
-			}
-			requestPlay();
-			showControlsTemporarily();
-		}
-	}
-
-	function handleVideoPlay() {
-		if (videoElement) {
-			videoElement.playbackRate = playbackRate;
-		}
-		isVideoPlaying = true;
-		isVideoBuffering = false;
-		showControlsTemporarily();
-	}
-
-	function handleVideoPause() {
-		isVideoPlaying = false;
-		isVideoBuffering = false;
-		showControls = true;
-		stopControlsHideTimer();
-	}
-
-	function handleVideoTimeUpdate() {
-		if (videoElement && !isSeeking) {
-			// 避免 videoDuration 还没就绪时出现 0/0 导致 NaN
-			if (videoDuration > 0) {
-				videoProgress = videoElement.currentTime / videoDuration;
-			} else {
-				videoProgress = 0;
-			}
-		}
-	}
-
-	function handleVideoLoadedMetadata() {
-		if (videoElement) {
-			// 元数据就绪后，更新总时长并同步当前进度
-			videoDuration = videoElement.duration || 0;
-			videoProgress = videoDuration > 0 ? videoElement.currentTime / videoDuration : 0;
-			// 应用当前的播放速度
-			videoElement.playbackRate = playbackRate;
-			// 同步当前音量
-			videoElement.volume = volume;
-			videoElement.muted = isMuted;
-		}
-	}
-
-	function handleProgressChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		if (videoElement) {
-			const newTime = parseFloat(target.value) * videoDuration;
-			videoElement.currentTime = newTime;
-			videoProgress = parseFloat(target.value);
-		}
-	}
-
-	function handleProgressMouseDown() {
-		isSeeking = true;
-	}
-
-	function handleProgressMouseUp() {
-		isSeeking = false;
-	}
-
-	function toggleMute() {
-		if (!videoElement) return;
-		isMuted = !isMuted;
-		videoElement.muted = isMuted;
-	}
-
-	function handleVolumeChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		volume = parseFloat(target.value);
-		if (videoElement) {
-			videoElement.volume = volume;
-			isMuted = volume === 0;
-		}
-	}
-
-	function changePlaybackRate(rate: number) {
-		playbackRate = rate;
-		if (videoElement) {
-			videoElement.playbackRate = rate;
-		}
-		playbackRatePopoverOpen = false;
-	}
-
-	function toggleFullscreen() {
-		if (!isVideo) return;
-		if (typeof document === 'undefined') return;
-
-		// 移动端优先使用容器全屏，保留自定义 UI
-		if (isMobile && videoElement) {
-			// iOS Safari 优先尝试容器全屏（保留自定义控件）
-			const videoEl = videoElement as HTMLVideoElement & {
-				webkitEnterFullscreen?: () => void;
-			};
-
-			// 先尝试标准全屏 API
-			const containerEl = videoContainer;
-			if (containerEl && containerEl.requestFullscreen) {
-				containerEl.requestFullscreen().catch(() => {
-					// 如果标准 API 失败，回退到 video 元素全屏
-					if (videoEl.webkitEnterFullscreen) {
-						videoEl.webkitEnterFullscreen();
-						isFullscreen = true;
-						showControls = true;
-					}
-				});
-				showControls = true;
-				return;
-			}
-
-			// 回退到 video 元素全屏
-			if (videoEl.webkitEnterFullscreen) {
-				videoEl.webkitEnterFullscreen();
-				isFullscreen = true;
-				showControls = true;
-				return;
-			}
-		}
-
-		const el = videoContainer;
-		if (!el) return;
-
-		// 若已在全屏，退出；否则对“容器”进入全屏（而非 video），以保留自定义 UI
-		if (document.fullscreenElement && document.fullscreenElement === el) {
-			document.exitFullscreen?.().catch(() => {});
-			return;
-		}
-
-		const fullscreenTarget: HTMLElement & {
-			webkitRequestFullscreen?: () => Promise<void> | void;
-			mozRequestFullScreen?: () => Promise<void> | void;
-			msRequestFullscreen?: () => Promise<void> | void;
-		} = el;
-
-		const request =
-			el.requestFullscreen?.bind(el) ||
-			fullscreenTarget.webkitRequestFullscreen?.bind(fullscreenTarget) ||
-			fullscreenTarget.mozRequestFullScreen?.bind(fullscreenTarget) ||
-			fullscreenTarget.msRequestFullscreen?.bind(fullscreenTarget);
-
-		if (request) {
-			Promise.resolve(request()).catch(() => {});
-			showControls = true;
-		}
-	}
 
 	function handleDialogKeyDown(e: KeyboardEvent) {
 		// 忽略如果用户在输入框中
@@ -929,8 +438,7 @@
 				if (!isVideo) return;
 				e.preventDefault();
 				e.stopPropagation();
-				if (isVideoPlaying) requestPause();
-				else requestPlay();
+				video.actions.togglePlay(TAP_PAUSE_IGNORE_PLAY_MS);
 				showControlsTemporarily();
 				return;
 		}
@@ -941,14 +449,8 @@
 		if (!open) return;
 		if (typeof document === 'undefined') return;
 
-		// 监听全屏变化（ESC/系统退出也会触发），同步 isFullscreen
 		const handleFullscreenChange = () => {
-			const isFs =
-				typeof document !== 'undefined' &&
-				!!document.fullscreenElement &&
-				document.fullscreenElement === videoContainer;
-			isFullscreen = isFs;
-			// 退出全屏时，确保控制条仍可见（避免状态错乱）
+			video.actions.handleFullscreenChange();
 			showControls = true;
 		};
 
@@ -980,156 +482,12 @@
 		};
 	});
 
-	// 缓冲/卡顿检测：waiting/stalled 时展示 loading，canplay/playing 时隐藏
-	$effect(() => {
-		const el = videoElement;
-		if (!el) return;
-
-		const setBuffering = (v: boolean) => {
-			// 只在当前媒体为视频且处于打开状态时更新，避免切走后闪烁
-			if (!open || !isVideo) return;
-			isVideoBuffering = v;
-		};
-
-		const onWaiting = () => setBuffering(true);
-		const onStalled = () => setBuffering(true);
-		const onSeeking = () => setBuffering(true);
-		const onSeeked = () => setBuffering(false);
-		const onCanPlay = () => setBuffering(false);
-		const onPlaying = () => setBuffering(false);
-		const onPause = () => setBuffering(false);
-
-		el.addEventListener('waiting', onWaiting);
-		el.addEventListener('stalled', onStalled);
-		el.addEventListener('seeking', onSeeking);
-		el.addEventListener('seeked', onSeeked);
-		el.addEventListener('canplay', onCanPlay);
-		el.addEventListener('playing', onPlaying);
-		el.addEventListener('pause', onPause);
-
-		return () => {
-			el.removeEventListener('waiting', onWaiting);
-			el.removeEventListener('stalled', onStalled);
-			el.removeEventListener('seeking', onSeeking);
-			el.removeEventListener('seeked', onSeeked);
-			el.removeEventListener('canplay', onCanPlay);
-			el.removeEventListener('playing', onPlaying);
-			el.removeEventListener('pause', onPause);
-		};
-	});
-
-	// 视频控制界面点击
-	function handleControlsClick(event: MouseEvent) {
-		event.stopPropagation();
-		showControls = true;
-	}
-
-	// 下载单个媒体文件
-	async function downloadMedia(media: Media): Promise<boolean> {
-		// 获取媒体 URL（已适配新媒体资产结构）
-		const mediaUrl = getMediaDisplayUrl(media);
-		if (!mediaUrl) {
-			showDownloadError('下载失败：媒体文件不存在');
-			return false;
-		}
-
-		const isCrossOrigin = (() => {
-			try {
-				if (typeof window === 'undefined') return true;
-				return new URL(mediaUrl, window.location.href).origin !== window.location.origin;
-			} catch {
-				return true;
-			}
-		})();
-
-		// 根据媒体类型设置文件名
-		const isMediaImage = media.type === 'MEDIA_TYPE_IMAGE';
-		const extension = isMediaImage ? 'jpg' : 'mp4';
-		const fileId =
-			media.single?.fileId ??
-			media.livePhoto?.image?.fileId ??
-			media.livePhoto?.video?.fileId ??
-			Date.now().toString();
-		const filename = `media_${fileId}.${extension}`;
-
-		// 首先尝试使用 fetch 下载（适用于同源或已配置 CORS 的资源）
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
-		try {
-			const headers = new Headers();
-			// 媒体可能走后端鉴权域名；与 hey-api 一致，从 localStorage 注入 Bearer token
-			if (typeof window !== 'undefined') {
-				const token = localStorage.getItem('token');
-				if (token) headers.set('Authorization', `Bearer ${token}`);
-			}
-
-			const response = await fetch(mediaUrl, {
-				mode: 'cors',
-				credentials: 'omit',
-				headers,
-				signal: controller.signal
-			});
-
-			clearTimeout(timeoutId);
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			const blob = await response.blob();
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = filename;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			window.URL.revokeObjectURL(url);
-			return true; // 成功下载
-		} catch (fetchError) {
-			clearTimeout(timeoutId);
-			console.warn('Fetch 下载失败，尝试直接链接下载', fetchError);
-
-			// Fallback: 使用 <a download> 直接链接下载（需同源或服务器支持）
-			try {
-				const a = document.createElement('a');
-				a.href = mediaUrl;
-				// 跨域资源在大多数浏览器中会忽略 download 属性；视频也常被直接打开播放而非下载。
-				// 同源/已允许下载时保留 download；跨域时让浏览器自行处理（打开新页/系统菜单保存）。
-				if (!isCrossOrigin) {
-					a.download = filename;
-				}
-				a.target = '_blank';
-				a.rel = 'noopener';
-				document.body.appendChild(a);
-				a.click();
-				document.body.removeChild(a);
-
-				// fetch 失败且跨域：提示用户该限制（避免“显示成功但实际没下载”的困惑）
-				if (isCrossOrigin) {
-					showDownloadError('由于跨域/鉴权限制，浏览器无法直接下载该视频。已尝试在新页面打开。');
-					return false;
-				}
-				return true;
-			} catch (linkError) {
-				console.error('直接链接下载也失败', linkError);
-				showDownloadError(
-					messageForOperationError(
-						linkError,
-						'下载失败：可能是跨域(CORS)/鉴权/网络限制导致。请尝试长按保存，或在新页面打开后使用浏览器菜单下载。'
-					)
-				);
-				return false;
-			}
-		}
-	}
-
 	// 下载当前媒体
 	function handleDownloadCurrent() {
 		if (currentMedia) {
-			void downloadMedia(currentMedia);
+			void downloadMediaWithToast(currentMedia);
 		}
-		downloadPopoverOpen = false;
+		download.actions.close();
 	}
 
 	// 下载全部媒体
@@ -1140,7 +498,7 @@
 
 		for (let i = 0; i < mediaList.length; i++) {
 			const media = mediaList[i];
-			const success = await downloadMedia(media);
+			const success = await downloadMediaWithToast(media);
 			if (!success) {
 				failCount++;
 				// 失败时继续统计，最终汇总提示
@@ -1154,7 +512,7 @@
 		if (failCount > 0) {
 			showDownloadError(`${failCount} 个文件下载失败，请重试或改为逐个保存`);
 		}
-		downloadPopoverOpen = false;
+		download.actions.close();
 	}
 
 	// 处理右键菜单
@@ -1163,11 +521,7 @@
 		// 移动端长按 video 触发 contextmenu 时，也必须与边缘二倍速逻辑保持一致
 		if (isMobile && isVideo) {
 			const rect = getVideoGestureRect(event.currentTarget as HTMLElement | null);
-			if (rect && isEdgeTwoSpeedZoneByClientX(event.clientX, rect)) {
-				if (!isEdgeTwoSpeedActive) {
-					isEdgeTwoSpeedActive = true;
-					changePlaybackRate(2);
-				}
+			if (rect && video.actions.tryActivateEdgeTwoSpeed(event.clientX, rect)) {
 				return;
 			}
 		}
@@ -1179,7 +533,7 @@
 		e.stopPropagation();
 		// 控制栏下载：直接下载当前媒体（视频）
 		if (currentMedia) {
-			void downloadMedia(currentMedia);
+			void downloadMediaWithToast(currentMedia);
 		}
 	}
 </script>
@@ -1194,12 +548,12 @@
 			'fixed inset-0 z-60 flex flex-col items-center justify-center',
 			fullScreen && !isImage ? 'bg-black' : '',
 			!fullScreen ? 'bg-zinc-100' : '',
-			isFlyClosing && 'pointer-events-none opacity-0',
+			image.state.isFlyClosing && 'pointer-events-none opacity-0',
 			className
 		)}
 		style={fullScreen && isImage
-			? `background-color: rgba(0,0,0,${imageEdgeBackdropAlpha});${
-					edgePullBackdropTransition
+			? `background-color: rgba(0,0,0,${image.state.imageEdgeBackdropAlpha});${
+					image.state.edgePullBackdropTransition
 						? 'transition: background-color 1.15s cubic-bezier(0.2, 0.92, 0.35, 1);'
 						: ''
 				}`
@@ -1207,7 +561,7 @@
 		onkeydown={handleDialogKeyDown}
 	>
 		<!-- 关闭按钮 -->
-		<div class={cn('absolute top-4 left-4', isVideo && isFullscreen ? 'z-70' : 'z-10')}>
+		<div class={cn('absolute top-4 left-4', isVideo && video.state.isFullscreen ? 'z-70' : 'z-10')}>
 			<Button
 				variant="ghost"
 				size="icon"
@@ -1233,7 +587,7 @@
 				use:tap={tapOptions}
 			>
 				{#if import.meta.env.DEV && isVideo}
-					{@const edgeDebugPx = getEdgeTwoSpeedWidthPx(
+					{@const edgeDebugPx = video.actions.getEdgeTwoSpeedWidthPx(
 						gestureContainerEl?.getBoundingClientRect().width ??
 							videoContainer?.getBoundingClientRect().width ??
 							0
@@ -1266,49 +620,20 @@
 				{/if}
 				<div
 					class="h-full w-full"
-					style={`transform: translateX(${panOffsetX}px); transition: ${isPanning ? 'none' : 'transform 0.25s ease-out'};`}
+					style={`transform: translateX(${image.state.panOffsetX}px); transition: ${image.state.isPanning ? 'none' : 'transform 0.25s ease-out'};`}
 				>
 					{#if isImage}
 						<!-- 图片 -->
-						<ImagePreview
-							{mediaList}
-							{currentIndex}
-							{handleContextMenu}
-							edgePullScale={imageEdgePullScale}
-							edgePullTranslateX={imageEdgePullTx}
-							edgePullTranslateY={imageEdgePullTy}
-							edgePullInstant={isPanning}
-						/>
+						<ImagePreview {mediaList} {currentIndex} {handleContextMenu} controller={image} />
 					{:else if isVideo}
 						<!-- 视频 -->
 						<VideoPreview
 							{mediaList}
 							{currentIndex}
 							{currentMedia}
-							{isVideoPlaying}
-							{isVideoBuffering}
-							{isFullscreen}
 							{isMobile}
 							{showControls}
-							{playbackRate}
-							{videoProgress}
-							{videoDuration}
-							{volume}
-							{isMuted}
-							{playbackRatePopoverOpen}
-							{handleVideoPlay}
-							{handleVideoPause}
-							{handleVideoTimeUpdate}
-							{handleVideoLoadedMetadata}
-							{togglePlay}
-							{handleControlsClick}
-							{handleProgressChange}
-							{handleProgressMouseDown}
-							{handleProgressMouseUp}
-							{toggleMute}
-							{handleVolumeChange}
-							{changePlaybackRate}
-							{toggleFullscreen}
+							controller={video}
 							onDownloadClick={handleControlsDownloadClick}
 							{handleContextMenu}
 							bind:videoElement
@@ -1318,7 +643,7 @@
 				</div>
 
 				<!-- 左右切换按钮（仅在有多张媒体时显示，且非视频全屏状态） -->
-				{#if mediaList.length > 1 && !(isVideo && isFullscreen)}
+				{#if mediaList.length > 1 && !(isVideo && video.state.isFullscreen)}
 					<!-- 上一张 -->
 					<button
 						data-preview-nav
@@ -1326,18 +651,18 @@
 							'absolute top-1/2 left-4 z-10 -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-white transition-all hover:scale-110 hover:bg-black/60',
 							'hidden opacity-60 group-hover:opacity-100 md:block',
 							currentIndex === 0 &&
-								!(isVideo && isVideoPlaying) &&
+								!(isVideo && video.state.isVideoPlaying) &&
 								'cursor-not-allowed opacity-30 hover:scale-100'
 						)}
 						onclick={(e) => {
 							e.stopPropagation();
-							if (currentIndex > 0 || (isVideo && isVideoPlaying)) {
+							if (currentIndex > 0 || (isVideo && video.state.isVideoPlaying)) {
 								prevMedia();
 							}
 						}}
 						aria-label="上一张"
 						type="button"
-						disabled={currentIndex === 0 && !(isVideo && isVideoPlaying)}
+						disabled={currentIndex === 0 && !(isVideo && video.state.isVideoPlaying)}
 					>
 						<svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -1356,18 +681,19 @@
 							'absolute top-1/2 right-4 z-10 hidden -translate-y-1/2 cursor-pointer rounded-full bg-black/40 p-2 text-white transition-all hover:scale-110 hover:bg-black/60 md:block',
 							'opacity-60 group-hover:opacity-100',
 							currentIndex === mediaList.length - 1 &&
-								!(isVideo && isVideoPlaying) &&
+								!(isVideo && video.state.isVideoPlaying) &&
 								'cursor-not-allowed opacity-30 hover:scale-100'
 						)}
 						onclick={(e) => {
 							e.stopPropagation();
-							if (currentIndex < mediaList.length - 1 || (isVideo && isVideoPlaying)) {
+							if (currentIndex < mediaList.length - 1 || (isVideo && video.state.isVideoPlaying)) {
 								nextMedia();
 							}
 						}}
 						aria-label="下一张"
 						type="button"
-						disabled={currentIndex === mediaList.length - 1 && !(isVideo && isVideoPlaying)}
+						disabled={currentIndex === mediaList.length - 1 &&
+							!(isVideo && video.state.isVideoPlaying)}
 					>
 						<svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -1420,13 +746,13 @@
 	</div>
 
 	<!-- 下载菜单 -->
-	{#if downloadPopoverOpen && contextMenuPosition}
+	{#if download.state.isOpen && download.state.position}
 		<div
 			data-download-menu
 			role="menu"
 			tabindex="-1"
 			class="fixed z-70 w-48 rounded-md border bg-popover p-2 text-popover-foreground shadow-md"
-			style={`left: ${contextMenuPosition.x}px; top: ${contextMenuPosition.y}px;`}
+			style={`left: ${download.state.position.x}px; top: ${download.state.position.y}px;`}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 		>
@@ -1444,7 +770,7 @@
 	{/if}
 
 	<!-- 长按边缘二倍速提示（松手即恢复 1x） -->
-	{#if isEdgeTwoSpeedActive}
+	{#if video.state.isEdgeTwoSpeedActive}
 		<div
 			class="fixed top-1/3 left-1/2 z-70 -translate-x-1/2 rounded-lg bg-black/80 px-4 py-2 text-sm text-white shadow-lg"
 			role="status"

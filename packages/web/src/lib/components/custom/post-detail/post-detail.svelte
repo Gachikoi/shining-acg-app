@@ -27,7 +27,7 @@
 	 * | `postId` | 与 `post` 互斥；会触发加载态与错误展示 |
 	 * | `showComments` | 是否挂载评论区 |
 	 * | `api` | `PostDetailApi` 实现，便于 Mock/E2E |
-	 * | `onClose` | 关闭按钮、遮罩、ESC；是否卸载由父级决定 |
+	 * | `onClose` | 关闭按钮、点全屏透明层（卡片外）、ESC；是否卸载由父级决定 |
 	 */
 
 	import { resolve } from '$app/paths';
@@ -43,6 +43,7 @@
 	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { breakpoint } from '$lib/modules/device';
 	import { tap } from '$lib/modules/gesture';
 	import { buildPrepareUploadParams, createMediaUploader } from '$lib/modules/media-uploader';
 	import { cn } from '$lib/utils';
@@ -50,7 +51,7 @@
 	import { messageForOperationError } from '$lib/utils/operation-error-message';
 	import { Heart, LoaderCircle, MessageCircle, Share, Star, X } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
-	import { fly } from 'svelte/transition';
+	import type { Action } from 'svelte/action';
 	import { createRealPostDetailApi, type PostDetailApi, type UserFollowStatus } from './api';
 	const defaultApi = createRealPostDetailApi({
 		uploadCommentMedia: (files) => uploadCommentMedia(files)
@@ -58,6 +59,22 @@
 
 	/** 点赞/收藏 zoom 动画最短展示时间，与评论区一致 */
 	const LIKE_FEEDBACK_MIN_MS = 420;
+
+	/** 移动端：非 passive 的 touch 拦截，避免穿透到评论区（iOS 等上仅靠 pointer 不够时） */
+	const commentEditorOverlayTouchGuard: Action<HTMLElement> = (node) => {
+		const block = (e: TouchEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
+		};
+		node.addEventListener('touchstart', block, { passive: false, capture: true });
+		node.addEventListener('touchmove', block, { passive: false, capture: true });
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', block, true);
+				node.removeEventListener('touchmove', block, true);
+			}
+		};
+	};
 
 	let {
 		post: initialPost,
@@ -329,8 +346,12 @@
 	let commentEditorOpen = $state(false);
 	let commentReplyTo = $state<V1Comment | null>(null);
 	let commentEditorKeyboardInset = $state(0);
+	/** 键盘弹出后再播入场（窄屏）；避免 inset 仍为 0 时动画与最终位置错位 */
+	let commentEditorVisualReady = $state(false);
+	/** 窄屏：已决定揭示（inset>0 或超时），避免 visualViewport 连续触发 effect 时反复 cancel rAF */
+	let commentEditorNarrowRevealLocked = $state(false);
+	let commentEditorCloseTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 	let commentEditorPanelEl = $state<HTMLElement | null>(null);
-	let commentEditorTriggerEl = $state<HTMLElement | null>(null);
 	const commentMediaUploader = createMediaUploader();
 
 	function getDisplayedContent() {
@@ -376,22 +397,55 @@
 	});
 
 	function openCommentEditor(target: V1Comment | null = null) {
+		if (commentEditorCloseTimer) {
+			clearTimeout(commentEditorCloseTimer);
+			commentEditorCloseTimer = null;
+		}
+		commentEditorNarrowRevealLocked = false;
 		commentReplyTo = target;
 		commentEditorOpen = true;
 	}
 
 	function closeCommentEditor() {
-		commentEditorOpen = false;
-		commentReplyTo = null;
+		if (!commentEditorOpen) return;
+		commentEditorVisualReady = false;
+		if (commentEditorCloseTimer) clearTimeout(commentEditorCloseTimer);
+		commentEditorCloseTimer = setTimeout(() => {
+			commentEditorCloseTimer = null;
+			commentEditorOpen = false;
+			commentReplyTo = null;
+		}, 360);
 	}
 
-	function handleContentAreaPointerDown(event: PointerEvent) {
+	function handleDocumentKeyDownCapture(event: KeyboardEvent) {
 		if (!commentEditorOpen) return;
-		const target = event.target as Node | null;
-		if (!target) return;
-		if (commentEditorPanelEl?.contains(target)) return;
-		if (commentEditorTriggerEl?.contains(target)) return;
+		if (event.key !== 'Escape') return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation?.();
 		closeCommentEditor();
+	}
+
+	/**
+	 * 评论编辑器遮罩（仅盖住右侧文本/评论区列）：pointer 关闭；pointerup 里用 setTimeout(0) 再关，
+	 * 让浏览器先派发完本次手势对应的 click（目标仍为遮罩），避免移动端卸遮罩后幽灵点到评论区。
+	 */
+	function handleCommentEditorOverlayPointerDown(event: PointerEvent) {
+		if (!commentEditorOpen) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation?.();
+		const pid = event.pointerId;
+		const finish = (ev: PointerEvent) => {
+			if (ev.pointerId !== pid) return;
+			window.removeEventListener('pointerup', finish, true);
+			window.removeEventListener('pointercancel', finish, true);
+			setTimeout(() => {
+				closeCommentEditor();
+			}, 0);
+		};
+		window.addEventListener('pointerup', finish, { capture: true });
+		window.addEventListener('pointercancel', finish, { capture: true });
 	}
 
 	function handleCommentCountChange(delta: number) {
@@ -435,6 +489,80 @@
 			visualViewport.removeEventListener('scroll', updateKeyboardInset);
 			window.removeEventListener('resize', updateKeyboardInset);
 		};
+	});
+
+	/**
+	 * 评论编辑器入场（宽屏 lg+）：关闭时复位；打开时双 rAF 再设 visible，否则 transition 常被合并成一次绘制而失效。
+	 * 与「键盘 inset」分离开：不要把 commentEditorKeyboardInset 放进同一 effect，否则 inset 每抖一次就会把 visualReady 打回 false，动画永远播不完。
+	 */
+	$effect(() => {
+		if (!commentEditorOpen) {
+			commentEditorVisualReady = false;
+			commentEditorNarrowRevealLocked = false;
+			return;
+		}
+		void commentEditorCloseTimer;
+		if (commentEditorCloseTimer !== null) return;
+		if (!breakpoint.isLg) return;
+
+		commentEditorVisualReady = false;
+		let cancelled = false;
+		let raf1 = 0;
+		let raf2 = 0;
+		raf1 = requestAnimationFrame(() => {
+			if (cancelled) return;
+			raf2 = requestAnimationFrame(() => {
+				if (cancelled || commentEditorCloseTimer !== null) return;
+				commentEditorVisualReady = true;
+			});
+		});
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(raf1);
+			cancelAnimationFrame(raf2);
+		};
+	});
+
+	/** 窄屏：键盘 inset > 0 时揭示；先 lock 再双 rAF，不在 cleanup 里 cancel rAF（避免 inset 抖动打断） */
+	$effect(() => {
+		if (!commentEditorOpen) return;
+		void commentEditorCloseTimer;
+		if (commentEditorCloseTimer !== null) return;
+		if (breakpoint.isLg) return;
+		if (commentEditorNarrowRevealLocked || commentEditorVisualReady) return;
+
+		const inset = commentEditorKeyboardInset;
+		if (inset <= 0) return;
+
+		commentEditorNarrowRevealLocked = true;
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				if (commentEditorCloseTimer !== null) return;
+				if (!commentEditorOpen) return;
+				commentEditorVisualReady = true;
+			});
+		});
+	});
+
+	/** 窄屏兜底：不依赖 inset 抖动重排定时器（仅依赖 open / 锁 / 宽屏） */
+	$effect(() => {
+		if (!commentEditorOpen) return;
+		if (breakpoint.isLg) return;
+		if (commentEditorNarrowRevealLocked || commentEditorVisualReady) return;
+
+		const timeout = window.setTimeout(() => {
+			if (commentEditorCloseTimer !== null) return;
+			if (commentEditorNarrowRevealLocked || commentEditorVisualReady) return;
+			commentEditorNarrowRevealLocked = true;
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					if (commentEditorCloseTimer !== null) return;
+					if (!commentEditorOpen) return;
+					commentEditorVisualReady = true;
+				});
+			});
+		}, 420);
+		return () => clearTimeout(timeout);
 	});
 
 	async function uploadCommentMedia(mediaFiles: File[]): Promise<V1MediaAsset[]> {
@@ -490,8 +618,7 @@
 			if (res.comment) {
 				await commentSectionRef?.applyNewComment(res.comment);
 				toast.success('评论已发布');
-				commentEditorOpen = false;
-				commentReplyTo = null;
+				closeCommentEditor();
 			}
 		} catch (err) {
 			console.error('发布评论失败', err);
@@ -500,10 +627,12 @@
 	}
 </script>
 
+<svelte:document onkeydowncapture={handleDocumentKeyDownCapture} />
+
 {#if isLoading}
 	<!-- 加载状态 -->
 	<div
-		class="scrollbar-hide fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+		class="scrollbar-hide fixed inset-0 z-40 bg-transparent"
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
@@ -517,10 +646,9 @@
 		>
 			<div
 				class={cn(
-					'max-w-10xl flex h-full w-full flex-col items-center justify-center bg-zinc-100 text-zinc-900',
-					'lg:max-h-[calc(100vh-3rem)] lg:rounded-2xl',
-					'dark:bg-zinc-900 dark:text-zinc-50',
-					'rounded-none shadow-xl'
+					'max-w-10xl flex h-full w-full flex-col items-center justify-center overflow-hidden bg-zinc-100 text-zinc-900',
+					'max-h-[calc(100vh-3rem)] rounded-none shadow-xl',
+					'dark:bg-zinc-900 dark:text-zinc-50'
 				)}
 			>
 				<LoaderCircle class="size-8 animate-spin text-zinc-500" />
@@ -531,7 +659,7 @@
 {:else if error}
 	<!-- 错误状态 -->
 	<div
-		class="scrollbar-hide fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+		class="scrollbar-hide fixed inset-0 z-40 bg-transparent"
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
@@ -556,10 +684,9 @@
 		>
 			<div
 				class={cn(
-					'max-w-10xl flex h-full w-full flex-col items-center justify-center bg-zinc-100 px-6 text-zinc-900',
-					'lg:max-h-[calc(100vh-3rem)] lg:rounded-2xl',
-					'dark:bg-zinc-900 dark:text-zinc-50',
-					'rounded-none shadow-xl'
+					'max-w-10xl flex h-full w-full flex-col items-center justify-center overflow-hidden bg-zinc-100 px-6 text-zinc-900',
+					'max-h-[calc(100vh-3rem)] rounded-none shadow-xl',
+					'dark:bg-zinc-900 dark:text-zinc-50'
 				)}
 			>
 				<p class="text-sm text-red-500">{error}</p>
@@ -568,16 +695,18 @@
 		</div>
 	</div>
 {:else if post}
-	<!-- Stack 布局容器：覆盖 app 内容的全屏弹层 -->
+	<!--
+		全屏透明命中层：用于「点卡片外关闭」；不叠半透明灰底——由外层 StackItem 已提供整屏底，
+		再叠一层会变脏；独立路由（如 post-detail-debug）无 Stack 时也只是无额外压暗。
+	-->
 	<div
-		class="scrollbar-hide fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+		class="scrollbar-hide fixed inset-0 z-40 bg-transparent"
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
 		aria-label="帖子详情"
 		use:tap={{
 			onTap: ({ target, currentTarget }) => {
-				// 仅点击遮罩时关闭，避免内容点击误触
 				if (target === currentTarget) handleClose();
 			}
 		}}
@@ -609,21 +738,22 @@
 
 			<div
 				class={cn(
-					'max-w-10xl flex h-full w-full flex-col bg-zinc-100 text-zinc-900',
+					'max-w-10xl relative flex h-full w-full flex-col overflow-hidden bg-zinc-100 text-zinc-900',
 					'lg:h-auto lg:max-h-[calc(100vh-3rem)] lg:flex-row',
 					'dark:bg-zinc-900 dark:text-zinc-50',
-					'rounded-none shadow-xl lg:rounded-2xl'
+					'rounded-none shadow-xl'
 				)}
 			>
-				<div class={cn('hidden min-h-0 min-w-0 shrink-0 lg:flex lg:h-auto lg:w-1/2')}>
+				<div
+					class={cn(
+						'hidden min-h-0 min-w-0 shrink-0 overflow-hidden rounded-none lg:flex lg:h-auto lg:w-1/2'
+					)}
+				>
 					<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
 				</div>
 
 				<!-- 文本与操作区：头部 + 中间滚动区（含移动端媒体区）+ 底部操作栏 -->
-				<div
-					class="relative flex h-full grow flex-col lg:w-1/2"
-					onpointerdown={handleContentAreaPointerDown}
-				>
+				<div class="relative flex h-full grow flex-col lg:w-1/2" role="presentation">
 					<!-- 作者信息与统计：正文区向下滚动后显示底部分割线，与下方媒体/正文区分 -->
 					<div
 						class={cn(
@@ -633,7 +763,7 @@
 					>
 						<div class="flex min-w-0 items-center gap-3">
 							<!-- 关闭按钮（移动端：头像左侧；桌面端：隐藏，使用左侧区域的悬浮关闭按钮时机，如后续需要） -->
-							<div class="flex lg:hidden">
+							<div class="relative z-50 flex lg:hidden">
 								<Button
 									variant="ghost"
 									size="icon"
@@ -724,7 +854,8 @@
 									{#if post.author?.userId && post.author.userId !== currentUserId}
 										<Button
 											variant="default"
-											class="text-md min-w-20 cursor-pointer font-bold"
+											size={breakpoint.isSm ? 'fix' : 'fix-sm'}
+											class="cursor-pointer font-bold"
 											disabled={isFollowingAction || isFetchingFollowing}
 											onclick={handleFollow}
 										>
@@ -737,7 +868,8 @@
 										<!-- 未登录用户显示关注按钮，点击引导登录 -->
 										<Button
 											variant="default"
-											class="text-md min-w-20 font-bold"
+											size={breakpoint.isSm ? 'fix' : 'fix-sm'}
+											class="font-bold"
 											onclick={() => {
 												toast.error('请先登录后再关注');
 											}}
@@ -754,8 +886,10 @@
 						class="scrollbar-hide flex-1 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-4"
 						onscroll={syncHeaderDividerFromScroll}
 					>
-						<div class={cn('mb-4 lg:hidden', 'h-[60vh]')}>
-							<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
+						<div class="mb-4 box-border flex h-[60vh] min-h-0 flex-col pb-6 lg:hidden">
+							<div class="min-h-0 flex-1">
+								<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
+							</div>
 						</div>
 						<!-- 标题与正文 -->
 						<div class="mt-4 space-y-3">
@@ -807,13 +941,14 @@
 						{/if}
 					</div>
 
-					<!-- 底部操作栏：左侧约 1/3 为评论入口，右侧约 2/3 为赞/藏/评/转（转发最右） -->
+					<!-- 底部操作栏：右侧图标区按内容定宽 shrink-0；左侧输入框 flex-1 min-w-0 吃掉剩余宽度 -->
 					<div class="relative flex-none border-t border-zinc-200 dark:border-zinc-800">
-						<div class="flex min-h-11 items-stretch gap-1 px-4 py-2 lg:gap-1.5 lg:px-6">
+						<div
+							class="flex min-h-11 min-w-0 flex-nowrap items-stretch gap-1.5 px-3 py-2 sm:px-4 lg:px-6"
+						>
 							<button
-								bind:this={commentEditorTriggerEl}
 								type="button"
-								class="flex min-h-11 min-w-0 flex-1 basis-0 items-center gap-1.5 rounded-full bg-zinc-200/70 px-2.5 py-1.5 text-left text-sm text-zinc-600 ring-0 outline-none hover:bg-zinc-300/80 sm:gap-2 sm:px-3 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-700"
+								class="flex min-h-11 max-w-full min-w-0 flex-1 basis-0 items-center gap-1.5 rounded-full bg-zinc-200/70 px-2.5 py-1.5 text-left text-sm text-zinc-600 ring-0 outline-none hover:bg-zinc-300/80 sm:gap-2 sm:px-3 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-700"
 								aria-label="输入评论"
 								onclick={() => openCommentEditor(commentReplyTo)}
 							>
@@ -842,14 +977,14 @@
 							</button>
 
 							<div
-								class="scrollbar-hide flex min-h-11 min-w-0 flex-[2] basis-0 items-center justify-end gap-0.5 overflow-x-auto lg:gap-1"
+								class="scrollbar-hide flex min-h-11 shrink-0 flex-nowrap items-center justify-end gap-0.5 overflow-x-auto sm:gap-1"
 							>
 								<Button
 									variant="ghost"
 									size="sm"
 									disabled={isLiking}
 									class={cn(
-										'flex min-h-11 min-w-10 cursor-pointer items-center gap-0.5 rounded-full px-1.5 sm:min-w-11 sm:gap-1',
+										'flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 sm:min-w-10 sm:px-2',
 										post.relationStatus?.isLiked
 											? '!text-rose-500 hover:!bg-rose-500/12 hover:!text-rose-500'
 											: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
@@ -859,7 +994,7 @@
 									{#key `${isLiking ? 'go' : 'idle'}`}
 										<Heart
 											class={cn(
-												'size-4 origin-center',
+												'size-4 shrink-0 origin-center',
 												isLiking &&
 													'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
 												post.relationStatus?.isLiked && 'fill-current !text-rose-500'
@@ -868,7 +1003,7 @@
 										/>
 									{/key}
 									{#if post.stats?.likeCount != null}
-										<span>{post.stats.likeCount}</span>
+										<span class="text-sm tabular-nums">{post.stats.likeCount}</span>
 									{/if}
 								</Button>
 								<Button
@@ -876,7 +1011,7 @@
 									size="sm"
 									disabled={isCollecting}
 									class={cn(
-										'flex min-h-11 min-w-10 cursor-pointer items-center gap-0.5 rounded-full px-1.5 sm:min-w-11 sm:gap-1',
+										'flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 sm:min-w-10 sm:px-2',
 										post.relationStatus?.isCollected
 											? '!text-amber-400 hover:!bg-amber-400/12 hover:!text-amber-400'
 											: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
@@ -886,7 +1021,7 @@
 									{#key `${isCollecting ? 'go' : 'idle'}`}
 										<Star
 											class={cn(
-												'size-4 origin-center',
+												'size-4 shrink-0 origin-center',
 												isCollecting &&
 													'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
 												post.relationStatus?.isCollected && 'fill-current !text-amber-400'
@@ -895,55 +1030,78 @@
 										/>
 									{/key}
 									{#if post.stats?.collectCount != null}
-										<span>{post.stats.collectCount}</span>
+										<span class="text-sm tabular-nums">{post.stats.collectCount}</span>
 									{/if}
 								</Button>
 								<Button
 									variant="ghost"
 									size="sm"
-									class="flex min-h-11 min-w-10 cursor-pointer items-center gap-0.5 rounded-full px-1.5 text-zinc-700 hover:bg-zinc-100 sm:min-w-11 sm:gap-1 dark:text-zinc-100 dark:hover:bg-zinc-800"
+									class="flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 text-zinc-700 hover:bg-zinc-100 sm:min-w-10 sm:px-2 dark:text-zinc-100 dark:hover:bg-zinc-800"
 									onclick={() => {
 										scrollToComments();
 										openCommentEditor(null);
 									}}
 								>
-									<MessageCircle class="size-4" />
+									<MessageCircle class="size-4 shrink-0" />
 									{#if post.stats?.commentCount != null}
-										<span>{post.stats.commentCount}</span>
+										<span class="text-sm tabular-nums">{post.stats.commentCount}</span>
 									{/if}
 								</Button>
 								<Button
 									variant="ghost"
 									size="sm"
-									class="flex min-h-11 min-w-10 shrink-0 cursor-pointer items-center gap-0.5 rounded-full px-1.5 text-zinc-700 hover:bg-zinc-100 sm:min-w-11 sm:gap-1 dark:text-zinc-100 dark:hover:bg-zinc-800"
+									class="flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 text-zinc-700 hover:bg-zinc-100 sm:min-w-10 sm:px-2 dark:text-zinc-100 dark:hover:bg-zinc-800"
 									onclick={handleShare}
 								>
 									<Share class="size-4 shrink-0" />
 								</Button>
 							</div>
 						</div>
-
-						{#if commentEditorOpen}
-							<div
-								bind:this={commentEditorPanelEl}
-								class="absolute inset-x-0 z-40"
-								style={`bottom: ${commentEditorKeyboardInset}px;`}
-								in:fly={{ y: 220, duration: 140 }}
-								out:fly={{ y: 220, duration: 110 }}
-							>
-								<div
-									class="w-full border-t border-zinc-200 bg-zinc-50 p-3 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
-								>
-									<EditCommentPopover
-										postId={post.postId ?? null}
-										replyTo={commentReplyTo}
-										onSubmit={handleSubmitComment}
-										onCancel={closeCommentEditor}
-									/>
-								</div>
-							</div>
-						{/if}
 					</div>
+
+					{#if commentEditorOpen}
+						<!-- 仅盖住右侧文本列（含评论区与底栏），桌面端不占左侧媒体列宽 -->
+						<div
+							class="absolute inset-0 z-30 touch-none bg-transparent"
+							role="presentation"
+							aria-hidden="true"
+							use:commentEditorOverlayTouchGuard
+							onpointerdown={handleCommentEditorOverlayPointerDown}
+							onclick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						></div>
+					{/if}
+					{#if commentEditorOpen}
+						<div
+							bind:this={commentEditorPanelEl}
+							class="absolute inset-x-0 z-50"
+							style={`bottom: ${commentEditorKeyboardInset}px;`}
+						>
+							<div
+								data-edit-comment-popover-root
+								class={cn(
+									'w-full origin-bottom border-t border-zinc-200 bg-zinc-50 p-3 shadow-none dark:border-zinc-700 dark:bg-zinc-900',
+									/* duration/ease 放在两侧共用的基类里，避免「只在一侧有 duration」时过渡不生效；用任意值确保一定生成 CSS */
+									'motion-reduce:transition-none',
+									'transition-[transform,opacity] duration-[400ms] ease-out',
+									commentEditorVisualReady
+										? 'translate-y-0 scale-y-100 opacity-100'
+										: 'scale-y-[0.92] opacity-0'
+								)}
+								role="presentation"
+								onpointerdown={(e) => e.stopPropagation()}
+							>
+								<EditCommentPopover
+									postId={post.postId ?? null}
+									replyTo={commentReplyTo}
+									onSubmit={handleSubmitComment}
+									onCancel={closeCommentEditor}
+								/>
+							</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
