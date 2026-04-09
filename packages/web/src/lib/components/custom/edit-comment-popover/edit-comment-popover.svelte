@@ -16,9 +16,9 @@
 		createFetchMentionUsersFromFollowings,
 		extractContentFromShinRichTextarea
 	} from '$lib/components/custom/shin-rich';
-	import { Image as ImageIcon, Plus } from 'lucide-svelte';
 	import { messageForOperationError } from '$lib/utils/operation-error-message';
 	import { toast } from 'svelte-sonner';
+	import { PlusIcon } from 'lucide-svelte';
 
 	/**
 	 * EditCommentPopover — 评论/回复输入区（富文本 + 可选图片）
@@ -63,6 +63,7 @@
 	const MAX_IMAGES = 6;
 	const MAX_IMAGE_SIZE_BYTES = 100 * 1024 * 1024;
 	const fetchMentionUsers = createFetchMentionUsersFromFollowings();
+	const MENU_DEDUPE_MS = 320;
 
 	let contentEditableRef = $state<HTMLDivElement | null>(null);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
@@ -71,6 +72,15 @@
 	let caretInitializedKey = $state<string | null>(null);
 	let activeDraftPostKey = $state<string | null>(null);
 	let activeDraftTextKey = $state<string | null>(null);
+
+	let menuOpen = $state(false);
+	let menuIndex = $state(0);
+	let menuAnchorLeft = $state(0);
+	let menuAnchorTop = $state(0);
+	let menuPanelRef = $state<HTMLDivElement | null>(null);
+	let menuAdjusted = $state({ left: 0, top: 0 });
+	let lastMenuOpenAt = 0;
+	let lastMenuOpenIndex = -1;
 
 	const displayPlaceholder = $derived(
 		!replyTo ? placeholder : `回复 @${replyTo.author?.name ?? '用户'}`
@@ -112,6 +122,50 @@
 			return;
 		}
 		fileInputRef?.click();
+	}
+
+	function tryOpenMenu(index: number, clientX: number, clientY: number): void {
+		if (submitting) return;
+		const now = Date.now();
+		if (index === lastMenuOpenIndex && now - lastMenuOpenAt < MENU_DEDUPE_MS) return;
+		lastMenuOpenIndex = index;
+		lastMenuOpenAt = now;
+		menuIndex = index;
+		menuAnchorLeft = clientX;
+		menuAnchorTop = clientY;
+		menuOpen = true;
+	}
+
+	function closeMenu(): void {
+		menuOpen = false;
+	}
+
+	function onCardContextMenu(e: MouseEvent, index: number): void {
+		e.preventDefault();
+		if (submitting) return;
+		const sc = (e as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } })
+			.sourceCapabilities;
+		// 触摸/仿真长按产生的 contextmenu：只拦系统菜单，不弹业务菜单（避免打断手势/滚动）
+		if (sc?.firesTouchEvents === true) return;
+		// 无 sourceCapabilities 的粗指针环境：保守处理，避免长按当右键菜单
+		if (
+			sc == null &&
+			window.matchMedia('(pointer: coarse)').matches &&
+			navigator.maxTouchPoints > 0
+		) {
+			return;
+		}
+		tryOpenMenu(index, e.clientX, e.clientY);
+	}
+
+	function removeFromMenu(): void {
+		const target = imageItems[menuIndex];
+		if (!target) {
+			closeMenu();
+			return;
+		}
+		removeImage(target.id);
+		closeMenu();
 	}
 
 	function clearFileInput() {
@@ -212,7 +266,7 @@
 	}
 
 	async function handleSubmit() {
-		const text = getEditorContent();
+		const text = getEditorContent().slice(0, 300);
 		if ((!text && imageItems.length === 0) || submitting) return;
 		submitting = true;
 		try {
@@ -302,6 +356,55 @@
 			caretInitializedKey = key;
 		});
 	});
+
+	$effect(() => {
+		if (!menuOpen || !menuPanelRef) return;
+		void [menuOpen, menuAnchorLeft, menuAnchorTop, menuPanelRef];
+
+		const pad = 8;
+		const vv = window.visualViewport;
+		const vw = vv?.width ?? window.innerWidth;
+		const vh = vv?.height ?? window.innerHeight;
+		const vx = vv?.offsetLeft ?? 0;
+		const vy = vv?.offsetTop ?? 0;
+		const rect = menuPanelRef.getBoundingClientRect();
+		let left = menuAnchorLeft;
+		let top = menuAnchorTop;
+		if (left + rect.width > vx + vw - pad) {
+			left = vx + vw - rect.width - pad;
+		}
+		if (left < vx + pad) {
+			left = vx + pad;
+		}
+		if (top + rect.height > vy + vh - pad) {
+			top = vy + vh - rect.height - pad;
+		}
+		if (top < vy + pad) {
+			top = vy + pad;
+		}
+		menuAdjusted = { left, top };
+	});
+
+	$effect(() => {
+		if (!menuOpen) return;
+
+		const onKeyDown = (e: KeyboardEvent): void => {
+			if (e.key === 'Escape') closeMenu();
+		};
+		const onPointerDown = (e: PointerEvent): void => {
+			if (menuPanelRef?.contains(e.target as Node)) return;
+			requestAnimationFrame(() => {
+				if (menuPanelRef && !menuPanelRef.contains(e.target as Node)) closeMenu();
+			});
+		};
+
+		window.addEventListener('keydown', onKeyDown);
+		window.addEventListener('pointerdown', onPointerDown, true);
+		return () => {
+			window.removeEventListener('keydown', onKeyDown);
+			window.removeEventListener('pointerdown', onPointerDown, true);
+		};
+	});
 </script>
 
 {#if replyTo}
@@ -314,8 +417,7 @@
 		maxLength={300}
 		initialContent={initialEditorContent}
 		{fetchMentionUsers}
-		atButtonIconOnly={true}
-		class="mb-2 min-h-[96px] border border-zinc-200 dark:border-zinc-700"
+		class="mb-2 min-h-11! border border-zinc-200 shadow-none dark:border-zinc-700"
 	/>
 {/key}
 
@@ -328,18 +430,58 @@
 	onchange={handleFileChange}
 />
 
-<div class="flex items-center justify-between gap-2">
-	<div class="relative">
-		<Button
-			variant="block"
-			size="icon"
-			class="rounded-3xl px-3 py-1.5 text-accent-foreground"
+{#if imageItems.length > 0}
+	<div class="mt-2 flex flex-wrap gap-2">
+		{#each imageItems as item, index (item.id)}
+			<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+			<div
+				class="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-muted select-none dark:border-zinc-700"
+				aria-label={`评论图片 ${index + 1}，右键打开操作菜单`}
+				onclick={(e) => {
+					tryOpenMenu(index, e.clientX, e.clientY);
+				}}
+				oncontextmenu={(e) => onCardContextMenu(e, index)}
+			>
+				<img
+					src={item.previewUrl}
+					alt={`评论图片预览 ${index + 1}`}
+					class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
+					draggable="false"
+				/>
+			</div>
+		{/each}
+		{#if imageItems.length < MAX_IMAGES}
+			<button
+				type="button"
+				class="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
+				onclick={openImagePicker}
+				disabled={submitting}
+				aria-label="添加图片"
+			>
+				<PlusIcon class="size-4 text-muted-foreground" />
+			</button>
+		{/if}
+	</div>
+	<p class="text-sm text-muted-foreground">最多 {MAX_IMAGES} 张图片，已选 {imageItems.length} 张</p>
+{/if}
+
+{#if imageItems.length === 0}
+	<div class="mt-2 flex flex-wrap gap-2">
+		<button
+			type="button"
+			class="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
 			onclick={openImagePicker}
 			disabled={submitting}
+			aria-label="添加图片"
 		>
-			<ImageIcon class="size-4" />
-		</Button>
+			<PlusIcon class="size-4 text-muted-foreground" />
+		</button>
 	</div>
+	<p class="text-sm text-muted-foreground">最多 {MAX_IMAGES} 张图片，已选 {imageItems.length} 张</p>
+{/if}
+
+<div class="flex items-center justify-between gap-2">
+	<div></div>
 	<div class="flex justify-end gap-2">
 		<Button size="sm" onclick={handleSubmit} disabled={submitting}>
 			{submitting ? '发送中…' : '发送'}
@@ -348,34 +490,22 @@
 	</div>
 </div>
 
-{#if imageItems.length > 0}
-	<div class="scrollbar-hide mb-2 flex gap-2 overflow-x-auto pb-1">
-		{#each imageItems as item (item.id)}
-			<div
-				class="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700"
-			>
-				<img src={item.previewUrl} alt="评论图片预览" class="h-full w-full object-cover" />
-				<button
-					type="button"
-					class="absolute top-0 right-0 h-5 w-5 cursor-pointer rounded-bl bg-black/60 text-xs text-white"
-					aria-label="移除图片"
-					onclick={() => removeImage(item.id)}
-				>
-					×
-				</button>
-			</div>
-		{/each}
-		{#if imageItems.length < MAX_IMAGES}
-			<button
-				type="button"
-				class="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-[#f4f4f5]"
-				aria-label="添加图片"
-				onclick={openImagePicker}
-			>
-				<div class="flex h-6 w-6 items-center justify-center rounded-full">
-					<Plus class="size-4 text-[#d4d4d8]" />
-				</div>
-			</button>
-		{/if}
+{#if menuOpen}
+	<div
+		bind:this={menuPanelRef}
+		class="fixed z-50 min-w-40 rounded-md border border-zinc-200 bg-popover p-1 text-popover-foreground shadow-md dark:border-zinc-700"
+		style:left="{menuAdjusted.left}px"
+		style:top="{menuAdjusted.top}px"
+		role="menu"
+		aria-label="评论图片操作"
+	>
+		<button
+			type="button"
+			class="flex min-h-11 w-full cursor-pointer items-center rounded-sm px-3 py-2 text-left text-sm text-red-600 hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
+			role="menuitem"
+			onclick={removeFromMenu}
+		>
+			删除
+		</button>
 	</div>
 {/if}

@@ -1,7 +1,10 @@
 <script lang="ts">
 	/**
-	 * ImageVideoPreview 子组件：当前索引对应视频的播放界面（控制条、倍速、全屏、音量等）。
-	 * 媒体节点通过 `bind:videoElement` / `bind:videoContainer` 交给父组件统一处理手势与自动播放策略。
+	 * @component VideoPreview
+	 *
+	 * **职责**：渲染“视频视图”（video 元素 + 播放按钮 + 控制条）。
+	 * **不负责**：播放竞态/自动播放/全屏策略/边缘 2x 等业务逻辑 —— 这些由 `controllers/video-controller.svelte.ts` 提供。
+	 * **与父组件协作**：父组件通过 `bind:videoElement` / `bind:videoContainer` 拿到节点引用，并喂给 controller。
 	 */
 	import type { V1MediaAsset as Media } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
@@ -11,36 +14,17 @@
 	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
 	import { scrollBoundary } from '$lib/modules/gesture';
 
+	import type { VideoController } from '../controllers/video-controller.svelte';
+
 	let {
 		mediaList = [] as Media[],
 		currentIndex = 0,
 		currentMedia = null,
-		isVideoPlaying = false,
-		isVideoBuffering = false,
-		isFullscreen = false,
 		isMobile = false,
 		showControls = true,
-		playbackRate = 1,
-		videoProgress = 0,
-		videoDuration = 0,
-		volume = 1,
-		isMuted = false,
-		playbackRatePopoverOpen = false,
-		handleVideoPlay = () => {},
-		handleVideoPause = () => {},
-		handleVideoTimeUpdate = () => {},
-		handleVideoLoadedMetadata = () => {},
-		togglePlay = () => {},
-		handleControlsClick = () => {},
-		handleProgressChange = () => {},
-		handleProgressMouseDown = () => {},
-		handleProgressMouseUp = () => {},
-		toggleMute = () => {},
-		handleVolumeChange = () => {},
-		changePlaybackRate = () => {},
-		toggleFullscreen = () => {},
-		onDownloadClick = () => {},
 		handleContextMenu,
+		onDownloadClick = () => {},
+		controller,
 		controlsEl = $bindable(null),
 		videoElement = $bindable(null),
 		videoContainer = $bindable(null)
@@ -48,36 +32,29 @@
 		mediaList?: Media[];
 		currentIndex?: number;
 		currentMedia?: Media | null;
-		isVideoPlaying?: boolean;
-		isVideoBuffering?: boolean;
-		isFullscreen?: boolean;
 		isMobile?: boolean;
 		showControls?: boolean;
-		playbackRate?: number;
-		videoProgress?: number;
-		videoDuration?: number;
-		volume?: number;
-		isMuted?: boolean;
-		playbackRatePopoverOpen?: boolean;
-		handleVideoPlay?: () => void;
-		handleVideoPause?: () => void;
-		handleVideoTimeUpdate?: () => void;
-		handleVideoLoadedMetadata?: () => void;
-		togglePlay?: () => void;
-		handleControlsClick?: (event: MouseEvent) => void;
-		handleProgressChange?: (event: Event) => void;
-		handleProgressMouseDown?: () => void;
-		handleProgressMouseUp?: () => void;
-		toggleMute?: () => void;
-		handleVolumeChange?: (event: Event) => void;
-		changePlaybackRate?: (rate: number) => void;
-		toggleFullscreen?: () => void;
-		onDownloadClick?: (e: MouseEvent) => void;
 		handleContextMenu?: (event: MouseEvent) => void;
+		onDownloadClick?: (e: MouseEvent) => void;
+		controller: VideoController;
 		controlsEl?: HTMLDivElement | null;
 		videoElement?: HTMLVideoElement | null;
 		videoContainer?: HTMLDivElement | null;
 	} = $props();
+
+	const isVideoPlaying = $derived(controller.state.isVideoPlaying);
+	const isVideoBuffering = $derived(controller.state.isVideoBuffering);
+	const isFullscreen = $derived(controller.state.isFullscreen);
+	const playbackRate = $derived(controller.state.playbackRate);
+	const videoProgress = $derived(controller.state.videoProgress);
+	const videoDuration = $derived(controller.state.videoDuration);
+	const volume = $derived(controller.state.volume);
+	const isMuted = $derived(controller.state.isMuted);
+	let playbackRatePopoverOpen = $state(false);
+
+	function handleControlsClick(event: MouseEvent) {
+		event.stopPropagation();
+	}
 </script>
 
 <div
@@ -100,10 +77,10 @@
 							bind:this={videoElement}
 							src={getMediaDisplayUrl(media)}
 							class={cn(isFullscreen ? 'h-full w-full object-contain' : 'max-h-full max-w-full')}
-							onplay={handleVideoPlay}
-							onpause={handleVideoPause}
-							ontimeupdate={handleVideoTimeUpdate}
-							onloadedmetadata={handleVideoLoadedMetadata}
+							onplay={controller.actions.handleVideoPlay}
+							onpause={controller.actions.handleVideoPause}
+							ontimeupdate={controller.actions.handleVideoTimeUpdate}
+							onloadedmetadata={controller.actions.handleVideoLoadedMetadata}
 							oncontextmenu={handleContextMenu}
 							playsinline
 						>
@@ -131,7 +108,7 @@
 							)}
 							onclick={(e) => {
 								e.stopPropagation();
-								togglePlay();
+								controller.actions.togglePlay();
 							}}
 							aria-label="播放视频"
 						>
@@ -196,9 +173,9 @@
 						0,
 						Math.min(100, videoProgress * 100)
 					)}%, rgb(161 161 170) ${Math.max(0, Math.min(100, videoProgress * 100))}%, rgb(161 161 170) 100%);`}
-					oninput={handleProgressChange}
-					onmousedown={handleProgressMouseDown}
-					onmouseup={handleProgressMouseUp}
+					oninput={controller.actions.handleProgressChange}
+					onmousedown={controller.actions.handleProgressMouseDown}
+					onmouseup={controller.actions.handleProgressMouseUp}
 				/>
 
 				<!-- 下：左下角时间 / 右下角倍速+下载（PC 端额外提供音量/全屏） -->
@@ -248,7 +225,8 @@
 											)}
 											onclick={(e) => {
 												e.stopPropagation();
-												changePlaybackRate(rate);
+												controller.actions.changePlaybackRate(rate);
+												playbackRatePopoverOpen = false;
 											}}
 										>
 											{rate}x
@@ -281,7 +259,7 @@
 									class="min-h-9 min-w-9 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
 									onclick={(e) => {
 										e.stopPropagation();
-										toggleMute();
+										controller.actions.toggleMute();
 									}}
 								>
 									{#if isMuted || volume === 0}
@@ -299,7 +277,7 @@
 									class="h-0.5 w-16 cursor-pointer appearance-none rounded-full bg-zinc-300 accent-zinc-900 dark:bg-zinc-600 dark:accent-zinc-100"
 									oninput={(e) => {
 										e.stopPropagation();
-										handleVolumeChange(e);
+										controller.actions.handleVolumeChange(e);
 									}}
 								/>
 								<Button
@@ -308,7 +286,7 @@
 									class="min-h-9 min-w-9 rounded-full text-zinc-900 hover:bg-zinc-200 dark:text-zinc-100 dark:hover:bg-zinc-700"
 									onclick={(e) => {
 										e.stopPropagation();
-										toggleFullscreen();
+										controller.actions.toggleFullscreen();
 									}}
 								>
 									{#if isFullscreen}

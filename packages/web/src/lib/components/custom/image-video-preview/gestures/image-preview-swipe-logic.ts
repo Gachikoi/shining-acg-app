@@ -1,5 +1,8 @@
 /**
- * 全屏预览与帖内轮播共用的横向 swipe 纯函数（单测与组件瘦身）。
+ * @module image-preview-swipe-logic
+ *
+ * **职责**：全屏预览与帖内轮播共用的 swipe 纯函数。
+ * - 负责把手势 delta 转换为：横向 pan、首尾 edge pull、是否需要 edgePullBlank。
  */
 
 import type { SwipeState } from '$lib/modules/gesture';

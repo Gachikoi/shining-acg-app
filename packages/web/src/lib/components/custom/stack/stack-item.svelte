@@ -227,12 +227,9 @@
 				if (state.deltaX > 0) {
 					isSwipeRightScaleDown = true;
 				}
-				moveAndScaleTo(
-					state.deltaX,
-					state.deltaY,
-					1 - (0.2 * state.deltaX) / el!.clientWidth,
-					false
-				);
+				// 横向 swipe 仍会把副轴位移带进 state.deltaY；若写入 translateY，整页会随手跟动（底部栏尤其明显）。
+				// 触点进/出栈的跟手只应由水平位移驱动缩放与 translateX，垂直位移保持为 0。
+				moveAndScaleTo(state.deltaX, 0, 1 - (0.2 * state.deltaX) / el!.clientWidth, false);
 			} else if (isTop && !item.rectInfo) {
 				panTo(state.deltaX, { withAnimation: false });
 			} else if (isSecondaryTop && hasNext && stackController.isPushingNext) {
