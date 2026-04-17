@@ -1,6 +1,8 @@
 /**
  * @file wrap-grid-drag-sort — reorder-grid 模块：flex-wrap 网格上的指针拖拽排序（中间层 slotOrder，提交 from/to）
  */
+/** JSBridge：拖拽开始时通过原生显式触发震动反馈（Android 默认反馈已在 WebView 层关闭） */
+import { shiningBridge } from '$lib/modules/bridge';
 import type { WrapGridDragSort, WrapGridDragSortFactoryOptions } from './types';
 import {
 	identitySlotOrder,
@@ -254,6 +256,8 @@ export function createWrapGridDragSort(options: WrapGridDragSortFactoryOptions):
 		dragX = lastClientX - rect.left - grabOffsetX;
 		dragY = lastClientY - rect.top - grabOffsetY;
 		slotOrder = identitySlotOrder(n);
+		// 正式进入拖拽态，给予最轻微震动反馈
+		shiningBridge.vibrate({ type: 'impact', style: 'light' });
 		options.onDragStart?.(pendingSourceIndex);
 
 		if (captureEl instanceof HTMLElement) {

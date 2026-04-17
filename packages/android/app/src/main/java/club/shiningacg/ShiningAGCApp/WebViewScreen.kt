@@ -44,9 +44,7 @@ import androidx.core.net.toUri
 import android.webkit.JavascriptInterface
 import org.json.JSONObject
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
+import android.view.HapticFeedbackConstants
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -300,11 +298,14 @@ fun WebViewScreen(
                         userAgentString = "$userAgentString ShiningACGApp/Android"
                     }
 
-                    addJavascriptInterface(WebAppInterface(ctx), "AndroidBridge")
+                    addJavascriptInterface(WebAppInterface(ctx, this), "AndroidBridge")
 
                     // 禁用滚动条
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
+
+                    // 禁用系统默认触觉反馈（如长按震动），由 JSBridge 显式控制
+                    isHapticFeedbackEnabled = false
 
                     // 禁用过度滚动效果（弹性效果）
                     overScrollMode = View.OVER_SCROLL_NEVER
@@ -483,7 +484,10 @@ private fun WebViewNativeLoadFailedPrompt(
     }
 }
 
-private class WebAppInterface(private val context: android.content.Context) {
+private class WebAppInterface(
+    private val context: android.content.Context,
+    private val webView: WebView
+) {
     @JavascriptInterface
     fun postMessage(message: String) {
         try {
@@ -491,23 +495,39 @@ private class WebAppInterface(private val context: android.content.Context) {
             val action = json.optString("action")
 
             if (action == "vibrate") {
-                val duration = json.optLong("duration", 200)
-                vibrate(duration)
+                val type = json.optString("type", "impact")
+                val style = json.optString("style", "medium")
+                Log.d("WebAppInterface", "postMessage: action=$action, type=$type, style=$style")
+                performHaptic(type, style)
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    private fun vibrate(duration: Long) {
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibManager = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            vibManager.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator
+    /**
+     * 使用 View.performHapticFeedback() 产生细腻的触觉反馈（类似戳破气泡的轻触），
+     * 而非 Vibrator 的嗡嗡马达震动。因 WebView 已关闭默认触觉反馈，需附加 FLAG_IGNORE_VIEW_SETTING。
+     */
+    private fun performHaptic(type: String, style: String) {
+        val feedbackConstant = when (type) {
+            "notification" -> when (style) {
+                "success", "warning", "error" -> HapticFeedbackConstants.VIRTUAL_KEY
+                else -> HapticFeedbackConstants.VIRTUAL_KEY
+            }
+            "selection" -> HapticFeedbackConstants.VIRTUAL_KEY
+            else -> when (style) {
+                "light", "soft" -> HapticFeedbackConstants.VIRTUAL_KEY
+                "medium" -> HapticFeedbackConstants.LONG_PRESS
+                "heavy", "rigid" -> HapticFeedbackConstants.LONG_PRESS
+                else -> HapticFeedbackConstants.VIRTUAL_KEY
+            }
         }
 
-        vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+        Log.d("WebAppInterface", "performHaptic: type=$type, style=$style, constant=$feedbackConstant")
+        webView.performHapticFeedback(
+            feedbackConstant,
+            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+        )
     }
 }

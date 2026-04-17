@@ -10,6 +10,8 @@
 	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
 	 */
 	import { PlusIcon, Play } from 'lucide-svelte';
+	/** JSBridge：显式控制震动反馈（Android 默认长按震动已在 WebView 层关闭） */
+	import { shiningBridge } from '$lib/modules/bridge';
 	import { Label } from '$lib/components/ui/label';
 	import { isVideoItem } from '$lib/modules/media-cover';
 	import { ReorderGrid } from '$lib/modules/reorder-grid';
@@ -105,6 +107,8 @@
 		menuAnchorLeft = clientX;
 		menuAnchorTop = clientY;
 		menuOpen = true;
+		// 打开操作菜单时给予轻量震动反馈
+		shiningBridge.vibrate({ type: 'impact', style: 'light' });
 	}
 
 	function closeMenu(): void {
