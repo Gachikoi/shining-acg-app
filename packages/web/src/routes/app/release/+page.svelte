@@ -1,3 +1,5 @@
+<!-- eslint-disable svelte/valid-prop-names-in-kit-pages -->
+<!-- +page.svelte 同时作为路由页与 Stack 组件复用，需接收 _stackMode prop -->
 <script module lang="ts">
 	// 常量定义
 	// 参考产品需求文档 6.2.5 发布 (Release)
@@ -15,6 +17,9 @@
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
+	import { stackController } from '$lib/components/custom/stack';
+	import { Button } from '$lib/components/ui/button';
+	import { ChevronLeft } from 'lucide-svelte';
 	import ReleaseCoverPreview from './components/release-cover-preview.svelte';
 	import { toast } from 'svelte-sonner';
 	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
@@ -42,6 +47,8 @@
 	import { mediaItemsEqual } from '$lib/modules/release-media';
 	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
+
+	let { _stackMode = false }: { _stackMode?: boolean } = $props();
 
 	const DRAFT_ID = 'release-draft';
 	const fetchMentionUsers = createFetchMentionUsersFromFollowings();
@@ -90,6 +97,9 @@
 			clearReleaseDraft(DRAFT_ID);
 			toast.success(TOAST_MESSAGES.POST_PUBLISHED_SUCCESS);
 			// TODO(6.2.5.4): 发布成功后跳转到帖子详情页或 feed，等路由就绪后补充
+			if (_stackMode) {
+				stackController.clearStack();
+			}
 			goto('/');
 		} catch (error) {
 			toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
@@ -307,6 +317,13 @@
 	 * 离开确认弹窗「确认」：自动保存后执行此前缓存的 SPA 导航
 	 */
 	async function handleLeaveConfirm() {
+		if (_stackMode) {
+			await performSave(true);
+			pendingNavigationUrl = null;
+			showLeaveConfirm = false;
+			stackController.pop();
+			return;
+		}
 		if (pendingNavigationUrl) {
 			await performSave(true);
 			const url = pendingNavigationUrl;
@@ -326,6 +343,16 @@
 		showLeaveConfirm = false;
 	}
 
+	/** Stack 模式下返回：脏数据时弹出确认，否则直接 pop */
+	async function handleStackBack() {
+		if (isDirty()) {
+			pendingNavigationUrl = null;
+			showLeaveConfirm = true;
+			return;
+		}
+		stackController.pop();
+	}
+
 	onDestroy(() => {
 		upload.destroy();
 		editor.destroy(); // 回收媒体与封面 object URL；顺序上先停 Uppy 再 revoke
@@ -333,8 +360,19 @@
 </script>
 
 <main
-	class="flex h-full flex-col rounded-2xl border-zinc-100 lg:mx-4 lg:h-[calc(100%-1rem)] lg:border"
+	class={[
+		'flex h-full flex-col',
+		!_stackMode && 'rounded-2xl border-zinc-100 lg:mx-4 lg:h-[calc(100%-1rem)] lg:border'
+	]}
 >
+	{#if _stackMode}
+		<div class="flex items-center border-b border-zinc-100 px-4 py-2">
+			<Button variant="ghost" class="cursor-pointer gap-1 px-0" onclick={handleStackBack}>
+				<ChevronLeft class="size-5" />
+				<span>返回</span>
+			</Button>
+		</div>
+	{/if}
 	<div
 		class="min-h-0 grow overflow-y-auto p-6"
 		data-release-body-scroll
