@@ -1,7 +1,7 @@
 /**
  * 发布页编辑器核心：媒体条带、封面比例/文字样式、封面预览解析与 Object URL 生命周期。
  */
-import { toast } from 'svelte-sonner';
+import { notify } from '$lib/utils/notify';
 import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 import type { V1PostContentUnit } from '$lib/api/types.gen';
 import {
@@ -15,7 +15,6 @@ import {
 	type CoverSource
 } from '$lib/modules/media-cover';
 import { filesToDraftItems, getPreviewBlob } from '$lib/modules/release-media';
-import { formatUploadError } from '$lib/utils/format-upload-error';
 import { CoverRatioArray, type CoverRatio, type DraftMediaItem } from './release-draft.js';
 
 /** 需求 6.2.5.1-2：帖子媒体上限 */
@@ -141,7 +140,7 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 
 		const remaining = MAX_MEDIA_COUNT - cachedMediaItems.length;
 		if (remaining <= 0) {
-			toast.error(`最多只能选择 ${MAX_MEDIA_COUNT} 张图片/视频`);
+			notify.error(`最多只能选择 ${MAX_MEDIA_COUNT} 张图片/视频`);
 			input.value = '';
 			return;
 		}
@@ -150,7 +149,7 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 			const newItems = filesToDraftItems(newFiles, 'MEDIA_SCENE_POST_MEDIA');
 			const toAdd = newItems.slice(0, remaining);
 			if (newItems.length > remaining) {
-				toast.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
+				notify.warning(`已达到 ${MAX_MEDIA_COUNT} 张上限，仅添加了前 ${remaining} 个文件`);
 			}
 			const baseIndex = cachedMediaItems.length;
 			cachedMediaItems = [...cachedMediaItems, ...toAdd];
@@ -178,12 +177,12 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 						);
 						if (!hasFailed) {
 							hasFailed = true;
-							toast.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
+							notify.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
 						}
 					});
 			});
 		} catch (err) {
-			toast.error(formatUploadError(err) || '文件解析失败');
+			notify.uploadError(err, '文件解析失败');
 		}
 
 		input.value = '';
@@ -291,7 +290,7 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 					);
 					if (!hasFailed) {
 						hasFailed = true;
-						toast.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
+						notify.error(TOAST_MESSAGES.VIDEO_THUMBNAIL_FAILED);
 					}
 				});
 		});

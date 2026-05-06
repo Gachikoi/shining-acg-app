@@ -21,7 +21,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ChevronLeft } from 'lucide-svelte';
 	import ReleaseCoverPreview from './components/release-cover-preview.svelte';
-	import { toast } from 'svelte-sonner';
+	import { notify } from '$lib/utils/notify';
 	import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 	import {
 		createFetchMentionUsersFromFollowings,
@@ -45,7 +45,6 @@
 	import { createReleaseUploadController } from '$lib/stores/release/release-upload.svelte.js';
 	import { scrollBoundary } from '$lib/modules/gesture';
 	import { mediaItemsEqual } from '$lib/modules/release-media';
-	import { formatUploadError } from '$lib/utils/format-upload-error';
 	import { resolve } from '$app/paths';
 
 	let { _stackMode = false }: { _stackMode?: boolean } = $props();
@@ -95,14 +94,14 @@
 				throwOnError: true
 			});
 			clearReleaseDraft(DRAFT_ID);
-			toast.success(TOAST_MESSAGES.POST_PUBLISHED_SUCCESS);
+			notify.success(TOAST_MESSAGES.POST_PUBLISHED_SUCCESS);
 			// TODO(6.2.5.4): 发布成功后跳转到帖子详情页或 feed，等路由就绪后补充
 			if (_stackMode) {
 				stackController.clearStack();
 			}
 			goto('/');
 		} catch (error) {
-			toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			notify.uploadError(error, TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 		}
 	}
 
@@ -190,7 +189,7 @@
 	/** 手动保存：无变更时 toast 提示 */
 	function handleSave() {
 		if (!isDirty()) {
-			toast.info(TOAST_MESSAGES.NO_CHANGES_TO_SAVE);
+			notify.info(TOAST_MESSAGES.NO_CHANGES_TO_SAVE);
 			return;
 		}
 		performSave(false);
@@ -236,7 +235,7 @@
 	function handlePublishClick() {
 		if (upload.isUploading) return;
 		if (!selectedSection) {
-			toast.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
+			notify.error(TOAST_MESSAGES.PLEASE_SELECT_PARTITION);
 			return;
 		}
 		if (!validateForm()) {
@@ -256,7 +255,7 @@
 			(contenteditableRef && extractContentFromShinRichTextarea(contenteditableRef).length > 0) ||
 			editor.cachedMediaItems.length > 0;
 		if (!hasContent) {
-			toast.error(TOAST_MESSAGES.CONTENT_REQUIRED);
+			notify.error(TOAST_MESSAGES.CONTENT_REQUIRED);
 			return false;
 		}
 		return true;

@@ -2,13 +2,12 @@
  * 发布页媒体上传与发布提交：Uppy 生命周期、进度与失败重试，CreatePost 由页面注入回调完成。
  * 与路由生命周期对齐：onMount 调用 init()，onDestroy 调用 destroy()。
  */
-import { toast } from 'svelte-sonner';
+import { notify } from '$lib/utils/notify';
 import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 import type { V1MediaAsset } from '$lib/api/types.gen';
 import { createMediaUploader } from '$lib/modules/media-uploader';
 import type { MediaUploader } from '$lib/modules/media-uploader';
 import { draftItemsToPrepareParams } from '$lib/modules/release-media';
-import { formatUploadError } from '$lib/utils/format-upload-error';
 import type { DraftMediaItem } from './release-draft.js';
 
 /** `createReleaseUploadController` 的配置：草稿来源与发布成功后的业务回调 */
@@ -75,7 +74,7 @@ export function createReleaseUploadController(options: CreateReleaseUploadContro
 
 		const uploader = mediaUploader;
 		if (!uploader) {
-			toast.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			notify.error(TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 			return;
 		}
 
@@ -123,7 +122,7 @@ export function createReleaseUploadController(options: CreateReleaseUploadContro
 			// uppy.upload() 遇部分失败不抛异常，须显式看 failed
 			if (result?.failed && result.failed.length > 0) {
 				hasUploadError = true;
-				toast.error(TOAST_MESSAGES.UPLOAD_PARTIAL_FAILED);
+				notify.error(TOAST_MESSAGES.UPLOAD_PARTIAL_FAILED);
 				return;
 			}
 
@@ -131,7 +130,7 @@ export function createReleaseUploadController(options: CreateReleaseUploadContro
 			await options.completePublish(mediaAssets, batchId);
 		} catch (error) {
 			if (!uploadCancelled) {
-				toast.error(formatUploadError(error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+				notify.uploadError(error, TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 			}
 		} finally {
 			// 仍有失败待重试时保持 uploading，底栏展示重试/删失败项
@@ -152,16 +151,14 @@ export function createReleaseUploadController(options: CreateReleaseUploadContro
 			const result = await uploader.retryAll();
 			if (result?.failed && result.failed.length > 0) {
 				hasUploadError = true;
-				toast.error(
-					formatUploadError(result.failed[0]?.error) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY
-				);
+				notify.uploadError(result.failed[0]?.error, TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 				return;
 			}
 			const mediaAssets = await uploader.getBatchMedia(currentBatchId);
 			await options.completePublish(mediaAssets, currentBatchId);
 		} catch (e) {
 			hasUploadError = true;
-			toast.error(formatUploadError(e) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			notify.uploadError(e, TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 		} finally {
 			if (!hasUploadError) {
 				isUploading = false;
@@ -187,7 +184,7 @@ export function createReleaseUploadController(options: CreateReleaseUploadContro
 			const mediaAssets = await uploader.getBatchMedia(batchId);
 			await options.completePublish(mediaAssets, batchId);
 		} catch (e) {
-			toast.error(formatUploadError(e) || TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
+			notify.uploadError(e, TOAST_MESSAGES.UPLOAD_ERROR_RETRY);
 		}
 	}
 
@@ -197,7 +194,7 @@ export function createReleaseUploadController(options: CreateReleaseUploadContro
 		mediaUploader?.cancelAll();
 		hasUploadError = false;
 		isUploading = false;
-		toast.info(TOAST_MESSAGES.UPLOAD_CANCELLED);
+		notify.info(TOAST_MESSAGES.UPLOAD_CANCELLED);
 	}
 
 	return {
