@@ -12,6 +12,39 @@
 	import TabButton from '../app/tab-button.svelte';
 
 	let { children } = $props();
+	let appViewportHeight = $state<number | null>(null);
+
+	const KEYBOARD_INSET_THRESHOLD_PX = 120;
+
+	function isKeyboardLikelyOpen() {
+		if (typeof window === 'undefined') return false;
+		const vv = window.visualViewport;
+		if (!vv) return false;
+		const keyboardInset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+		return keyboardInset > KEYBOARD_INSET_THRESHOLD_PX;
+	}
+
+	function updateAppViewportHeight() {
+		if (typeof window === 'undefined') return;
+		const nextHeight = window.innerHeight;
+
+		if (appViewportHeight === null) {
+			appViewportHeight = nextHeight;
+			return;
+		}
+
+		// 键盘弹起或地址栏动画导致高度收缩时，保持旧高度，不让底栏被顶起
+		if (isKeyboardLikelyOpen()) return;
+		if (nextHeight < appViewportHeight) return;
+
+		appViewportHeight = nextHeight;
+	}
+
+	$effect(() => {
+		if (typeof document === 'undefined') return;
+		const stableVh = appViewportHeight ? `${appViewportHeight}px` : '100svh';
+		document.documentElement.style.setProperty('--app-stable-vh', stableVh);
+	});
 
 	function handleHomeClick(event: MouseEvent) {
 		if (page.url.pathname.includes('/home')) {
@@ -57,11 +90,20 @@
 		// startRealtimeAppManager();
 		window.addEventListener('wheel', onWheel, { passive: false });
 		window.addEventListener('touchmove', onTouchMove, { passive: false });
+		updateAppViewportHeight();
+
+		const vv = window.visualViewport;
+		window.addEventListener('resize', updateAppViewportHeight);
+		vv?.addEventListener('resize', updateAppViewportHeight);
+		vv?.addEventListener('scroll', updateAppViewportHeight);
 
 		return () => {
 			// stopRealtimeAppManager();
 			window.removeEventListener('wheel', onWheel);
 			window.removeEventListener('touchmove', onTouchMove);
+			window.removeEventListener('resize', updateAppViewportHeight);
+			vv?.removeEventListener('resize', updateAppViewportHeight);
+			vv?.removeEventListener('scroll', updateAppViewportHeight);
 		};
 	});
 
@@ -74,7 +116,8 @@
 
 <Header />
 <div
-	class="flex h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col lg:flex-row"
+	class="flex h-[calc(var(--app-safe-vh)-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col lg:h-[calc(var(--app-safe-vh)-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] lg:flex-row"
+	style={`--app-safe-vh: ${appViewportHeight ? `${appViewportHeight}px` : '100svh'}`}
 >
 	<aside class="m-4 mr-0 hidden flex-col justify-between lg:flex">
 		<div class="flex flex-col gap-2">
@@ -89,7 +132,7 @@
 	</aside>
 
 	<section
-		class="h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-3rem)] grow lg:h-[calc(100vh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]"
+		class="h-[calc(var(--app-safe-vh)-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-3rem)] grow lg:h-[calc(var(--app-safe-vh)-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]"
 	>
 		{@render children()}
 	</section>

@@ -254,33 +254,6 @@
 				>
 					<ChevronRight class="size-5" />
 				</button>
-
-				<!-- 媒体分页圆点 + 热区 -->
-				<div
-					data-preview-nav
-					class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 opacity-60 transition-opacity group-hover:opacity-100"
-				>
-					<div
-						class="flex items-center gap-2 rounded-full bg-zinc-900/10 px-3 py-1.5 dark:bg-black/40"
-					>
-						{#each mediaList as media, index (media.assetId ?? index)}
-							<button
-								type="button"
-								class={cn(
-									'h-2 w-2 cursor-pointer rounded-full transition-colors',
-									index === activeIndex
-										? 'bg-zinc-800 dark:bg-white'
-										: 'bg-zinc-400/70 hover:bg-zinc-500 dark:bg-white/50 dark:hover:bg-white/75'
-								)}
-								onclick={(e) => {
-									e.stopPropagation();
-									activeIndex = index;
-								}}
-								aria-label={`查看第 ${index + 1} 张媒体`}
-							></button>
-						{/each}
-					</div>
-				</div>
 			{/if}
 		{:else}
 			<div
@@ -290,6 +263,33 @@
 			</div>
 		{/if}
 	</div>
+
+	{#if mediaList.length > 1}
+		<!-- 分页圆点独立于媒体区，避免与图片内容重叠 -->
+		<div
+			data-preview-nav
+			class="mt-3 mb-2 flex justify-center opacity-70 transition-opacity group-hover:opacity-100"
+		>
+			<div class="flex items-center gap-2 rounded-full bg-zinc-900/10 px-3 py-1.5 dark:bg-black/40">
+				{#each mediaList as media, index (media.assetId ?? index)}
+					<button
+						type="button"
+						class={cn(
+							'h-2 w-2 cursor-pointer rounded-full transition-colors',
+							index === activeIndex
+								? 'bg-zinc-800 dark:bg-white'
+								: 'bg-zinc-400/70 hover:bg-zinc-500 dark:bg-white/50 dark:hover:bg-white/75'
+						)}
+						onclick={(e) => {
+							e.stopPropagation();
+							activeIndex = index;
+						}}
+						aria-label={`查看第 ${index + 1} 张媒体`}
+					></button>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- 图片视频预览（与上列同属 shield，避免 fixed 层落在 scrollBoundary 外） -->
 	<ImageVideoPreview
