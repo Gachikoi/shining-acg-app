@@ -244,6 +244,44 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 	}
 
 	/**
+	 * 用裁切后的 Blob 替换指定索引图片项，并更新对应预览 URL。
+	 *
+	 * @param index - 目标媒体下标
+	 * @param blob - 裁切结果 Blob
+	 * @param options - 可选覆盖名称与 mime
+	 */
+	function replaceImageAt(
+		index: number,
+		blob: Blob,
+		options?: { name?: string; mimeType?: string }
+	): void {
+		const current = cachedMediaItems[index];
+		if (!current || current.kind !== 'single') return;
+		if (!isImageItem(current)) return;
+
+		const nextBlob = options?.mimeType ? blob.slice(0, blob.size, options.mimeType) : blob;
+		const fallbackName = current.name || `image-${index + 1}.jpg`;
+		const nextName = options?.name && options.name.length > 0 ? options.name : fallbackName;
+		const nextItem: DraftMediaItem = {
+			kind: 'single',
+			blob: nextBlob,
+			name: nextName
+		};
+		const nextItems = [...cachedMediaItems];
+		nextItems[index] = nextItem;
+		cachedMediaItems = nextItems;
+
+		const prevUrl = cachedMediaUrls[index];
+		if (prevUrl?.startsWith('blob:')) {
+			URL.revokeObjectURL(prevUrl);
+		}
+		const nextUrl = URL.createObjectURL(nextBlob);
+		const nextUrls = [...cachedMediaUrls];
+		nextUrls[index] = nextUrl;
+		cachedMediaUrls = nextUrls;
+	}
+
+	/**
 	 * 从持久化草稿恢复媒体列表、封面索引与比例/文字样式；先回收当前列表的 object URL
 	 *
 	 * @param draft.mediaItems - IndexedDB 恢复的 Blob 项
@@ -404,6 +442,7 @@ export function createReleaseEditorCore(options: ReleaseEditorCoreOptions) {
 		handleFileSelect,
 		handleRemoveMedia,
 		reorderMedia,
+		replaceImageAt,
 		hydrateFromDraftMedia,
 		resetMediaAndCover,
 		destroy
