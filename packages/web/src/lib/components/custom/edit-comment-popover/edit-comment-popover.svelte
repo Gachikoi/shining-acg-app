@@ -111,6 +111,53 @@
 			.trim();
 	}
 
+	function restoreEditorFocus() {
+		const editor = contentEditableRef;
+		if (!editor) return;
+		try {
+			editor.focus({ preventScroll: true });
+		} catch {
+			editor.focus();
+		}
+	}
+
+	/**
+	 * 是否允许当前点击目标让编辑器失焦（例如发送/取消等显式操作）。
+	 */
+	function allowBlurForTarget(target: HTMLElement): boolean {
+		return !!target.closest(
+			'[data-comment-editor-allow-blur="true"],button,input,textarea,select,a[href],[contenteditable="true"]'
+		);
+	}
+
+	/**
+	 * 关键修复：在 pointerdown 阶段阻止编辑器失焦，避免「键盘先收起再唤起」造成闪烁。
+	 */
+	function handleEditorSurfacePointerDown(event: PointerEvent) {
+		const editor = contentEditableRef;
+		if (!editor) return;
+		const target = event.target as HTMLElement | null;
+		if (!target) return;
+		if (allowBlurForTarget(target)) return;
+		if (document.activeElement !== editor) return;
+		event.preventDefault();
+	}
+
+	/**
+	 * 兜底：如果某些设备仍发生失焦，pointerup 再次拉回焦点，但避免重复 focus 造成闪烁。
+	 */
+	function handleEditorSurfacePointerUp(event: PointerEvent) {
+		const editor = contentEditableRef;
+		if (!editor) return;
+		const target = event.target as HTMLElement | null;
+		if (!target) return;
+		if (allowBlurForTarget(target)) return;
+		if (document.activeElement === editor) return;
+		requestAnimationFrame(() => {
+			restoreEditorFocus();
+		});
+	}
+
 	function getEditorContent(): string {
 		if (!contentEditableRef) return '';
 		return normalizeText(contentEditableRef.innerText ?? '');
@@ -345,7 +392,11 @@
 
 		requestAnimationFrame(() => {
 			if (contentEditableRef !== editor) return;
-			editor.focus();
+			try {
+				editor.focus({ preventScroll: true });
+			} catch {
+				editor.focus();
+			}
 			const selection = window.getSelection();
 			if (!selection) return;
 			const range = document.createRange();
@@ -407,50 +458,74 @@
 	});
 </script>
 
-{#if replyTo}
-	<p class="mb-2 text-xs text-zinc-500">回复 @{replyTo.author?.name ?? '用户'}</p>
-{/if}
-{#key editorKey}
-	<ShinRichTextarea
-		bind:contentEditableRef
-		placeholder={displayPlaceholder}
-		maxLength={300}
-		initialContent={initialEditorContent}
-		{fetchMentionUsers}
-		class="mb-2 min-h-11! border border-zinc-200 shadow-none dark:border-zinc-700"
+<div
+	role="group"
+	aria-label="评论编辑器"
+	onpointerdown={handleEditorSurfacePointerDown}
+	onpointerup={handleEditorSurfacePointerUp}
+>
+	{#if replyTo}
+		<p class="mb-2 text-xs text-zinc-500">回复 @{replyTo.author?.name ?? '用户'}</p>
+	{/if}
+	{#key editorKey}
+		<ShinRichTextarea
+			bind:contentEditableRef
+			placeholder={displayPlaceholder}
+			maxLength={300}
+			initialContent={initialEditorContent}
+			{fetchMentionUsers}
+			class="mb-2 min-h-11! border border-zinc-200 shadow-none dark:border-zinc-700"
+		/>
+	{/key}
+
+	<input
+		bind:this={fileInputRef}
+		type="file"
+		class="hidden"
+		accept="image/*"
+		multiple
+		onchange={handleFileChange}
 	/>
-{/key}
 
-<input
-	bind:this={fileInputRef}
-	type="file"
-	class="hidden"
-	accept="image/*"
-	multiple
-	onchange={handleFileChange}
-/>
+	{#if imageItems.length > 0}
+		<div class="mt-2 flex flex-wrap gap-2">
+			{#each imageItems as item, index (item.id)}
+				<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+				<div
+					class="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-muted select-none dark:border-zinc-700"
+					aria-label={`评论图片 ${index + 1}，右键打开操作菜单`}
+					onclick={(e) => {
+						tryOpenMenu(index, e.clientX, e.clientY);
+					}}
+					oncontextmenu={(e) => onCardContextMenu(e, index)}
+				>
+					<img
+						src={item.previewUrl}
+						alt={`评论图片预览 ${index + 1}`}
+						class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
+						draggable="false"
+					/>
+				</div>
+			{/each}
+			{#if imageItems.length < MAX_IMAGES}
+				<button
+					type="button"
+					class="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
+					onclick={openImagePicker}
+					disabled={submitting}
+					aria-label="添加图片"
+				>
+					<PlusIcon class="size-4 text-muted-foreground" />
+				</button>
+			{/if}
+		</div>
+		<p class="text-sm text-muted-foreground">
+			最多 {MAX_IMAGES} 张图片，已选 {imageItems.length} 张
+		</p>
+	{/if}
 
-{#if imageItems.length > 0}
-	<div class="mt-2 flex flex-wrap gap-2">
-		{#each imageItems as item, index (item.id)}
-			<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-			<div
-				class="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-muted select-none dark:border-zinc-700"
-				aria-label={`评论图片 ${index + 1}，右键打开操作菜单`}
-				onclick={(e) => {
-					tryOpenMenu(index, e.clientX, e.clientY);
-				}}
-				oncontextmenu={(e) => onCardContextMenu(e, index)}
-			>
-				<img
-					src={item.previewUrl}
-					alt={`评论图片预览 ${index + 1}`}
-					class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
-					draggable="false"
-				/>
-			</div>
-		{/each}
-		{#if imageItems.length < MAX_IMAGES}
+	{#if imageItems.length === 0}
+		<div class="mt-2 flex flex-wrap gap-2">
 			<button
 				type="button"
 				class="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
@@ -460,33 +535,33 @@
 			>
 				<PlusIcon class="size-4 text-muted-foreground" />
 			</button>
-		{/if}
-	</div>
-	<p class="text-sm text-muted-foreground">最多 {MAX_IMAGES} 张图片，已选 {imageItems.length} 张</p>
-{/if}
+		</div>
+		<p class="text-sm text-muted-foreground">
+			最多 {MAX_IMAGES} 张图片，已选 {imageItems.length} 张
+		</p>
+	{/if}
 
-{#if imageItems.length === 0}
-	<div class="mt-2 flex flex-wrap gap-2">
-		<button
-			type="button"
-			class="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-			onclick={openImagePicker}
-			disabled={submitting}
-			aria-label="添加图片"
-		>
-			<PlusIcon class="size-4 text-muted-foreground" />
-		</button>
-	</div>
-	<p class="text-sm text-muted-foreground">最多 {MAX_IMAGES} 张图片，已选 {imageItems.length} 张</p>
-{/if}
-
-<div class="flex items-center justify-between gap-2">
-	<div></div>
-	<div class="flex justify-end gap-2">
-		<Button size="sm" onclick={handleSubmit} disabled={submitting}>
-			{submitting ? '发送中…' : '发送'}
-		</Button>
-		<Button variant="ghost" size="sm" onclick={onCancel} disabled={submitting}>取消</Button>
+	<div class="flex items-center justify-between gap-2">
+		<div></div>
+		<div class="flex justify-end gap-2">
+			<Button
+				size="sm"
+				onclick={handleSubmit}
+				disabled={submitting}
+				data-comment-editor-allow-blur="true"
+			>
+				{submitting ? '发送中…' : '发送'}
+			</Button>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={onCancel}
+				disabled={submitting}
+				data-comment-editor-allow-blur="true"
+			>
+				取消
+			</Button>
+		</div>
 	</div>
 </div>
 

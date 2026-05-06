@@ -351,9 +351,19 @@
 	/** 窄屏：已决定揭示（inset>0 或超时），避免 visualViewport 连续触发 effect 时反复 cancel rAF */
 	let commentEditorNarrowRevealLocked = $state(false);
 	let commentEditorCloseTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+	let commentEditorRevealTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 	let commentEditorPanelEl = $state<HTMLElement | null>(null);
 	const commentMediaUploader = createMediaUploader();
+	const COMMENT_EDITOR_NARROW_OPEN_DELAY_MS = 120;
 
+	function getStableViewportHeight(): number {
+		if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
+		const stableVhValue = getComputedStyle(document.documentElement)
+			.getPropertyValue('--app-stable-vh')
+			.trim();
+		const parsed = Number.parseFloat(stableVhValue);
+		return Number.isFinite(parsed) && parsed > 0 ? parsed : window.innerHeight;
+	}
 	function getDisplayedContent() {
 		if (!hasLongContent || isContentExpanded) return rawContent;
 		return rawContent.slice(0, CONTENT_LIMIT) + '…';
@@ -401,6 +411,12 @@
 			clearTimeout(commentEditorCloseTimer);
 			commentEditorCloseTimer = null;
 		}
+		if (commentEditorRevealTimer) {
+			clearTimeout(commentEditorRevealTimer);
+			commentEditorRevealTimer = null;
+		}
+		// 每次打开都重置为未揭示，确保位移动画稳定触发
+		commentEditorVisualReady = false;
 		commentEditorNarrowRevealLocked = false;
 		commentReplyTo = target;
 		commentEditorOpen = true;
@@ -409,12 +425,32 @@
 	function closeCommentEditor() {
 		if (!commentEditorOpen) return;
 		commentEditorVisualReady = false;
+		if (commentEditorRevealTimer) {
+			clearTimeout(commentEditorRevealTimer);
+			commentEditorRevealTimer = null;
+		}
 		if (commentEditorCloseTimer) clearTimeout(commentEditorCloseTimer);
 		commentEditorCloseTimer = setTimeout(() => {
 			commentEditorCloseTimer = null;
 			commentEditorOpen = false;
 			commentReplyTo = null;
 		}, 360);
+	}
+
+	function revealCommentEditorWithDelay(delayMs: number) {
+		if (commentEditorRevealTimer) {
+			clearTimeout(commentEditorRevealTimer);
+		}
+		commentEditorRevealTimer = setTimeout(() => {
+			commentEditorRevealTimer = null;
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					if (commentEditorCloseTimer !== null) return;
+					if (!commentEditorOpen) return;
+					commentEditorVisualReady = true;
+				});
+			});
+		}, delayMs);
 	}
 
 	function handleDocumentKeyDownCapture(event: KeyboardEvent) {
@@ -458,6 +494,14 @@
 
 	$effect(() => {
 		return () => {
+			if (commentEditorRevealTimer) {
+				clearTimeout(commentEditorRevealTimer);
+				commentEditorRevealTimer = null;
+			}
+			if (commentEditorCloseTimer) {
+				clearTimeout(commentEditorCloseTimer);
+				commentEditorCloseTimer = null;
+			}
 			commentMediaUploader.destroy();
 		};
 	});
@@ -472,9 +516,10 @@
 				commentEditorKeyboardInset = 0;
 				return;
 			}
+			const stableViewportHeight = getStableViewportHeight();
 			const inset = Math.max(
 				0,
-				window.innerHeight - (visualViewport.height + visualViewport.offsetTop)
+				stableViewportHeight - (visualViewport.height + visualViewport.offsetTop)
 			);
 			commentEditorKeyboardInset = inset;
 		};
@@ -523,7 +568,7 @@
 		};
 	});
 
-	/** 窄屏：键盘 inset > 0 时揭示；先 lock 再双 rAF，不在 cleanup 里 cancel rAF（避免 inset 抖动打断） */
+	/** 窄屏：键盘 inset > 0 后稍作延迟，再从键盘顶边向上拉起编辑器 */
 	$effect(() => {
 		if (!commentEditorOpen) return;
 		void commentEditorCloseTimer;
@@ -535,13 +580,7 @@
 		if (inset <= 0) return;
 
 		commentEditorNarrowRevealLocked = true;
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				if (commentEditorCloseTimer !== null) return;
-				if (!commentEditorOpen) return;
-				commentEditorVisualReady = true;
-			});
-		});
+		revealCommentEditorWithDelay(COMMENT_EDITOR_NARROW_OPEN_DELAY_MS);
 	});
 
 	/** 窄屏兜底：不依赖 inset 抖动重排定时器（仅依赖 open / 锁 / 宽屏） */
@@ -554,13 +593,7 @@
 			if (commentEditorCloseTimer !== null) return;
 			if (commentEditorNarrowRevealLocked || commentEditorVisualReady) return;
 			commentEditorNarrowRevealLocked = true;
-			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					if (commentEditorCloseTimer !== null) return;
-					if (!commentEditorOpen) return;
-					commentEditorVisualReady = true;
-				});
-			});
+			revealCommentEditorWithDelay(COMMENT_EDITOR_NARROW_OPEN_DELAY_MS);
 		}, 420);
 		return () => clearTimeout(timeout);
 	});
@@ -632,7 +665,8 @@
 {#if isLoading}
 	<!-- 加载状态 -->
 	<div
-		class="scrollbar-hide fixed inset-0 z-40 bg-transparent"
+		class="scrollbar-hide fixed top-0 left-0 z-40 w-full bg-transparent"
+		style:height="var(--app-stable-vh, 100vh)"
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
@@ -647,7 +681,7 @@
 			<div
 				class={cn(
 					'max-w-10xl flex h-full w-full flex-col items-center justify-center overflow-hidden bg-zinc-100 text-zinc-900',
-					'max-h-[calc(100vh-3rem)] rounded-none shadow-xl',
+					'max-h-[calc(var(--app-stable-vh,100vh)-3rem)] rounded-none shadow-xl',
 					'dark:bg-zinc-900 dark:text-zinc-50'
 				)}
 			>
@@ -659,7 +693,8 @@
 {:else if error}
 	<!-- 错误状态 -->
 	<div
-		class="scrollbar-hide fixed inset-0 z-40 bg-transparent"
+		class="scrollbar-hide fixed top-0 left-0 z-40 w-full bg-transparent"
+		style:height="var(--app-stable-vh, 100vh)"
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
@@ -685,7 +720,7 @@
 			<div
 				class={cn(
 					'max-w-10xl flex h-full w-full flex-col items-center justify-center overflow-hidden bg-zinc-100 px-6 text-zinc-900',
-					'max-h-[calc(100vh-3rem)] rounded-none shadow-xl',
+					'max-h-[calc(var(--app-stable-vh,100vh)-3rem)] rounded-none shadow-xl',
 					'dark:bg-zinc-900 dark:text-zinc-50'
 				)}
 			>
@@ -700,7 +735,8 @@
 		再叠一层会变脏；独立路由（如 post-detail-debug）无 Stack 时也只是无额外压暗。
 	-->
 	<div
-		class="scrollbar-hide fixed inset-0 z-40 bg-transparent"
+		class="scrollbar-hide fixed top-0 left-0 z-40 w-full bg-transparent"
+		style:height="var(--app-stable-vh, 100vh)"
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
@@ -886,7 +922,10 @@
 						class="scrollbar-hide flex-1 overflow-y-auto px-4 pb-4 lg:px-6 lg:pb-4"
 						onscroll={syncHeaderDividerFromScroll}
 					>
-						<div class="mb-4 box-border flex h-[60vh] min-h-0 flex-col pb-6 lg:hidden">
+						<div
+							class="mb-4 box-border flex min-h-0 flex-col pb-6 lg:hidden"
+							style:height="calc(var(--app-stable-vh, 100vh) * 0.6)"
+						>
 							<div class="min-h-0 flex-1">
 								<PostMediaArea mediaList={post.media ?? []} postTitle={post.title ?? ''} />
 							</div>
@@ -986,7 +1025,7 @@
 									class={cn(
 										'flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 sm:min-w-10 sm:px-2',
 										post.relationStatus?.isLiked
-											? '!text-rose-500 hover:!bg-rose-500/12 hover:!text-rose-500'
+											? 'text-rose-500! hover:bg-rose-500/12! hover:text-rose-500!'
 											: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
 									)}
 									onclick={handleLike}
@@ -997,7 +1036,7 @@
 												'size-4 shrink-0 origin-center',
 												isLiking &&
 													'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
-												post.relationStatus?.isLiked && 'fill-current !text-rose-500'
+												post.relationStatus?.isLiked && 'fill-current text-rose-500!'
 											)}
 											fill={post.relationStatus?.isLiked ? 'currentColor' : 'none'}
 										/>
@@ -1013,7 +1052,7 @@
 									class={cn(
 										'flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 sm:min-w-10 sm:px-2',
 										post.relationStatus?.isCollected
-											? '!text-amber-400 hover:!bg-amber-400/12 hover:!text-amber-400'
+											? 'text-amber-400! hover:bg-amber-400/12! hover:text-amber-400!'
 											: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
 									)}
 									onclick={handleCollect}
@@ -1024,7 +1063,7 @@
 												'size-4 shrink-0 origin-center',
 												isCollecting &&
 													'animate-in duration-300 ease-out fill-mode-forwards zoom-in-75',
-												post.relationStatus?.isCollected && 'fill-current !text-amber-400'
+												post.relationStatus?.isCollected && 'fill-current text-amber-400!'
 											)}
 											fill={post.relationStatus?.isCollected ? 'currentColor' : 'none'}
 										/>
@@ -1082,13 +1121,11 @@
 							<div
 								data-edit-comment-popover-root
 								class={cn(
-									'w-full origin-bottom border-t border-zinc-200 bg-zinc-50 p-3 shadow-none dark:border-zinc-700 dark:bg-zinc-900',
-									/* duration/ease 放在两侧共用的基类里，避免「只在一侧有 duration」时过渡不生效；用任意值确保一定生成 CSS */
+									'w-full origin-bottom border-t border-zinc-200 bg-zinc-50 p-3 shadow-none will-change-transform dark:border-zinc-700 dark:bg-zinc-900',
+									/* 只做 transform，去掉渐变（opacity）以获得明确的上拉动效 */
 									'motion-reduce:transition-none',
-									'transition-[transform,opacity] duration-[400ms] ease-out',
-									commentEditorVisualReady
-										? 'translate-y-0 scale-y-100 opacity-100'
-										: 'scale-y-[0.92] opacity-0'
+									'transition-transform duration-300 ease-out',
+									commentEditorVisualReady ? 'translate-y-0' : 'translate-y-[110%]'
 								)}
 								role="presentation"
 								onpointerdown={(e) => e.stopPropagation()}
