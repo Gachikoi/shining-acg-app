@@ -1,6 +1,7 @@
 <script lang="ts">
 	/**
-	 * 图片/视频编辑调试组件：本地选图/选视频、缩略图排序、封面、全屏预览（object URL）。
+	 * 图片/视频编辑组件：用于媒体选择与管理，支持缩略图排序、封面设置、右键操作和全屏预览；
+	 * 图片可进入裁切编辑并回写结果，视频暂不支持编辑。
 	 */
 	import { PlusIcon, Star } from 'lucide-svelte';
 	import type { Attachment } from 'svelte/attachments';
