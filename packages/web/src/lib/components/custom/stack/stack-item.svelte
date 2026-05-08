@@ -227,9 +227,13 @@
 				if (state.deltaX > 0) {
 					isSwipeRightScaleDown = true;
 				}
-				// 横向 swipe 仍会把副轴位移带进 state.deltaY；若写入 translateY，整页会随手跟动（底部栏尤其明显）。
-				// 触点进/出栈的跟手只应由水平位移驱动缩放与 translateX，垂直位移保持为 0。
-				moveAndScaleTo(state.deltaX, 0, 1 - (0.2 * state.deltaX) / el!.clientWidth, false);
+				// 这是刻意而为之的 y 轴跟手，而非 bug
+				moveAndScaleTo(
+					state.deltaX,
+					state.deltaY,
+					1 - (0.2 * state.deltaX) / el!.clientWidth,
+					false
+				);
 			} else if (isTop && !item.rectInfo) {
 				panTo(state.deltaX, { withAnimation: false });
 			} else if (isSecondaryTop && hasNext && stackController.isPushingNext) {
@@ -479,7 +483,7 @@
 	style:z-index={zIndex}
 	style:will-change="transform,clip-path"
 	style:transform-origin={transformOrigin}
-	class={`fixed inset-0 bg-background ${item.ignoreSafeArea ? '' : `pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}`}
+	class={`fixed inset-0 ${item.ignoreSafeArea ? '' : `pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}`}
 	use:swipe={swipeOptions}
 	use:edgeZone={{ left: 24 }}
 >
