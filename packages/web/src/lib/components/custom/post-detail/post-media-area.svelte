@@ -151,7 +151,7 @@
 	<!-- 媒体滑动区：内部负责 swipe 手势、左右切换、圆点指示 -->
 	<div
 		bind:this={gestureContainerEl}
-		class="group relative flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center bg-[#f7f3ee] dark:bg-black/80"
+		class="group relative flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center"
 		role="group"
 		aria-roledescription="carousel"
 		use:swipe={swipeOptions}
@@ -175,7 +175,7 @@
 				>
 					{#each mediaList as media, index (media.assetId ?? index)}
 						<div
-							class="box-border flex h-full min-h-0 w-full min-w-full flex-[0_0_100%] shrink-0 basis-full items-center justify-center overflow-hidden bg-[#f7f3ee] dark:bg-black"
+							class="box-border flex h-full min-h-0 w-full min-w-full flex-[0_0_100%] shrink-0 basis-full items-center justify-center overflow-hidden bg-background"
 							data-media-index={index}
 						>
 							{#if media.type === 'MEDIA_TYPE_IMAGE'}
@@ -185,7 +185,7 @@
 									alt=""
 									role="presentation"
 									draggable="false"
-									class="max-h-full max-w-full cursor-pointer object-contain select-none"
+									class="h-full w-full cursor-pointer object-contain select-none"
 									style="pointer-events: none; -webkit-user-drag: none; user-select: none;"
 									onerror={onPostMediaImageError}
 								/>
@@ -212,7 +212,7 @@
 												openPreviewEditor(index, true);
 											}}
 										>
-											<Play class="size-8" />
+											<Play class="size-8 fill-white text-white" />
 										</Button>
 									</div>
 								</div>
@@ -237,7 +237,7 @@
 					onclick={prevMedia}
 					aria-label="上一张"
 				>
-					<ChevronLeft class="size-5" />
+					<ChevronLeft class="size-5 text-white" />
 				</button>
 				<button
 					type="button"
@@ -252,7 +252,7 @@
 					onclick={nextMedia}
 					aria-label="下一张"
 				>
-					<ChevronRight class="size-5" />
+					<ChevronRight class="size-5 text-white" />
 				</button>
 			{/if}
 		{:else}

@@ -129,7 +129,6 @@
 			<div class="h-full min-h-0 w-full overflow-hidden" bind:this={containerEl}>
 				{#if store}
 					<WaterfallContainer
-						scrollContainerClass="px-0!"
 						bind:this={waterfallRef}
 						posts={store.items}
 						loading={store.loadingMore}
