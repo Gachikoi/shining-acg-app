@@ -1,28 +1,31 @@
 <script lang="ts">
 	/**
-	 * @component ReleaseMediaPicker
-	 * @description
-	 * 发布页「选择图片/视频」（需求 6.2.5.1-2）：缩略图网格、`+` 选文件、封面红环标识。
-	 * - **触摸 / 鼠标**：**轻点**（未拖动即松手）打开菜单。触摸长按会触发合成 `contextmenu`：仅 `preventDefault` 抑制系统菜单，**不**打开业务菜单，以免打断拖拽用 Pointer；**桌面鼠标右键**仍打开菜单。
-	 * - **排序**：列表根使用 `use:sortableList`（SortableJS）；整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
-	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
-	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
+	 * 图片/视频编辑组件：用于媒体选择与管理，支持缩略图排序、封面设置、右键操作和全屏预览；
+	 * 图片可进入裁切编辑并回写结果，视频暂不支持编辑。
 	 */
-	import { PlusIcon } from 'lucide-svelte';
+	import { PlusIcon, Star } from 'lucide-svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { toast } from 'svelte-sonner';
-	import { Label } from '$lib/components/ui/label';
-	import { sortableList } from '$lib/modules/sortable-list';
-	import { getPreviewBlob } from '$lib/modules/release-media';
-	import { isImageItem } from '$lib/modules/media-cover';
-	import type { DraftMediaItem } from '$lib/stores/release';
-	import { cn } from '$lib/utils.js';
+	import { Button } from '$lib/components/ui/button';
+	import { ImageVideoPreview } from '$lib/components/custom/image-video-preview';
 	import { longPress } from '$lib/modules/gesture';
+	import { sortableList } from '$lib/modules/sortable-list';
+	import { cn } from '$lib/utils.js';
+	import { getMediaDisplayUrl } from '$lib/utils/media-url';
+	import type {
+		V1MediaAsset,
+		V1MediaFile,
+		V1MediaScene,
+		V1MediaStatus,
+		V1MediaType
+	} from '$lib/api/types.gen';
+	import { onDestroy, onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
+	import { toast } from 'svelte-sonner';
 
-	/** 连点/右键与单击合并为单次打开（ms） */
+	const IMAGE_MAX_BYTES = 100 * 1024 * 1024;
+	const VIDEO_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+	const SORT_DELAY_MS = 400;
 	const MENU_DEDUPE_MS = 320;
-	/** 拖动延迟（ms） */
-	const DELAY = 400;
 	const EDIT_RATIO_OPTIONS = ['1:1', '4:3', '3:4'] as const;
 	type EditRatio = (typeof EDIT_RATIO_OPTIONS)[number];
 	type RectPx = { x: number; y: number; width: number; height: number };
@@ -34,93 +37,276 @@
 		startY: number;
 	};
 
+	const ACCEPT_ATTR =
+		'image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm,.jpg,.jpeg,.png,.heic,.heif,.webp,.mp4,.mov,.m4v,.webm';
+
 	let {
-		items,
-		urls,
-		maxCount,
-		onFileSelect,
-		onRemove,
-		selectedCoverIndex,
-		onSelectCoverIndex,
-		onReorder,
-		mediaInteractionsDisabled,
-		onEditImage
+		value = $bindable<V1MediaAsset[]>([]),
+		scene = 'MEDIA_SCENE_POST_MEDIA' as V1MediaScene,
+		maxCount = 20,
+		disabled = false,
+		onChange,
+		forcedEditRatio = null
 	}: {
-		/** 草稿媒体项，与 `urls` 一一对应 */
-		items: DraftMediaItem[];
-		/** 预览 URL（object URL 或占位），与 `items` 等长 */
-		urls: string[];
-		/** 可选张数上限（如 20） */
-		maxCount: number;
-		onFileSelect: (event: Event) => void;
-		/** 从菜单「删除」或未来其它入口移除一项 */
-		onRemove: (index: number) => void;
-		/** 当前作为封面的项下标，用于红环与 `设为封面` 状态 */
-		selectedCoverIndex: number;
-		onSelectCoverIndex: (index: number) => void;
-		/** 由 Sortable `onEnd` 提交，应对应 `reorderMedia` */
-		onReorder: (fromIndex: number, toIndex: number) => void;
-		/** 为 true 时禁用缩略图一切手势（如 `upload.isUploading`） */
-		mediaInteractionsDisabled: boolean;
-		/** 图片编辑完成回调：返回原索引与裁切 Blob */
-		onEditImage: (payload: {
-			index: number;
-			blob: Blob;
-			mimeType?: string;
-			name?: string;
-		}) => void | Promise<void>;
+		value?: V1MediaAsset[];
+		scene?: V1MediaScene;
+		maxCount?: number;
+		disabled?: boolean;
+		onChange?: (next: V1MediaAsset[]) => void;
+		forcedEditRatio?: EditRatio | null;
 	} = $props();
 
-	let mediaFileInputRef: HTMLInputElement | null = null;
+	/** 本组件创建的 object URL，按 assetId 登记以便 revoke */
+	const objectUrlByAssetId = new SvelteMap<string, string>();
+
+	/** 封面项下标（可能暂时越界，展示用 {@link selectedCoverIndex} 收敛） */
+	let coverIndex = $state(0);
+	const selectedCoverIndex = $derived(
+		value.length === 0 ? 0 : Math.min(Math.max(0, coverIndex), value.length - 1)
+	);
+	let previewOpen = $state(false);
+	let previewInitialIndex = $state(0);
+
+	let fileInputRef: HTMLInputElement | null = null;
+	let draggingUrl = $state<string | null>(null);
+	let suppressNextCardClick = $state(false);
 	let menuOpen = $state(false);
 	let menuIndex = $state(0);
 	let menuAnchorLeft = $state(0);
 	let menuAnchorTop = $state(0);
 	let menuPanelRef = $state<HTMLDivElement | null>(null);
 	let menuAdjusted = $state({ left: 0, top: 0 });
-	/** 与 `{#each … (urls[index])}` 一致，用预览 URL 标记被拖项 */
-	let draggingUrl = $state<string | null>(null);
 	let editOverlayOpen = $state(false);
 	let editTargetIndex = $state(0);
 	let editRatio = $state<EditRatio>('1:1');
 	let editImageUrl = $state<string | null>(null);
-	let editSourceBlob = $state<Blob | null>(null);
-	let editSourceName = $state('cropped-image.jpg');
 	let editImageElement = $state<HTMLImageElement | null>(null);
 	let imageRenderRect = $state<RectPx>({ x: 0, y: 0, width: 0, height: 0 });
 	let cropRectPx = $state<RectPx>({ x: 0, y: 0, width: 0, height: 0 });
 	let cropDragging = $state<DragSession | null>(null);
 	let editApplying = $state(false);
-
 	let lastMenuOpenAt = 0;
 	let lastMenuOpenIndex = -1;
 
-	/** 成功重排后 Sortable 仍可能触发 `click`，用宏任务窗口抑制误开菜单 */
-	let suppressNextCardClick = false;
+	/** 回收 map 中已不在 snapshot 内的 object URL（非 $effect，避免 svelte-autofixer 对 effect 内调用的告警） */
+	function syncOrphanObjectUrlsForSnapshot(snapshot: V1MediaAsset[]): void {
+		const n = snapshot.length;
+		for (const id of objectUrlByAssetId.keys()) {
+			let stillInList = false;
+			for (let i = 0; i < n; i++) {
+				if (snapshot[i].assetId === id) {
+					stillInList = true;
+					break;
+				}
+			}
+			if (stillInList) continue;
+			const url = objectUrlByAssetId.get(id);
+			if (url) {
+				URL.revokeObjectURL(url);
+				objectUrlByAssetId.delete(id);
+			}
+		}
+	}
+
+	function commit(next: V1MediaAsset[]): void {
+		syncOrphanObjectUrlsForSnapshot(next);
+		const ordered = next.map((a, i) => ({ ...a, orderIndex: i }));
+		if (ordered.length === 0) {
+			coverIndex = 0;
+		}
+		value = ordered;
+		onChange?.(ordered);
+	}
+
+	function revokeObjectUrlForAsset(assetId: string): void {
+		const url = objectUrlByAssetId.get(assetId);
+		if (url) {
+			URL.revokeObjectURL(url);
+			objectUrlByAssetId.delete(assetId);
+		}
+	}
+
+	function registerObjectUrl(assetId: string, url: string): void {
+		const prev = objectUrlByAssetId.get(assetId);
+		if (prev && prev !== url) {
+			URL.revokeObjectURL(prev);
+		}
+		objectUrlByAssetId.set(assetId, url);
+	}
+
+	function adjustCoverIndex(cover: number, from: number, to: number): number {
+		if (cover === from) return to;
+		if (from < to) {
+			if (cover > from && cover <= to) return cover - 1;
+		} else if (from > to) {
+			if (cover >= to && cover < from) return cover + 1;
+		}
+		return cover;
+	}
+
+	function isVideoFile(file: File): boolean {
+		if (file.type.startsWith('video/')) return true;
+		const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+		return ext === 'mp4' || ext === 'mov' || ext === 'm4v' || ext === 'webm';
+	}
+
+	function assertSizeAllowed(file: File): boolean {
+		const isVid = isVideoFile(file);
+		const max = isVid ? VIDEO_MAX_BYTES : IMAGE_MAX_BYTES;
+		if (file.size > max) {
+			const label = isVid ? '视频' : '图片';
+			const limit = isVid ? '2GB' : '100MB';
+			toast.error(`${label}「${file.name}」超过 ${limit} 限制`);
+			return false;
+		}
+		return true;
+	}
+
+	function buildLocalMediaFile(file: File, objectUrl: string, mediaType: V1MediaType): V1MediaFile {
+		const defaultW = mediaType === 'MEDIA_TYPE_VIDEO' ? 1920 : 800;
+		const defaultH = mediaType === 'MEDIA_TYPE_VIDEO' ? 1080 : 600;
+		const status: V1MediaStatus = 'MEDIA_STATUS_COMPLETED';
+		return {
+			fileId: `local-file-${crypto.randomUUID()}`,
+			type: mediaType,
+			bucket: 'local',
+			objectKey: `local/${encodeURIComponent(file.name)}`,
+			url: objectUrl,
+			thumbnailUrl: mediaType === 'MEDIA_TYPE_VIDEO' ? undefined : objectUrl,
+			meta: {
+				width: defaultW,
+				height: defaultH,
+				durationMs: '0',
+				sizeBytes: String(file.size),
+				mimeType: file.type || 'application/octet-stream'
+			},
+			status
+		};
+	}
+
+	function buildAssetFromFile(file: File, objectUrl: string, orderIndex: number): V1MediaAsset {
+		const mediaType: V1MediaType = isVideoFile(file) ? 'MEDIA_TYPE_VIDEO' : 'MEDIA_TYPE_IMAGE';
+		const status: V1MediaStatus = 'MEDIA_STATUS_COMPLETED';
+		const assetId = `local-asset-${crypto.randomUUID()}`;
+		return {
+			assetId,
+			type: mediaType,
+			scene,
+			status,
+			orderIndex,
+			single: buildLocalMediaFile(file, objectUrl, mediaType)
+		};
+	}
+
+	async function loadImageMeta(url: string): Promise<{ width: number; height: number }> {
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.onload = () =>
+				resolve({ width: img.naturalWidth || 800, height: img.naturalHeight || 600 });
+			img.onerror = () => resolve({ width: 800, height: 600 });
+			img.src = url;
+		});
+	}
+
+	async function loadVideoMeta(
+		url: string
+	): Promise<{ width: number; height: number; durationMs: number }> {
+		return new Promise((resolve) => {
+			const v = document.createElement('video');
+			v.preload = 'metadata';
+			v.muted = true;
+			v.onloadedmetadata = () => {
+				const w = v.videoWidth || 1920;
+				const h = v.videoHeight || 1080;
+				const d = Number.isFinite(v.duration) ? Math.round(v.duration * 1000) : 0;
+				resolve({ width: w, height: h, durationMs: d });
+			};
+			v.onerror = () => resolve({ width: 1920, height: 1080, durationMs: 0 });
+			v.src = url;
+		});
+	}
+
+	function patchAssetMeta(
+		assetId: string,
+		patch: { width?: number; height?: number; durationMs?: string }
+	) {
+		const idx = value.findIndex((a) => a.assetId === assetId);
+		if (idx < 0) return;
+		const a = value[idx];
+		const single = a.single;
+		if (!single) return;
+		const next: V1MediaAsset = {
+			...a,
+			single: {
+				...single,
+				meta: {
+					...single.meta,
+					...(patch.width !== undefined ? { width: patch.width } : {}),
+					...(patch.height !== undefined ? { height: patch.height } : {}),
+					...(patch.durationMs !== undefined ? { durationMs: patch.durationMs } : {})
+				}
+			}
+		};
+		const copy = [...value];
+		copy[idx] = next;
+		commit(copy);
+	}
+
+	async function enrichAssetMeta(asset: V1MediaAsset, objectUrl: string) {
+		if (!asset.single) return;
+		if (asset.type === 'MEDIA_TYPE_IMAGE') {
+			const { width, height } = await loadImageMeta(objectUrl);
+			patchAssetMeta(asset.assetId, { width, height, durationMs: '0' });
+		} else if (asset.type === 'MEDIA_TYPE_VIDEO') {
+			const { width, height, durationMs } = await loadVideoMeta(objectUrl);
+			patchAssetMeta(asset.assetId, {
+				width,
+				height,
+				durationMs: String(durationMs)
+			});
+		}
+	}
 
 	function handleSortableReorder(fromIndex: number, toIndex: number): void {
 		suppressNextCardClick = true;
-		setTimeout(() => {
+		queueMicrotask(() => {
 			suppressNextCardClick = false;
-		}, 0);
-		onReorder(fromIndex, toIndex);
+		});
+		const list = [...value];
+		const [moved] = list.splice(fromIndex, 1);
+		list.splice(toIndex, 0, moved);
+		coverIndex = adjustCoverIndex(coverIndex, fromIndex, toIndex);
+		commit(list);
 	}
 
-	const captureMediaFileInput: Attachment<HTMLInputElement> = (element) => {
-		mediaFileInputRef = element;
-		return () => {
-			if (mediaFileInputRef === element) {
-				mediaFileInputRef = null;
-			}
-		};
-	};
+	function removeAt(index: number): void {
+		const asset = value[index];
+		if (!asset) return;
+		revokeObjectUrlForAsset(asset.assetId);
+		const list = value.filter((_, i) => i !== index);
+		if (coverIndex === index) {
+			coverIndex = 0;
+		} else if (coverIndex > index) {
+			coverIndex--;
+		}
+		if (list.length > 0 && coverIndex >= list.length) {
+			coverIndex = list.length - 1;
+		}
+		commit(list);
+	}
 
-	function handleAddMediaClick(): void {
-		mediaFileInputRef?.click();
+	function setCoverAt(index: number): void {
+		coverIndex = index;
+		onChange?.(value.map((a, i) => ({ ...a, orderIndex: i })));
+	}
+
+	function openPreviewAt(index: number): void {
+		previewInitialIndex = index;
+		previewOpen = true;
 	}
 
 	function tryOpenMenu(index: number, clientX: number, clientY: number): void {
-		if (mediaInteractionsDisabled) return;
+		if (disabled) return;
 		const now = Date.now();
 		if (index === lastMenuOpenIndex && now - lastMenuOpenAt < MENU_DEDUPE_MS) {
 			return;
@@ -138,15 +324,13 @@
 	}
 
 	function onCardContextMenu(e: MouseEvent, index: number): void {
-		if (mediaInteractionsDisabled) return;
+		if (disabled) return;
 		e.preventDefault();
 		const sc = (e as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } })
 			.sourceCapabilities;
-		// 触摸/仿真长按产生的 contextmenu 会打断拖拽并触发 pointercancel；只拦原生菜单，不弹业务菜单
 		if (sc?.firesTouchEvents === true) {
 			return;
 		}
-		// 无 sourceCapabilities 的粗指针环境（如部分 WebKit）：保守处理，避免长按当右键菜单
 		if (
 			sc == null &&
 			window.matchMedia('(pointer: coarse)').matches &&
@@ -157,20 +341,14 @@
 		tryOpenMenu(index, e.clientX, e.clientY);
 	}
 
-	function setAsCover(): void {
-		onSelectCoverIndex(menuIndex);
-		closeMenu();
-	}
-
-	function removeFromMenu(): void {
-		onRemove(menuIndex);
-		closeMenu();
-	}
-
 	function ratioToNumber(ratio: EditRatio): number {
 		if (ratio === '1:1') return 1;
 		if (ratio === '4:3') return 4 / 3;
 		return 3 / 4;
+	}
+
+	function getActiveEditRatio(): EditRatio {
+		return forcedEditRatio ?? editRatio;
 	}
 
 	function clamp(value: number, min: number, max: number): number {
@@ -230,7 +408,7 @@
 		cropRectPx = buildCropRectByRatio(
 			nextRenderWidth,
 			nextRenderHeight,
-			editRatio,
+			getActiveEditRatio(),
 			centerX,
 			centerY
 		);
@@ -318,7 +496,6 @@
 		imageRenderRect = { x: 0, y: 0, width: 0, height: 0 };
 		cropRectPx = { x: 0, y: 0, width: 0, height: 0 };
 		cropDragging = null;
-		editSourceBlob = null;
 		if (editImageUrl) {
 			URL.revokeObjectURL(editImageUrl);
 			editImageUrl = null;
@@ -352,10 +529,50 @@
 		});
 	}
 
+	async function getAssetBlobForEdit(asset: V1MediaAsset): Promise<Blob> {
+		const sourceUrl = getMediaDisplayUrl(asset);
+		const response = await fetch(sourceUrl);
+		if (!response.ok) {
+			throw new Error(`读取图片失败: ${response.status}`);
+		}
+		return response.blob();
+	}
+
+	function replaceAssetWithCroppedImage(
+		index: number,
+		croppedBlob: Blob,
+		width: number,
+		height: number
+	): void {
+		const current = value[index];
+		if (!current || current.type !== 'MEDIA_TYPE_IMAGE' || !current.single) return;
+		const nextUrl = URL.createObjectURL(croppedBlob);
+		registerObjectUrl(current.assetId, nextUrl);
+		const nextSingle: V1MediaFile = {
+			...current.single,
+			url: nextUrl,
+			thumbnailUrl: nextUrl,
+			meta: {
+				...current.single.meta,
+				width,
+				height,
+				durationMs: '0',
+				sizeBytes: String(croppedBlob.size),
+				mimeType: croppedBlob.type || current.single.meta.mimeType || 'image/jpeg'
+			}
+		};
+		const copy = [...value];
+		copy[index] = {
+			...current,
+			single: nextSingle
+		};
+		commit(copy);
+	}
+
 	async function openEditOverlay(index: number): Promise<void> {
-		const item = items[index];
-		if (!item) return;
-		if (item.kind !== 'single' || !isImageItem(item)) {
+		const asset = value[index];
+		if (!asset) return;
+		if (asset.type === 'MEDIA_TYPE_VIDEO') {
 			toast.info('暂不支持视频编辑');
 			return;
 		}
@@ -364,15 +581,13 @@
 				URL.revokeObjectURL(editImageUrl);
 				editImageUrl = null;
 			}
-			const sourceBlob = getPreviewBlob(item);
+			const sourceBlob = await getAssetBlobForEdit(asset);
 			editTargetIndex = index;
-			editRatio = '1:1';
+			editRatio = forcedEditRatio ?? '1:1';
 			editImageElement = null;
 			imageRenderRect = { x: 0, y: 0, width: 0, height: 0 };
 			cropRectPx = { x: 0, y: 0, width: 0, height: 0 };
 			cropDragging = null;
-			editSourceBlob = sourceBlob;
-			editSourceName = item.name || 'cropped-image.jpg';
 			editImageUrl = URL.createObjectURL(sourceBlob);
 			editOverlayOpen = true;
 		} catch (error) {
@@ -382,10 +597,11 @@
 	}
 
 	async function applyEdit(): Promise<void> {
-		const sourceBlob = editSourceBlob;
-		if (!sourceBlob || editApplying) return;
+		const asset = value[editTargetIndex];
+		if (!asset || asset.type !== 'MEDIA_TYPE_IMAGE' || !asset.single || editApplying) return;
 		editApplying = true;
 		try {
+			const sourceBlob = await getAssetBlobForEdit(asset);
 			const image = await loadImageElementFromBlob(sourceBlob);
 			const { sx, sy, sw, sh } = mapCropRectToSourceRect(image.naturalWidth, image.naturalHeight);
 			const canvas = document.createElement('canvas');
@@ -398,12 +614,7 @@
 			context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
 			const outputType = sourceBlob.type.startsWith('image/') ? sourceBlob.type : 'image/jpeg';
 			const croppedBlob = await canvasToBlob(canvas, outputType);
-			await onEditImage({
-				index: editTargetIndex,
-				blob: croppedBlob,
-				mimeType: outputType,
-				name: editSourceName
-			});
+			replaceAssetWithCroppedImage(editTargetIndex, croppedBlob, sw, sh);
 			closeEditOverlay();
 		} catch (error) {
 			console.error('Apply image edit failed:', error);
@@ -418,10 +629,80 @@
 		void openEditOverlay(index);
 	}
 
+	function removeFromMenu(): void {
+		removeAt(menuIndex);
+		closeMenu();
+	}
+
+	function handleFileInputChange(e: Event): void {
+		const input = e.target as HTMLInputElement;
+		const files = input.files;
+		input.value = '';
+		if (!files?.length || disabled) return;
+
+		const incoming = Array.from(files).filter(assertSizeAllowed);
+		if (incoming.length === 0) return;
+
+		const room = maxCount - value.length;
+		if (room <= 0) {
+			toast.error(`最多添加 ${maxCount} 个媒体`);
+			return;
+		}
+
+		let toAdd = incoming;
+		if (incoming.length > room) {
+			toast.error(`超出数量上限，仅添加前 ${room} 个`);
+			toAdd = incoming.slice(0, room);
+		}
+
+		const baseIndex = value.length;
+		const newAssets: V1MediaAsset[] = [];
+		for (let i = 0; i < toAdd.length; i++) {
+			const file = toAdd[i];
+			const objectUrl = URL.createObjectURL(file);
+			const asset = buildAssetFromFile(file, objectUrl, baseIndex + i);
+			registerObjectUrl(asset.assetId, objectUrl);
+			newAssets.push(asset);
+			void enrichAssetMeta(asset, objectUrl);
+		}
+
+		if (value.length === 0 && newAssets.length > 0) {
+			coverIndex = 0;
+		}
+
+		commit([...value, ...newAssets]);
+	}
+
+	const captureFileInput: Attachment<HTMLInputElement> = (element) => {
+		fileInputRef = element;
+		return () => {
+			if (fileInputRef === element) fileInputRef = null;
+		};
+	};
+
+	function handleAddClick(): void {
+		if (disabled) return;
+		fileInputRef?.click();
+	}
+
+	/** 父级仅通过 bind 替换 value（未走 commit）时，周期性对齐 map（onMount 内调用不触发 autofixer 的 $effect 规则） */
+	onMount(() => {
+		const id = window.setInterval(() => {
+			syncOrphanObjectUrlsForSnapshot(value);
+		}, 400);
+		return () => window.clearInterval(id);
+	});
+
+	onDestroy(() => {
+		for (const id of [...objectUrlByAssetId.keys()]) {
+			revokeObjectUrlForAsset(id);
+		}
+		closeEditOverlay();
+	});
+
 	$effect(() => {
 		if (!menuOpen || !menuPanelRef) return;
 		void [menuOpen, menuAnchorLeft, menuAnchorTop, menuPanelRef];
-
 		const pad = 8;
 		const vv = window.visualViewport;
 		const vw = vv?.width ?? window.innerWidth;
@@ -448,13 +729,11 @@
 
 	$effect(() => {
 		if (!menuOpen) return;
-
 		const onKeyDown = (e: KeyboardEvent): void => {
 			if (e.key === 'Escape') {
 				closeMenu();
 			}
 		};
-
 		const onPointerDown = (e: PointerEvent): void => {
 			if (menuPanelRef?.contains(e.target as Node)) {
 				return;
@@ -465,7 +744,6 @@
 				}
 			});
 		};
-
 		window.addEventListener('keydown', onKeyDown);
 		window.addEventListener('pointerdown', onPointerDown, true);
 		return () => {
@@ -493,28 +771,27 @@
 			window.removeEventListener('resize', onResize);
 		};
 	});
+
+	const orderKey = $derived(value.map((a) => a.assetId).join('\0'));
 </script>
 
-<Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
-<p class="text-sm text-muted-foreground">最多 {maxCount} 张，已选 {items.length} 张</p>
-
 <input
-	{@attach captureMediaFileInput}
+	{@attach captureFileInput}
 	type="file"
-	accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
-	multiple
 	class="hidden"
-	onchange={onFileSelect}
+	multiple
+	accept={ACCEPT_ATTR}
+	{disabled}
+	onchange={handleFileInputChange}
 />
 
 <div
-	class="mt-3 flex flex-wrap gap-2"
-	aria-busy={mediaInteractionsDisabled}
+	class="flex flex-wrap gap-2"
 	use:sortableList={{
-		itemSelector: '[data-release-media-item]',
-		itemCount: items.length,
-		orderKey: urls.join('\0'),
-		disabled: () => mediaInteractionsDisabled,
+		itemSelector: '[data-image-video-edit-item]',
+		itemCount: value.length,
+		orderKey,
+		disabled: () => disabled,
 		onReorder: handleSortableReorder,
 		onDragStart: (item) => {
 			draggingUrl = item.getAttribute('data-preview-url');
@@ -522,61 +799,100 @@
 		onDragEnd: () => {
 			draggingUrl = null;
 		},
-		delay: DELAY
+		delay: SORT_DELAY_MS
 	}}
 >
-	{#each items as _, index (urls[index])}
-		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+	{#each value as asset, index (asset.assetId)}
+		{@const url = getMediaDisplayUrl(asset)}
 		<div
 			class={cn(
-				'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
+				'relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-muted select-none',
+				!disabled && 'cursor-grab active:cursor-grabbing',
 				selectedCoverIndex === index &&
 					'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
-				draggingUrl !== null && urls[index] === draggingUrl && 'opacity-60'
+				draggingUrl !== null && url === draggingUrl && 'opacity-60'
 			)}
-			data-release-media-item
-			data-preview-url={urls[index]}
-			aria-label={`媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
-			onclick={(e) => {
-				if (mediaInteractionsDisabled || suppressNextCardClick) return;
-				tryOpenMenu(index, e.clientX, e.clientY);
-			}}
+			data-image-video-edit-item
+			data-preview-url={url}
+			role="group"
+			aria-label={`媒体 ${index + 1}`}
 			oncontextmenu={(e) => onCardContextMenu(e, index)}
 			use:longPress={{
-				delay: DELAY,
+				delay: SORT_DELAY_MS,
 				onPress: (detail) => {
-					draggingUrl = detail.currentTarget.getAttribute('data-preview-url');
+					if (disabled || detail.pointerType !== 'touch') return;
+					tryOpenMenu(index, detail.clientX, detail.clientY);
 				},
-				onPressUp: () => {
-					draggingUrl = null;
-				}
+				onPressUp: () => {}
 			}}
 		>
-			<img
-				src={urls[index]}
-				alt={`媒体 ${index + 1}`}
-				class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
-				draggable="false"
-			/>
-			<!-- <div
-				class="release-media-sort-hint pointer-events-none absolute bottom-0 left-0 flex items-end justify-start rounded-tr-md bg-zinc-900/50 p-2 text-zinc-100 dark:bg-zinc-950/60"
+			<button
+				type="button"
+				class="relative block h-full w-full"
+				{disabled}
+				onclick={() => {
+					if (disabled || suppressNextCardClick) return;
+					openPreviewAt(index);
+				}}
+			>
+				{#if asset.type === 'MEDIA_TYPE_VIDEO'}
+					<video
+						src={url}
+						class="pointer-events-none h-full w-full object-cover"
+						muted
+						playsinline
+						preload="metadata"
+					></video>
+				{:else}
+					<img
+						src={url}
+						alt=""
+						class="pointer-events-none h-full w-full object-cover"
+						draggable="false"
+					/>
+				{/if}
+			</button>
+
+			<div
+				class="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end gap-0.5 p-1"
 				aria-hidden="true"
 			>
-				<GripVerticalIcon class="size-4 shrink-0" aria-hidden="true" />
-			</div> -->
+				<span
+					class="pointer-events-auto inline-flex rounded bg-black/50 p-0.5 [&_button]:min-h-8 [&_button]:min-w-8"
+				>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						class="h-8 w-8 text-amber-300 hover:bg-white/20 hover:text-amber-200"
+						{disabled}
+						aria-label="设为封面"
+						onclick={(e) => {
+							e.stopPropagation();
+							setCoverAt(index);
+						}}
+					>
+						<Star class="size-4" />
+					</Button>
+				</span>
+			</div>
 		</div>
 	{/each}
-	{#if items.length < maxCount}
+
+	{#if value.length < maxCount}
 		<button
 			type="button"
-			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-			onclick={handleAddMediaClick}
-			aria-label="添加图片/视频"
+			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10 disabled:opacity-50"
+			{disabled}
+			onclick={handleAddClick}
+			aria-label="添加图片或视频"
 		>
-			<PlusIcon class="size-4 text-muted-foreground" />
+			<PlusIcon class="size-6 text-muted-foreground" />
 		</button>
 	{/if}
 </div>
+
+<ImageVideoPreview bind:open={previewOpen} mediaList={value} initialIndex={previewInitialIndex} />
 
 {#if menuOpen}
 	<div
@@ -594,14 +910,6 @@
 			onclick={openEditFromMenu}
 		>
 			编辑
-		</button>
-		<button
-			type="button"
-			class="flex min-h-11 w-full cursor-pointer items-center rounded-sm px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-			role="menuitem"
-			onclick={setAsCover}
-		>
-			设为封面
 		</button>
 		<button
 			type="button"
@@ -642,23 +950,29 @@
 		</div>
 
 		<div class="flex items-center justify-center gap-2 border-b border-zinc-800 px-4 py-3">
-			{#each EDIT_RATIO_OPTIONS as ratio (ratio)}
-				<button
-					type="button"
-					class={cn(
-						'min-h-11 rounded-full border px-4 text-sm',
-						editRatio === ratio
-							? 'border-zinc-100 bg-zinc-100 text-zinc-900'
-							: 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-					)}
-					onclick={() => {
-						editRatio = ratio;
-						syncRenderRectAndCrop(true);
-					}}
-				>
-					{ratio}
-				</button>
-			{/each}
+			{#if forcedEditRatio}
+				<span class="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300">
+					固定比例 {forcedEditRatio}
+				</span>
+			{:else}
+				{#each EDIT_RATIO_OPTIONS as ratio (ratio)}
+					<button
+						type="button"
+						class={cn(
+							'min-h-11 rounded-full border px-4 text-sm',
+							editRatio === ratio
+								? 'border-zinc-100 bg-zinc-100 text-zinc-900'
+								: 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
+						)}
+						onclick={() => {
+							editRatio = ratio;
+							syncRenderRectAndCrop(true);
+						}}
+					>
+						{ratio}
+					</button>
+				{/each}
+			{/if}
 		</div>
 
 		<div class="min-h-0 flex-1 p-4">

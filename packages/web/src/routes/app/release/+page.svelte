@@ -358,6 +358,9 @@
 				editor.selectedCoverIndex = i;
 			}}
 			onReorder={editor.reorderMedia}
+			onEditImage={({ index, blob, mimeType, name }) => {
+				editor.replaceImageAt(index, blob, { mimeType, name });
+			}}
 			mediaInteractionsDisabled={upload.isUploading}
 		/>
 		<ReleaseBodySection
