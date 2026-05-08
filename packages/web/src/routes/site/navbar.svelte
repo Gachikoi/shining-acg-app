@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import shiningLogo from '$lib/assets/shining-logo.jpg';
+	import shiningLogo from '$lib/assets/shining-logo.png';
 	import { NAV_ITEMS } from './constants';
 
 	let {

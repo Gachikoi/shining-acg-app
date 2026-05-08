@@ -7,7 +7,8 @@
 	import { createFeedRouteStateStore } from '$lib/stores/feed';
 	import { onDestroy } from 'svelte';
 	import SettingPopover from './setting-popover.svelte';
-	import shiningLogo from '$lib/assets/shining-logo.jpg';
+	import shiningLogo from '$lib/assets/shining-logo.png';
+	import shiningLogoDark from '$lib/assets/shining-logo.dark.png';
 
 	const homeFeedRouteState = createFeedRouteStateStore();
 
@@ -47,9 +48,16 @@
 			<a class="shrink-0" href={resolve('/')}>
 				<!-- Logo Area -->
 				<div class="group flex h-full cursor-pointer items-center gap-4">
-					<img src={shiningLogo} alt="晒你动漫社" width="40" height="40" />
+					<img src={shiningLogo} alt="晒你动漫社" width="40" height="40" class="dark:hidden" />
+					<img
+						src={shiningLogoDark}
+						alt="晒你动漫社"
+						width="40"
+						height="40"
+						class="hidden dark:block"
+					/>
 					<div
-						class="flex flex-col justify-center *:font-mono *:font-black *:tracking-tighter *:text-zinc-900"
+						class="flex flex-col justify-center *:font-mono *:font-black *:tracking-tighter *:text-zinc-900 *:dark:text-zinc-50"
 					>
 						<span class="text-base">晒你动漫社</span>
 						<span class="text-xs">Shining ACG Fan Club</span>

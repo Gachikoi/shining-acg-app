@@ -36,6 +36,8 @@
 		index < (breakpoint.isLg ? 20 : breakpoint.isMd ? 10 : 5) ? 'high' : 'auto'
 	);
 
+	let cardEl = $state<HTMLElement | null>(null);
+
 	const cover = $derived({
 		url: resolveCacheUrl(post.cover?.single?.url || '', businessId, categoryId),
 		ratio:
@@ -60,6 +62,7 @@
 	 */
 	function rectFromElement(el: HTMLElement): RectInfo {
 		const r = el.getBoundingClientRect();
+		console.log(r);
 		return {
 			top: r.top,
 			left: r.left,
@@ -73,10 +76,7 @@
 	 *
 	 * @param e - 点击或键盘激活事件，`currentTarget` 为卡片根节点
 	 */
-	function openPostDetailFromStack(e: MouseEvent | KeyboardEvent): void {
-		const el = e.currentTarget;
-		if (!(el instanceof HTMLElement)) return;
-
+	function openPostDetailFromStack(): void {
 		const fullPost = mockPostFromPreview(post, stackController.length);
 		stackController.push({
 			component: PostDetail,
@@ -85,7 +85,7 @@
 				api: feedCardPostDetailApi,
 				onClose: () => stackController.pop()
 			},
-			rectInfo: rectFromElement(el)
+			rectInfo: cardEl ? rectFromElement(cardEl) : undefined
 		});
 	}
 </script>
@@ -94,6 +94,7 @@
 	class={cn(
 		'group cursor-pointer overflow-hidden rounded-sm border border-zinc-100 bg-white sm:rounded-md md:rounded-xl lg:rounded-2xl dark:border-zinc-900 dark:bg-black'
 	)}
+	bind:this={cardEl}
 	role="button"
 	tabindex="0"
 	aria-label={title}
@@ -101,7 +102,7 @@
 	onkeydown={(e) => {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			openPostDetailFromStack(e);
+			openPostDetailFromStack();
 		}
 	}}
 >

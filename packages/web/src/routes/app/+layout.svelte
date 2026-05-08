@@ -145,4 +145,4 @@
 		<TabButton img="www.google.com" text="我" type="mobile" href="/profile" />
 	</footer>
 </div>
-<StackContainer maxVisible={2} />
+<StackContainer maxVisible={20} zIndexBase={0} />

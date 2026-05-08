@@ -41,7 +41,11 @@
 	import CommentSection from '$lib/components/custom/comment-section/comment-section.svelte';
 	import { EditCommentPopover } from '$lib/components/custom/edit-comment-popover';
 	import PostMediaArea from '$lib/components/custom/post-detail/post-media-area.svelte';
-	import { Badge } from '$lib/components/ui/badge';
+	import {
+		DepartmentBadge,
+		ScrollBadgeRow,
+		VerifiedTitleBadge
+	} from '$lib/components/custom/user-badge-row';
 	import { Button } from '$lib/components/ui/button';
 	import { breakpoint } from '$lib/modules/device';
 	import { tap } from '$lib/modules/gesture';
@@ -735,7 +739,7 @@
 		再叠一层会变脏；独立路由（如 post-detail-debug）无 Stack 时也只是无额外压暗。
 	-->
 	<div
-		class="scrollbar-hide fixed top-0 left-0 z-40 w-full bg-transparent"
+		class="scrollbar-hide fixed top-0 left-0 z-40 w-full"
 		style:height="var(--app-stable-vh, 100vh)"
 		role="dialog"
 		tabindex="-1"
@@ -753,12 +757,7 @@
 			}
 		}}
 	>
-		<div
-			class={cn(
-				'absolute inset-0 lg:inset-y-6 lg:right-1/7 lg:left-1/7',
-				'flex items-stretch justify-center'
-			)}
-		>
+		<div class={cn('flex h-full w-full items-stretch justify-center')}>
 			<!-- 关闭按钮（桌面端：保持原来的左上角悬浮位置；移动端隐藏） -->
 			<div class="absolute top-4 left-4 z-10 hidden lg:flex">
 				<Button
@@ -774,10 +773,8 @@
 
 			<div
 				class={cn(
-					'max-w-10xl relative flex h-full w-full flex-col overflow-hidden bg-zinc-100 text-zinc-900',
-					'lg:h-auto lg:max-h-[calc(100vh-3rem)] lg:flex-row',
-					'dark:bg-zinc-900 dark:text-zinc-50',
-					'rounded-none shadow-xl'
+					'relative flex h-full w-full flex-col overflow-hidden bg-background text-zinc-900 dark:text-zinc-50',
+					'lg:flex-row'
 				)}
 			>
 				<div
@@ -864,26 +861,19 @@
 										{author?.name ?? '用户'}
 									</p>
 								</div>
-								<div class="scrollbar-hide mt-1 flex max-w-full gap-1 overflow-x-auto pb-1">
+								<ScrollBadgeRow class="scrollbar-hide mt-1 max-w-full pb-1">
 									{#if author?.verifiedTitle}
-										<Badge
-											variant="secondary"
-											class="max-w-32 truncate bg-amber-50 text-xs font-normal text-amber-700"
-										>
-											{author.verifiedTitle}
-										</Badge>
+										<VerifiedTitleBadge
+											title={author.verifiedTitle}
+											class="max-w-32 truncate text-xs"
+										/>
 									{/if}
 									{#if departments.length > 0}
 										{#each departments as dept (dept.id)}
-											<Badge
-												variant="outline"
-												class="border-zinc-200 bg-rose-50 text-xs whitespace-nowrap text-red-500 dark:border-zinc-700"
-											>
-												{dept.name}
-											</Badge>
+											<DepartmentBadge name={dept.name} class="text-xs whitespace-nowrap" />
 										{/each}
 									{/if}
-								</div>
+								</ScrollBadgeRow>
 							</div>
 							<div class="ml-auto flex flex-col items-end gap-2">
 								<div class="flex items-center gap-1">
