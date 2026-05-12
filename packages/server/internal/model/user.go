@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strconv"
 	"time"
 
 	commonv1 "app.shiningacg.club/gen/proto/api/main/common/v1"
@@ -48,8 +49,8 @@ type User struct {
 	BaseModel
 
 	// 鉴权字段
-	QQUnionID string `gorm:"size:64;uniqueIndex;not null" json:"-"`
-	QQNumber  string `gorm:"size:16;uniqueIndex;not null" json:"qq_number"` // 虽然 QQ 号不用作为索引（不直接查询），但加索引可确保唯一性
+	QQUnionID string `gorm:"size:64;uniqueIndex;column:qq_union_id;not null" json:"-"`
+	QQNumber  string `gorm:"size:16;uniqueIndex;colunm:qq_number;not null" json:"qq_number"` // 虽然 QQ 号不用作为索引（不直接查询），但加索引可确保唯一性
 
 	// 角色，对应 proto: api.main.common.v1.Role
 	Role commonv1.Role `gorm:"not null;default:1" json:"role"`
@@ -74,6 +75,11 @@ type User struct {
 	// 对应 proto: UserProfile.links[]
 	ExternalLinks []LinkItem `gorm:"type:jsonb;serializer:json;not null;default:'[]'" json:"external_links"`
 
+	// 最后发帖时间
+	LastPostAt time.Time `gorm:"index" json:"last_post_at,omitempty"`
+
+	Settings UserSettings `gorm:"foreignKey:UserID"`
+
 	// 统计缓存（读时免 COUNT，写时业务层维护）
 	// 对应 proto: UserStats
 	StatFollowers           int64 `gorm:"not null;default:0" json:"stat_followers"`
@@ -93,4 +99,50 @@ func (u *User) IsBanned() bool {
 		return true // 永久封禁（零值哨兵）
 	}
 	return time.Now().Before(*u.BanExpireAt) // 定期封禁：是否仍在有效期内
+}
+
+// remark可选
+func (u *User) ToUserBrief(remark *string) *commonv1.UserBrief {
+	if u == nil {
+		return nil
+	}
+
+	bf := &commonv1.UserBrief{
+		UserId:   strconv.FormatInt(u.ID, 10),
+		Name:     u.Name,
+		Remark:   remark,
+		Avatar:   u.Avatar,
+		QqNumber: u.QQNumber,
+		Role:     u.Role,
+	}
+	return bf
+}
+
+// 转换为UserProfile *remark字段可选
+func (u *User) ToProfile(remark *string, departments []*commonv1.DepartmentBase) *commonv1.UserProfile {
+
+	pf := &commonv1.UserProfile{
+		UserId:        strconv.FormatInt(u.ID, 10),
+		Name:          u.Name,
+		Avatar:        u.Avatar,
+		Remark:        remark,
+		QqNumber:      u.QQNumber,
+		Role:          u.Role,
+		VerifiedTitle: u.VerifiedTitle,
+
+		Stats: &commonv1.UserStats{
+			FollowerCount:        u.StatFollowers,
+			FollowingCount:       u.StatFollowings,
+			LikeCountReceived:    u.StatLikesReceived,
+			CollectCountReceived: u.StatCollectionsReceived,
+			ViewCountReceived:    u.StatViewsReceived,
+		},
+
+		Departments: departments,
+	}
+
+	for _, link := range u.ExternalLinks {
+		pf.Links = append(pf.Links, link.ToLink())
+	}
+	return pf
 }
