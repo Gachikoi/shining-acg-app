@@ -3,18 +3,20 @@
 	 * @component ReleaseMediaPicker
 	 * @description
 	 * 发布页「选择图片/视频」（需求 6.2.5.1-2）：缩略图网格、`+` 选文件、封面红环标识。
-	 * - **触摸 / 鼠标**：**轻点**（未拖动即松手）打开菜单。触摸长按会触发合成 `contextmenu`：仅 `preventDefault` 抑制系统菜单，**不**打开业务菜单，以免打断拖拽用 Pointer；**桌面鼠标右键**仍打开菜单。
-	 * - **排序**：列表根使用 `use:sortableList`（SortableJS）；整卡可拖，触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分。左下 grip 仅为视觉提示（`pointer-events-none`）。
+	 * - **触摸 / 鼠标**：**轻点**打开菜单；默认外层格 `touch-pan-y`，从图上可纵向滑页。触摸排序 delay 流程中约 80ms 后对该格与子节点锁 `touch-none`，长按后再拖不会误滚页面；进入拖拽后同锁。**桌面鼠标右键**仍打开菜单。
+	 * - **排序**：`ReorderGrid`（`absolute` + `translate` + 拖拽期 `slotOrder`），`+` 为 footer 槽位，无需 DOM 归位。`{#each}` 以 **`DraftMediaItem` 引用** 为 key。触摸下 `delay`+`delayOnTouchOnly` 与轻点菜单区分；鼠标先小幅移动再进入拖拽。
 	 * - **键盘**：当前排序依赖指针拖拽；纯键盘用户可依赖后续「上移/下移」等增强（本组件未提供）。
 	 * - **上传中**：`mediaInteractionsDisabled` 关闭菜单、右键与拖拽。
+	 * - **Android WebView**：系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位（见 `resetWindowScrollAfterPicker`）。
 	 */
-	import { PlusIcon } from 'lucide-svelte';
-	import type { Attachment } from 'svelte/attachments';
+	import { PlusIcon, Play } from 'lucide-svelte';
+	/** JSBridge：显式控制震动反馈（Android 默认长按震动已在 WebView 层关闭） */
+	import { shiningBridge } from '$lib/modules/bridge';
 	import { Label } from '$lib/components/ui/label';
-	import { sortableList } from '$lib/modules/sortable-list';
+	import { isVideoItem } from '$lib/modules/media-cover';
+	import { ReorderGrid } from '$lib/modules/reorder-grid';
 	import type { DraftMediaItem } from '$lib/stores/release';
 	import { cn } from '$lib/utils.js';
-	import { longPress } from '$lib/modules/gesture';
 
 	/** 连点/右键与单击合并为单次打开（ms） */
 	const MENU_DEDUPE_MS = 320;
@@ -44,29 +46,28 @@
 		/** 当前作为封面的项下标，用于红环与 `设为封面` 状态 */
 		selectedCoverIndex: number;
 		onSelectCoverIndex: (index: number) => void;
-		/** 由 Sortable `onEnd` 提交，应对应 `reorderMedia` */
+		/** 拖拽结束提交，对应 `reorderMedia` */
 		onReorder: (fromIndex: number, toIndex: number) => void;
 		/** 为 true 时禁用缩略图一切手势（如 `upload.isUploading`） */
 		mediaInteractionsDisabled: boolean;
 	} = $props();
 
-	let mediaFileInputRef: HTMLInputElement | null = null;
 	let menuOpen = $state(false);
 	let menuIndex = $state(0);
 	let menuAnchorLeft = $state(0);
 	let menuAnchorTop = $state(0);
 	let menuPanelRef = $state<HTMLDivElement | null>(null);
 	let menuAdjusted = $state({ left: 0, top: 0 });
-	/** 与 `{#each … (urls[index])}` 一致，用预览 URL 标记被拖项 */
-	let draggingUrl = $state<string | null>(null);
+	/** 与 `{#each … (item)}` 一致，用 `DraftMediaItem` 引用标记被拖项（避免多视频共用同一占位 data URL 时 key 重复） */
+	let draggingItem = $state<DraftMediaItem | null>(null);
 
 	let lastMenuOpenAt = 0;
 	let lastMenuOpenIndex = -1;
 
-	/** 成功重排后 Sortable 仍可能触发 `click`，用宏任务窗口抑制误开菜单 */
+	/** 成功重排后拖拽结束仍可能触发 `click`，用宏任务窗口抑制误开菜单 */
 	let suppressNextCardClick = false;
 
-	function handleSortableReorder(fromIndex: number, toIndex: number): void {
+	function handleGridReorder(fromIndex: number, toIndex: number): void {
 		suppressNextCardClick = true;
 		setTimeout(() => {
 			suppressNextCardClick = false;
@@ -74,17 +75,24 @@
 		onReorder(fromIndex, toIndex);
 	}
 
-	const captureMediaFileInput: Attachment<HTMLInputElement> = (element) => {
-		mediaFileInputRef = element;
-		return () => {
-			if (mediaFileInputRef === element) {
-				mediaFileInputRef = null;
-			}
-		};
-	};
+	/**
+	 * 重置窗口滚动位置
+	 * @description
+	 * 在 Android WebView 中，系统文件/相机选择器返回后偶发 `window` 滚动错位；选文件后用双 rAF 复位。
+	 */
+	function resetWindowScrollAfterPicker(): void {
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				window.scrollTo(0, 0);
+				document.documentElement.scrollTop = 0;
+				document.body.scrollTop = 0;
+			});
+		});
+	}
 
-	function handleAddMediaClick(): void {
-		mediaFileInputRef?.click();
+	function handleReleaseFileChange(e: Event): void {
+		onFileSelect(e);
+		resetWindowScrollAfterPicker();
 	}
 
 	function tryOpenMenu(index: number, clientX: number, clientY: number): void {
@@ -99,6 +107,8 @@
 		menuAnchorLeft = clientX;
 		menuAnchorTop = clientY;
 		menuOpen = true;
+		// 打开操作菜单时给予轻量震动反馈
+		shiningBridge.vibrate({ type: 'impact', style: 'light' });
 	}
 
 	function closeMenu(): void {
@@ -195,85 +205,79 @@
 <Label class="mt-6 text-lg font-bold">选择图片/视频</Label>
 <p class="text-sm text-muted-foreground">最多 {maxCount} 张，已选 {items.length} 张</p>
 
-<input
-	{@attach captureMediaFileInput}
-	type="file"
-	accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
-	multiple
-	class="hidden"
-	onchange={onFileSelect}
-/>
+{#snippet addMediaFooter()}
+	<label
+		class="flex h-full w-full cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
+		aria-label="添加图片/视频"
+	>
+		<input
+			type="file"
+			accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/webp,video/mp4,video/quicktime,video/x-m4v,video/webm"
+			multiple
+			class="sr-only"
+			onchange={handleReleaseFileChange}
+		/>
+		<PlusIcon class="size-4 text-muted-foreground" />
+	</label>
+{/snippet}
 
-<div
-	class="mt-3 flex flex-wrap gap-2"
+<ReorderGrid
+	class="mt-3 gap-2"
+	{items}
+	itemCellClass="h-24 w-24 shrink-0"
+	disabled={mediaInteractionsDisabled}
 	aria-busy={mediaInteractionsDisabled}
-	use:sortableList={{
-		itemSelector: '[data-release-media-item]',
-		itemCount: items.length,
-		orderKey: urls.join('\0'),
-		disabled: () => mediaInteractionsDisabled,
-		onReorder: handleSortableReorder,
-		onDragStart: (item) => {
-			draggingUrl = item.getAttribute('data-preview-url');
-		},
-		onDragEnd: () => {
-			draggingUrl = null;
-		},
-		delay: DELAY
+	delay={DELAY}
+	delayOnTouchOnly={true}
+	onReorder={handleGridReorder}
+	onDragStart={(i) => {
+		draggingItem = i >= 0 && i < items.length ? items[i]! : null;
 	}}
+	onDragEnd={() => {
+		draggingItem = null;
+	}}
+	footer={items.length < maxCount ? addMediaFooter : undefined}
 >
-	{#each items as _, index (urls[index])}
+	{#snippet item(item, index)}
 		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 		<div
 			class={cn(
-				'relative h-24 w-24 shrink-0 cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
+				'relative h-full w-full cursor-grab overflow-hidden rounded-xl bg-muted select-none active:cursor-grabbing',
 				selectedCoverIndex === index &&
 					'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-100 dark:ring-offset-zinc-900',
-				draggingUrl !== null && urls[index] === draggingUrl && 'opacity-60'
+				draggingItem !== null && draggingItem === item && 'opacity-60'
 			)}
 			data-release-media-item
+			data-release-media-index={String(index)}
 			data-preview-url={urls[index]}
-			aria-label={`媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
+			aria-label={isVideoItem(item)
+				? `视频 ${index + 1}，轻点打开操作菜单，拖动调整顺序`
+				: `媒体 ${index + 1}，轻点打开操作菜单，拖动调整顺序`}
 			onclick={(e) => {
 				if (mediaInteractionsDisabled || suppressNextCardClick) return;
 				tryOpenMenu(index, e.clientX, e.clientY);
 			}}
 			oncontextmenu={(e) => onCardContextMenu(e, index)}
-			use:longPress={{
-				delay: DELAY,
-				onPress: (detail) => {
-					draggingUrl = detail.currentTarget.getAttribute('data-preview-url');
-				},
-				onPressUp: () => {
-					draggingUrl = null;
-				}
-			}}
 		>
 			<img
 				src={urls[index]}
-				alt={`媒体 ${index + 1}`}
+				alt={isVideoItem(item) ? `视频 ${index + 1}` : `媒体 ${index + 1}`}
 				class="h-full w-full object-cover select-none [-webkit-touch-callout:none]"
 				draggable="false"
 			/>
-			<!-- <div
-				class="release-media-sort-hint pointer-events-none absolute bottom-0 left-0 flex items-end justify-start rounded-tr-md bg-zinc-900/50 p-2 text-zinc-100 dark:bg-zinc-950/60"
-				aria-hidden="true"
-			>
-				<GripVerticalIcon class="size-4 shrink-0" aria-hidden="true" />
-			</div> -->
+			{#if isVideoItem(item)}
+				<div
+					class="pointer-events-none absolute inset-0 flex items-center justify-center"
+					aria-hidden="true"
+				>
+					<div class="rounded-full bg-black/40 p-2 shadow-sm backdrop-blur-sm dark:bg-black/50">
+						<Play class="size-6 fill-white text-white" aria-hidden="true" />
+					</div>
+				</div>
+			{/if}
 		</div>
-	{/each}
-	{#if items.length < maxCount}
-		<button
-			type="button"
-			class="flex h-24 w-24 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-muted hover:bg-muted-foreground/10"
-			onclick={handleAddMediaClick}
-			aria-label="添加图片/视频"
-		>
-			<PlusIcon class="size-4 text-muted-foreground" />
-		</button>
-	{/if}
-</div>
+	{/snippet}
+</ReorderGrid>
 
 {#if menuOpen}
 	<div

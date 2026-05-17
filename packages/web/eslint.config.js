@@ -50,5 +50,12 @@ export default defineConfig(
 				svelteConfig
 			}
 		}
+	},
+	{
+		// release 页面的 +page.svelte 同时作为路由页与 Stack 组件复用，允许接收自定义 props
+		files: ['src/routes/app/release/+page.svelte'],
+		rules: {
+			'svelte/valid-prop-names-in-kit-pages': 'off'
+		}
 	}
 );

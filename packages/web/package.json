@@ -27,11 +27,9 @@
 		"lucide-svelte": "0.562.0",
 		"mitt": "3.0.1",
 		"mode-watcher": "1.1.0",
-		"sortablejs": "1.15.7",
 		"svelte-sonner": "1.0.7"
 	},
 	"devDependencies": {
-		"@types/sortablejs": "1.15.9",
 		"@eslint/compat": "1.4.0",
 		"@eslint/js": "9.39.1",
 		"@lucide/svelte": "0.561.0",

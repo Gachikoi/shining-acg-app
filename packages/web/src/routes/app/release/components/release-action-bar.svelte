@@ -138,7 +138,8 @@
 
 	{#if lastSaved && !isUploading}
 		<div class="mx-4 flex items-center text-sm text-muted-foreground">
-			{lastSavedIsAutoSave ? '自动保存于 ' : '保存于 '}
+			<!--为什么不是“自动保存于”？因为分标率低的手机会换行，所以这边暂时进行简单处理-->
+			{lastSavedIsAutoSave ? '保存于 ' : '保存于 '}
 			{formatTimeAccuracyFirst(lastSaved)}
 		</div>
 	{/if}
