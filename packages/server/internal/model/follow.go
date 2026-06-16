@@ -28,14 +28,18 @@ type Follow struct {
 		index:idx_follows_by_following,priority:3" json:"follower_id,string"`
 	// 作为 idx_follows_by_following 首列（查我的粉丝列表）
 	// 同时作为 idx_follows_by_follower 末列（tiebreaker）
+	Follower    User  `gorm:"foreignKey:FollowerID"`
 	FollowingID int64 `gorm:"primaryKey;autoIncrement:false;
 		index:idx_follows_by_following,priority:1;
 		index:idx_follows_by_follower,priority:3" json:"following_id,string"`
 	// 用于计算 FollowingAuthor.has_unread：关注者最后阅读该作者动态的时间
+	Following  User       `gorm:"foreignKey:FollowingID"`
 	LastReadAt *time.Time `json:"last_read_at"`
 	// 作为两个复合索引的排序中间列（priority:2）
 	// 原独立索引已合并进复合索引，无需保留单列索引
 	CreatedAt time.Time `gorm:"
 		index:idx_follows_by_follower,priority:2;
 		index:idx_follows_by_following,priority:2" json:"created_at"`
+	// UserRemark 存储一个用户对另一个用户设置的备注名。
+	Remark string `gorm:"size:12" json:"remark"`
 }

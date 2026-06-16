@@ -79,13 +79,13 @@ const (
 // 对应 proto: SetPostLikeRequest / SetPostCollectRequest / SetCommentLikeRequest / PostRelationStatus
 type Interaction struct {
 	// priority:1 — 复合主键最左列，所有查询的等值过滤条件
-	UserID int64 `gorm:"primaryKey;autoIncrement:false" json:"user_id,string"`
-	// 互动目标的主键 ID（帖子 ID 或评论 ID）
-	TargetID int64 `gorm:"primaryKey;autoIncrement:false" json:"target_id,string"`
+	UserID int64 `gorm:"primaryKey;autoIncrement:false;index:user_interactions;priority:1" json:"user_id,string"`
 	// 互动目标的对象类型（1=Post, 2=Comment）
-	TargetType InteractionTargetType `gorm:"primaryKey;autoIncrement:false" json:"target_type"`
+	TargetType InteractionTargetType `gorm:"primaryKey;autoIncrement:false;index:user_interactions;priority:2" json:"target_type"`
 	// 互动行为类型（1=Like, 2=Collect, 3=View, 4=Reply）
-	ActionType InteractionActionType `gorm:"primaryKey;autoIncrement:false" json:"action_type"`
+	ActionType InteractionActionType `gorm:"primaryKey;autoIncrement:false;index:user_interactions;priority:3" json:"action_type"`
 	// 行为发生时间；加普通索引以支持按时间范围统计
-	CreatedAt time.Time `gorm:"index" json:"created_at"`
+	CreatedAt time.Time `gorm:"primaryKey;autoIncrement:false;" json:"created_at"`
+	// 互动目标的主键 ID（帖子 ID 或评论 ID）
+	TargetID int64 `gorm:"primaryKey;autoIncrement:false;index:user_interactions;priority:4" json:"target_id,string"`
 }

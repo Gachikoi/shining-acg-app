@@ -1,6 +1,8 @@
 package model
 
-import mediav1 "app.shiningacg.club/gen/proto/api/media/v1"
+import (
+	mediav1 "app.shiningacg.club/gen/proto/api/media/v1"
+)
 
 // 文件在媒体元素中的角色。
 const (
@@ -48,4 +50,21 @@ type MediaFile struct {
 	// ProcessedMeta 存储处理后的媒体元信息，GORM 自动 JSON 序列化为 jsonb。
 	// 对应 proto: api.media.v1.MediaMeta
 	ProcessedMeta *mediav1.MediaMeta `gorm:"type:jsonb;serializer:json" json:"processed_meta"`
+}
+
+func (m *MediaFile) ToMediaFile() *mediav1.MediaFile {
+	f := &mediav1.MediaFile{
+		FileId:    m.TaskID,
+		Type:      m.MediaType,
+		Bucket:    m.Bucket,
+		ObjectKey: m.ObjectKey,
+		Url:       MediaUrl(m.ObjectKey), //TODO: 需要添加对象存储地址前缀
+		Meta:      m.ProcessedMeta,
+		Status:    m.Status,
+	}
+
+	if m.ThumbnailKey != "" {
+		f.ThumbnailUrl = &MediaUrl(&m.ThumbnailKey) //TODO: 需要添加对象存储地址前缀
+	}
+	return f
 }

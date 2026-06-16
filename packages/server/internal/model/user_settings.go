@@ -25,3 +25,22 @@ type UserSettings struct {
 	// 对应 proto: SyncedContentCategoryOrder.category_ids
 	ContentCategoryOrder []string `gorm:"type:jsonb;serializer:json;not null;default:'[]'" json:"content_category_order"`
 }
+
+// 指定表名 防止继续自动加s为复数表面
+func (u *UserSettings) TableName() string {
+	return "user_settings"
+}
+
+func (u *UserSettings) ToSyncedUserSettings() *userv1.SyncedUserSettings {
+	return &userv1.SyncedUserSettings{
+		Notification: &u.Notification,
+		Privacy: &userv1.SyncedPrivacySettings{
+			ChatPermission:           u.PrivacyChat,
+			LikedPostsVisibility:     u.PrivacyLikedPosts,
+			CollectedPostsVisibility: u.PrivacyCollectedPosts,
+		},
+		ContentCategoryOrder: &userv1.SyncedContentCategoryOrder{
+			CategoryIds: u.ContentCategoryOrder,
+		},
+	}
+}

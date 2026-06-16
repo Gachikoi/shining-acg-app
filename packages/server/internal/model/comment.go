@@ -69,6 +69,7 @@ type Comment struct {
 	ReplyToUserName  *string `json:"reply_to_user_name,omitempty"`
 
 	AuthorID int64 `gorm:"not null" json:"author_id,string"`
+	Author   User  `gorm:"foreignKey:AuthorID"`
 
 	// Content 长度由 proto CreateCommentRequest.content max_len:300 约束
 	Content  string  `gorm:"size:300;not null" json:"content"`

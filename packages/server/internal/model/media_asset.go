@@ -1,6 +1,10 @@
 package model
 
-import mediav1 "app.shiningacg.club/gen/proto/api/media/v1"
+import (
+	"strconv"
+
+	mediav1 "app.shiningacg.club/gen/proto/api/media/v1"
+)
 
 // MediaAsset 表示业务层"一个媒体数组元素"（图片 / 视频 / Live Photo）。
 // 对应 proto: api.media.v1.MediaAsset
@@ -35,4 +39,26 @@ type MediaAsset struct {
 	// 命中 idx_media_files_asset_role 前缀（asset_id），消除 N+1。
 	// 对应 proto: api.media.v1.MediaAsset.files[]
 	Files []MediaFile `gorm:"foreignKey:AssetID;references:ID" json:"files,omitempty"`
+}
+
+func (m *MediaAsset) ToMediaAsset() *mediav1.MediaAsset {
+	if m == nil {
+		return nil
+	}
+	asset := &mediav1.MediaAsset{
+		AssetId:    strconv.FormatInt(m.ID, 10),
+		Scene:      m.Scene,
+		Type:       m.MediaType,
+		OrderIndex: m.OrderIndex,
+		Status:     m.Status,
+		Content:    &mediav1.MediaAsset_Single{},
+	}
+	if len(m.Files) > 0 {
+		coverImgFile := m.Files[0]
+		asset.Content = &mediav1.MediaAsset_Single{
+			Single: coverImgFile.ToMediaFile(),
+		}
+	}
+	return asset
+
 }
