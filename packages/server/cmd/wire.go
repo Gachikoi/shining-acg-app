@@ -1,11 +1,11 @@
 //go:build wireinject
 // +build wireinject
-
 package main
 
 import (
 	"app.shiningacg.club/config"
 	"app.shiningacg.club/internal/biz"
+	"app.shiningacg.club/internal/biz/partition"
 	"app.shiningacg.club/internal/repo"
 	"app.shiningacg.club/internal/service"
 	"app.shiningacg.club/pkg/ffmpeg"
@@ -19,6 +19,8 @@ var DataProviderSet = wire.NewSet(
 	repo.NewDB,
 	repo.NewResourceRepo,
 	wire.Bind(new(repo.ResourceRepo), new(*repo.ResourceRepoImpl)),
+	partition.PartitionRepo,
+	wire.Bind(new(partition.PartitionRepo), new(*partition.PartitionRepoImpl))
 )
 
 // BizProviderSet 业务逻辑层依赖注入集合
@@ -29,6 +31,7 @@ var BizProviderSet = wire.NewSet(
 // ServiceProviderSet 服务层依赖注入集合
 var ServiceProviderSet = wire.NewSet(
 	service.NewResourceServiceServer,
+	service.NewPartitionServiceServer,
 )
 
 // SnowflakeProvider 雪花算法节点提供者

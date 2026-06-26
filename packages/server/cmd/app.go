@@ -2,15 +2,18 @@ package main
 
 import (
 	"app.shiningacg.club/config"
-	accountv1connect "app.shiningacg.club/gen/proto/api/account/v1/accountv1connect"
-	commonv1connect "app.shiningacg.club/gen/proto/api/common/v1/commonv1connect"
+	"app.shiningacg.club/gen/proto/api/main/partition/v1/partitionv1connect"
+
+	//accountv1connect "app.shiningacg.club/gen/proto/api/account/v1/accountv1connect"
+	//commonv1connect "app.shiningacg.club/gen/proto/api/common/v1/commonv1connect"
+	"net/http"
+
 	"app.shiningacg.club/internal/service"
 	"app.shiningacg.club/pkg/ffmpeg"
 	"app.shiningacg.club/pkg/interceptor"
 	"connectrpc.com/vanguard"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"net/http"
 )
 
 // App 应用程序实例
@@ -28,15 +31,17 @@ func NewApp(
 ) (*App, error) {
 
 	// 创建服务实例
-	authPath, authHandler := accountv1connect.NewAuthServiceHandler(&service.AuthServiceServer{})
-	userPath, userHandler := accountv1connect.NewUserServiceHandler(&service.UserServiceServer{})
-	resourcePath, resourceHandler := commonv1connect.NewResourceServiceHandler(resourceService)
+	//authPath, authHandler := accountv1connect.NewAuthServiceHandler(&service.AuthServiceServer{})
+	//userPath, userHandler := accountv1connect.NewUserServiceHandler(&service.UserServiceServer{})
+	//resourcePath, resourceHandler := commonv1connect.NewResourceServiceHandler(resourceService)
+	partitionPath, partitionHandler := partitionv1connect.NewPartitionServiceHandler(&service.PartitionServiceServer{})
 
 	// 创建 Vanguard 服务配置
 	services := []*vanguard.Service{
-		vanguard.NewService(authPath, authHandler),
-		vanguard.NewService(userPath, userHandler),
-		vanguard.NewService(resourcePath, resourceHandler),
+		//vanguard.NewService(authPath, authHandler),
+		//vanguard.NewService(userPath, userHandler),
+		//vanguard.NewService(resourcePath, resourceHandler),
+		vanguard.NewService(partitionPath, partitionHandler),
 	}
 
 	// 创建 Vanguard Transcoder
