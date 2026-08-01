@@ -1,0 +1,27 @@
+{
+  "spec": "E:/Code/shining-acg-app/.specs/notification/notification-im-ir/page-shell/shell.yaml",
+  "qa": null,
+  "component_id": "notification.ir.page.shell",
+  "generated_at": "2026-07-27T13:56:05.869Z",
+  "passed": true,
+  "results": [
+    {
+      "id": "notification.ir.page.shell.file",
+      "text": "shell.svelte 存在",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.page.shell.tokens",
+      "text": "gap-4 与 rounded-2xl",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.page.shell.snippets",
+      "text": "含 tabs 与 children 槽",
+      "ok": true,
+      "detail": "ok"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "spec": "E:/Code/shining-acg-app/.specs/notification/notification-im-ir/tab-messages/chat-panel.yaml",
+  "qa": null,
+  "component_id": "notification.ir.tab.messages.chat-panel",
+  "generated_at": "2026-07-27T13:56:06.860Z",
+  "passed": true,
+  "results": [
+    {
+      "id": "notification.ir.tab.messages.chat-panel.file",
+      "text": "chat-panel 存在",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.tab.messages.chat-panel.empty",
+      "text": "空态文案含 IR 原文",
+      "ok": true,
+      "detail": "ok"
+    }
+  ]
+}

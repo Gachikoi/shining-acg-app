@@ -1,0 +1,27 @@
+{
+  "spec": "E:/Code/shining-acg-app/.specs/notification/notification-im-ir/tab-messages/conversation-item.yaml",
+  "qa": null,
+  "component_id": "notification.ir.tab.messages.conversation-item",
+  "generated_at": "2026-07-27T13:56:06.658Z",
+  "passed": true,
+  "results": [
+    {
+      "id": "notification.ir.tab.messages.conversation-item.file",
+      "text": "conversation-item 存在",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.tab.messages.conversation-item.h",
+      "text": "行高 h-[72px]",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.tab.messages.conversation-item.avatar",
+      "text": "头像 size 约 49",
+      "ok": true,
+      "detail": "ok"
+    }
+  ]
+}

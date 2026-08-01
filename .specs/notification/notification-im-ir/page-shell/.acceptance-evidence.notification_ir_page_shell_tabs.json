@@ -1,0 +1,33 @@
+{
+  "spec": "E:/Code/shining-acg-app/.specs/notification/notification-im-ir/page-shell/tabs.yaml",
+  "qa": null,
+  "component_id": "notification.ir.page.shell.tabs",
+  "generated_at": "2026-07-27T13:56:06.064Z",
+  "passed": true,
+  "results": [
+    {
+      "id": "notification.ir.page.shell.tabs.files",
+      "text": "tabs 实现存在",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.page.shell.tabs.order",
+      "text": "五 Tab id 顺序",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.page.shell.tabs.selected",
+      "text": "选中含 amber-500 与 ring-2",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.page.shell.tabs.gap",
+      "text": "Tab 间距 gap-4",
+      "ok": true,
+      "detail": "ok"
+    }
+  ]
+}

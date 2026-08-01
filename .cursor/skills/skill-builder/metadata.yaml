@@ -1,0 +1,42 @@
+name: skill-builder
+display_name: Skill 开发元 Skill
+version: "2.6.0"
+category: meta_skill
+owner: platform
+maintainers:
+  - cenyilin
+
+dependencies: []
+
+capabilities:
+  - create（从零创建 Skill，clarify→design→build）
+  - iterate（迭代已有 Skill，clarify→design→build）
+  - backfill（坏案例回填）
+
+modes:
+  - create
+  - iterate
+
+phases:
+  - clarify
+  - design
+  - build
+
+loop_engine:
+  scripts:
+    - scripts/clarify_loop.py
+    - scripts/loop_guard.py
+    - scripts/state_manager.py
+    - scripts/requirement_parser.py
+  session_reset: scripts/clarify_loop.py session reset --mode <mode>
+  meta_dir: .meta/
+
+performance:
+  average_execution_time: null
+  p95_execution_time: null
+  success_rate: null
+
+usage:
+  total_calls: null
+  last_used: null
+  last_e2e: null

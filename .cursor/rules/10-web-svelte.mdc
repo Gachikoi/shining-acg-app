@@ -1,0 +1,14 @@
+---
+description: SvelteKit web package conventions for Shining ACG
+globs: packages/web/**
+alwaysApply: false
+---
+
+# Web (packages/web)
+
+- Commands from `packages/web`: `deno task check`, `deno task lint` (also `format:check:path` / `lint:path`).
+- Do not edit `src/lib/api/**` (generated via root `deno task gen:api`).
+- Config exception: `src/hey-api.svelte.ts`.
+- Svelte 5 runes (`$props` / `$state` / `$derived`); TypeScript strict — no `any` / `@ts-ignore`.
+- Tailwind only; dark mode; shadcn-svelte + lucide-svelte; 44×44 touch; inputs need maxlength.
+- Agent project rules live in root `AGENTS.md` — never restore `packages/web/AGENTS.md`.

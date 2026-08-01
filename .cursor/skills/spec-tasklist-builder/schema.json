@@ -1,0 +1,97 @@
+{
+  "name": "spec-tasklist-builder",
+  "version": "1.5.0",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["create", "sync-progress", "iterate"],
+        "default": "create",
+        "description": "create=新建 Spec+任务; sync-progress=更新进度与文件绑定; iterate=增量改已有 Spec/任务"
+      },
+      "area": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "description": "业务域 slug，如 home、auth"
+      },
+      "slug": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "description": "页面/功能 slug，如 home-feed"
+      },
+      "design_root": {
+        "type": "string",
+        "description": "设计源目录，如 .design/home"
+      },
+      "spec_path": {
+        "type": "string",
+        "description": "覆盖默认 Spec 路径 .specs/<area>/<slug>.spec.md"
+      },
+      "tasks_path": {
+        "type": "string",
+        "description": "已废弃；进度在主 .spec.md。若传入则忽略并警告"
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "required": ["status", "mode", "artifacts", "open_questions", "self_check", "warnings"],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success", "partial", "blocked_clarify", "cancelled", "failed"]
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["create", "sync-progress", "iterate"]
+      },
+      "artifacts": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "落盘的 Spec / 分片详述路径"
+      },
+      "open_questions": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "仍未关闭的澄清项（成功时应为空）"
+      },
+      "tree_summary": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "页面/Tab/组件树一行摘要"
+      },
+      "self_check": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "warnings": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "security": {
+    "restrictions": [
+      "不得实现业务 UI/逻辑（本 Skill 只写 Spec 与任务清单）",
+      "不得手改 packages/web/src/lib/api/**",
+      "不得在未逐项澄清的情况下把猜测写入 Spec 既定需求",
+      "不得删除 docs/ai-workflow 或 .ai 旧流程文件，除非用户显式要求",
+      "写入前须用户确认（create/iterate）",
+      "新 create 与触达的 iterate 必须使用分析+实现契约双层；分析层禁止默认灌满 Tailwind"
+    ]
+  },
+  "post_validations": [
+    {
+      "type": "checklist",
+      "path": "scripts/skill-self-check.md"
+    }
+  ],
+  "error_codes": {
+    "E001": "设计根目录缺失或无可读设计文件",
+    "E002": "存在未关闭澄清项，禁止落盘",
+    "E003": "用户未确认摘要，禁止落盘",
+    "E004": "Spec 缺少主文件五章结构，或组件详述缺少分析/实现契约双层，或与任务树不同构",
+    "E005": "sync-progress 找不到既有主 Spec / 任务表"
+  }
+}

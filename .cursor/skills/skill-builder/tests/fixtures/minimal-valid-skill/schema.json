@@ -1,0 +1,17 @@
+{
+  "name": "minimal-valid-skill",
+  "version": "1.0.0",
+  "inputs": { "type": "object", "properties": { "mode": { "type": "string" } } },
+  "outputs": {
+    "type": "object",
+    "required": ["status"],
+    "properties": { "status": { "enum": ["success", "failed"] } }
+  },
+  "preconditions": [],
+  "post_validations": [],
+  "fallbacks": [],
+  "security": {
+    "permissions": ["read:tests/fixtures"],
+    "restrictions": { "禁止覆盖未确认文件": true }
+  }
+}

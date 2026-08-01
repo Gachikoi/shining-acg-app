@@ -1,0 +1,14 @@
+{
+  "mode": null,
+  "skill_name": null,
+  "core_problem": null,
+  "trigger_scenario": null,
+  "capabilities": null,
+  "expected_output": null,
+  "target_skill_path": null,
+  "existing_summary": null,
+  "change_intent": null,
+  "change_scope": null,
+  "references": null,
+  "user_confirmed": false
+}

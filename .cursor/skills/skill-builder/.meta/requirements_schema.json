@@ -1,0 +1,76 @@
+{
+  "version": "2.6.0",
+  "create": [
+    {
+      "id": "skill_name",
+      "label": "Skill 名称",
+      "description": "kebab-case 格式，如 pr-description-builder",
+      "required": true,
+      "validate": "kebab_case"
+    },
+    {
+      "id": "core_problem",
+      "label": "核心问题",
+      "description": "用一句话说明要解决什么问题",
+      "required": true
+    },
+    {
+      "id": "trigger_scenario",
+      "label": "触发场景",
+      "description": "什么话术下应激活此 Skill",
+      "required": true
+    },
+    {
+      "id": "capabilities",
+      "label": "主要能力",
+      "description": "动词短语列表，如「生成描述」「检查格式」",
+      "required": true
+    },
+    {
+      "id": "expected_output",
+      "label": "期望输出",
+      "description": "产出形式：文件 / 文档 / Markdown 文本等",
+      "required": true
+    },
+    {
+      "id": "references",
+      "label": "参考资料",
+      "description": "参考 Skill 或规范；没有可说「没有」",
+      "required": false,
+      "default": "none"
+    }
+  ],
+  "iterate": [
+    {
+      "id": "target_skill_path",
+      "label": "目标路径",
+      "description": "目标 SKILL.md 路径",
+      "required": true
+    },
+    {
+      "id": "existing_summary",
+      "label": "现有摘要",
+      "description": "读取现有 Skill 后的一句话摘要",
+      "required": true
+    },
+    {
+      "id": "change_intent",
+      "label": "变更意图",
+      "description": "用户想新增或修改什么",
+      "required": true
+    },
+    {
+      "id": "change_scope",
+      "label": "影响范围",
+      "description": "流程 / 触发词 / 子文件等",
+      "required": true
+    },
+    {
+      "id": "references",
+      "label": "补充参考",
+      "description": "补充参考文档；没有可说「没有」",
+      "required": false,
+      "default": "none"
+    }
+  ]
+}

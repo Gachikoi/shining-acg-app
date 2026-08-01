@@ -1,0 +1,64 @@
+skill: skill-builder
+version: "2.6.0"
+
+modes:
+  create:
+    description: 从零创建新 Skill
+    pipeline:
+      - clarify
+      - design
+      - build
+  iterate:
+    description: 迭代已有 Skill
+    pipeline:
+      - clarify
+      - design
+      - build
+
+loop_engine:
+  session:
+    reset: python scripts/clarify_loop.py session reset --mode {mode}
+  clarify:
+    init: python scripts/clarify_loop.py clarify init --mode {mode}
+    status: python scripts/clarify_loop.py clarify status
+    parse_reply: python scripts/clarify_loop.py clarify parse --text "{user_text}"
+    apply: python scripts/clarify_loop.py clarify apply --id {requirement_id} --value "{value}"
+    confirm: python scripts/clarify_loop.py clarify confirm
+    next: python scripts/clarify_loop.py clarify next
+    exit_when: can_exit
+    inject_template: "{{CLARIFY_STATE}}"
+  design:
+    init: python scripts/clarify_loop.py design init --from-clarify
+    status: python scripts/clarify_loop.py design status
+    update_doc: python scripts/clarify_loop.py design update-doc --doc "{design_doc}"
+    confirm: python scripts/clarify_loop.py design confirm
+    next: python scripts/clarify_loop.py design next
+    exit_when: can_exit
+    inject_template: "{{DESIGN_STATE}}"
+  build:
+    init: python scripts/clarify_loop.py build init --from-design
+    status: python scripts/clarify_loop.py build status
+    mark_done: python scripts/clarify_loop.py build mark-done --file-path "{file_path}"
+    confirm: python scripts/clarify_loop.py build confirm
+    next: python scripts/clarify_loop.py build next
+    exit_when: can_exit
+    inject_template: "{{BUILD_STATE}}"
+
+hooks:
+  pre: hooks/pre-execution.md
+  post: hooks/post-execution.md
+
+validations:
+  after_build:
+    - type: checklist
+      path: scripts/skill-self-check.md
+    - type: command
+      run: deno run -A .cursor/skills/skill-builder/scripts/validate-skill-structure.ts
+      arg: target_skill_dir
+
+contract:
+  schema: schema.json
+  metadata: metadata.yaml
+  meta_dir: .meta/
+
+param_mismatch_policy: hard_fail_and_clarify

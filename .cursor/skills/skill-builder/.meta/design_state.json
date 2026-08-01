@@ -1,0 +1,15 @@
+{
+  "version": "2.5.0",
+  "current_phase": "design",
+  "mode": "create",
+  "clarify_record": {},
+  "design_record": {
+    "design_doc": "",
+    "target_dir": "",
+    "file_plan": [],
+    "schema_draft": {}
+  },
+  "next_action": null,
+  "user_confirmed": false,
+  "can_exit": false
+}

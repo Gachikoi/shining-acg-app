@@ -1,0 +1,17 @@
+name: spec-tasklist-builder
+version: "1.5.0"
+level: L2
+author: shining-acg
+timeout: 600
+capabilities:
+  - create_spec_from_design
+  - create_isomorphic_tasklist
+  - one_by_one_clarification
+  - sync_task_progress_and_file_bindings
+modes:
+  - create
+  - sync-progress
+  - iterate
+default_paths:
+  spec: .specs/<area>/<slug>.spec.md
+  tasks: .specs/<area>/<slug>.tasks.md

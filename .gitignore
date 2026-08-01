@@ -51,11 +51,14 @@ packages/harmonyos/.hvigor/
 .vscode/
 .claude/
 .idea/
-.cursor/
 .sisyphus/
 *.swp
 *.swo
 *~
+
+# Python bytecode (e.g. under .cursor/skills/*/scripts)
+**/__pycache__/
+*.py[cod]
 
 # OS
 .DS_Store

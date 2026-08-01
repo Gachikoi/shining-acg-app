@@ -1,0 +1,27 @@
+{
+  "spec": "E:/Code/shining-acg-app/.specs/notification/notification-im-ir/tab-messages/messages.yaml",
+  "qa": null,
+  "component_id": "notification.ir.tab.messages",
+  "generated_at": "2026-07-27T13:57:02.124Z",
+  "passed": true,
+  "results": [
+    {
+      "id": "notification.ir.tab.messages.file",
+      "text": "messages-tab 存在",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.tab.messages.list_width",
+      "text": "列表宽 w-[421px]",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "notification.ir.tab.messages.callback",
+      "text": "selectConversation 接线",
+      "ok": true,
+      "detail": "ok"
+    }
+  ]
+}

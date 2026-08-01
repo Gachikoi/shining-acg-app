@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema#",
+  "name": "skill-builder-v2",
+  "version": "1.0.0",
+  "description": "通过逐项澄清创建完整 Cursor Skill 包；契约仅作说明，不驱动状态机",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "skill_name": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "description": "可选预填：目标 Skill 名称（kebab-case）"
+      },
+      "target_dir": {
+        "type": "string",
+        "default": ".cursor/skills",
+        "description": "Skill 包落盘父目录；默认仓库 .cursor/skills"
+      }
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "required": ["status"],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success", "partial", "cancelled", "failed"],
+        "description": "执行状态"
+      },
+      "artifacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["path", "type"],
+          "properties": {
+            "path": { "type": "string" },
+            "type": {
+              "type": "string",
+              "enum": [
+                "skill_md",
+                "schema",
+                "reference",
+                "template",
+                "example",
+                "script"
+              ]
+            }
+          }
+        },
+        "description": "已生成或更新的文件列表"
+      },
+      "warnings": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  }
+}

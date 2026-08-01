@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema#",
+  "name": "{{SKILL_NAME}}",
+  "version": "1.0.0",
+  "description": "{{SKILL_DESCRIPTION}}",
+
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": [{{MODE_ENUM_VALUES}}],
+        "default": "{{MODE_DEFAULT}}"
+      }
+    }
+  },
+
+  "outputs": {
+    "type": "object",
+    "required": ["status"],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success", "partial", "failed", "cancelled"]
+      },
+      "artifacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "type": { "type": "string" }
+          }
+        }
+      },
+      "warnings": { "type": "array", "items": { "type": "string" } },
+      "metrics": {
+        "type": "object",
+        "properties": {
+          "duration_ms": { "type": "number" },
+          "files_generated": { "type": "integer" }
+        }
+      }
+    }
+  },
+
+  "preconditions": [
+    {
+      "check": "{{PRECONDITION_1}}",
+      "error_code": "E004",
+      "error_message": "{{PRECONDITION_1_ERROR}}"
+    }
+  ],
+
+  "post_validations": [
+    {
+      "name": "self_check",
+      "command": "scripts/skill-self-check.md 全部通过",
+      "error_code": "E002"
+    }
+  ],
+
+  "fallbacks": [
+    {
+      "condition": "子文件读取失败",
+      "error_code": "E001",
+      "action": "使用内置 fallback 继续并记录 warning"
+    },
+    {
+      "condition": "用户取消确认",
+      "error_code": "E005",
+      "action": "status=cancelled"
+    }
+  ],
+
+  "error_codes": {
+    "E001": "路径或文件不存在",
+    "E002": "自检失败",
+    "E003": "写入失败",
+    "E004": "参数或前置条件不满足",
+    "E005": "用户取消"
+  },
+
+  "security": {
+    "permissions": ["read:{{SKILL_SCOPE}}", "write:{{SKILL_SCOPE}}"],
+    "restrictions": {
+      "禁止覆盖未确认文件": true,
+      "禁止写入生产配置除非用户确认": true
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "name": "implement-from-spec",
+  "version": "2.7.0",
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "spec_path": {
+        "type": "string",
+        "pattern": "^\\.specs/.+\\.spec\\.md$",
+        "description": "可选；目标 Spec 路径"
+      },
+      "tasks_path": {
+        "type": "string",
+        "description": "已废弃；进度在主 .spec.md。若传入则忽略并警告"
+      },
+      "task_id": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$",
+        "description": "可选；未提供时选择主 Spec 任务表中首个 todo/unknown"
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputs": {
+    "type": "object",
+    "required": [
+      "status",
+      "task_id",
+      "artifacts",
+      "gates",
+      "task_update",
+      "warnings"
+    ],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success", "partial", "blocked", "failed", "cancelled"]
+      },
+      "task_id": { "type": "string" },
+      "artifacts": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "须含本任务 QA 路径 .specs/.../qa/<task_id>.md（若已 done）"
+      },
+      "gates": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["command", "status"],
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "门禁命令"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["passed", "failed", "skipped"]
+            },
+            "notes": { "type": "string" }
+          }
+        }
+      },
+      "task_update": {
+        "type": "object",
+        "required": ["status", "tasks_path"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["todo", "doing", "done", "blocked", "unknown"]
+          },
+          "tasks_path": { "type": "string" },
+          "files": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "notes": {
+            "type": "string",
+            "description": "可含 qa: .specs/.../qa/<task_id>.md"
+          }
+        }
+      },
+      "warnings": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "security": {
+    "restrictions": [
+      "一次只能实现一个 task_id",
+      "未收到当前计划的 APPROVED 前不得写业务代码或修改任务状态",
+      "不得手改 packages/web/src/lib/api/**",
+      "不得改写组件详述的分析层意图与契约层组件验收，以及主 .spec.md 目标/约束/总验收",
+      "实现须先读分析层再读契约层；不得把契约中参考 class 当作唯一真相",
+      "旧单层详述可回退实现，但须在 warnings 标明格式过期",
+      "门禁失败或缺少 QA 文档不得将 task status 设为 done",
+      "临时 mock 必须带 TEMP MOCK 注释；禁止无注释临时 mock；禁止将 mock 写入 Skill 目录",
+      "不得自动创建分支、提交或推送",
+      "不得覆盖用户无关改动",
+      "不得恢复 packages/web/AGENTS.md"
+    ]
+  },
+  "post_validations": [
+    {
+      "type": "checklist",
+      "path": "scripts/skill-self-check.md"
+    }
+  ]
+}

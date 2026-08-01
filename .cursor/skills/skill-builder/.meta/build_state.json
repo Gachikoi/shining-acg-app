@@ -1,0 +1,14 @@
+{
+  "version": "2.5.0",
+  "current_phase": "build",
+  "mode": "create",
+  "build_record": {
+    "target_dir": "",
+    "files_planned": [],
+    "files_done": [],
+    "files_skipped": []
+  },
+  "next_action": null,
+  "user_confirmed": false,
+  "can_exit": false
+}

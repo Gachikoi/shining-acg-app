@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema#",
+  "name": "skill-builder",
+  "version": "2.6.0",
+  "description": "从零创建或迭代已有 Skill；调用契约见 inputs",
+
+  "inputs": {
+    "type": "object",
+    "properties": {
+      "skill_name": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "description": "要创建的 Skill 名称（kebab-case）"
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["create", "iterate"],
+        "default": "create",
+        "description": "create=从零创建，iterate=迭代已有 Skill；均走 clarify→design→build"
+      },
+      "target_skill_path": {
+        "type": "string",
+        "description": "iterate 模式下目标 SKILL.md 路径"
+      }
+    }
+  },
+
+  "outputs": {
+    "type": "object",
+    "required": ["status"],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success", "partial", "failed", "cancelled"],
+        "description": "执行状态"
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["create", "iterate"]
+      },
+      "phase": {
+        "type": "string",
+        "enum": ["clarify", "design", "build", "done"],
+        "description": "当前所处阶段（outputs 中可选标注）"
+      },
+      "artifacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "type": {
+              "type": "string",
+              "enum": ["skill_md", "schema", "reference", "template", "example", "script", "hook", "doc", "design_doc"]
+            }
+          },
+          "required": ["path", "type"]
+        }
+      },
+      "self_check": {
+        "type": "object",
+        "properties": {
+          "passed": { "type": "integer" },
+          "failed": { "type": "integer" },
+          "items": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "warnings": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "metrics": {
+        "type": "object",
+        "properties": {
+          "duration_ms": { "type": "number" },
+          "files_generated": { "type": "integer" }
+        }
+      },
+      "next_suggested": {
+        "type": "string",
+        "description": "建议的后续步骤"
+      },
+      "clarify_state": {
+        "type": "object",
+        "description": "clarify 阶段状态；由 scripts/clarify_loop.py 维护，Harness 注入 Agent",
+        "properties": {
+          "mode": { "enum": ["create", "iterate"] },
+          "current_phase": { "const": "clarify" },
+          "requirements": { "type": "array" },
+          "clarify_record": { "type": "object" },
+          "loop_context": { "type": "object" },
+          "next_action": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "enum": ["ask_question", "wait_for_confirmation", "exit_to_design"]
+              },
+              "requirement_id": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          },
+          "user_confirmed": { "type": "boolean" },
+          "can_exit": { "type": "boolean" }
+        }
+      },
+      "design_state": {
+        "type": "object",
+        "properties": {
+          "current_phase": { "const": "design" },
+          "design_record": { "type": "object" },
+          "next_action": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "enum": ["show_design", "revise_design", "exit_to_build"]
+              },
+              "message": { "type": "string" }
+            }
+          },
+          "user_confirmed": { "type": "boolean" },
+          "can_exit": { "type": "boolean" }
+        }
+      },
+      "build_state": {
+        "type": "object",
+        "properties": {
+          "current_phase": { "const": "build" },
+          "build_record": { "type": "object" },
+          "next_action": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "enum": ["generate_file", "confirm_overwrite", "build_complete", "done"]
+              },
+              "file_path": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          },
+          "user_confirmed": { "type": "boolean" },
+          "can_exit": { "type": "boolean" }
+        }
+      },
+      "clarify_record": {
+        "type": "object",
+        "description": "clarify_record 扁平视图；由 clarify_state 同步生成",
+        "properties": {
+          "mode": { "enum": ["create", "iterate"] },
+          "skill_name": { "type": "string" },
+          "problem": { "type": "string", "description": "同 core_problem" },
+          "core_problem": { "type": "string" },
+          "trigger_scenario": { "type": "string" },
+          "capabilities": { "type": "string" },
+          "expected_output": { "type": "string" },
+          "target_skill_path": { "type": "string" },
+          "existing_summary": { "type": "string" },
+          "change_intent": { "type": "string" },
+          "change_scope": { "type": "string" },
+          "references": { "type": "string" },
+          "user_confirmed": { "type": "boolean" }
+        }
+      },
+      "design_record": {
+        "type": "object",
+        "properties": {
+          "design_doc": { "type": "string" },
+          "target_dir": { "type": "string" },
+          "file_plan": { "type": "array", "items": { "type": "string" } },
+          "schema_draft": { "type": "object" },
+          "user_confirmed": { "type": "boolean" }
+        }
+      },
+      "build_record": {
+        "type": "object",
+        "properties": {
+          "files_planned": { "type": "array", "items": { "type": "string" } },
+          "files_done": { "type": "array", "items": { "type": "string" } },
+          "files_skipped": { "type": "array", "items": { "type": "string" } },
+          "user_confirmed": { "type": "boolean" }
+        }
+      }
+    }
+  },
+
+  "preconditions": [
+    {
+      "check": "skill-builder 目录可读",
+      "error_code": "E004",
+      "error_message": "无法读取 skill-builder 目录，请确认路径"
+    },
+    {
+      "check": "mode=iterate 时 target_skill_path 存在（或在 clarify 中确认）",
+      "error_code": "E001",
+      "error_message": "迭代模式需要可读取的目标 SKILL.md"
+    }
+  ],
+
+  "post_validations": [
+    {
+      "name": "structure_check",
+      "command": "deno run -A .cursor/skills/skill-builder/scripts/validate-skill-structure.ts <skill_dir>",
+      "error_code": "E002",
+      "error_message": "Skill 结构校验未通过"
+    },
+    {
+      "name": "self_check",
+      "command": "scripts/skill-self-check.md 18 条全部通过",
+      "error_code": "E002",
+      "error_message": "SKILL.md 自检未通过"
+    }
+  ],
+
+  "fallbacks": [
+    {
+      "condition": "子文件读取失败",
+      "error_code": "E001",
+      "action": "使用 BUILTIN_* 内置规范继续，并记录 warning"
+    },
+    {
+      "condition": "自检失败",
+      "error_code": "E002",
+      "action": "修正后重试，最多 2 次；仍失败则 status=partial 并列出失败项"
+    },
+    {
+      "condition": "文件写入失败",
+      "error_code": "E003",
+      "action": "重试 1 次；仍失败则 status=failed 并停止该文件"
+    },
+    {
+      "condition": "参数非法",
+      "error_code": "E004",
+      "action": "hard_fail_and_clarify，向用户澄清参数"
+    },
+    {
+      "condition": "用户取消确认",
+      "error_code": "E005",
+      "action": "status=cancelled，输出已完成的 artifacts"
+    }
+  ],
+
+  "error_codes": {
+    "E001": "路径或文件不存在",
+    "E002": "自检或结构校验失败",
+    "E003": "文件写入失败",
+    "E004": "参数非法或前置条件不满足",
+    "E005": "用户取消"
+  },
+
+  "security": {
+    "permissions": [
+      "read:.cursor/skills/skill-builder",
+      "read:.cursor/skills",
+      "write:.cursor/skills/<target_skill>"
+    ],
+    "restrictions": {
+      "禁止覆盖未确认文件": true,
+      "禁止执行破坏性命令": true
+    }
+  }
+}
