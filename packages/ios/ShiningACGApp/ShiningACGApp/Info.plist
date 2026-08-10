@@ -14,6 +14,10 @@
 	</dict>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问你的照片库以选择图片、视频和 Live Photo。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>需要访问相机以拍摄照片或视频上传。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>录制视频时需要使用麦克风采集声音。</string>
 	<key>UILaunchStoryboardName</key>
 	<string>Launch Screen</string>
 </dict>

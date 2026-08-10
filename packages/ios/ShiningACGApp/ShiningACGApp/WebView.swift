@@ -4,6 +4,7 @@
 //
 //  Created by 落殇 on 2026/1/4.
 //
+import AVFoundation
 import Photos
 import PhotosUI
 import SwiftUI
@@ -16,7 +17,14 @@ struct WebView: UIViewRepresentable {
   let url: URL
   var onOpenUrlInSheet: ((URL) -> Void)?
   var onLoadingStatusChange: ((Bool) -> Void)?
-  var onNetworkFail: (() -> Void)?
+  /// 网络加载失败回调，携带分类后的 NetworkFailureKind
+  var onNetworkFail: ((NetworkFailureKind) -> Void)?
+  /// 首屏内容加载成功回调（仅 didFinish 时触发一次的语义在调用侧实现）
+  var onDidFinish: (() -> Void)?
+  /// 相机或麦克风权限被拒回调，type 区分摄像头 / 麦克风 / 二者
+  var onMediaPermissionDenied: ((WKMediaCaptureType) -> Void)?
+  /// 重新加载令牌：父视图递增此值即触发 WebView 重新 load 初始 url
+  var reloadToken: Int = 0
 
   func makeCoordinator() -> Coordinator {
     Coordinator(self)
@@ -102,10 +110,17 @@ struct WebView: UIViewRepresentable {
 
   func updateUIView(_ uiView: WKWebView, context: Context) {
     context.coordinator.parent = self
+    // 父视图通过递增 reloadToken 触发重新加载初始 URL
+    if context.coordinator.lastReloadToken != reloadToken {
+      context.coordinator.lastReloadToken = reloadToken
+      uiView.load(URLRequest(url: url))
+    }
   }
 
   class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
     var parent: WebView
+    /// 已处理的 reloadToken 值，避免 updateUIView 重复触发 reload
+    var lastReloadToken: Int = 0
 
     // 预创建 Feedback Generator
     private let impactGenerators:
@@ -241,43 +256,43 @@ struct WebView: UIViewRepresentable {
       }
     }
 
-    //    加载失败处理（如：网络权限未开启）
+    /// 判断错误是否属于"取消"类（如重复 load 触发的 -999），不应作为网络故障对外暴露
+    private func isCancelledError(_ error: NSError) -> Bool {
+      return error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled
+    }
+
+    /// 统一处理加载失败：分类 → 上报 → 仅对临时错误做一次自动延迟重试
+    private func handleNavigationFailure(_ webView: WKWebView, error: NSError) {
+      if isCancelledError(error) { return }
+
+      let kind = NetworkMonitor.shared.classify(error)
+      NSLog("WebView load failed: code=\(error.code) kind=\(kind)")
+
+      parent.onNetworkFail?(kind)
+
+      // 仅对临时性错误自动重试一次（飞行模式/蜂窝权限拒绝交由用户处理）
+      switch kind {
+      case .timeout, .unstable, .offline:
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak webView, weak self] in
+          guard let webView = webView, let self = self else { return }
+          webView.load(URLRequest(url: self.parent.url))
+        }
+      case .airplaneMode, .cellularDenied, .dnsFailed, .unknown:
+        break
+      }
+    }
+
+    // 主框架的导航请求阶段失败（如 DNS/连接失败）
     func webView(
       _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
       withError error: Error
     ) {
-      let nsError = error as NSError
-      // -1009: The internet connection appears to be offline.
-      // -1020: Data not allowed (e.g. cellular data disabled or first launch permission).
-      if nsError.code == -1009 || nsError.code == -1020 {
-        parent.onLoadingStatusChange?(true)
-        parent.onNetworkFail?()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-          // Retry loading the initial URL
-          webView.load(URLRequest(url: self.parent.url))
-        }
-        NSLog("\(nsError),\(nsError.code)")
-      } else {
-        parent.onLoadingStatusChange?(false)
-        webView.alpha = 1
-      }
+      handleNavigationFailure(webView, error: error as NSError)
     }
 
+    // 内容已开始接收但加载过程中失败
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-      let nsError = error as NSError
-      if nsError.code == -1009 || nsError.code == -1020 {
-        parent.onLoadingStatusChange?(true)
-        parent.onNetworkFail?()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-          webView.reload()
-        }
-        NSLog("\(nsError),\(nsError.code)")
-      } else {
-        parent.onLoadingStatusChange?(false)
-        webView.alpha = 1
-      }
+      handleNavigationFailure(webView, error: error as NSError)
     }
 
     //    url 拦截
@@ -299,6 +314,44 @@ struct WebView: UIViewRepresentable {
     //    解决黑夜模式下首屏白屏问题：在页面加载完成后淡入显示 WebView
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       parent.onLoadingStatusChange?(false)
+      parent.onDidFinish?()
+    }
+
+    // MARK: - 媒体捕获权限（相机 / 麦克风）
+
+    /// WKWebView 内 <input type="file" capture> / getUserMedia 触发相机或麦克风时回调。
+    /// 结合 AVCaptureDevice 授权状态决策：notDetermined → 让系统弹窗；denied/restricted → 拒绝并通知 UI 引导去设置；authorized → 放行。
+    func webView(
+      _ webView: WKWebView,
+      requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+      initiatedByFrame frame: WKFrameInfo,
+      type: WKMediaCaptureType,
+      decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+      let mediaTypes: [AVMediaType] = {
+        switch type {
+        case .camera: return [.video]
+        case .microphone: return [.audio]
+        case .cameraAndMicrophone: return [.video, .audio]
+        @unknown default: return [.video]
+        }
+      }()
+
+      let statuses = mediaTypes.map { AVCaptureDevice.authorizationStatus(for: $0) }
+
+      if statuses.contains(where: { $0 == .denied || $0 == .restricted }) {
+        decisionHandler(.deny)
+        parent.onMediaPermissionDenied?(type)
+        return
+      }
+
+      if statuses.contains(where: { $0 == .notDetermined }) {
+        // 让 WebKit 走系统原生弹窗（用户首次授权流程）
+        decisionHandler(.prompt)
+        return
+      }
+
+      decisionHandler(.grant)
     }
   }
 }
