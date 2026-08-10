@@ -9,10 +9,10 @@
  */
 
 import type {
+	FeedServiceGetFeedData,
 	V1FeedFilter,
 	V1PostPreview,
-	V1UserSummary,
-	FeedServiceGetFeedData
+	V1UserSummary
 } from '$lib/api/types.gen';
 import { calculateLayoutBase } from '$lib/components/custom/waterfall/waterfall-container/waterfall-layout';
 import { generatePosts, generateUsers, mockFetchFeed } from '$lib/test/waterfall-data-mock';
@@ -69,9 +69,12 @@ export function buildFeedQueryParams(
 	} else {
 		if (keyword) params['filter.keyword'] = keyword;
 		if (orderType) params['filter.orderType'] = orderType;
-		if (timeRange?.startTimestamp)
+		if (timeRange?.startTimestamp) {
 			params['filter.timeRange.startTimestamp'] = timeRange.startTimestamp;
-		if (timeRange?.endTimestamp) params['filter.timeRange.endTimestamp'] = timeRange.endTimestamp;
+		}
+		if (timeRange?.endTimestamp) {
+			params['filter.timeRange.endTimestamp'] = timeRange.endTimestamp;
+		}
 	}
 
 	return params;
@@ -91,7 +94,10 @@ export function createPostFetchFn(getFilters: () => V1FeedFilter): FeedFetchFn<V
 		const queryParams = buildFeedQueryParams(categoryId, cursor, isRefresh, needNum, getFilters());
 
 		// 单元测试 API（后端完成后替换为 feedServiceGetFeed）
-		const response = await mockFetchFeed({ query: queryParams, url: '/v1/feed' });
+		const response = await mockFetchFeed({
+			query: queryParams,
+			url: '/v1/feed'
+		});
 		// const response = await feedServiceGetFeed({ query: queryParams });
 
 		const newItems = (response.data?.posts?.items || []) as V1PostPreview[];

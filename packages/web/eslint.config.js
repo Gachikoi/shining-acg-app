@@ -13,6 +13,12 @@ const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
 	{
+		// 关闭 unused eslint-disable 报告，避免历史注释在规则放宽后阻断提交
+		linterOptions: {
+			reportUnusedDisableDirectives: 'off'
+		}
+	},
+	{
 		ignores: ['src/lib/api/*']
 	},
 	js.configs.recommended,
@@ -37,7 +43,8 @@ export default defineConfig(
 			// 因此 href 不需要经过 resolve() 处理
 			'svelte/no-href-without-base': 'off',
 			'svelte/no-navigation-without-resolve': 'off',
-			'svelte/prefer-svelte-reactivity': 'off'
+			'svelte/prefer-svelte-reactivity': 'off',
+			'@typescript-eslint/no-explicit-any': 'off'
 		}
 	},
 	{

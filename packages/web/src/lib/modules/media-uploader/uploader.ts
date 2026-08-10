@@ -13,8 +13,8 @@ import {
 	mediaServiceSignMultipartPart,
 	type V1MediaAsset,
 	type V1MediaScene,
-	type V1UploadFile,
-	type V1UploadAsset
+	type V1UploadAsset,
+	type V1UploadFile
 } from '../../api';
 // import { mediaClient } from '../realtime/media';
 import type {
@@ -109,7 +109,10 @@ export function createMediaUploader(options: CreateMediaUploaderOptions = {}): M
 	const batchSockets = new Map<string, () => void>();
 
 	const baseRequestOptions = async () => {
-		const requestOptions: { baseURL?: string; headers?: Record<string, string> } = {};
+		const requestOptions: {
+			baseURL?: string;
+			headers?: Record<string, string>;
+		} = {};
 		if (options.baseUrl) {
 			requestOptions.baseURL = options.baseUrl;
 		}

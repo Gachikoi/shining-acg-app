@@ -45,8 +45,11 @@ export function createFetchMentionUsersFromFollowings(): (query: string) => Prom
 				}
 				cachedFollowingUsers = data.users
 					.filter(
-						(item): item is { info: NonNullable<typeof item.info> & { userId: string } } =>
-							!!item?.info && (item.info.userId ?? '') !== ''
+						(
+							item
+						): item is {
+							info: NonNullable<typeof item.info> & { userId: string };
+						} => !!item?.info && (item.info.userId ?? '') !== ''
 					)
 					.map((item) => {
 						const info = item.info;

@@ -1,12 +1,14 @@
 # 发布模块（Release）进度确认
 
-> 对照文档：`docs/产品需求文档.md`（重点核对 `6.2.5 发布`、`6.2.12 图片视频预览编辑器`）  
-> 核对范围：`src/routes/app/release`、`src/lib/modules/media-cover`、`src/lib/components/custom/shin-rich`、`src/lib/stores/release/release-draft.ts`  
+> 对照文档：`docs/产品需求文档.md`（重点核对
+> `6.2.5 发布`、`6.2.12 图片视频预览编辑器`）\
+> 核对范围：`src/routes/app/release`、`src/lib/modules/media-cover`、`src/lib/components/custom/shin-rich`、`src/lib/stores/release/release-draft.ts`\
 > 结论基于当前代码实现，不基于口头计划。
 
 ## 一、总览结论
 
-- **核心可用**：发布页主链路可跑通（填写 -> 保存/自动保存 -> 确认发布 -> 上传 -> CreatePost）。
+- **核心可用**：发布页主链路可跑通（填写 -> 保存/自动保存 -> 确认发布 -> 上传 ->
+  CreatePost）。
 - **部分达成**：封面与发布后体验仅完成基础能力，和 PRD 的完整交互还有明显差距。
 - **关键缺口**：封面强制裁切、媒体拖拽/编辑、发布后横幅与圆形状态栏、编辑帖子模式、现网用户补齐。
 

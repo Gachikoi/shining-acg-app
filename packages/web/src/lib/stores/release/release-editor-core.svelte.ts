@@ -5,18 +5,18 @@ import { toast } from 'svelte-sonner';
 import { TOAST_MESSAGES } from '$lib/constants/toast-messages';
 import type { V1PostContentUnit } from '$lib/api/types.gen';
 import {
+	type CoverSource,
 	DEFAULT_TEXT_COVER_STYLE_ID,
 	getPreviewBlobForDisplay,
 	isImageItem,
 	isVideoItem,
 	PLACEHOLDER_VIDEO_FAILED,
 	PLACEHOLDER_VIDEO_LOADING,
-	resolveCoverBlob,
-	type CoverSource
+	resolveCoverBlob
 } from '$lib/modules/media-cover';
 import { filesToDraftItems, getPreviewBlob } from '$lib/modules/release-media';
 import { formatUploadError } from '$lib/utils/format-upload-error';
-import { CoverRatioArray, type CoverRatio, type DraftMediaItem } from './release-draft.js';
+import { type CoverRatio, CoverRatioArray, type DraftMediaItem } from './release-draft.js';
 
 /** 需求 6.2.5.1-2：帖子媒体上限 */
 const MAX_MEDIA_COUNT = 20;

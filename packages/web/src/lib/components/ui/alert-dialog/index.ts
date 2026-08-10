@@ -11,27 +11,27 @@ import Content from './alert-dialog-content.svelte';
 import Description from './alert-dialog-description.svelte';
 
 export {
-	Root,
-	Title,
 	Action,
+	Action as AlertDialogAction,
 	Cancel,
-	Portal,
-	Footer,
-	Header,
-	Trigger,
-	Overlay,
+	Cancel as AlertDialogCancel,
 	Content,
+	Content as AlertDialogContent,
 	Description,
+	Description as AlertDialogDescription,
+	Footer,
+	Footer as AlertDialogFooter,
+	Header,
+	Header as AlertDialogHeader,
+	Overlay,
+	Overlay as AlertDialogOverlay,
+	Portal,
+	Portal as AlertDialogPortal,
+	Root,
 	//
 	Root as AlertDialog,
+	Title,
 	Title as AlertDialogTitle,
-	Action as AlertDialogAction,
-	Cancel as AlertDialogCancel,
-	Portal as AlertDialogPortal,
-	Footer as AlertDialogFooter,
-	Header as AlertDialogHeader,
-	Trigger as AlertDialogTrigger,
-	Overlay as AlertDialogOverlay,
-	Content as AlertDialogContent,
-	Description as AlertDialogDescription
+	Trigger,
+	Trigger as AlertDialogTrigger
 };

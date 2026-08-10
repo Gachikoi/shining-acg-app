@@ -91,8 +91,10 @@ function splitLines(
 		lines.push(current);
 	}
 	if (lines.length === maxLines && chars.join('').length > lines.join('').length) {
-		lines[maxLines - 1] =
-			`${lines[maxLines - 1].slice(0, Math.max(0, lines[maxLines - 1].length - 1))}…`;
+		lines[maxLines - 1] = `${lines[maxLines - 1].slice(
+			0,
+			Math.max(0, lines[maxLines - 1].length - 1)
+		)}…`;
 	}
 	return lines;
 }

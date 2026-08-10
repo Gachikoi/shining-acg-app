@@ -14,16 +14,16 @@
 import { tick } from 'svelte';
 import type { MentionUser } from '../components/shin-rich-popover.svelte';
 import {
-	ZWSP,
 	getRangeInTarget,
 	getTextBeforeCaret,
 	getTextBeforeCaretWithPositions,
-	isEffectivelyEmpty,
 	getTextLengthWithNewlines,
-	insertTextAtCaret,
 	insertAtEnd,
+	insertTextAtCaret,
+	isEffectivelyEmpty,
+	NBSP,
 	tryGetCaretPosition,
-	NBSP
+	ZWSP
 } from '../utils/contenteditable';
 import { createKeydownHandlerChain, type KeydownContext } from '../keydown-handlers';
 
@@ -240,7 +240,10 @@ export class RichTextareaController {
 			this.deps.setPopoverPosition(pos);
 		} else {
 			const targetRect = target.getBoundingClientRect();
-			this.deps.setPopoverPosition({ left: targetRect.left, top: targetRect.bottom + 4 });
+			this.deps.setPopoverPosition({
+				left: targetRect.left,
+				top: targetRect.bottom + 4
+			});
 		}
 		await tick();
 		this.deps.setPopoverOpen(true);
@@ -285,7 +288,9 @@ export class RichTextareaController {
 
 		if (this.deps.getPopoverOpen() && this.target) {
 			// 仅识别用户输入的 @，不包含 mention 内的 @
-			const textBefore = getTextBeforeCaret(target, { skipMentionContent: true });
+			const textBefore = getTextBeforeCaret(target, {
+				skipMentionContent: true
+			});
 			const atIdx = textBefore.lastIndexOf('@');
 			if (atIdx < 0) {
 				this.handlePopoverClose();
@@ -301,7 +306,10 @@ export class RichTextareaController {
 					if (target.contains(range.commonAncestorContainer)) {
 						const rect = range.getBoundingClientRect();
 						if (rect.width > 0 || rect.height > 0) {
-							this.deps.setPopoverPosition({ left: rect.left, top: rect.bottom + 4 });
+							this.deps.setPopoverPosition({
+								left: rect.left,
+								top: rect.bottom + 4
+							});
 						}
 					}
 				}

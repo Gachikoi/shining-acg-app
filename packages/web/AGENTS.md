@@ -4,9 +4,11 @@ Guide for agentic coding agents working in this SvelteKit web application.
 
 ## Project Overview
 
-SvelteKit SPA integrating "Shining ACG" app interface (`/app` routes) and official website (`/site` routes) using domain-based routing.
+SvelteKit SPA integrating "Shining ACG" app interface (`/app` routes) and
+official website (`/site` routes) using domain-based routing.
 
-**Tech Stack:** Deno 2.6.0+, Svelte 5, SvelteKit, shadcn-svelte, lucide-svelte, TailwindCSS v4, TypeScript (strict), Prettier, ESLint
+**Tech Stack:** Deno 2.6.0+, Svelte 5, SvelteKit, shadcn-svelte, lucide-svelte,
+TailwindCSS v4, TypeScript (strict), Prettier, ESLint
 
 ---
 
@@ -136,7 +138,8 @@ try {
 
 ### DO NOT Edit `src/lib/api/`
 
-Entirely auto-generated from proto. Edit `src/hey-api.svelte.ts` for config changes.
+Entirely auto-generated from proto. Edit `src/hey-api.svelte.ts` for config
+changes.
 
 ### Package Management
 
@@ -186,7 +189,8 @@ deno run -A npm:sv create my-app  # CORRECT
 
 ## Environment Variables
 
-Uses `$env/static/public` for build-time injection. Missing vars cause build errors.
+Uses `$env/static/public` for build-time injection. Missing vars cause build
+errors.
 
 ```bash
 cp .env.example .env.local
@@ -210,7 +214,7 @@ Configure whistle proxy for local dev (see README.md).
 ```typescript
 // index.ts
 import Root, { type Props, type Variant } from './component.svelte';
-export { type Props, type Props as ComponentProps, type Variant, Root, Root as Component };
+export { type Props, type Props as ComponentProps, Root, Root as Component, type Variant };
 ```
 
 ---
@@ -227,19 +231,22 @@ const response = await someEndpoint({ path: { id: '123' }, body: { data } });
 
 ## Media Upload
 
-`src/lib/modules/media-uploader/` 封装基于 Uppy + @uppy/aws-s3-multipart 的媒体上传流程，release 页面使用。
+`src/lib/modules/media-uploader/` 封装基于 Uppy + @uppy/aws-s3-multipart
+的媒体上传流程，release 页面使用。
 
 ```
 PrepareUploadBatch → CreateMultipartUpload → (SignPart → PUT) × N → CompleteMultipartUpload
 ```
 
-`src/lib/modules/release-media/` 为发布页媒体适配层，负责 File[] ↔ DraftMediaItem[] ↔ PrepareUploadParams 的转换，支持 Live Photo（`lp_<groupId>_image|video.*` 命名规则）。
+`src/lib/modules/release-media/` 为发布页媒体适配层，负责 File[] ↔
+DraftMediaItem[] ↔ PrepareUploadParams 的转换，支持 Live
+Photo（`lp_<groupId>_image|video.*` 命名规则）。
 
 ```typescript
 import { createMediaUploader } from '$lib/modules/media-uploader';
 import {
-	filesToDraftItems,
 	draftItemsToPrepareParams,
+	filesToDraftItems,
 	getPreviewBlob,
 	mediaItemsEqual
 } from '$lib/modules/release-media';
@@ -252,7 +259,8 @@ const params = draftItemsToPrepareParams(cachedMediaItems, 'MEDIA_SCENE_POST_MED
 const batchId = await uploader.upload(params);
 ```
 
-- 草稿媒体以 `DraftMediaItem[]` 存于 IndexedDB（Blob + name，支持 single 与 live_photo），上传前由 `draftItemsToPrepareParams` 重建 File。
+- 草稿媒体以 `DraftMediaItem[]` 存于 IndexedDB（Blob + name，支持 single 与
+  live_photo），上传前由 `draftItemsToPrepareParams` 重建 File。
 
 ---
 
@@ -262,15 +270,21 @@ const batchId = await uploader.upload(params);
 
 `src/lib/modules/media-cover/` 提供视频首帧抽取、文字封面生成与统一封面决策。
 
-- **TextCoverRenderer**：文字封面渲染器接口，通过 `registerTextCoverRenderer` 注册；新增样式时实现该接口并注册，禁止覆盖已有 id。
-- **样式 ID 白名单**：仅已注册样式视为合法；`resolveCoverBlob` 收到未知 `textCoverStyleId` 时回退 `default`，保证线上稳定。
-- **默认样式**：`DEFAULT_TEXT_COVER_STYLE_ID = 'default'`，新增样式需在 registry 中注册后方可被选用。
+- **TextCoverRenderer**：文字封面渲染器接口，通过 `registerTextCoverRenderer`
+  注册；新增样式时实现该接口并注册，禁止覆盖已有 id。
+- **样式 ID 白名单**：仅已注册样式视为合法；`resolveCoverBlob` 收到未知
+  `textCoverStyleId` 时回退 `default`，保证线上稳定。
+- **默认样式**：`DEFAULT_TEXT_COVER_STYLE_ID = 'default'`，新增样式需在 registry
+  中注册后方可被选用。
 
 ### 草稿结构演进
 
-`src/lib/stores/release/release-draft.ts` 采用 **schemaVersion + 默认值填充** 管理草稿结构演进。
+`src/lib/stores/release/release-draft.ts` 采用 **schemaVersion + 默认值填充**
+管理草稿结构演进。
 
-- **默认值填充**：新增字段时递增 `RELEASE_DRAFT_SCHEMA_VERSION`，并在 `loadReleaseDraft` 中为缺失字段补充默认值；项目未上线前无需迁移链。
+- **默认值填充**：新增字段时递增 `RELEASE_DRAFT_SCHEMA_VERSION`，并在
+  `loadReleaseDraft` 中为缺失字段补充默认值；项目未上线前无需迁移链。
 - **禁止破坏性变更**：不得删除或重命名已有字段。
-- **归一化**：加载后对 `textCoverStyleId` 等做白名单校验，非法值回退 `default`；必要时回写最新结构。
+- **归一化**：加载后对 `textCoverStyleId` 等做白名单校验，非法值回退
+  `default`；必要时回写最新结构。
 - **上线后**：若需兼容旧版草稿，再引入迁移链（`migrateDraftVxToVy` 等）。

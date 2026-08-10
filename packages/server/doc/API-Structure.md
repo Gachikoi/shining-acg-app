@@ -2,7 +2,8 @@
 
 ## 概述
 
-Shining ACG 后端 API 使用 Protocol Buffers v3 定义，通过 Buf v2 工具链管理，使用 Connect-Go 框架实现同时支持以下三种调用方式：
+Shining ACG 后端 API 使用 Protocol Buffers v3 定义，通过 Buf v2 工具链管理，使用
+Connect-Go 框架实现同时支持以下三种调用方式：
 
 1. **gRPC**：高性能的二进制协议，适用于后端服务间通信
 2. **gRPC-Web**：浏览器兼容的 gRPC 版本，适用于前端直接调用
@@ -22,11 +23,13 @@ Shining ACG 后端 API 使用 Protocol Buffers v3 定义，通过 Buf v2 工具�
 ### HTTP 请求格式
 
 **Connect-Go 标准路由格式**：
+
 ```
 POST /<package>.<service>/<method>
 ```
 
 **路由示例**：
+
 - 认证服务登录：`POST /api.account.v1.AuthService/Login`
 - 用户服务获取当前用户：`POST /api.account.v1.UserService/GetMe`
 - 内容服务创建帖子：`POST /api.community.v1.ContentService/CreatePost`
@@ -42,6 +45,7 @@ Authorization: Bearer <access_token>
 ```
 
 **gRPC 元数据：**
+
 ```
 authorization: Bearer <access_token>
 ```
@@ -52,26 +56,34 @@ authorization: Bearer <access_token>
 
 ### 通用请求格式
 
-大多数 API 使用 `POST` 方法，并在请求体中包含 JSON 格式的参数。对于标记为 `NO_SIDE_EFFECTS` 的无副作用查询类方法，同时支持 `GET` 方法以提高性能和启用 CDN 缓存。
+大多数 API 使用 `POST` 方法，并在请求体中包含 JSON 格式的参数。对于标记为
+`NO_SIDE_EFFECTS` 的无副作用查询类方法，同时支持 `GET` 方法以提高性能和启用 CDN
+缓存。
 
-使用 GET 方法时，请求参数应编码为查询字符串，且 **不能不包含 Query**，如果不包含 Query 则会识别为 `POST` 方法导致 415 错误。
+使用 GET 方法时，请求参数应编码为查询字符串，且 **不能不包含 Query**，如果不包含
+Query 则会识别为 `POST` 方法导致 415 错误。
 
 有关 `GET` 方法的调用：
-- 自动处理：前端应使用生成的 @connectrpc/connect SDK。只需在初始化 Transport 时配置 useHttpGet: true，客户端将根据 proto 契约自动判断请求方法，并完成参数的 Base64 编码与 URL 拼接。
-- 请求头规范：无论使用 POST 还是 GET，鉴权信息（如 Authorization）必须始终通过 HTTP Header 传递，严禁将敏感凭证放入查询字符串中。
-- 缓存控制：对于 GET 请求，后端会根据业务需要返回 Cache-Control 头部。前端如需强制刷新，可利用 SDK 提供的拦截器在请求中加入随机版本参数。
+
+- 自动处理：前端应使用生成的 @connectrpc/connect SDK。只需在初始化 Transport
+  时配置 useHttpGet: true，客户端将根据 proto 契约自动判断请求方法，并完成参数的
+  Base64 编码与 URL 拼接。
+- 请求头规范：无论使用 POST 还是 GET，鉴权信息（如 Authorization）必须始终通过
+  HTTP Header 传递，严禁将敏感凭证放入查询字符串中。
+- 缓存控制：对于 GET 请求，后端会根据业务需要返回 Cache-Control
+  头部。前端如需强制刷新，可利用 SDK 提供的拦截器在请求中加入随机版本参数。
 
 ### Connect-Go 标准错误码
 
-| 状态码 | 说明 | HTTP 状态码 |
-|--------|------|-------------|
-| 0 | 成功 | 200 |
-| 3 | 无效参数 | 400 |
-| 16 | 未认证 | 401 |
-| 7 | 无权限 | 403 |
-| 5 | 资源不存在 | 404 |
-| 6 | 资源已存在 | 409 |
-| 13 | 内部服务器错误 | 500 |
+| 状态码 | 说明           | HTTP 状态码 |
+| ------ | -------------- | ----------- |
+| 0      | 成功           | 200         |
+| 3      | 无效参数       | 400         |
+| 16     | 未认证         | 401         |
+| 7      | 无权限         | 403         |
+| 5      | 资源不存在     | 404         |
+| 6      | 资源已存在     | 409         |
+| 13     | 内部服务器错误 | 500         |
 
 ---
 
@@ -82,6 +94,7 @@ authorization: Bearer <access_token>
 #### 1.1 消息类型集合
 
 **Pagination - 分页请求**：
+
 ```proto
 message Pagination {
   int32 page_size = 1;    // 每页数量
@@ -91,6 +104,7 @@ message Pagination {
 ```
 
 **Department - 部门枚举**：
+
 ```proto
 enum Department {
   DEPARTMENT_UNSPECIFIED = 0;     // 未定义，保留
@@ -113,6 +127,7 @@ enum Department {
 ```
 
 **DepartmentBase - 部门基础元数据**：
+
 ```proto
 message DepartmentBase {
   Department id = 1;      // 枚举 ID
@@ -122,6 +137,7 @@ message DepartmentBase {
 ```
 
 **Role - 用户角色枚举**：
+
 ```proto
 enum Role {
   ROLE_VISITOR = 0;     // 游客
@@ -132,6 +148,7 @@ enum Role {
 ```
 
 **Media - 多媒体资源**：
+
 ```proto
 message Media {
   string type = 1;        // "image" | "video"
@@ -143,6 +160,7 @@ message Media {
 ```
 
 **Link - 外部链接结构**：
+
 ```proto
 message Link {
   string label = 1; // 链接显示文字
@@ -151,6 +169,7 @@ message Link {
 ```
 
 **UserSummary - 基础信息摘要**：
+
 ```proto
 message UserSummary {
   string user_id = 1;
@@ -163,6 +182,7 @@ message UserSummary {
 ```
 
 **ResourceScene - 资源场景枚举**：
+
 ```proto
 enum ResourceScene {
   SCENE_UNSPECIFIED = 0;
@@ -175,6 +195,7 @@ enum ResourceScene {
 ```
 
 **UploadTask - 上传任务**：
+
 ```proto
 message UploadTask {
   string filename = 1;   // 原始文件名 (e.g. "photo.jpg")
@@ -185,6 +206,7 @@ message UploadTask {
 ```
 
 **UploadToken - 上传凭证**：
+
 ```proto
 message UploadToken {
   string task_id = 1;    // 对应请求中的文件名或索引
@@ -205,43 +227,47 @@ message UploadToken {
 
 **HTTP 方法和路由**：`POST /api.common.v1.ResourceService/GetUploadTokens`
 
-**功能**：获取文件上传凭证（支持批量），包含文件类型检查、大小限制检查、生成预签名 URL（Presigned URL）
+**功能**：获取文件上传凭证（支持批量），包含文件类型检查、大小限制检查、生成预签名
+URL（Presigned URL）
 
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
-  "scene": 2,          // 场景 (决定存储桶 Bucket 和 路径前缀)
-  "tasks": [           // 批量请求
+  "scene": 2, // 场景 (决定存储桶 Bucket 和 路径前缀)
+  "tasks": [ // 批量请求
     {
-      "filename": "test.jpg",       // 原始文件名
-      "size_bytes": 102400,         // 文件大小 (字节)
-      "mime_type": "image/jpeg",    // MIME类型
-      "file_hash": "abc123"         // (可选) MD5/SHA256，用于秒传检测
+      "filename": "test.jpg", // 原始文件名
+      "size_bytes": 102400, // 文件大小 (字节)
+      "mime_type": "image/jpeg", // MIME类型
+      "file_hash": "abc123" // (可选) MD5/SHA256，用于秒传检测
     }
   ]
 }
 ```
 
 **响应体字段**：
+
 ```json
 {
   "tokens": [
     {
-      "task_id": "test.jpg",               // 对应请求中的文件名或索引
-      "upload_url": "https://upload.example.com/abc123?token=def456",  // 上传地址 (PUT Signed URL)
-      "public_url": "https://cdn.example.com/abc123.jpg",             // 最终访问地址 (存入 DB 的地址)
-      "required_headers": {                // HTTP Header 要求
+      "task_id": "test.jpg", // 对应请求中的文件名或索引
+      "upload_url": "https://upload.example.com/abc123?token=def456", // 上传地址 (PUT Signed URL)
+      "public_url": "https://cdn.example.com/abc123.jpg", // 最终访问地址 (存入 DB 的地址)
+      "required_headers": { // HTTP Header 要求
         "Content-Type": "image/jpeg"
       },
-      "skip_upload": false                 // 秒传标志
+      "skip_upload": false // 秒传标志
     }
   ]
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.common.v1.ResourceService/GetUploadTokens \
   -H "Authorization: Bearer <token>" \
@@ -260,6 +286,7 @@ curl -X POST http://localhost:8080/api.common.v1.ResourceService/GetUploadTokens
 ```
 
 **返回码说明**：
+
 - 200：成功获取上传凭证
 - 401：未认证
 - 403：无权限
@@ -272,6 +299,7 @@ curl -X POST http://localhost:8080/api.common.v1.ResourceService/GetUploadTokens
 #### 2.1 消息类型集合
 
 **LoginType - 登录类型枚举**：
+
 ```proto
 enum LoginType {
   LOGIN_TYPE_UNSPECIFIED = 0;
@@ -280,6 +308,7 @@ enum LoginType {
 ```
 
 **DeviceInfo - 设备信息**：
+
 ```proto
 message DeviceInfo {
   string device_type = 1;        // 设备类型 (e.g. "mobile", "desktop")
@@ -305,11 +334,12 @@ message DeviceInfo {
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {
-  "type": 1,                          // 登录类型：1=QQ登录
-  "credential": "your-qq-token",     // QQ OAuth Access Token
-  "device": {                        // 设备信息
+  "type": 1, // 登录类型：1=QQ登录
+  "credential": "your-qq-token", // QQ OAuth Access Token
+  "device": { // 设备信息
     "device_type": "mobile",
     "device_name": "iPhone 14",
     "os_version": "iOS 16.0",
@@ -319,12 +349,13 @@ message DeviceInfo {
 ```
 
 **响应体字段**：
+
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",     // 短期令牌 (如 2小时)
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",    // 长期令牌 (如 30天)
-  "access_expire_at": 1733232000,    // Access Token 过期绝对时间戳
-  "refresh_expire_at": 1735824000,   // Refresh Token 过期绝对时间戳
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // 短期令牌 (如 2小时)
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // 长期令牌 (如 30天)
+  "access_expire_at": 1733232000, // Access Token 过期绝对时间戳
+  "refresh_expire_at": 1735824000, // Refresh Token 过期绝对时间戳
   "user": {
     "user_id": "12345",
     "nickname": "用户昵称",
@@ -338,11 +369,12 @@ message DeviceInfo {
     "is_verified": false,
     "verified_title": ""
   },
-  "is_new_user": false               // 是否是注册后首次登录 (前端据此跳转完善资料页)
+  "is_new_user": false // 是否是注册后首次登录 (前端据此跳转完善资料页)
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.AuthService/Login \
   -H "Content-Type: application/json" \
@@ -359,6 +391,7 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/Login \
 ```
 
 **返回码说明**：
+
 - 200：登录成功
 - 400：参数无效（如 type 无效、credential 为空）
 - 401：凭证无效（如 Access Token 过期、无效）
@@ -373,18 +406,21 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/Login \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
-  "logout_all_devices": true         // 是否踢掉所有设备 (修改密码后通常为 true)
+  "logout_all_devices": true // 是否踢掉所有设备 (修改密码后通常为 true)
 }
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.AuthService/Logout \
   -H "Authorization: Bearer <token>" \
@@ -395,6 +431,7 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/Logout \
 ```
 
 **返回码说明**：
+
 - 200：退出成功
 - 401：未认证
 
@@ -407,6 +444,7 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/Logout \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -414,16 +452,18 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/Logout \
 ```
 
 **响应体字段**：
+
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",     // 新的短期令牌
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",    // 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
-  "access_expire_at": 1733232000,    // 新的 Access Token 过期时间戳
-  "refresh_expire_at": 1735824000    // 新的 Refresh Token 过期时间戳
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // 新的短期令牌
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // 可选：实现 RefreshToken 轮转机制时，会下发新的 RT
+  "access_expire_at": 1733232000, // 新的 Access Token 过期时间戳
+  "refresh_expire_at": 1735824000 // 新的 Refresh Token 过期时间戳
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.AuthService/RefreshToken \
   -H "Content-Type: application/json" \
@@ -433,6 +473,7 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/RefreshToken \
 ```
 
 **返回码说明**：
+
 - 200：刷新成功
 - 401：Refresh Token 无效或过期
 - 400：参数无效
@@ -442,6 +483,7 @@ curl -X POST http://localhost:8080/api.account.v1.AuthService/RefreshToken \
 #### 2.3 消息类型集合
 
 **UserProfile - 用户公开资料**：
+
 ```proto
 message UserProfile {
   api.common.v1.UserSummary base = 1;  // 基础信息 (ID, Name, 头像, 部门徽章, 认证头衔)
@@ -455,6 +497,7 @@ message UserProfile {
 ```
 
 **UserStats - 统计数据**：
+
 ```proto
 message UserStats {
   int64 follower_count = 1;
@@ -466,6 +509,7 @@ message UserStats {
 ```
 
 **UserRelationStatus - 关系状态**：
+
 ```proto
 message UserRelationStatus {
   bool is_following = 1;       // 我是否关注了他
@@ -480,6 +524,7 @@ message UserRelationStatus {
 ```
 
 **PrivacySettings - 隐私设置**：
+
 ```proto
 message PrivacySettings {
   PrivacyLevel message_permission = 1;    // 谁可以私信我
@@ -490,6 +535,7 @@ message PrivacySettings {
 ```
 
 **UserSettings - 通用设置**：
+
 ```proto
 message UserSettings {
   bool enable_push = 1;
@@ -498,6 +544,7 @@ message UserSettings {
 ```
 
 **PrivacyLevel - 隐私级别枚举**：
+
 ```proto
 enum PrivacyLevel {
   PRIVACY_LEVEL_PUBLIC = 0;
@@ -522,11 +569,13 @@ enum PrivacyLevel {
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "profile": {
@@ -560,22 +609,24 @@ enum PrivacyLevel {
     "message_permission": 0,
     "list_visibility": 0,
     "liked_posts_visibility": 0,
-    "collected_posts_visibility": 0,
+    "collected_posts_visibility": 0
   },
   "user_settings": {
     "enable_push": true,
-    "enable_email_notification": false,
+    "enable_email_notification": false
   }
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.account.v1.UserService/GetMe \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -588,6 +639,7 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetMe \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "target_user_id": "user123"
@@ -595,6 +647,7 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetMe \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "profile": {
@@ -632,12 +685,14 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetMe \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.account.v1.UserService/GetUser?target_user_id=user123" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 404：用户不存在
@@ -651,6 +706,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserService/GetUser?target_use
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "user_ids": ["user123", "user456"]
@@ -658,6 +714,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserService/GetUser?target_use
 ```
 
 **响应体字段**：
+
 ```json
 {
   "profiles": [
@@ -666,7 +723,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserService/GetUser?target_use
         "user_id": "user123",
         "nickname": "用户1",
         "avatar": "https://example.com/avatar1.jpg",
-        "departments": [{"id": 1, "name": "轻音部"}],
+        "departments": [{ "id": 1, "name": "轻音部" }],
         "is_verified": false
       }
     },
@@ -675,7 +732,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserService/GetUser?target_use
         "user_id": "user456",
         "nickname": "用户2",
         "avatar": "https://example.com/avatar2.jpg",
-        "departments": [{"id": 2, "name": "WOTA"}],
+        "departments": [{ "id": 2, "name": "WOTA" }],
         "is_verified": true,
         "verified_title": "部长"
       }
@@ -685,6 +742,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserService/GetUser?target_use
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/BatchGetUsers \
   -H "Authorization: Bearer <token>" \
@@ -695,6 +753,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/BatchGetUsers \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -707,6 +766,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/BatchGetUsers \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "profile": {
@@ -720,6 +780,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/BatchGetUsers \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "profile": {
@@ -727,7 +788,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/BatchGetUsers \
       "user_id": "12345",
       "nickname": "新昵称",
       "avatar": "https://example.com/avatar.jpg",
-      "departments": [{"id": 1, "name": "轻音部"}],
+      "departments": [{ "id": 1, "name": "轻音部" }],
       "is_verified": false
     },
     "intro": "新简介",
@@ -745,6 +806,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/BatchGetUsers \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateProfile \
   -H "Authorization: Bearer <token>" \
@@ -761,6 +823,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateProfile \
 ```
 
 **返回码说明**：
+
 - 200：更新成功
 - 401：未认证
 - 400：参数无效（如 nickname 为空）
@@ -775,6 +838,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateProfile \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "privacy_settings": {
@@ -785,12 +849,17 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateProfile \
   "user_settings": {
   },
   "update_mask": {
-    "paths": ["privacy_settings.message_permission", "privacy_settings.liked_posts_visibility", "privacy_settings.collected_posts_visibility"]
+    "paths": [
+      "privacy_settings.message_permission",
+      "privacy_settings.liked_posts_visibility",
+      "privacy_settings.collected_posts_visibility"
+    ]
   }
 }
 ```
 
 **响应体字段**：
+
 ```json
 {
   "succeed": true
@@ -798,6 +867,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateProfile \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateSettings \
   -H "Authorization: Bearer <token>" \
@@ -815,6 +885,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateSettings \
 ```
 
 **返回码说明**：
+
 - 200：更新成功
 - 401：未认证
 - 400：参数无效
@@ -828,6 +899,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateSettings \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "target_user_id": "user123",
@@ -836,6 +908,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateSettings \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "is_active": true,
@@ -844,6 +917,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/UpdateSettings \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/SetFollow \
   -H "Authorization: Bearer <token>" \
@@ -855,6 +929,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SetFollow \
 ```
 
 **返回码说明**：
+
 - 200：操作成功
 - 401：未认证
 - 404：用户不存在
@@ -868,6 +943,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SetFollow \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "user_id": "12345",
@@ -880,6 +956,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SetFollow \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "users": [
@@ -888,7 +965,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SetFollow \
         "user_id": "user123",
         "nickname": "用户1",
         "avatar": "https://example.com/avatar1.jpg",
-        "departments": [{"id": 1, "name": "轻音部"}],
+        "departments": [{ "id": 1, "name": "轻音部" }],
         "is_verified": false
       }
     }
@@ -898,6 +975,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SetFollow \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/ListRelationships \
   -H "Authorization: Bearer <token>" \
@@ -913,6 +991,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListRelationships 
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -925,6 +1004,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListRelationships 
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "user_id": "user123",
@@ -936,6 +1016,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListRelationships 
 ```
 
 **响应体字段**：
+
 ```json
 {
   "users": [
@@ -944,7 +1025,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListRelationships 
         "user_id": "user456",
         "nickname": "共同关注用户",
         "avatar": "https://example.com/avatar.jpg",
-        "departments": [{"id": 1, "name": "轻音部"}],
+        "departments": [{ "id": 1, "name": "轻音部" }],
         "is_verified": true
       }
     }
@@ -954,6 +1035,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListRelationships 
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/ListMutualFollowers \
   -H "Authorization: Bearer <token>" \
@@ -968,6 +1050,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListMutualFollower
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -980,6 +1063,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListMutualFollower
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "verified_title": "23届部长"
@@ -987,6 +1071,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListMutualFollower
 ```
 
 **响应体字段**：
+
 ```json
 {
   "succeed": true,
@@ -995,6 +1080,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ListMutualFollower
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/ApplyVerification \
   -H "Authorization: Bearer <token>" \
@@ -1005,6 +1091,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ApplyVerification 
 ```
 
 **返回码说明**：
+
 - 200：申请成功
 - 401：未认证
 - 400：参数无效（如 verified_title 为空）
@@ -1018,29 +1105,33 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/ApplyVerification 
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "privacy_settings": {
     "message_permission": 0,
     "list_visibility": 0,
     "liked_posts_visibility": 0,
-    "collected_posts_visibility": 0,
+    "collected_posts_visibility": 0
   }
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.account.v1.UserService/GetPrivacySettings \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -1053,11 +1144,13 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetPrivacySettings 
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "user_settings": {
@@ -1068,12 +1161,14 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetPrivacySettings 
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.account.v1.UserService/GetUserSettings \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -1086,6 +1181,7 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetUserSettings \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "keyword": "用户",
@@ -1097,6 +1193,7 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetUserSettings \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "results": [
@@ -1105,7 +1202,7 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetUserSettings \
         "user_id": "user123",
         "nickname": "用户昵称",
         "avatar": "https://example.com/avatar.jpg",
-        "departments": [{"id": 1, "name": "轻音部"}],
+        "departments": [{ "id": 1, "name": "轻音部" }],
         "is_verified": false
       }
     }
@@ -1115,6 +1212,7 @@ curl -X GET http://localhost:8080/api.account.v1.UserService/GetUserSettings \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserService/SearchUsers \
   -H "Authorization: Bearer <token>" \
@@ -1129,6 +1227,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SearchUsers \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -1137,6 +1236,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserService/SearchUsers \
 #### 2.5 消息类型集合
 
 **VerificationStatus - 认证申请状态枚举**：
+
 ```proto
 enum VerificationStatus {
   VERIFICATION_STATUS_PENDING = 0;    // 待审核
@@ -1146,6 +1246,7 @@ enum VerificationStatus {
 ```
 
 **VerificationApplication - 认证申请信息**：
+
 ```proto
 message VerificationApplication {
   string application_id = 1;         // 申请ID
@@ -1175,6 +1276,7 @@ message VerificationApplication {
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "user_id": "user123",
@@ -1183,11 +1285,13 @@ message VerificationApplication {
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserAdminService/UpdateUserRole \
   -H "Authorization: Bearer <token>" \
@@ -1199,6 +1303,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/UpdateUserRol
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -1213,6 +1318,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/UpdateUserRol
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "user_id": "user123",
@@ -1222,11 +1328,13 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/UpdateUserRol
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserAdminService/BanUser \
   -H "Authorization: Bearer <token>" \
@@ -1239,6 +1347,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/BanUser \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -1253,6 +1362,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/BanUser \
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "keyword": "用户",
@@ -1264,6 +1374,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/BanUser \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "users": [
@@ -1271,7 +1382,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/BanUser \
       "user_id": "user123",
       "nickname": "用户昵称",
       "avatar": "https://example.com/avatar.jpg",
-      "departments": [{"id": 1, "name": "轻音部"}],
+      "departments": [{ "id": 1, "name": "轻音部" }],
       "is_verified": false
     }
   ]
@@ -1279,25 +1390,29 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/BanUser \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/AdminSearchUsers?keyword=用户&pagination.page_size=10&pagination.page=1" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
 
 ##### ListVerificationApplications - 获取认证申请列表
 
-**HTTP 方法和路由**：`GET /api.account.v1.UserAdminService/ListVerificationApplications`
+**HTTP
+方法和路由**：`GET /api.account.v1.UserAdminService/ListVerificationApplications`
 
 **功能**：获取待审核的认证申请列表
 
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "status": 0,
@@ -1309,6 +1424,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/AdminSearchUs
 ```
 
 **响应体字段**：
+
 ```json
 {
   "applications": [
@@ -1337,12 +1453,14 @@ curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/AdminSearchUs
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/ListVerificationApplications?status=0&pagination.page_size=10" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -1356,6 +1474,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/ListVerificat
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "application_id": "app123",
@@ -1365,6 +1484,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/ListVerificat
 ```
 
 **响应体字段**：
+
 ```json
 {
   "succeed": true,
@@ -1373,6 +1493,7 @@ curl -X GET "http://localhost:8080/api.account.v1.UserAdminService/ListVerificat
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.account.v1.UserAdminService/ApproveVerification \
   -H "Authorization: Bearer <token>" \
@@ -1385,6 +1506,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/ApproveVerifi
 ```
 
 **返回码说明**：
+
 - 200：审核成功
 - 401：未认证
 - 403：权限不足
@@ -1395,6 +1517,7 @@ curl -X POST http://localhost:8080/api.account.v1.UserAdminService/ApproveVerifi
 #### 3.1 消息类型集合
 
 **Post - 帖子完整信息**：
+
 ```proto
 message Post {
   string post_id = 1;
@@ -1418,6 +1541,7 @@ message Post {
 ```
 
 **PostPreview - 帖子预览（卡片视图）**：
+
 ```proto
 message PostPreview {
   string post_id = 1;
@@ -1436,6 +1560,7 @@ message PostPreview {
 ```
 
 **PostStatus - 帖子状态枚举**：
+
 ```proto
 enum PostStatus {
   POST_STATUS_UNSPECIFIED = 0;
@@ -1446,6 +1571,7 @@ enum PostStatus {
 ```
 
 **PostFilter - 帖子筛选器**：
+
 ```proto
 message PostFilter {
   string keyword = 1;
@@ -1457,6 +1583,7 @@ message PostFilter {
 ```
 
 **TimeRange - 时间范围**：
+
 ```proto
 message TimeRange {
   int64 start_timestamp = 1; // 开始时间
@@ -1465,6 +1592,7 @@ message TimeRange {
 ```
 
 **UserPostType - 用户帖子类型**：
+
 ```proto
 enum UserPostType {
   USER_POST_TYPE_PUBLISHED = 0;
@@ -1488,6 +1616,7 @@ enum UserPostType {
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "title": "帖子标题",
@@ -1505,6 +1634,7 @@ enum UserPostType {
 ```
 
 **响应体字段**：
+
 ```json
 {
   "post": {
@@ -1547,6 +1677,7 @@ enum UserPostType {
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.ContentService/CreatePost \
   -H "Authorization: Bearer <token>" \
@@ -1567,6 +1698,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/CreatePost \
 ```
 
 **返回码说明**：
+
 - 200：创建成功
 - 401：未认证
 - 400：参数无效（如 title 为空）
@@ -1581,6 +1713,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/CreatePost \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "post_id": "post123"
@@ -1588,11 +1721,13 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/CreatePost \
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.ContentService/DeletePost \
   -H "Authorization: Bearer <token>" \
@@ -1603,6 +1738,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/DeletePost \
 ```
 
 **返回码说明**：
+
 - 200：删除成功
 - 401：未认证
 - 403：权限不足
@@ -1617,6 +1753,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/DeletePost \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "post_id": "post123"
@@ -1624,6 +1761,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/DeletePost \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "post": {
@@ -1632,12 +1770,19 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/DeletePost \
       "user_id": "12345",
       "nickname": "用户昵称",
       "avatar": "https://example.com/avatar.jpg",
-      "departments": [{"id": 1, "name": "轻音部"}],
+      "departments": [{ "id": 1, "name": "轻音部" }],
       "is_verified": false
     },
     "title": "帖子标题",
     "content": "帖子内容",
-    "media": [{"type": "image", "url": "https://example.com/image.jpg", "width": 800, "height": 600}],
+    "media": [
+      {
+        "type": "image",
+        "url": "https://example.com/image.jpg",
+        "width": 800,
+        "height": 600
+      }
+    ],
     "department_id": 1,
     "department_name": "轻音部",
     "like_count": 100,
@@ -1654,12 +1799,14 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/DeletePost \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.community.v1.ContentService/GetPost?post_id=post123" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 404：帖子不存在
@@ -1673,15 +1820,16 @@ curl -X GET "http://localhost:8080/api.community.v1.ContentService/GetPost?post_
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
-  "scene": 2,                        // 场景：2=综合瀑布流
+  "scene": 2, // 场景：2=综合瀑布流
   "filter": {
     "keyword": "后端开发",
     "department_ids": [1],
     "author_id": "12345"
   },
-  "sort": 2,                        // 排序：2=按热度
+  "sort": 2, // 排序：2=按热度
   "pagination": {
     "page_size": 10,
     "page": 1
@@ -1690,6 +1838,7 @@ curl -X GET "http://localhost:8080/api.community.v1.ContentService/GetPost?post_
 ```
 
 **响应体字段**：
+
 ```json
 {
   "posts": [
@@ -1729,6 +1878,7 @@ curl -X GET "http://localhost:8080/api.community.v1.ContentService/GetPost?post_
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.ContentService/ListPosts \
   -H "Authorization: Bearer <token>" \
@@ -1749,6 +1899,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/ListPosts \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 400：参数无效
@@ -1756,6 +1907,7 @@ curl -X POST http://localhost:8080/api.community.v1.ContentService/ListPosts \
 #### 3.3 消息类型集合（互动与评论）
 
 **TargetType - 目标类型枚举**：
+
 ```proto
 enum TargetType {
   TARGET_TYPE_UNSPECIFIED = 0;
@@ -1765,6 +1917,7 @@ enum TargetType {
 ```
 
 **Comment - 评论**：
+
 ```proto
 message Comment {
   string comment_id = 1;
@@ -1799,23 +1952,26 @@ message Comment {
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
-  "target_id": "post123",           // 目标ID（帖子或评论）
-  "type": 1,                        // 类型：1=帖子，2=评论
-  "is_active": true                // true=点赞，false=取消
+  "target_id": "post123", // 目标ID（帖子或评论）
+  "type": 1, // 类型：1=帖子，2=评论
+  "is_active": true // true=点赞，false=取消
 }
 ```
 
 **响应体字段**：
+
 ```json
 {
-  "is_active": true,               // 最终状态
-  "like_count": 101                // 操作后的最新点赞数
+  "is_active": true, // 最终状态
+  "like_count": 101 // 操作后的最新点赞数
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetLike \
   -H "Authorization: Bearer <token>" \
@@ -1828,6 +1984,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetLike \
 ```
 
 **返回码说明**：
+
 - 200：操作成功
 - 401：未认证
 - 404：目标不存在
@@ -1842,6 +1999,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetLike \
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "post_id": "post123",
@@ -1850,14 +2008,16 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetLike \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "is_active": true,
-  "collect_count": 11               // 操作后的最新收藏数
+  "collect_count": 11 // 操作后的最新收藏数
 }
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetCollect \
   -H "Authorization: Bearer <token>" \
@@ -1869,6 +2029,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetCollec
 ```
 
 **返回码说明**：
+
 - 200：操作成功
 - 401：未认证
 - 404：帖子不存在
@@ -1889,6 +2050,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetCollec
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "post_id": "post123",
@@ -1899,6 +2061,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetCollec
 ```
 
 **响应体字段**：
+
 ```json
 {
   "comment": {
@@ -1907,7 +2070,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetCollec
       "user_id": "12345",
       "nickname": "用户昵称",
       "avatar": "https://example.com/avatar.jpg",
-      "departments": [{"id": 1, "name": "轻音部"}],
+      "departments": [{ "id": 1, "name": "轻音部" }],
       "is_verified": false
     },
     "content": "这是一条评论",
@@ -1927,6 +2090,7 @@ curl -X POST http://localhost:8080/api.community.v1.InteractionService/SetCollec
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.CommentService/CreateComment \
   -H "Authorization: Bearer <token>" \
@@ -1940,6 +2104,7 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/CreateComment
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 404：帖子不存在
@@ -1954,6 +2119,7 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/CreateComment
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "post_id": "post123",
@@ -1967,6 +2133,7 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/CreateComment
 ```
 
 **响应体字段**：
+
 ```json
 {
   "comments": [
@@ -1976,7 +2143,7 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/CreateComment
         "user_id": "12345",
         "nickname": "用户昵称",
         "avatar": "https://example.com/avatar.jpg",
-        "departments": [{"id": 1, "name": "轻音部"}],
+        "departments": [{ "id": 1, "name": "轻音部" }],
         "is_verified": false
       },
       "content": "这是一条评论",
@@ -1999,12 +2166,14 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/CreateComment
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.community.v1.CommentService/ListComments?post_id=post123&root_id=&sort=1&pagination.page_size=10" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 404：帖子不存在
@@ -2018,6 +2187,7 @@ curl -X GET "http://localhost:8080/api.community.v1.CommentService/ListComments?
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "comment_id": "cmt123"
@@ -2025,11 +2195,13 @@ curl -X GET "http://localhost:8080/api.community.v1.CommentService/ListComments?
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.CommentService/DeleteComment \
   -H "Authorization: Bearer <token>" \
@@ -2040,6 +2212,7 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/DeleteComment
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2048,6 +2221,7 @@ curl -X POST http://localhost:8080/api.community.v1.CommentService/DeleteComment
 #### 3.6 消息类型集合（治理服务）
 
 **ReportStatus - 举报状态枚举**：
+
 ```proto
 enum ReportStatus {
   REPORT_STATUS_PENDING = 0;
@@ -2057,6 +2231,7 @@ enum ReportStatus {
 ```
 
 **ReportTargetType - 举报目标类型枚举**：
+
 ```proto
 enum ReportTargetType {
   REPORT_TARGET_TYPE_POST = 0;
@@ -2066,6 +2241,7 @@ enum ReportTargetType {
 ```
 
 **Report - 举报信息**：
+
 ```proto
 message Report {
   string id = 1;
@@ -2093,6 +2269,7 @@ message Report {
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "status": 0,
@@ -2104,6 +2281,7 @@ message Report {
 ```
 
 **响应体字段**：
+
 ```json
 {
   "reports": [
@@ -2122,12 +2300,14 @@ message Report {
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.community.v1.GovernanceService/ListReports?status=0&pagination.page_size=10" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2141,6 +2321,7 @@ curl -X GET "http://localhost:8080/api.community.v1.GovernanceService/ListReport
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "report_id": "rep123",
@@ -2150,11 +2331,13 @@ curl -X GET "http://localhost:8080/api.community.v1.GovernanceService/ListReport
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.community.v1.GovernanceService/ResolveReport \
   -H "Authorization: Bearer <token>" \
@@ -2167,6 +2350,7 @@ curl -X POST http://localhost:8080/api.community.v1.GovernanceService/ResolveRep
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2179,6 +2363,7 @@ curl -X POST http://localhost:8080/api.community.v1.GovernanceService/ResolveRep
 #### 4.1 消息类型集合
 
 **DepartmentInfo - 部门信息**：
+
 ```proto
 message DepartmentInfo {
   api.common.v1.DepartmentBase department_base = 1;
@@ -2192,6 +2377,7 @@ message DepartmentInfo {
 ```
 
 **Activity - 活动**：
+
 ```proto
 message Activity {
   string id = 1;
@@ -2208,6 +2394,7 @@ message Activity {
 ```
 
 **HistoryEvent - 历史事件**：
+
 ```proto
 message HistoryEvent {
   string id = 1;
@@ -2220,6 +2407,7 @@ message HistoryEvent {
 ```
 
 **Minister - 部长**：
+
 ```proto
 message Minister {
   string id = 1;
@@ -2238,6 +2426,7 @@ message Minister {
 ```
 
 **StaffMember - Staff 成员**：
+
 ```proto
 message StaffMember {
   string name = 1;            // CN
@@ -2250,6 +2439,7 @@ message StaffMember {
 ```
 
 **StaffGroup - Staff 分组**：
+
 ```proto
 message StaffGroup {
   string group_name = 1;
@@ -2258,6 +2448,7 @@ message StaffGroup {
 ```
 
 **Sponsor - 赞助者**：
+
 ```proto
 message Sponsor {
   string name = 1;
@@ -2269,6 +2460,7 @@ message Sponsor {
 ```
 
 **HomeTrendingItem - 首页热门动态**：
+
 ```proto
 message HomeTrendingItem {
   string id = 1;             // 原始帖子ID
@@ -2307,11 +2499,13 @@ message HomeTrendingItem {
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "site_name": "Shining ACG",
@@ -2320,11 +2514,13 @@ message HomeTrendingItem {
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.cms.v1.PortalService/GetSiteConfig
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2337,11 +2533,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/GetSiteConfig
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2367,11 +2565,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/GetSiteConfig
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListDepartments
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2384,11 +2584,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListDepartments
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2414,11 +2616,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListDepartments
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListActivities
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2431,11 +2635,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListActivities
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2455,11 +2661,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListActivities
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListHistory
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2472,6 +2680,7 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListHistory
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {
   "year": 2024
@@ -2479,6 +2688,7 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListHistory
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2509,11 +2719,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListHistory
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListMinisters?year=2024"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2526,11 +2738,13 @@ curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListMinisters?year=2
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2557,11 +2771,13 @@ curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListMinisters?year=2
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListStaff
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2574,11 +2790,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListStaff
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2593,11 +2811,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListStaff
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListSponsors
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2610,6 +2830,7 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListSponsors
 **是否需要认证**：不需要
 
 **请求体字段**：
+
 ```json
 {
   "limit": 6
@@ -2617,6 +2838,7 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListSponsors
 ```
 
 **响应体字段**：
+
 ```json
 {
   "list": [
@@ -2636,11 +2858,13 @@ curl -X GET http://localhost:8080/api.cms.v1.PortalService/ListSponsors
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListHomeTrending?limit=6"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 500：服务器内部错误
 
@@ -2659,6 +2883,7 @@ curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListHomeTrending?lim
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "department": {
@@ -2682,6 +2907,7 @@ curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListHomeTrending?lim
 ```
 
 **响应体字段**：
+
 ```json
 {
   "department_id": "dept123"
@@ -2689,6 +2915,7 @@ curl -X GET "http://localhost:8080/api.cms.v1.PortalService/ListHomeTrending?lim
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertDepartment \
   -H "Authorization: Bearer <token>" \
@@ -2715,6 +2942,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertDepartment 
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2729,6 +2957,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertDepartment 
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "id": "dept123"
@@ -2736,11 +2965,13 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertDepartment 
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteDepartment \
   -H "Authorization: Bearer <token>" \
@@ -2751,6 +2982,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteDepartment 
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2765,6 +2997,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteDepartment 
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "activity": {
@@ -2788,6 +3021,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteDepartment 
 ```
 
 **响应体字段**：
+
 ```json
 {
   "activity_id": "act123"
@@ -2795,6 +3029,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteDepartment 
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertActivity \
   -H "Authorization: Bearer <token>" \
@@ -2821,6 +3056,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertActivity \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2835,6 +3071,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertActivity \
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "id": "act123"
@@ -2842,11 +3079,13 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertActivity \
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteActivity \
   -H "Authorization: Bearer <token>" \
@@ -2857,6 +3096,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteActivity \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2871,6 +3111,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteActivity \
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "history_event": {
@@ -2888,6 +3129,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteActivity \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "event_id": "his123"
@@ -2895,6 +3137,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteActivity \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertHistoryEvent \
   -H "Authorization: Bearer <token>" \
@@ -2915,6 +3158,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertHistoryEven
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2929,6 +3173,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertHistoryEven
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "id": "his123"
@@ -2936,11 +3181,13 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertHistoryEven
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteHistoryEvent \
   -H "Authorization: Bearer <token>" \
@@ -2951,6 +3198,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteHistoryEven
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -2965,6 +3213,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteHistoryEven
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "minister": {
@@ -2987,6 +3236,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteHistoryEven
 ```
 
 **响应体字段**：
+
 ```json
 {
   "minister_id": "min123"
@@ -2994,6 +3244,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteHistoryEven
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertMinister \
   -H "Authorization: Bearer <token>" \
@@ -3019,6 +3270,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertMinister \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -3033,6 +3285,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertMinister \
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "id": "min123"
@@ -3040,11 +3293,13 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertMinister \
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteMinister \
   -H "Authorization: Bearer <token>" \
@@ -3055,6 +3310,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteMinister \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -3069,6 +3325,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteMinister \
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "staff_group": {
@@ -3093,6 +3350,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteMinister \
 ```
 
 **响应体字段**：
+
 ```json
 {
   "group_id": "group123"
@@ -3100,6 +3358,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteMinister \
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertStaffGroup \
   -H "Authorization: Bearer <token>" \
@@ -3127,6 +3386,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertStaffGroup 
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -3141,6 +3401,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertStaffGroup 
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "id": "group123"
@@ -3148,11 +3409,13 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertStaffGroup 
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteStaffGroup \
   -H "Authorization: Bearer <token>" \
@@ -3163,6 +3426,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteStaffGroup 
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -3177,6 +3441,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteStaffGroup 
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "sponsor": {
@@ -3189,6 +3454,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteStaffGroup 
 ```
 
 **响应体字段**：
+
 ```json
 {
   "sponsor_id": "spon123"
@@ -3196,6 +3462,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteStaffGroup 
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertSponsor \
   -H "Authorization: Bearer <token>" \
@@ -3211,6 +3478,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertSponsor \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -3225,6 +3493,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertSponsor \
 **是否需要认证**：需要（管理员权限）
 
 **请求体字段**：
+
 ```json
 {
   "id": "spon123"
@@ -3232,11 +3501,13 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/UpsertSponsor \
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteSponsor \
   -H "Authorization: Bearer <token>" \
@@ -3247,6 +3518,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteSponsor \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 403：权限不足
@@ -3257,6 +3529,7 @@ curl -X POST http://localhost:8080/api.cms.v1.SiteAdminService/DeleteSponsor \
 #### 5.1 消息类型集合
 
 **NotificationCategory - 通知大类枚举**：
+
 ```proto
 enum NotificationCategory {
   CATEGORY_UNSPECIFIED = 0;
@@ -3268,6 +3541,7 @@ enum NotificationCategory {
 ```
 
 **NotificationType - 通知具体类型枚举**：
+
 ```proto
 enum NotificationType {
   TYPE_UNSPECIFIED = 0;
@@ -3284,6 +3558,7 @@ enum NotificationType {
 ```
 
 **Notification - 通知信息**：
+
 ```proto
 message Notification {
   string notification_id = 1;
@@ -3318,6 +3593,7 @@ message Notification {
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "category": 1,
@@ -3329,6 +3605,7 @@ message Notification {
 ```
 
 **响应体字段**：
+
 ```json
 {
   "notifications": [
@@ -3341,7 +3618,7 @@ message Notification {
           "user_id": "user456",
           "nickname": "用户昵称",
           "avatar": "https://example.com/avatar.jpg",
-          "departments": [{"id": 1, "name": "轻音部"}],
+          "departments": [{ "id": 1, "name": "轻音部" }],
           "is_verified": false
         }
       ],
@@ -3362,12 +3639,14 @@ message Notification {
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET "http://localhost:8080/api.messenger.v1.MessageService/ListNotifications?category=1&pagination.page_size=10" \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -3380,11 +3659,13 @@ curl -X GET "http://localhost:8080/api.messenger.v1.MessageService/ListNotificat
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {}
 ```
 
 **响应体字段**：
+
 ```json
 {
   "total": 7,
@@ -3396,12 +3677,14 @@ curl -X GET "http://localhost:8080/api.messenger.v1.MessageService/ListNotificat
 ```
 
 **调用示例**：
+
 ```bash
 curl -X GET http://localhost:8080/api.messenger.v1.MessageService/GetUnreadCount \
   -H "Authorization: Bearer <token>"
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 
@@ -3414,6 +3697,7 @@ curl -X GET http://localhost:8080/api.messenger.v1.MessageService/GetUnreadCount
 **是否需要认证**：需要
 
 **请求体字段**：
+
 ```json
 {
   "scope": 1,
@@ -3423,11 +3707,13 @@ curl -X GET http://localhost:8080/api.messenger.v1.MessageService/GetUnreadCount
 ```
 
 **响应体字段**：
+
 ```json
 {}
 ```
 
 **调用示例**：
+
 ```bash
 curl -X POST http://localhost:8080/api.messenger.v1.MessageService/MarkRead \
   -H "Authorization: Bearer <token>" \
@@ -3440,6 +3726,7 @@ curl -X POST http://localhost:8080/api.messenger.v1.MessageService/MarkRead \
 ```
 
 **返回码说明**：
+
 - 200：成功
 - 401：未认证
 - 400：参数无效
@@ -3582,4 +3869,4 @@ message Media {
 
 ---
 
-*最后更新：2026-02-03*
+_最后更新：2026-02-03_

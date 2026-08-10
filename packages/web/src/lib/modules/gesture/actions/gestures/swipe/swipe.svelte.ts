@@ -141,12 +141,18 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 		}
 
 		if (velocityWinnerId === currentDriverId) {
-			return { leadingPointerId: velocityWinnerId, leadingTrack: velocityWinnerTrack };
+			return {
+				leadingPointerId: velocityWinnerId,
+				leadingTrack: velocityWinnerTrack
+			};
 		}
 
 		const currentTrack = trackedPointers.get(currentDriverId);
 		if (!currentTrack) {
-			return { leadingPointerId: velocityWinnerId, leadingTrack: velocityWinnerTrack };
+			return {
+				leadingPointerId: velocityWinnerId,
+				leadingTrack: velocityWinnerTrack
+			};
 		}
 
 		const currentAbsVx = Math.abs(currentTrack.trackerX.getVelocity());
@@ -343,7 +349,9 @@ export const swipe: Action<HTMLElement, SwipeOptions> = (node, initialOptions) =
 
 	function removePointer(pointerIdToRemove: number, isCancel: boolean) {
 		// 移除前用当前 driver 算总位移（与 onPointerMove 中 dx 语义一致）
-		if (driverId === null) throw new Error('removePointer: driverId 不应为 null');
+		if (driverId === null) {
+			throw new Error('removePointer: driverId 不应为 null');
+		}
 		const driverTrackBefore = trackedPointers.get(driverId);
 		if (!driverTrackBefore) throw new Error('removePointer: driver 轨迹缺失');
 		const dx = accumulatedDeltaX + driverTrackBefore.currentX - driverTrackBefore.startX;

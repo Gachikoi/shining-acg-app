@@ -5,9 +5,9 @@
  */
 
 import type { V1PostContentUnit } from '$lib/api/types.gen';
-import { ZWSP, NBSP } from '../constants';
+import { NBSP, ZWSP } from '../constants';
 
-export { ZWSP, NBSP };
+export { NBSP, ZWSP };
 
 /** 获取或创建在 target 内的有效选区 range */
 export function getRangeInTarget(target: HTMLElement): Range | null {
@@ -142,7 +142,10 @@ export function getTextBeforeCaretWithPositions(
 				const r = document.createRange();
 				r.setStartBefore(node);
 				r.collapse(true);
-				positions[result.length] = { node: r.startContainer, offset: r.startOffset };
+				positions[result.length] = {
+					node: r.startContainer,
+					offset: r.startOffset
+				};
 				result += '\n';
 			}
 		}
@@ -245,7 +248,9 @@ export function renderUnitsToHtml(units: V1PostContentUnit[]): string {
 		} else if (unit.type === 'mention') {
 			const name = escapeHtml(unit.name);
 			parts.push(
-				`<span contenteditable="false" data-mention-user-id="${escapeHtml(unit.user_id)}" class="cursor-pointer text-blue-500 hover:text-blue-600">@${name}</span>`
+				`<span contenteditable="false" data-mention-user-id="${escapeHtml(
+					unit.user_id
+				)}" class="cursor-pointer text-blue-500 hover:text-blue-600">@${name}</span>`
 			);
 		}
 	}

@@ -64,7 +64,8 @@ deno task prepare
 - `pre-commit`: 提交前自动进行代码格式化、lint以及代码生成工作
 - `commit-msg`: 验证 commit 消息格式
 
-‼️ 这很重要！！！安装后在提交代码前项目会自动格式化和 lint 代码，还会生成 rpc 桩文件和前端 api，并规范 commit message。
+‼️ 这很重要！！！安装后在提交代码前项目会自动格式化和 lint 代码，还会生成 rpc
+桩文件和前端 api，并规范 commit message。
 
 3. **初始化并开发子项目**
 
@@ -93,7 +94,8 @@ deno task prepare
   创建分支进行热修复，修复完成后合并到 develop 和 main 分支。
 
 main、develop 分支有且仅有一个，并且受到严格的分支保护。feature、hotfix
-分支命名方式为：`[分支类型]/[分支描述]`，如 `feature/gachikoi`、`feature/server_oss`。
+分支命名方式为：`[分支类型]/[分支描述]`，如
+`feature/gachikoi`、`feature/server_oss`。
 
 ## 分支保护说明
 
@@ -121,7 +123,8 @@ request。
 ```
 
 > 注：项目目前仅校验首行（type/scope/description），body/footer 不参与校验。
-> 注：建议在开发具体的平台功能时，声明作用域（scope），以便于快速识别改动涉及的模块（如 android, ios, web, server 等）。
+> 注：建议在开发具体的平台功能时，声明作用域（scope），以便于快速识别改动涉及的模块（如
+> android, ios, web, server 等）。
 
 ### 类型（Type）
 

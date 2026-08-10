@@ -73,7 +73,10 @@ const DEFAULT_OPTIONS: Required<
 export function draggableScroll(
 	node: HTMLElement,
 	options: DraggableScrollOptions = {}
-): { update?: (options: DraggableScrollOptions) => void; destroy?: () => void } {
+): {
+	update?: (options: DraggableScrollOptions) => void;
+	destroy?: () => void;
+} {
 	// 合并默认配置
 	const config = {
 		...DEFAULT_OPTIONS,

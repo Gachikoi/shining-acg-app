@@ -172,7 +172,9 @@ export const backspaceHandler: KeydownHandler = {
 	},
 	handle(e, ctx) {
 		const range = ctx.selection.rangeCount > 0 ? ctx.selection.getRangeAt(0) : null;
-		if (!range || !ctx.target.contains(range.commonAncestorContainer)) return false;
+		if (!range || !ctx.target.contains(range.commonAncestorContainer)) {
+			return false;
+		}
 
 		const nodeBeforeCursor = getNodeBeforeCursor(range);
 		const backspaceCtx: BackspaceContext = {

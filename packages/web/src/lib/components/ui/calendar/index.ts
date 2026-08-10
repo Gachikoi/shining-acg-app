@@ -18,20 +18,20 @@ const {
 } = CalendarPrimitive;
 
 export {
-	Root,
-	//
-	Root as Calendar,
+	Cell,
 	Day,
 	Grid,
 	GridBody,
-	Cell,
 	GridHead,
-	HeadCell,
 	GridRow,
+	HeadCell,
 	Header,
 	Heading,
 	MonthSelect,
 	NextButton,
 	PrevButton,
+	Root,
+	//
+	Root as Calendar,
 	YearSelect
 };

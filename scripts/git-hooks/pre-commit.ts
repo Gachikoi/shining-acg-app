@@ -163,40 +163,53 @@ lintStaged.run(true, async (stagedFiles) => {
 
       const header = `正在检查 ${webFiles.length} 个 Web 文件...`;
       try {
-        const [
-          {
-            code: prettierCode,
-            stdout: prettierStdout,
-            stderr: prettierStderr,
-          },
-          { code: eslintCode, stderr: eslintStderr, stdout: eslintStdout },
-        ] = await Promise.all([
-          runCommandAsync(
-            "deno",
-            ["task", "format:check:path", ...webFiles],
-            webDir,
-          ),
-          runCommandAsync(
-            "deno",
-            ["task", "lint:path", "--no-warn-ignored", ...webFiles],
-            webDir,
-          ),
-        ]);
+        // prettier 自动格式化（与 Go gofmt 一致），eslint 仅拦截 error
+        const {
+          code: prettierCode,
+          stdout: prettierStdout,
+          stderr: prettierStderr,
+        } = await runCommandAsync(
+          "deno",
+          ["task", "format:path", ...webFiles],
+          webDir,
+        );
 
-        if (prettierCode !== 0 || eslintCode !== 0) {
+        if (prettierCode !== 0) {
           return {
             header,
             success: false,
             logs:
-              `1. prettier：\n${prettierStderr}\n${prettierStdout}\n2. eslint：\n${eslintStderr}\n${eslintStdout}\n❌ Web 文件检查失败：请在代码格式化并修复 eslint 后再提交代码\n`,
-          };
-        } else {
-          return {
-            header,
-            success: true,
-            logs: "✅ Web 文件检查通过\n",
+              `prettier：\n${prettierStderr}\n${prettierStdout}\n❌ Web 文件格式化失败\n`,
           };
         }
+
+        // 格式化后重新暂存，确保提交的是格式化后的版本
+        const absoluteWebFiles = webFiles.map((f) =>
+          relative(workspaceRoot, resolve(webDir, f))
+        );
+        await runCommandAsync("git", ["add", ...absoluteWebFiles]);
+
+        const { code: eslintCode, stderr: eslintStderr, stdout: eslintStdout } =
+          await runCommandAsync(
+            "deno",
+            ["task", "lint:path", "--no-warn-ignored", ...webFiles],
+            webDir,
+          );
+
+        if (eslintCode !== 0) {
+          return {
+            header,
+            success: false,
+            logs:
+              `eslint：\n${eslintStderr}\n${eslintStdout}\n❌ Web 文件 eslint 检查失败：请修复 error 后再提交\n`,
+          };
+        }
+
+        return {
+          header,
+          success: true,
+          logs: "✅ Web 文件检查通过\n",
+        };
       } catch {
         return {
           header,

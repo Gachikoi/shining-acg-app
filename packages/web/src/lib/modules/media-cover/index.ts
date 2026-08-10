@@ -2,15 +2,15 @@ import type { V1PostContentUnit } from '$lib/api/types.gen';
 import type { DraftMediaItem } from '$lib/stores/release';
 import { getPreviewBlob } from '$lib/modules/release-media';
 import {
-	DEFAULT_TEXT_COVER_STYLE_ID,
 	type CoverSource,
+	DEFAULT_TEXT_COVER_STYLE_ID,
 	type ExtractVideoFrameOptions,
 	type RenderTextCoverOptions,
 	type ResolveCoverBlobOptions,
 	type TextCoverRenderer,
 	type TextCoverStyleId
 } from './types';
-import { cleanText, clamp } from './utils';
+import { clamp, cleanText } from './utils';
 import { getVideoBlob, isImageItem, isVideoItem } from './media-item-utils';
 import {
 	getTextCoverRenderer,
@@ -33,9 +33,9 @@ export { DEFAULT_TEXT_COVER_STYLE_ID };
 export {
 	extractVideoFrameBlob,
 	getTextCoverRenderer,
+	isTextCoverStyleId,
 	listTextCoverStyleIds,
-	registerTextCoverRenderer,
-	isTextCoverStyleId
+	registerTextCoverRenderer
 };
 export { isImageItem, isVideoItem } from './media-item-utils';
 

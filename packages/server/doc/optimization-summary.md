@@ -11,6 +11,7 @@
 **修改文件：** `internal/biz/resource.go`
 
 **新增方法：**
+
 - `downloadAndGetVideoMeta`: 负责视频下载和元数据获取
 - `generateAndUploadVideoCover`: 负责视频封面生成和上传
 - `transcodeVideoToHLS`: 负责视频转码为 HLS 格式
@@ -18,6 +19,7 @@
 - `getCoverMeta`: 获取封面元数据（辅助方法）
 
 **优化后的流程：**
+
 ```
 下载视频 → 获取元数据 → 生成封面 → 转码视频 → 更新元数据
 ```
@@ -27,6 +29,7 @@
 **修改文件：** `internal/biz/resource.go`
 
 **新增方法：**
+
 - `downloadAndGetImageMeta`: 负责图片下载和元数据获取
 - `updateImageMeta`: 负责图片元数据更新
 - `processPostImage`: 负责帖子图片处理（压缩）
@@ -35,6 +38,7 @@
 - `processPostCover`: 负责帖子封面处理（压缩或裁剪）
 
 **优化后的流程：**
+
 ```
 下载图片 → 获取元数据 → 更新元数据 → 根据场景处理
 ```
@@ -44,6 +48,7 @@
 **修改文件：** `internal/biz/resource.go`
 
 **新增方法：**
+
 - `getMediaByID`: 查找媒体记录并转换状态
 - `buildGetUploadStatusResponse`: 构造获取上传状态的响应
 
@@ -54,15 +59,18 @@
 **修改文件：** `internal/biz/resource.go`
 
 **新增方法：**
+
 - `convertImageToCover`: 将图片转换为封面格式
 
-该方法支持将已有的图片媒体转换为封面格式，支持自动裁剪为 3:4 比例或保持原始比例。
+该方法支持将已有的图片媒体转换为封面格式，支持自动裁剪为 3:4
+比例或保持原始比例。
 
 ### 5. 代码架构优化
 
 **主要改进：**
 
-1. **模块化提升**：将原来的单一 processImage 和 processVideo 函数重构为多个职责明确的辅助方法
+1. **模块化提升**：将原来的单一 processImage 和 processVideo
+   函数重构为多个职责明确的辅助方法
 2. **职责分离**：每个方法专注于单一职责，提升了代码的可读性和可维护性
 3. **错误处理优化**：统一了错误处理逻辑，增加了更详细的错误信息
 4. **资源管理改进**：确保所有临时文件正确删除，避免资源泄漏
@@ -107,11 +115,13 @@
 
 ### 1. 状态轮询优化
 
-可以考虑使用 WebSocket 或 Server-Sent Events 替代传统的轮询机制，实现更高效的实时状态更新。
+可以考虑使用 WebSocket 或 Server-Sent Events
+替代传统的轮询机制，实现更高效的实时状态更新。
 
 ### 2. 任务队列
 
-对于大型媒体处理任务，可以考虑引入任务队列（如 Redis Queue 或 RabbitMQ）来更好地管理和调度任务。
+对于大型媒体处理任务，可以考虑引入任务队列（如 Redis Queue 或
+RabbitMQ）来更好地管理和调度任务。
 
 ### 3. 监控和日志
 

@@ -128,27 +128,31 @@ deno run -A npm:sv create my-app ✅
 
 ## 生成流程
 
-1. **后端定义 Proto 文件**  
+1. **后端定义 Proto 文件**\
    后端开发者在 `packages/server/proto/` 目录中定义 gRPC 服务的 `.proto` 文件
 
-2. **生成 Swagger JSON 与前端 API 客户端**  
+2. **生成 Swagger JSON 与前端 API 客户端**\
    在项目根目录手动运行，或在 pre-commit 钩子中自动触发命令：
 
    ```sh
    deno task gen:api
    ```
 
-   此命令会先使用 buf 的 openapi 插件将 proto 文件转换为 `swagger.swagger.json`这个 openapi 文档，再使用 hey-api 从 `swagger.swagger.json` 自动生成 TypeScript 客户端代码到 `src/lib/api/` 目录。
+   此命令会先使用 buf 的 openapi 插件将 proto 文件转换为
+   `swagger.swagger.json`这个 openapi 文档，再使用 hey-api 从
+   `swagger.swagger.json` 自动生成 TypeScript 客户端代码到 `src/lib/api/` 目录。
 
 ## ⚠️ 重要提示
 
 **请勿手动修改 `src/lib/api/` 目录下的任何文件！**
 
-该目录下的所有文件都是自动生成的，任何手动修改都会在下次运行 `deno task gen:api` 时被覆盖。
+该目录下的所有文件都是自动生成的，任何手动修改都会在下次运行 `deno task gen:api`
+时被覆盖。
 
 ## 自定义配置
 
-如需修改 API 客户端的运行时配置（如 baseURL），请编辑 `src/hey-api.svelte.ts` 文件：
+如需修改 API 客户端的运行时配置（如 baseURL），请编辑 `src/hey-api.svelte.ts`
+文件：
 
 ```typescript
 export const createClientConfig: CreateClientConfig = (config) => ({
@@ -233,4 +237,5 @@ shadcn的组件来做，Icon使用shadcn支持的lucide（lucide.dev）图标库
 
 ## 文件上传
 
-Cloudflare 单次上传限制为 100MB，由于我们最大上传文件 2 GB，因此分片上传 1 片肯定不会超过 100 MB，不用担心。
+Cloudflare 单次上传限制为 100MB，由于我们最大上传文件 2 GB，因此分片上传 1
+片肯定不会超过 100 MB，不用担心。

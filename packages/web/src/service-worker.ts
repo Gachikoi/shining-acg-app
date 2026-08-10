@@ -43,8 +43,9 @@ sw.addEventListener('fetch', (event) => {
 
 	const targetCache = (() => {
 		if (SOURCE_CODE_ASSETS.includes(url.pathname)) return SOURCE_CODE_CACHE;
-		if (mediaCategories?.has(url.searchParams.get('cache-category') || ''))
+		if (mediaCategories?.has(url.searchParams.get('cache-category') || '')) {
 			return url.searchParams.get('cache-category') || '';
+		}
 		return undefined;
 	})();
 
@@ -98,8 +99,7 @@ sw.addEventListener('fetch', (event) => {
 			if (response.status === 200) {
 				const clonedResponse = response.clone();
 				taskQueue.run(() => cache.put(event.request, clonedResponse));
-			}
-			// opaque 响应（CORS 降级）：无法读取 status，但仍可写入 Cache Storage
+			} // opaque 响应（CORS 降级）：无法读取 status，但仍可写入 Cache Storage
 			// 权衡：opaque 响应有浏览器存储 padding（约 7MB），但能保证离线可用
 			else if (isMediaCache && response.type === 'opaque') {
 				const clonedResponse = response.clone();

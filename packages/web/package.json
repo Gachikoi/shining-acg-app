@@ -14,7 +14,8 @@
 		"format": "prettier --write --ignore-unknown .",
 		"lint": "prettier --check --ignore-unknown . && eslint .",
 		"format:check:path": "prettier --check --ignore-unknown ",
-		"lint:path": "eslint"
+		"format:path": "prettier --write --ignore-unknown ",
+		"lint:path": "eslint --max-warnings 999"
 	},
 	"dependencies": {
 		"@sveltejs/adapter-cloudflare": "7.2.4",

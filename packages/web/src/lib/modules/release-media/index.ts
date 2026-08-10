@@ -4,7 +4,7 @@
  */
 import type { DraftMediaItem } from '$lib/stores/release';
 import { buildPrepareUploadParams } from '$lib/modules/media-uploader';
-import type { PrepareUploadParams, PrepareUploadParamAsset } from '$lib/modules/media-uploader';
+import type { PrepareUploadParamAsset, PrepareUploadParams } from '$lib/modules/media-uploader';
 import type { V1MediaScene } from '$lib/api/types.gen';
 
 /**
@@ -53,10 +53,14 @@ export function draftItemsToPrepareParams(
 			scene,
 			livePhoto: {
 				image: {
-					file: new File([item.imageBlob], item.imageName, { type: item.imageBlob.type })
+					file: new File([item.imageBlob], item.imageName, {
+						type: item.imageBlob.type
+					})
 				},
 				video: {
-					file: new File([item.videoBlob], item.videoName, { type: item.videoBlob.type })
+					file: new File([item.videoBlob], item.videoName, {
+						type: item.videoBlob.type
+					})
 				}
 			}
 		};

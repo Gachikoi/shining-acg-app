@@ -1,0 +1,145 @@
+name: shining-acg-prod
+
+services:
+  api-prod:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-gachikoi}/shining-acg-server:latest
+    container_name: api-prod
+    restart: always
+    environment:
+      - APP_SERVER_PORT=8000
+      - APP_DB_HOST=postgres-prod
+      - APP_DB_PORT=5432
+      - APP_DB_USER=${POSTGRES_USER:-postgres}
+      - APP_DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - APP_DB_NAME=${POSTGRES_DB:-shining_db}
+      
+      # 对象存储配置
+      - APP_OSS_INTERNAL_ENDPOINT=minio-prod:9000
+      - APP_OSS_INTERNAL_USE_SSL=false
+      # 外部访问地址 (请修改为实际域名)
+      - APP_OSS_EXTERNAL_ENDPOINT=https://media.shiningacg.club
+      - APP_OSS_EXTERNAL_USE_SSL=true
+      - APP_OSS_ACCESS_KEY=${MINIO_ROOT_USER:-shining}
+      - APP_OSS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-shiningoss}
+      - APP_OSS_BUCKET=shining-bucket
+      
+      # 日志配置
+      - APP_LOG_LEVEL=info
+      - APP_LOG_ENVIRONMENT=prod
+      - APP_LOG_DIR=/app/logs
+      - APP_LOG_ENABLE_FILE=true
+
+    volumes:
+      # 日志写入机械硬盘
+      - /mnt/data/api_logs:/app/logs
+    
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      minio-prod:
+        condition: service_healthy
+
+    networks:
+      - prod_internal
+    ports:
+      - "8000:8000"
+
+  # MinIO: 存储媒体文件 (HDD)
+  minio-prod:
+    image: minio/minio:RELEASE.2025-03-12T18-04-18Z
+    container_name: minio-prod
+    restart: always
+    command: server /data --address ":9000" --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-shining}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-shiningoss}
+      MINIO_BROWSER_REDIRECT_URL: "https://oss-console.shiningacg.club"
+    volumes:
+      # --- 关键：使用机械硬盘存储海量媒体数据 ---
+      - /mnt/data/minio:/data
+    networks:
+      - prod_internal
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Postgres: 关系型数据库 (SSD - 保持高性能)
+  postgres-prod:
+    image: postgres:17-alpine
+    container_name: postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-shining_db}
+    volumes:
+      # 使用 Docker 默认 Volume (位于 /var/lib/docker/volumes，即 SSD)
+      - postgres_data_prod:/var/lib/postgresql/data
+      # 建议定期备份到 HDD
+      - /mnt/data/postgres_backup:/backup
+    networks:
+      - prod_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-shining_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Loki: 日志存储 (HDD)
+  loki-prod:
+    image: grafana/loki:3.0.0
+    container_name: loki-prod
+    restart: always
+    user: root
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      # --- 关键：日志数据存入 HDD ---
+      - /mnt/data/loki:/tmp/loki
+    networks:
+      - prod_internal
+
+  # Promtail: 日志采集
+  promtail-prod:
+    image: grafana/promtail:3.0.0
+    container_name: promtail-prod
+    restart: always
+    command: -config.file=/etc/promtail/config.yaml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - prod_internal
+    depends_on:
+      - loki-prod
+
+  # Grafana: 监控面板 (HDD)
+  grafana-prod:
+    image: grafana/grafana:latest
+    container_name: grafana-prod
+    restart: always
+    volumes:
+      # --- 关键：Grafana 数据存入 HDD ---
+      - /mnt/data/grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=https://monitor.shiningacg.club
+    networks:
+      - prod_internal
+    depends_on:
+      - loki-prod
+    ports:
+      - "3000:3000"
+
+networks:
+  prod_internal:
+    driver: bridge
+
+volumes:
+  postgres_data_prod:

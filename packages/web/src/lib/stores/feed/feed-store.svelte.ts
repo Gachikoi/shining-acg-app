@@ -76,7 +76,7 @@ export function createFeedStore<T>(categoryId: string, config: FeedStoreConfig<T
 
 	/**
 	 * 对数据列表进行去重（基于 getItemId 提取的唯一 ID）
-	 *	因为这里每次更新数据，items 的引用都会发生变化，所以通过引用来判断是否可以恢复布局，所以这里千万不能直接更改 items 的值，必须更改引用，否则 waterfall-container 将无法正常判断是否能恢复布局缓存
+	 * 	因为这里每次更新数据，items 的引用都会发生变化，所以通过引用来判断是否可以恢复布局，所以这里千万不能直接更改 items 的值，必须更改引用，否则 waterfall-container 将无法正常判断是否能恢复布局缓存
 	 * @param newItems - 新获取的数据列表
 	 * @returns 去重后的数据列表
 	 */

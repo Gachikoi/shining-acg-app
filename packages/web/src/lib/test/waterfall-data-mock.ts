@@ -1,4 +1,4 @@
-import type { V1PostPreview, V1UserSummary, FeedServiceGetFeedData } from '$lib/api/types.gen';
+import type { FeedServiceGetFeedData, V1PostPreview, V1UserSummary } from '$lib/api/types.gen';
 
 const TITLES = [
 	'春日樱花盛开',
@@ -19,11 +19,31 @@ const TITLES = [
 ];
 
 const AUTHORS = [
-	{ userId: '1', name: '摄影师小王', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1' },
-	{ userId: '2', name: '旅行达人', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2' },
-	{ userId: '3', name: '美食家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3' },
-	{ userId: '4', name: '艺术家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=4' },
-	{ userId: '5', name: '科技博主', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=5' }
+	{
+		userId: '1',
+		name: '摄影师小王',
+		avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1'
+	},
+	{
+		userId: '2',
+		name: '旅行达人',
+		avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2'
+	},
+	{
+		userId: '3',
+		name: '美食家',
+		avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3'
+	},
+	{
+		userId: '4',
+		name: '艺术家',
+		avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=4'
+	},
+	{
+		userId: '5',
+		name: '科技博主',
+		avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=5'
+	}
 ];
 
 const ASPECT_RATIOS = [

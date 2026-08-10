@@ -1,20 +1,20 @@
 ---
-description: 
+description:
 alwaysApply: true
 ---
 
 ---
-description: 
+description:
 alwaysApply: true
 ---
 
 ---
-description: 
+description:
 alwaysApply: true
 ---
 
 ---
-description: 
+description:
 alwaysApply: true
 ---
 
@@ -24,10 +24,13 @@ alwaysApply: true
 
 3. 在前端项目中实现库的时候，优先使用函数式封装，如果函数式不便于解决问题再用类。
 
-4. 必须详细标明代码注释，让每一块代码都能通过注释了解其作用；如果是 ts，还要采用 @params @return 的jsdoc注释形式。
+4. 必须详细标明代码注释，让每一块代码都能通过注释了解其作用；如果是 ts，还要采用
+   @params @return 的jsdoc注释形式。
 
 5. 不要防御性编程和过度封装，应该尽量进行最简实现，应该直接暴露逻辑错误而不进行错误兜底
 
 6. svelte 项目可以不用 $effect，就一定不要用 $effect
 
-7. Debug 模式下，我是在手机上通过手动网络代理到pc的127.0.0.1:5173的本地开发页面的，但是无法向你的http://127.0.0.1:7303/ingest 发送请求，请你用相对路径配置vite转发转发logs到你的端口上
+7. Debug
+   模式下，我是在手机上通过手动网络代理到pc的127.0.0.1:5173的本地开发页面的，但是无法向你的http://127.0.0.1:7303/ingest
+   发送请求，请你用相对路径配置vite转发转发logs到你的端口上

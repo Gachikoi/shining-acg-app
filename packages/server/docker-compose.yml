@@ -28,12 +28,12 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "50m"   # 单个文件超过 50MB 就切分
-        max-file: "3"     # 最多保留 3 个历史文件（共 150MB）
+        max-size: "50m" # 单个文件超过 50MB 就切分
+        max-file: "3" # 最多保留 3 个历史文件（共 150MB）
 
     # 网络配置：同时加入网关网络和内部网络
     networks:
-      - dev_internal     # 用于连接数据库
+      - dev_internal # 用于连接数据库
     ports:
       - "8000:8000"
     volumes:
@@ -62,7 +62,7 @@ services:
       - minio_data_dev:/data
 
     networks:
-      - dev_internal     # 允许 api-dev 访问
+      - dev_internal # 允许 api-dev 访问
 
     ports:
       - "9000:9000" # S3 API
@@ -98,7 +98,10 @@ services:
 
     # 健康检查：这是 depends_on 生效的关键
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-shining_db}"]
+      test: [
+        "CMD-SHELL",
+        "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-shining_db}",
+      ]
       interval: 5s
       timeout: 5s
       retries: 5
